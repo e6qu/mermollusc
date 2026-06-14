@@ -2,6 +2,7 @@ import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   FlowDirection,
   FlowEdge,
+  FlowNode,
   FlowchartAst,
   Scene,
   SceneEdge,
@@ -41,18 +42,18 @@ export const toScene = (
   positioned: PositionedGraph,
   ast: FlowchartAst,
 ): Result<Scene, LayoutError> => {
-  const labelById = new Map<string, string>(ast.nodes.map((n) => [n.id, n.label]));
+  const nodeById = new Map<string, FlowNode>(ast.nodes.map((n) => [n.id, n]));
   const edgeById = new Map<string, FlowEdge>(ast.edges.map((e) => [e.id, e]));
 
   const nodes: SceneNode[] = [];
   for (const pn of positioned.nodes) {
-    const label = labelById.get(pn.id);
-    if (label === undefined)
-      return err({ kind: "layout", message: `node ${pn.id} missing from AST` });
+    const fn = nodeById.get(pn.id);
+    if (fn === undefined) return err({ kind: "layout", message: `node ${pn.id} missing from AST` });
     nodes.push({
       id: brand<string, "SceneNodeId">(pn.id),
       bounds: rect(pn.x, pn.y, pn.width, pn.height),
-      label,
+      label: fn.label,
+      shape: fn.shape,
       parent: null,
     });
   }

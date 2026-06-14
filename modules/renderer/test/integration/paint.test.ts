@@ -1,0 +1,65 @@
+import { brand, point, rect } from "@m/std";
+import type { Scene } from "@m/contracts";
+import { describe, expect, it } from "vitest";
+import { toDisplayList } from "../../src/core/display.js";
+import { type Canvas2D, paint } from "../../src/shell/paint.js";
+
+class RecordingCtx implements Canvas2D {
+  fillStyle: string | CanvasGradient | CanvasPattern = "";
+  strokeStyle: string | CanvasGradient | CanvasPattern = "";
+  lineWidth = 0;
+  font = "";
+  textAlign: CanvasTextAlign = "start";
+  textBaseline: CanvasTextBaseline = "alphabetic";
+  readonly calls: string[] = [];
+  beginPath(): void {
+    this.calls.push("beginPath");
+  }
+  moveTo(): void {
+    this.calls.push("moveTo");
+  }
+  lineTo(): void {
+    this.calls.push("lineTo");
+  }
+  closePath(): void {
+    this.calls.push("closePath");
+  }
+  stroke(): void {
+    this.calls.push("stroke");
+  }
+  fill(): void {
+    this.calls.push("fill");
+  }
+  fillText(text: string): void {
+    this.calls.push(`fillText:${text}`);
+  }
+  roundRect(): void {
+    this.calls.push("roundRect");
+  }
+}
+
+const snid = (s: string) => brand<string, "SceneNodeId">(s);
+const seid = (s: string) => brand<string, "SceneEdgeId">(s);
+
+const scene: Scene = {
+  nodes: [
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null },
+  ],
+  edges: [
+    { id: seid("e0"), from: snid("A"), to: snid("B"), waypoints: [point(30, 40), point(30, 80)], label: null },
+  ],
+  extent: rect(0, 0, 60, 120),
+};
+
+describe("paint", () => {
+  it("executes the display list against the context", () => {
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(scene));
+    expect(ctx.calls.filter((c) => c === "roundRect")).toHaveLength(1);
+    expect(ctx.calls).toContain("closePath");
+    expect(ctx.calls).toContain("fillText:A");
+    expect(ctx.calls).toContain("fillText:B");
+    expect(ctx.calls.filter((c) => c === "moveTo").length).toBeGreaterThanOrEqual(2);
+  });
+});

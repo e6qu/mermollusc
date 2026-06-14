@@ -1,11 +1,21 @@
 # @m/renderer — plan
 
-SceneGraph -> canvas; Canvas2D impl + HTML-in-Canvas enhancement.
+`Scene → pixels` on an HTML canvas.
 
 ## Responsibility
 
-TODO — what this module owns and what it explicitly does not.
+- Owns turning a positioned `Scene` into drawing operations and executing them.
+- The Scene→display-list step is pure and lives in `src/core`; touching a canvas context is IO,
+  so it lives in `src/shell`.
+- Does NOT lay out or hit-test (that's `@m/layout` / `@m/builder`).
 
 ## Public API (stable surface)
 
-TODO.
+- `toDisplayList(scene: Scene): DrawCmd[]` (pure).
+- `paint(ctx: Canvas2D, cmds: readonly DrawCmd[]): void`.
+- `Canvas2D` — structural subset of `CanvasRenderingContext2D`; a real context is assignable.
+
+## Notes
+
+- The `Canvas2D` seam keeps the core/shell split testable in node (mock context) and lets the
+  HTML-in-Canvas backend slot in later as an alternative `paint` implementation.
