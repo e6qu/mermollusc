@@ -5,7 +5,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@m/builder": "workspace:*"
+    "@m/std": "workspace:*",
+    "@m/builder": "workspace:*",
+    "@m/parser": "workspace:*",
+    "@m/layout": "workspace:*",
+    "@m/renderer": "workspace:*"
   },
   "devDependencies": {
     "vite": "catalog:"

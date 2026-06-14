@@ -71,6 +71,18 @@ importers:
       '@m/builder':
         specifier: workspace:*
         version: link:../../modules/builder
+      '@m/layout':
+        specifier: workspace:*
+        version: link:../../modules/layout
+      '@m/parser':
+        specifier: workspace:*
+        version: link:../../modules/parser
+      '@m/renderer':
+        specifier: workspace:*
+        version: link:../../modules/renderer
+      '@m/std':
+        specifier: workspace:*
+        version: link:../../modules/std
     devDependencies:
       vite:
         specifier: 'catalog:'

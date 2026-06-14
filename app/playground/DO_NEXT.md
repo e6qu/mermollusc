@@ -1,5 +1,6 @@
 # @m/app (playground) — do next
 
-- Add a `vite.config.ts` and a `vitest` e2e setup (browser/canvas snapshots).
-- Wire `@m/builder` to the canvas once the flowchart vertical slice exists.
+- Verify rendering visually in a browser (`make run`) and add a Playwright golden snapshot.
+- Add a text editor pane (CodeMirror) and re-render on input.
+- Wire `@m/builder` for selection/drag and two-way sync once it lands.
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
