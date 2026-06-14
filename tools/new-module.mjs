@@ -48,10 +48,10 @@ const files = {
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": { "types": "./src/index.ts", "import": "./src/index.ts" }
   }${
     deps.length
       ? `,\n  "dependencies": {\n${depBlock(deps)}\n  }`
