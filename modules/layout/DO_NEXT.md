@@ -1,8 +1,7 @@
 # @m/layout — do next
 
-- Confirm the real elkjs result shape from its source/repo (not memory), then write a Zod
-  decoder + typed facade for it in `src/shell`. See `BUGS.md`.
-- Define the layout input adapter: AST → ELK graph JSON (nodes, edges, nesting, ports).
-- Define core invariants for property tests: children inside parents, no node overlap,
-  edges terminate on node borders.
-- Add unit (property-based) tests in `test/unit`.
+- Consume the `LayoutOverrides` contract: feed pinned positions to ELK as fixed coordinates
+  (regenerate = unpinned only) and as soft seeds (relax).
+- Take real node sizes from the renderer's text measurement instead of the char-width heuristic.
+- Add property tests: children within extent, no node-box overlap, edges terminate near nodes.
+- Support nested containers (subgraph / C4) via ELK hierarchy once those AST variants exist.

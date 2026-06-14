@@ -1,12 +1,9 @@
 # @m/layout — bugs
 
-## RISK: elkjs ships no type definitions
+_None known._
 
-`elkjs@0.11.1` has no bundled `.d.ts` we have confirmed, and `@types/elkjs` does not exist on
-npm (verified 2026-06-14 via `npm view @types/elkjs version` → not found). Its API surface is
-therefore untyped, which violates the type policy.
+## Resolved
 
-**Required handling:** the ELK call lives only in `src/shell`, wrapped by a hand-written typed
-facade whose inputs/outputs pass through `decode()` (Zod). The core must never import elkjs or
-see its raw result shape. Confirm the actual runtime shape against elkjs source before writing
-the decoder — do not infer it from memory.
+- ~~elkjs ships no type definitions~~ — false: `elkjs@0.11.1` ships `lib/elk-api.d.ts`
+  (verified 2026-06-14). We use the bundled entry `elkjs/lib/elk.bundled.js` and still decode the
+  layout result with Zod at the shell boundary before it reaches the core.
