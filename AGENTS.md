@@ -1,0 +1,132 @@
+# AGENTS.md — mermollusc operating manual
+
+This file is the contract for working in this repo. `CLAUDE.md` is a symlink to it.
+Read it before touching any module. These rules **override** convenience.
+
+---
+
+## 0. Hard rules (non-negotiable)
+
+1. **No fallbacks. Fail loudly.** No empty catches, no "log and continue", no silent
+   defaults, no swallowed errors. In the functional core, errors are `Result` values and
+   are returned, not hidden. At the shell boundary they are logged loudly and surfaced.
+   (Retries/backoff for genuine network flakiness are not fallbacks — they are allowed.)
+2. **Don't guess. Don't assume.** Every claim must trace to a verifiable source: actual
+   source code, an official spec, official docs, or something confirmed with a command.
+   No memory-based assertions. If you can't verify it, say so.
+3. **Pin dependencies from reality, with a supply-chain quarantine.** Never write a version
+   from memory. Pin the latest *stable* release that is **at least 24h old** — never one younger
+   than a day, since a fresh release may be a hijack. Choose it with `tools/pick-version.mjs <pkg>`
+   and audit the catalog with `make deps-check`. Pins live in the `catalog:` of `pnpm-workspace.yaml`.
+4. **Strong types only.** No `any`. No `unknown` in `src/core`. No `as` casts except the two
+   sanctioned boundary helpers (§3). Branded types over primitives; closed unions over
+   strings. Smart constructors validate.
+5. **Provenance.** Any bundled asset (e.g. icon packs) carries source URL, license, and a
+   pinned commit. No unsourced assets.
+6. **Docs move with code.** Update this module's `PLAN.md`, `STATUS.md`, `WHAT_WE_DID.md`,
+   `DO_NEXT.md`, `BUGS.md` in the *same* change that touches its code — never as a follow-up.
+7. **No phase numbers or BUGS IDs in source or comments.** They rot. The "why" goes in the
+   commit message, not the code.
+8. **No wildcard imports or exports.** No `import * as` and no `export *`. Every symbol that
+   crosses a module boundary is named explicitly (`export { a, b } from`, `export type { … }`).
+   Barrels are allowed only as explicit named re-export lists. Keeps the public surface,
+   tree-shaking, and the dependency graph legible.
+9. **No noise comments.** No separator/banner comments and no comments that restate the code
+   or these rules. Keep only comments that explain something the code cannot: a boundary, an
+   invariant, a non-obvious "why". Never cite rule/section numbers in code — they rot.
+
+---
+
+## 1. Repository structure
+
+```
+mermollusc/
+├── AGENTS.md / CLAUDE.md(symlink) / PLAN.md
+├── Makefile          root fan-out (runs targets across modules in DAG order)
+├── module.mk         shared make targets, included by every module
+├── tsconfig.base.json / biome.json / pnpm-workspace.yaml (catalog = pinned versions)
+├── tools/            guard-types.mjs (type-policy guard), new-module.mjs (generator)
+├── modules/<m>/      self-contained module (see §2)
+└── app/playground/   the web app wiring all modules together
+```
+
+Each module is **totally self-contained**: its own docs, Makefile, package.json, tsconfig,
+source, and tests live under its directory. Cross-module coupling happens only through the
+published package API and the dependency DAG (§4).
+
+## 2. Module internal layout
+
+```
+modules/<m>/
+├── PLAN.md  STATUS.md  WHAT_WE_DID.md  DO_NEXT.md  BUGS.md   (the five doc files)
+├── Makefile          include ../../module.mk
+├── package.json  tsconfig.json
+├── src/
+│   ├── core/         PURE. no IO, no logging, no throw. branded data -> Result. no any/unknown/as.
+│   └── shell/        IMPERATIVE. IO, decoding, logging, library adapters.
+└── test/{unit,integration,fixtures}/
+```
+
+The five doc files, by purpose:
+
+| File | Holds |
+|------|-------|
+| `PLAN.md` | the module's design + roadmap |
+| `STATUS.md` | one-glance current-state / health snapshot |
+| `WHAT_WE_DID.md` | append-only work log |
+| `DO_NEXT.md` | the next concrete actions |
+| `BUGS.md` | known bugs with stable IDs |
+
+## 3. Type policy & the two sanctioned boundaries
+
+- Functional core: **zero** `any` / `unknown` / `as`. Enforced by Biome (`noExplicitAny`) plus
+  `tools/guard-types.mjs` (TS compiler API; bans `as` (except `as const`) and `unknown` types
+  inside `src/core`). `make lint` runs both.
+- Exactly two unsafe operations exist, **only in `src/shell/`**, each a named, commented helper:
+  - `brand<T, B>(value)` — the single sanctioned `as` cast, to mint a branded value after its
+    smart constructor has validated it.
+  - `decode(schema, input)` — the I/O-boundary validator (Zod). Untyped external input
+    (user text, icon JSON, the elkjs result surface) enters only through a decoder that
+    returns branded types or a `Result` error. The core never sees raw input.
+
+## 4. Dependency DAG (acyclic — enforced)
+
+```
+std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
+```
+
+`std` depends on nothing. Importing "upward" (e.g. `std` importing `parser`) is forbidden.
+
+## 5. Functional core / imperative shell
+
+The core is pure and total: it maps branded inputs to branded outputs or a `Result` error,
+never performs IO, never logs, never throws. The shell does everything impure: canvas/DOM,
+filesystem, the ELK worker, decoding, and logging. Tests target the core directly (cheap,
+property-based) and the shell via integration tests.
+
+## 6. Uniform make targets (defined in `module.mk`, identical everywhere)
+
+```
+install build typecheck lint lint-fix fmt fmt-check
+test test-unit test-int test-e2e test-watch cov
+run stop clean doc-check
+check    # typecheck + lint + fmt-check + test — the gate
+```
+
+Run any target at the root to fan out across modules in DAG order, or inside a module for
+just that module. `run`/`stop` use the module's `RUN_CMD`/`STOP_CMD` (libs default `run` to
+`test-watch`; the app overrides to its dev server; `stop` kills the pidfile).
+
+## 7. Testing pyramid (per module)
+
+- **Unit** (most numerous): pure `core/` functions, property-based with `fast-check`.
+- **Integration**: `shell` + `core` wired against fixtures.
+- **E2E / golden** (fewest, in `app`): text → pixels and text → edit → text snapshots.
+- `make cov` reports coverage. Per-layer thresholds are configured in each module's vitest
+  config as real tests land (not yet wired — see each module's `DO_NEXT.md`).
+
+## 8. Logging
+
+Structured JSON lines from the `Logger` contract in `@m/std`: `{ ts, level, module, event, data }`.
+The **core never logs** (it returns `Result`); the shell logs loudly at boundaries. `event` is a
+closed union per module — never a free-form string.

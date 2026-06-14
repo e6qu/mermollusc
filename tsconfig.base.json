@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+
+    "paths": {
+      "@m/std": ["./modules/std/src/index.ts"],
+      "@m/contracts": ["./modules/contracts/src/index.ts"],
+      "@m/parser": ["./modules/parser/src/index.ts"],
+      "@m/layout": ["./modules/layout/src/index.ts"],
+      "@m/renderer": ["./modules/renderer/src/index.ts"],
+      "@m/icons": ["./modules/icons/src/index.ts"],
+      "@m/builder": ["./modules/builder/src/index.ts"]
+    },
+
+    "strict": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "noEmit": true,
+    "skipLibCheck": true
+  }
+}
