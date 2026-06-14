@@ -8,7 +8,9 @@ MODULES := modules/std modules/contracts modules/parser modules/layout \
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
 
-.PHONY: $(FANOUT) graph doctor new-module deps-check
+.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-api
+
+SEMGREP_VERSION := 1.166.0
 
 $(FANOUT):
 	@for m in $(MODULES); do \
@@ -21,6 +23,19 @@ graph:
 
 deps-check:
 	@node tools/pick-version.mjs --verify-catalog
+
+hooks:
+	@pre-commit install --install-hooks
+
+# Runs semgrep directly (not via pre-commit) so the pre-commit `sast` hook can call this.
+sast:
+	@uvx --from semgrep==$(SEMGREP_VERSION) semgrep scan --config p/default --error --quiet --skip-unknown-extensions modules app tools
+
+e2e-ui:
+	@$(MAKE) --no-print-directory -C app/playground test-e2e-ui
+
+e2e-api:
+	@echo "no API packages yet; HTTP e2e will run here once an API module exists"
 
 doctor:
 	@command -v pnpm >/dev/null || { echo "pnpm not found"; exit 1; }

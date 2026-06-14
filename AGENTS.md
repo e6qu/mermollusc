@@ -130,3 +130,17 @@ just that module. `run`/`stop` use the module's `RUN_CMD`/`STOP_CMD` (libs defau
 Structured JSON lines from the `Logger` contract in `@m/std`: `{ ts, level, module, event, data }`.
 The **core never logs** (it returns `Result`); the shell logs loudly at boundaries. `event` is a
 closed union per module — never a free-form string.
+
+## 9. Pre-commit pipeline
+
+`.pre-commit-config.yaml` drives the `pre-commit` framework; `make hooks` installs it. Two stages:
+
+- **pre-commit** (fast, every commit): whitespace/EOF/yaml/json/large-file hygiene, **gitleaks**
+  secret scan, `make fmt-check`, `make lint` (biome + type guard), `make typecheck`, `make test`
+  (unit + integration).
+- **pre-push** (heavier): `make sast` (**semgrep**, strict, run via `uvx`), `make e2e-ui`
+  (**Playwright**, one spec per UI flow), `make e2e-api` (HTTP API e2e — a placeholder until an
+  API module exists; never fabricate tests against a non-existent API).
+
+Hook repo revs are pinned in the config; semgrep is pinned in the `Makefile`, Playwright in the
+catalog. All were chosen with the ≥24h supply-chain rule (§0.3).

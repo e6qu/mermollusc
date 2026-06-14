@@ -68,7 +68,11 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
 
 Verified 2026-06-14 via `npm view <pkg> version`; pinned in `pnpm-workspace.yaml` catalog:
 typescript 6.0.3 · @biomejs/biome 2.5.0 · vitest 4.1.8 · tsup 8.5.1 · vite 8.0.16 ·
-zod 4.4.3 · elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0.
+zod 4.4.3 · elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 ·
+chevrotain 12.0.0 · @playwright/test 1.60.0.
+
+Pre-commit pipeline tools (pinned in `.pre-commit-config.yaml` / `Makefile`, verified ≥24h on
+2026-06-14): pre-commit-hooks v6.0.0 · gitleaks v8.30.1 · semgrep 1.166.0.
 
 ## License
 

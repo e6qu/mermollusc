@@ -12,6 +12,7 @@
     "@m/renderer": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "vite": "catalog:"
   }
 }
