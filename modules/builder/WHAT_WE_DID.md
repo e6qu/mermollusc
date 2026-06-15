@@ -10,3 +10,5 @@
   (bracketed splice / bare wrap), preserving the rest of the file. 3 tests (round-trip via reparse).
 - core: `patchSpan` primitive + structural appends `addNode` / `connect` (append a node/edge line,
   reparse-verified). 3 tests.
+- core: `deleteNode` (line-based, bracket-aware — strips labels before matching the id so a label
+  mention can't false-match; removes the decl + referencing edge lines). 2 tests.

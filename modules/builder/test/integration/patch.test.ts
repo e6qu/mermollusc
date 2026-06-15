@@ -1,7 +1,7 @@
 import { brand, isOk } from "@m/std";
 import { parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
-import { addNode, connect, patchSpan, relabelNode } from "../../src/core/patch.js";
+import { addNode, connect, deleteNode, patchSpan, relabelNode } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 
@@ -63,5 +63,20 @@ describe("relabelNode", () => {
     expect(
       r.value.ast.edges.some((e) => e.from === "A" && e.to === "B" && e.kind === "dotted"),
     ).toBe(true);
+  });
+
+  it("deleteNode removes the node's declaration and its edges", () => {
+    const next = deleteNode("flowchart TD\n  A[x]\n  B[y]\n  A --> B\n", nid("A"));
+    expect(next).not.toContain("A[x]");
+    expect(next).not.toContain("A --> B");
+    const r = parseWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.nodes.map((n) => n.id)).toEqual(["B"]);
+  });
+
+  it("deleteNode does not match an id that only appears inside a label", () => {
+    const text = "flowchart TD\n  A[mentions B]\n  C --> A\n";
+    expect(deleteNode(text, nid("B"))).toBe(text);
   });
 });

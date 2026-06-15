@@ -1,5 +1,6 @@
 # @m/builder — do next
 
-- `deleteNode` / `deleteEdge` (remove the declaration + referencing edge lines); change direction.
-- Multi-select + a DOM connect affordance (pick two nodes → `connect`).
+- Span-accurate delete (per-line/edge spans from the parser) to replace the line-based heuristic;
+  `deleteEdge`; change direction.
+- App affordances: multi-select → `connect`; select → `deleteNode` (delete key).
 - Property-based tests: relabel/patch round-trips, override survival across edits.

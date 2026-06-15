@@ -4,7 +4,8 @@
 
 - core: `hitTest`; `Selection` (`selectOnly`/`toggle`/`isSelected`); overrides
   (`moveNode`/`clearOverride`/`applyOverrides`).
-- two-way text edits over the parser source map: `patchSpan` (primitive), `relabelNode`
-  (span splice / bare-node wrap), `addNode` / `connect` (append a node / edge line).
-- tests: 18 passing.
-- Not yet: delete node/edge; multi-select; DOM connect affordance.
+- two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
+  `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
+  edge lines; line-based, bracket-aware).
+- tests: 20 passing.
+- Not yet: span-accurate delete; multi-select + DOM connect/delete affordances in the app.
