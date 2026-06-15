@@ -41,7 +41,9 @@
   scene re-renders; a same-id pack overrides the built-in. Loud on parse/decode failure. +2 flows.
 - Dark/Light theme toggle: swaps the renderer `Theme` and the canvas `backgroundColor`, repaints. +1 flow.
 - Cloud family renders via the existing `parseDiagram`/`layoutDiagram` routing: nested group
-  containers + service-kind glyphs. +1 Playwright flow.
+  containers + service-kind glyphs (now the vendored simple-icons brand marks). +1 Playwright flow.
+- Made the SVG rasteriser inject `xmlns`/size only when absent, so vendored packs that already
+  declare a namespace (simple-icons) decode without a duplicate-attribute error.
 - Cloud two-way: the source-capture switch keeps a `CloudSource` (via `parseCloudWithSource`);
   double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.
 - Theme persistence: initial theme reads `localStorage` then falls back to `prefers-color-scheme`;

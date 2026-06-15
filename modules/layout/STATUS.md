@@ -15,7 +15,8 @@
 - `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre
   links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
-  service leaves carry a kind glyph; undirected links.
+  each service leaf's kind maps to a vendored simple-icons glyph (`docker`/`postgresql`/`apachekafka`/
+  `cloudflare`/`googlecloudstorage`); undirected links.
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
 - tests: 23 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
   cloud nesting + icons; routing; property-based: block/network grids **and the ELK flowchart path**

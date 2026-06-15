@@ -19,5 +19,7 @@
   so `findIcon(registry, "simpleicons", <slug>)` resolves. (AWS/Azure marks aren't in simple-icons.)
 - tests: 8 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
   vendored-pack provenance + resolution).
-- Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); a diagram-level way to
-  reference a specific pack/icon so vendored glyphs render (today they're resolvable/loadable only).
+- The **cloud** family now renders these marks: its kinds map to simple-icons slugs (compute→docker,
+  storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
+- Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); a general per-node
+  `icon "<pack>/<name>"` override so any node can pick any glyph.

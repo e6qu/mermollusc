@@ -100,13 +100,18 @@ let theme: Theme =
   storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
 
 const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
-  // An <img> can only decode an SVG that declares its namespace and an intrinsic size.
-  const sized = svg.replace(
-    "<svg ",
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ',
-  );
+  // An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
+  // only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
+  // attribute would make decoding fail.
+  let markup = svg;
+  if (!markup.includes("xmlns=")) {
+    markup = markup.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
+  }
+  if (!/<svg[^>]*\swidth=/.test(markup)) {
+    markup = markup.replace("<svg ", '<svg width="24" height="24" ');
+  }
   const img = new Image();
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`;
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
   await img.decode();
   return img;
 };

@@ -33,9 +33,9 @@ describe("layoutCloud", () => {
     expect(w.origin.y + w.size.height).toBeLessThanOrEqual(g.origin.y + g.size.height);
   });
 
-  it("gives each service leaf a kind icon and groups none", () => {
-    expect(byId.get("web")?.icon).toEqual({ pack: "arch", name: "compute" });
-    expect(byId.get("db")?.icon).toEqual({ pack: "arch", name: "database" });
+  it("maps each service leaf's kind to a vendored simple-icons glyph; groups have none", () => {
+    expect(byId.get("web")?.icon).toEqual({ pack: "simpleicons", name: "docker" });
+    expect(byId.get("db")?.icon).toEqual({ pack: "simpleicons", name: "postgresql" });
     expect(byId.get("g0")?.icon).toBeNull();
   });
 

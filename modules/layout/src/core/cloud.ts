@@ -1,5 +1,14 @@
 import { brand, point, rect } from "@m/std";
-import type { CloudAst, IconRef, Scene, SceneEdge, SceneNode } from "@m/contracts";
+import type { CloudAst, CloudNodeKind, IconRef, Scene, SceneEdge, SceneNode } from "@m/contracts";
+
+// Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
+const KIND_ICON: Record<CloudNodeKind, IconRef> = {
+  compute: { pack: "simpleicons", name: "docker" },
+  storage: { pack: "simpleicons", name: "googlecloudstorage" },
+  database: { pack: "simpleicons", name: "postgresql" },
+  queue: { pack: "simpleicons", name: "apachekafka" },
+  cdn: { pack: "simpleicons", name: "cloudflare" },
+};
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
@@ -42,7 +51,7 @@ export const layoutCloud = (ast: CloudAst): Scene => {
       id: n.id,
       label: n.label,
       parent: n.parent,
-      icon: { pack: "arch", name: n.kind } satisfies IconRef,
+      icon: KIND_ICON[n.kind],
       group: false,
     })),
   ];

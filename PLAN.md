@@ -64,15 +64,15 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 **Six families render in the browser — flowchart, sequence, C4, block, network, cloud — and all six
 are two-way** (double-click → patch the source text). Flowchart also has drag, relax/regenerate,
-add, connect, and delete. Network and cloud nodes show built-in glyphs (icons-in-nodes is wired
-end-to-end).
+add, connect, and delete. Network nodes show built-in glyphs; cloud nodes show **vendored
+simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network · cloud (nested) — all +spans · ✅ routing · property round-trip | 33 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid (+icon refs) · ✅ routing · property tests | 23 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 12-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs · ✅ vendored simple-icons (CC0, 19 marks, pinned) | 8 |
@@ -84,11 +84,10 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
-1. **Icons**: a diagram-level way to reference a specific pack/icon so the vendored marks render
-   (e.g. `icon "<pack>/<name>"` on a node, or a kind→slug map). Vendor devicon (MIT) +
-   Kubernetes-community (Apache-2.0) too. *(simple-icons (CC0) bundled with pinned provenance;
-   in-node rendering, user-loaded packs, and "Load icons" are done; AWS/Azure are user-loaded —
-   license-restricted.)*
+1. **Icons**: a general per-node `icon "<pack>/<name>"` override so any node (any family) can pick
+   any glyph. Vendor devicon (MIT) + Kubernetes-community (Apache-2.0) too. *(simple-icons (CC0)
+   bundled with pinned provenance and now displayed by the cloud family; in-node rendering,
+   user-loaded packs, and "Load icons" are done; AWS/Azure are user-loaded — license-restricted.)*
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark toggle) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.

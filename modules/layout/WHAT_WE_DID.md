@@ -25,3 +25,5 @@
   boxes wrapping children, service leaves get a kind `icon` ref, undirected links. +3 tests.
 - Added a property-based test (fast-check, async) over the ELK flowchart path: generated ASTs lay
   out with all node ids preserved and every box inside the reported extent. +1 test.
+- Mapped cloud service kinds to representative vendored simple-icons glyphs (compute→docker,
+  storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
