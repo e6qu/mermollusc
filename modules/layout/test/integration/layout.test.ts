@@ -1,10 +1,12 @@
 import { brand, isOk, point } from "@m/std";
-import type { FlowchartAst, NodeId } from "@m/contracts";
+import type { FlowchartAst, NodeId, SequenceAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { layout } from "../../src/shell/elk.js";
+import { layout, layoutDiagram } from "../../src/shell/elk.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 const eid = (s: string) => brand<string, "EdgeId">(s);
+const aid = (s: string) => brand<string, "ActorId">(s);
+const mid = (s: string) => brand<string, "MessageId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -61,5 +63,23 @@ describe("layout", () => {
     if (!isOk(relaxed)) return;
     // seeded with A below B → relaxed layout keeps A below B
     expect(yOf(relaxed.value, "A")).toBeGreaterThan(yOf(relaxed.value, "B"));
+  });
+
+  it("layoutDiagram routes both families to a Scene", async () => {
+    const flow = await layoutDiagram(A_THEN_B);
+    expect(isOk(flow)).toBe(true);
+
+    const seq: SequenceAst = {
+      kind: "sequence",
+      actors: [
+        { id: aid("X"), label: "X" },
+        { id: aid("Y"), label: "Y" },
+      ],
+      messages: [{ id: mid("m0"), from: aid("X"), to: aid("Y"), text: "hi", kind: "solid" }],
+    };
+    const sequence = await layoutDiagram(seq);
+    expect(isOk(sequence)).toBe(true);
+    if (!isOk(sequence)) return;
+    expect(sequence.value.nodes).toHaveLength(2);
   });
 });

@@ -10,9 +10,13 @@ class SequenceParser extends CstParser {
   }
 
   readonly sequence = this.RULE("sequence", () => {
+    this.MANY(() => this.SUBRULE(this.sep));
     this.CONSUME(SeqTok.SequenceDiagram);
-    this.MANY(() =>
-      this.OR([{ ALT: () => this.SUBRULE(this.sep) }, { ALT: () => this.SUBRULE(this.statement) }]),
+    this.MANY2(() =>
+      this.OR([
+        { ALT: () => this.SUBRULE2(this.sep) },
+        { ALT: () => this.SUBRULE(this.statement) },
+      ]),
     );
   });
 

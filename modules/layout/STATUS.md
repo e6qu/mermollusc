@@ -9,4 +9,5 @@
 - core (pure): `toElkGraph(ast, seed)` and `toScene(positioned, ast)`.
 - `layoutSequence(ast)` (pure, no ELK): actors in a row, vertical dashed lifelines, messages as
   horizontal arrows stacked in order → `Scene`.
-- tests: 8 passing (toElkGraph/toScene; clean layout; relax; sequence lane layout).
+- `layoutDiagram(ast)` routes by family: flowchart → ELK (async), sequence → `layoutSequence`.
+- tests: 9 passing (toElkGraph/toScene; clean layout; relax; sequence lane layout; routing).

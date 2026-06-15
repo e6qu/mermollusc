@@ -1,1 +1,1 @@
-export { layout } from "./elk.js";
+export { layout, layoutDiagram } from "./elk.js";

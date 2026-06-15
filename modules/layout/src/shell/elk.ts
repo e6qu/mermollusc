@@ -1,8 +1,8 @@
-import { decode, err, type Point, type Result } from "@m/std";
-import type { FlowchartAst, NodeId, Scene } from "@m/contracts";
+import { decode, err, ok, type Point, type Result } from "@m/std";
+import type { DiagramAst, FlowchartAst, NodeId, Scene } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
-import { toElkGraph, toScene } from "../core/index.js";
+import { layoutSequence, toElkGraph, toScene } from "../core/index.js";
 import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "../core/index.js";
 
 const elk = new ELK();
@@ -94,4 +94,10 @@ export const layout = async (
   } catch (e) {
     return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
   }
+};
+
+// Routes by family: flowchart through ELK (async), sequence through the pure lane layout.
+export const layoutDiagram = async (ast: DiagramAst): Promise<Result<Scene, LayoutError>> => {
+  if (ast.kind === "sequence") return ok(layoutSequence(ast));
+  return layout(ast);
 };

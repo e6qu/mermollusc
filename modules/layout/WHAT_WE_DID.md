@@ -12,3 +12,4 @@
 - tests: unit (toElkGraph/toScene) + integration (clean layout, relax) — 5 passing.
 - Added `layoutSequence` (pure, no ELK): lane layout — actors row, vertical dashed lifelines
   (reusing SceneEdge self-edges), messages as horizontal arrows styled by `MessageKind`. +3 tests.
+- Added `layoutDiagram(ast)` routing by `ast.kind` (flowchart → ELK, sequence → lane). +1 test.

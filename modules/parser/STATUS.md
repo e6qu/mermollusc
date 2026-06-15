@@ -8,6 +8,8 @@
 - `parseSequence(text)` → `Result<SequenceAst, ParseError>`: `sequenceDiagram` subset —
   `participant [as Label]`, messages with the four arrow kinds (`->>`/`-->>`/`->`/`-->`),
   actors inferred from message endpoints.
+- `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
+  lines) and routes to the flowchart or sequence parser.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
