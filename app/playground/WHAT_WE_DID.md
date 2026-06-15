@@ -34,3 +34,5 @@
 - Icons in nodes: added `@m/icons` as a dependency; `ensureIcons(scene)` resolves each
   `SceneNode.icon` via `findIcon`, rasterises the SVG to an `Image` (xmlns + size injected, data
   URL), caches it by `${pack}/${name}`, and hands the map to `paint`. +1 Playwright flow.
+- HiDPI: `paintScene` sizes the canvas backing store to `devicePixelRatio`, pins the CSS box size,
+  and draws in CSS px via a dpr `setTransform`. +1 Playwright flow (deviceScaleFactor 2).

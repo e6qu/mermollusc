@@ -28,19 +28,31 @@ export type IconImages = ReadonlyMap<string, CanvasImageSource>;
 
 const iconKey = (pack: string, name: string): string => `${pack}/${name}`;
 
-const NODE_FILL = "#eef2ff";
-const STROKE = "#334155";
-const TEXT = "#0f172a";
+// The renderer's colour/font palette. Callers may supply their own; `defaultTheme` is the light one.
+export interface Theme {
+  readonly nodeFill: string;
+  readonly stroke: string;
+  readonly text: string;
+  readonly font: string;
+}
+
+export const defaultTheme: Theme = {
+  nodeFill: "#eef2ff",
+  stroke: "#334155",
+  text: "#0f172a",
+  font: "14px sans-serif",
+};
+
 const ARROW_SIZE = 9;
 
-const drawArrowHead = (ctx: Canvas2D, points: readonly Point[]): void => {
+const drawArrowHead = (ctx: Canvas2D, points: readonly Point[], stroke: string): void => {
   const tip = points[points.length - 1];
   const prev = points[points.length - 2];
   if (tip === undefined || prev === undefined) return;
   const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
   const left = angle + Math.PI - 0.4;
   const right = angle + Math.PI + 0.4;
-  ctx.fillStyle = STROKE;
+  ctx.fillStyle = stroke;
   ctx.beginPath();
   ctx.moveTo(tip.x + ARROW_SIZE * Math.cos(left), tip.y + ARROW_SIZE * Math.sin(left));
   ctx.lineTo(tip.x, tip.y);
@@ -53,17 +65,18 @@ export const paint = (
   ctx: Canvas2D,
   cmds: readonly DrawCmd[],
   iconImages: IconImages = new Map(),
+  theme: Theme = defaultTheme,
 ): void => {
   ctx.lineWidth = 1.5;
-  ctx.font = "14px sans-serif";
+  ctx.font = theme.font;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   for (const cmd of cmds) {
     switch (cmd.kind) {
       case "box": {
-        ctx.fillStyle = NODE_FILL;
-        ctx.strokeStyle = STROKE;
+        ctx.fillStyle = theme.nodeFill;
+        ctx.strokeStyle = theme.stroke;
         ctx.beginPath();
         ctx.roundRect(cmd.x, cmd.y, cmd.width, cmd.height, cmd.radius);
         ctx.fill();
@@ -73,8 +86,8 @@ export const paint = (
       case "diamond": {
         const hw = cmd.width / 2;
         const hh = cmd.height / 2;
-        ctx.fillStyle = NODE_FILL;
-        ctx.strokeStyle = STROKE;
+        ctx.fillStyle = theme.nodeFill;
+        ctx.strokeStyle = theme.stroke;
         ctx.beginPath();
         ctx.moveTo(cmd.cx, cmd.cy - hh);
         ctx.lineTo(cmd.cx + hw, cmd.cy);
@@ -88,14 +101,14 @@ export const paint = (
       case "polyline": {
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
-        ctx.strokeStyle = STROKE;
+        ctx.strokeStyle = theme.stroke;
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
         ctx.beginPath();
         ctx.moveTo(first.x, first.y);
         for (const p of rest) ctx.lineTo(p.x, p.y);
         ctx.stroke();
         ctx.setLineDash([]);
-        if (cmd.arrow) drawArrowHead(ctx, cmd.points);
+        if (cmd.arrow) drawArrowHead(ctx, cmd.points, theme.stroke);
         break;
       }
       case "icon": {
@@ -106,7 +119,7 @@ export const paint = (
         break;
       }
       case "label": {
-        ctx.fillStyle = TEXT;
+        ctx.fillStyle = theme.text;
         ctx.fillText(cmd.text, cmd.x, cmd.y);
         break;
       }

@@ -107,9 +107,17 @@ const ensureIcons = async (s: Scene): Promise<void> => {
 const paintScene = (): void => {
   if (scene === null) return;
   const shown = applyOverrides(scene, overrides);
-  canvas.width = Math.ceil(shown.extent.size.width) + MARGIN * 2;
-  canvas.height = Math.ceil(shown.extent.size.height) + MARGIN * 2;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cssWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
+  const cssHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
+  // Back the canvas at device resolution but draw in CSS pixels, so it stays crisp on HiDPI
+  // displays. The CSS size pins the on-screen box; the dpr scale fills the larger backing store.
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${cssHeight}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
   paint(ctx, toDisplayList(shown), iconImages);

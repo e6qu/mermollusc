@@ -72,10 +72,10 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing | 28 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 19 |
-| `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines, in-node icon glyphs) | 6 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, themeable palette) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 9-glyph built-in pack · ✅ in-node rendering (network kinds) · ⬜ OSS packs | 3 |
-| `@m/app` | ✅ renders + two-way edits all five families; in-node icons; flowchart drag/relax/regen/add/connect/delete | 1 node + 17 Playwright |
+| `@m/app` | ✅ renders + two-way edits all five families; in-node icons; HiDPI canvas; flowchart drag/relax/regen/add/connect/delete | 1 node + 18 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -87,7 +87,8 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    devicon (MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
    *(In-node rendering done: `SceneNode.icon` → renderer `icon` cmd → app resolve/rasterise.)*
 2. **More families**: cloud.
-3. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+3. **Renderer polish**: HTML-in-Canvas backend behind feature detection; dark-theme toggle in the
+   app. *(Themeable palette + device-pixel-ratio done.)*
 4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
 5. **Cross-cutting**: regenerate unpinned-only; extend property tests to parser round-trips and the
    ELK path; raise coverage ratchets as coverage climbs. *(Property-based tests + `make cov`

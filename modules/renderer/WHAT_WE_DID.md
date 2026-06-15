@@ -13,3 +13,5 @@
 - Added an `icon` draw command: nodes with a `SceneNode.icon` get a glyph stacked above the label;
   `paint` takes an `iconImages` map (`${pack}/${name}` → pre-rasterised image) and `drawImage`s it,
   skipping the glyph if no image was supplied. +2 tests (display-list icon cmd, paint drawImage).
+- Added a `Theme` parameter (`defaultTheme`) — node fill / stroke / text colours + font, replacing
+  the hardcoded palette; `drawArrowHead` takes the stroke colour. +1 test.

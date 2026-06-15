@@ -2,7 +2,7 @@ import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
-import { type Canvas2D, paint } from "../../src/shell/paint.js";
+import { type Canvas2D, paint, type Theme } from "../../src/shell/paint.js";
 
 class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
@@ -90,6 +90,27 @@ describe("paint", () => {
     expect(ctx.calls).toContain("fillText:A");
     expect(ctx.calls).toContain("fillText:B");
     expect(ctx.calls.filter((c) => c === "moveTo").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("uses the supplied theme's font and text colour", () => {
+    const theme: Theme = {
+      nodeFill: "#000001",
+      stroke: "#000002",
+      text: "#000003",
+      font: "11px monospace",
+    };
+    const nodeOnly: Scene = {
+      nodes: [
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null },
+      ],
+      edges: [],
+      extent: rect(0, 0, 60, 40),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(nodeOnly), new Map(), theme);
+    expect(ctx.font).toBe("11px monospace");
+    // For a node-only scene the label is the last draw, so the final fill is the text colour.
+    expect(ctx.fillStyle).toBe("#000003");
   });
 
   it("draws an icon glyph only when its image is supplied", () => {
