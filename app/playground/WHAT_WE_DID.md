@@ -11,3 +11,5 @@
   (canvas → text two-way). +1 Playwright flow (dialog-driven).
 - Relax / Regenerate buttons: Relax re-runs `layout(ast, seed)` from current positions;
   Regenerate clears overrides and lays out cleanly. +1 Playwright flow (drag→relax→regenerate).
+- Routed rendering through `parseDiagram` + `layoutDiagram` so the playground renders **sequence**
+  diagrams too; flowchart-only features (relabel, relax) guarded on `ast.kind`. +1 Playwright flow.

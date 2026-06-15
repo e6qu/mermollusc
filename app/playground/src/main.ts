@@ -8,15 +8,15 @@ import {
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
-  FlowchartAst,
+  DiagramAst,
   LayoutOverrides,
   NodeId,
   Scene,
   SceneNodeId,
   SourceMap,
 } from "@m/contracts";
-import { layout } from "@m/layout";
-import { parseWithSource } from "@m/parser";
+import { layout, layoutDiagram } from "@m/layout";
+import { parseDiagram, parseWithSource } from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
@@ -38,7 +38,7 @@ const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 if (relaxBtn === null || regenBtn === null) throw new Error("playground: missing toolbar buttons");
 
-let ast: FlowchartAst | null = null;
+let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
 let source: SourceMap | null = null;
 let overrides: LayoutOverrides = new Map();
@@ -67,25 +67,32 @@ const paintScene = (): void => {
 };
 
 const renderFromText = async (text: string): Promise<void> => {
-  const parsed = parseWithSource(text);
+  const parsed = parseDiagram(text);
   if (!isOk(parsed)) {
     console.error("parse failed:", parsed.error.errors.join("; "));
     return;
   }
-  const laid = await layout(parsed.value.ast);
+  const diagram = parsed.value;
+  const laid = await layoutDiagram(diagram);
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
     return;
   }
-  ast = parsed.value.ast;
+  ast = diagram;
   scene = laid.value;
-  source = parsed.value.source;
+  // Source spans (for canvas→text relabel) are flowchart-only for now.
+  if (diagram.kind === "flowchart") {
+    const withSource = parseWithSource(text);
+    source = isOk(withSource) ? withSource.value.source : null;
+  } else {
+    source = null;
+  }
   paintScene();
 };
 
 // Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
 const relax = async (): Promise<void> => {
-  if (ast === null || scene === null) return;
+  if (ast === null || ast.kind !== "flowchart" || scene === null) return;
   const shown = applyOverrides(scene, overrides);
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
