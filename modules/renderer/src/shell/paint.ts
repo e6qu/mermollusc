@@ -19,7 +19,14 @@ export interface Canvas2D {
   fillText(text: string, x: number, y: number): void;
   roundRect(x: number, y: number, w: number, h: number, radius: number): void;
   setLineDash(segments: readonly number[]): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void;
 }
+
+// Resolved icon glyphs keyed by `${pack}/${name}` — built at the shell boundary (SVG → image) and
+// handed to the painter, so the renderer core stays free of asset bytes.
+export type IconImages = ReadonlyMap<string, CanvasImageSource>;
+
+const iconKey = (pack: string, name: string): string => `${pack}/${name}`;
 
 const NODE_FILL = "#eef2ff";
 const STROKE = "#334155";
@@ -42,7 +49,11 @@ const drawArrowHead = (ctx: Canvas2D, points: readonly Point[]): void => {
   ctx.fill();
 };
 
-export const paint = (ctx: Canvas2D, cmds: readonly DrawCmd[]): void => {
+export const paint = (
+  ctx: Canvas2D,
+  cmds: readonly DrawCmd[],
+  iconImages: IconImages = new Map(),
+): void => {
   ctx.lineWidth = 1.5;
   ctx.font = "14px sans-serif";
   ctx.textAlign = "center";
@@ -85,6 +96,13 @@ export const paint = (ctx: Canvas2D, cmds: readonly DrawCmd[]): void => {
         ctx.stroke();
         ctx.setLineDash([]);
         if (cmd.arrow) drawArrowHead(ctx, cmd.points);
+        break;
+      }
+      case "icon": {
+        // The app pre-resolves every icon ref before painting; a miss here means it logged the
+        // resolve failure already, so the box + label still render without the glyph.
+        const image = iconImages.get(iconKey(cmd.ref.pack, cmd.ref.name));
+        if (image !== undefined) ctx.drawImage(image, cmd.x, cmd.y, cmd.size, cmd.size);
         break;
       }
       case "label": {

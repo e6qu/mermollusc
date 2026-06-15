@@ -80,6 +80,7 @@ export const toScene = (
       label: fn.label,
       shape: fn.shape,
       parent: null,
+      icon: null,
     });
   }
 

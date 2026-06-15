@@ -64,31 +64,31 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 **Five families render in the browser — flowchart, sequence, C4, block, network — and all are two-way**
 (double-click → patch the source text); flowchart also has drag, relax/regenerate, add, connect, and delete.
+Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
-| `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow), overrides, source-maps | (types) |
+| `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing | 28 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid · ✅ `layoutDiagram` routing | 17 |
-| `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines) | 4 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 17 |
+| `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines, in-node icon glyphs) | 6 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete | 20 |
-| `@m/icons` | ✅ registry + resolver + built-in glyph pack · ⬜ OSS packs / in-node rendering | 3 |
-| `@m/app` | ✅ renders + two-way edits all five families; flowchart drag/relax/regen/add/connect/delete | 1 node + 16 Playwright |
+| `@m/icons` | ✅ registry + resolver + 9-glyph built-in pack · ✅ in-node rendering (network kinds) · ⬜ OSS packs | 3 |
+| `@m/app` | ✅ renders + two-way edits all five families; in-node icons; flowchart drag/relax/regen/add/connect/delete | 1 node + 17 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **Icons in nodes**: render the built-in glyphs inside nodes (Scene icon ref + renderer draw),
-   driven first by network node kinds → glyphs. *(block + network families done end-to-end.)*
-2. **Icons OSS packs** (`@m/icons`): bundle Kubernetes (Apache-2.0), CNCF, simple-icons (CC0),
+1. **Icons OSS packs** (`@m/icons`): bundle Kubernetes (Apache-2.0), CNCF, simple-icons (CC0),
    devicon (MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
-3. **More families**: cloud.
-4. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
-5. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-6. **Cross-cutting**: per-layer coverage thresholds; property-based tests; regenerate unpinned-only.
+   *(In-node rendering done: `SceneNode.icon` → renderer `icon` cmd → app resolve/rasterise.)*
+2. **More families**: cloud.
+3. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
+5. **Cross-cutting**: per-layer coverage thresholds; property-based tests; regenerate unpinned-only.
 
 ## How to resume (fresh session / after compaction)
 

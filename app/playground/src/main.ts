@@ -24,6 +24,7 @@ import type {
   SequenceSource,
   SourceMap,
 } from "@m/contracts";
+import { defaultRegistry, findIcon } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
 import {
   parseBlockWithSource,
@@ -72,6 +73,37 @@ let selectionOrder: SceneNodeId[] = [];
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
   null;
 
+// Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
+const iconImages = new Map<string, CanvasImageSource>();
+
+const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
+  // An <img> can only decode an SVG that declares its namespace and an intrinsic size.
+  const sized = svg.replace(
+    "<svg ",
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ',
+  );
+  const img = new Image();
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sized)}`;
+  await img.decode();
+  return img;
+};
+
+// Resolve every icon referenced by the scene to a drawable image before painting, so the painter
+// never has to deal with a half-loaded glyph. A resolve failure is logged loudly, not swallowed.
+const ensureIcons = async (s: Scene): Promise<void> => {
+  for (const node of s.nodes) {
+    if (node.icon === null) continue;
+    const key = `${node.icon.pack}/${node.icon.name}`;
+    if (iconImages.has(key)) continue;
+    const resolved = findIcon(defaultRegistry, node.icon.pack, node.icon.name);
+    if (!isOk(resolved)) {
+      console.error("icon resolve failed:", resolved.error.message);
+      continue;
+    }
+    iconImages.set(key, await rasterizeIcon(resolved.value));
+  }
+};
+
 const paintScene = (): void => {
   if (scene === null) return;
   const shown = applyOverrides(scene, overrides);
@@ -80,7 +112,7 @@ const paintScene = (): void => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
-  paint(ctx, toDisplayList(shown));
+  paint(ctx, toDisplayList(shown), iconImages);
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 2;
   for (const node of shown.nodes) {
@@ -139,6 +171,7 @@ const renderFromText = async (text: string): Promise<void> => {
       break;
     }
   }
+  await ensureIcons(scene);
   paintScene();
 };
 

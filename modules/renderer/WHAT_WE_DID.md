@@ -10,3 +10,6 @@
   layout maps flowchart `EdgeKind` → stroke/arrow.
 - Draw `SceneEdge.label` at the edge midpoint (sequence message text + flowchart edge labels).
 - Render the `"container"` shape (rounded outline + label near the top) for C4 boundaries.
+- Added an `icon` draw command: nodes with a `SceneNode.icon` get a glyph stacked above the label;
+  `paint` takes an `iconImages` map (`${pack}/${name}` → pre-rasterised image) and `drawImage`s it,
+  skipping the glyph if no image was supplied. +2 tests (display-list icon cmd, paint drawImage).

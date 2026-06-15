@@ -29,6 +29,8 @@ export const layoutNetwork = (ast: NetworkAst): Scene => {
       label: n.label,
       shape: "rect",
       parent: null,
+      // Each network kind maps 1:1 to a glyph name in the built-in "arch" pack.
+      icon: { pack: "arch", name: n.kind },
     };
   });
 

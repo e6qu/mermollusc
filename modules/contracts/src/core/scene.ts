@@ -9,12 +9,20 @@ export type SceneEdgeId = Brand<string, "SceneEdgeId">;
 export type EdgeStroke = "solid" | "dashed";
 export type EdgeArrow = "none" | "filled";
 
+// A reference into an icon pack (resolved to an SVG at the shell boundary), not the glyph itself —
+// keeps the Scene free of asset bytes and the contracts module free of any icon dependency.
+export interface IconRef {
+  readonly pack: string;
+  readonly name: string;
+}
+
 export interface SceneNode {
   readonly id: SceneNodeId;
   readonly bounds: Rect;
   readonly label: string;
   readonly shape: NodeShape;
   readonly parent: SceneNodeId | null;
+  readonly icon: IconRef | null;
 }
 
 export interface SceneEdge {

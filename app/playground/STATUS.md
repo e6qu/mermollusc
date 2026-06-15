@@ -12,7 +12,7 @@
   - flowchart-only: **Add node** / **Connect** (two selected nodes → edge) buttons; **Delete** key
     removes selected nodes; **Relax** / **Regenerate** buttons.
 - node e2e composition test (text → pixels) passing.
-- Playwright (`make e2e-ui`): 16 flows — load, edit, click, flowchart relabel,
-  drag→relax→regenerate, sequence render, sequence relabel, add-node, connect, delete,
-  C4 render, C4 relabel, block render, block relabel, network render, network relabel.
-- Not yet: icons in nodes; CodeMirror editor; HTML-in-Canvas.
+- Icons in nodes: network node kinds resolve to built-in glyphs (`findIcon` → SVG → rasterised
+  image, cached), handed to `paint` and drawn above each node's label.
+- Playwright (`make e2e-ui`): 17 flows — the 16 above plus network-icons (all seven kinds resolve).
+- Not yet: CodeMirror editor; HTML-in-Canvas.

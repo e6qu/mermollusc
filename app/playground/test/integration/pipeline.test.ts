@@ -39,6 +39,9 @@ class RecordingCtx implements Canvas2D {
   setLineDash(): void {
     this.calls.push("setLineDash");
   }
+  drawImage(): void {
+    this.calls.push("drawImage");
+  }
 }
 
 describe("text -> pixels pipeline", () => {

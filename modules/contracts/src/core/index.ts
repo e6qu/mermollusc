@@ -33,6 +33,7 @@ export type {
   SceneEdgeId,
   EdgeStroke,
   EdgeArrow,
+  IconRef,
   SceneNode,
   SceneEdge,
   Scene,

@@ -31,3 +31,6 @@
   Refactored the switch to reset all four source holders up front. +1 Playwright flow.
 - Network family: renders kind-typed nodes + undirected links via `parseDiagram`/`layoutDiagram`;
   two-way via a `NetworkSource` (double-click a node or labelled link → `patchSpan`). +2 flows.
+- Icons in nodes: added `@m/icons` as a dependency; `ensureIcons(scene)` resolves each
+  `SceneNode.icon` via `findIcon`, rasterises the SVG to an `Image` (xmlns + size injected, data
+  URL), caches it by `${pack}/${name}`, and hands the map to `paint`. +1 Playwright flow.

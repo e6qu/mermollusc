@@ -10,7 +10,8 @@
     "@m/builder": "workspace:*",
     "@m/parser": "workspace:*",
     "@m/layout": "workspace:*",
-    "@m/renderer": "workspace:*"
+    "@m/renderer": "workspace:*",
+    "@m/icons": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

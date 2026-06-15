@@ -46,6 +46,7 @@ export const layoutSequence = (ast: SequenceAst): Scene => {
       label: actor.label,
       shape: "rect",
       parent: null,
+      icon: null,
     });
     centerX.set(actor.id, cursor + width / 2);
     cursor += width + ACTOR_GAP;

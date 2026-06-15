@@ -39,6 +39,9 @@ class RecordingCtx implements Canvas2D {
   setLineDash(): void {
     this.calls.push("setLineDash");
   }
+  drawImage(): void {
+    this.calls.push("drawImage");
+  }
 }
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
@@ -46,8 +49,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null },
   ],
   edges: [
     {
@@ -63,6 +66,21 @@ const scene: Scene = {
   extent: rect(0, 0, 60, 120),
 };
 
+const iconScene: Scene = {
+  nodes: [
+    {
+      id: snid("S"),
+      bounds: rect(0, 0, 80, 48),
+      label: "Web",
+      shape: "rect",
+      parent: null,
+      icon: { pack: "arch", name: "server" },
+    },
+  ],
+  edges: [],
+  extent: rect(0, 0, 80, 48),
+};
+
 describe("paint", () => {
   it("executes the display list against the context", () => {
     const ctx = new RecordingCtx();
@@ -72,5 +90,17 @@ describe("paint", () => {
     expect(ctx.calls).toContain("fillText:A");
     expect(ctx.calls).toContain("fillText:B");
     expect(ctx.calls.filter((c) => c === "moveTo").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("draws an icon glyph only when its image is supplied", () => {
+    const without = new RecordingCtx();
+    paint(without, toDisplayList(iconScene));
+    expect(without.calls).not.toContain("drawImage");
+
+    const ctx = new RecordingCtx();
+    const fakeImage = new RecordingCtx() as unknown as CanvasImageSource;
+    paint(ctx, toDisplayList(iconScene), new Map([["arch/server", fakeImage]]));
+    expect(ctx.calls).toContain("drawImage");
+    expect(ctx.calls).toContain("fillText:Web");
   });
 });

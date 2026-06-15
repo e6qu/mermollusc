@@ -8,8 +8,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null },
   ],
   edges: [
     {
@@ -40,5 +40,27 @@ describe("toDisplayList", () => {
 
   it("emits a polyline for the edge", () => {
     expect(cmds.filter((c) => c.kind === "polyline")).toHaveLength(1);
+  });
+
+  it("emits an icon command (with the ref) for a node that carries an icon", () => {
+    const withIcon: Scene = {
+      nodes: [
+        {
+          id: snid("S"),
+          bounds: rect(0, 0, 80, 48),
+          label: "Web",
+          shape: "rect",
+          parent: null,
+          icon: { pack: "arch", name: "server" },
+        },
+      ],
+      edges: [],
+      extent: rect(0, 0, 80, 48),
+    };
+    const out = toDisplayList(withIcon);
+    const icons = out.filter((c) => c.kind === "icon");
+    expect(icons).toHaveLength(1);
+    const icon = icons[0];
+    expect(icon?.kind === "icon" ? icon.ref : null).toEqual({ pack: "arch", name: "server" });
   });
 });

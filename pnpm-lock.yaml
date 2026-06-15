@@ -77,6 +77,9 @@ importers:
       '@m/contracts':
         specifier: workspace:*
         version: link:../../modules/contracts
+      '@m/icons':
+        specifier: workspace:*
+        version: link:../../modules/icons
       '@m/layout':
         specifier: workspace:*
         version: link:../../modules/layout

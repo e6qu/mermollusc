@@ -1,6 +1,8 @@
 import { px } from "@m/std";
 import type { Point, Px } from "@m/std";
-import type { NodeShape, Scene, SceneNode } from "@m/contracts";
+import type { IconRef, NodeShape, Scene, SceneNode } from "@m/contracts";
+
+const ICON_SIZE = 20;
 
 export type DrawCmd =
   | {
@@ -23,6 +25,13 @@ export type DrawCmd =
       readonly points: readonly Point[];
       readonly dashed: boolean;
       readonly arrow: boolean;
+    }
+  | {
+      readonly kind: "icon";
+      readonly ref: IconRef;
+      readonly x: Px;
+      readonly y: Px;
+      readonly size: Px;
     }
   | { readonly kind: "label"; readonly x: Px; readonly y: Px; readonly text: string };
 
@@ -65,16 +74,26 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
       { kind: "label", x: cx, y: px(origin.y + 12), text: node.label },
     ];
   }
+  const box = {
+    kind: "box",
+    x: origin.x,
+    y: origin.y,
+    width: size.width,
+    height: size.height,
+    radius: px(cornerRadius(node.shape, size.width, size.height)),
+  } satisfies DrawCmd;
+  if (node.icon === null) return [box, label];
+  // With an icon, stack the glyph above the label rather than centring the text on the box.
   return [
+    box,
     {
-      kind: "box",
-      x: origin.x,
-      y: origin.y,
-      width: size.width,
-      height: size.height,
-      radius: px(cornerRadius(node.shape, size.width, size.height)),
+      kind: "icon",
+      ref: node.icon,
+      x: px(origin.x + size.width / 2 - ICON_SIZE / 2),
+      y: px(origin.y + 6),
+      size: px(ICON_SIZE),
     },
-    label,
+    { kind: "label", x: cx, y: px(origin.y + 6 + ICON_SIZE + 6), text: node.label },
   ];
 };
 

@@ -12,6 +12,7 @@
   straight centre-to-centre edges.
 - `layoutBlock(ast)` (pure): row-major grid in a `columns`-wide uniform cell; straight
   centre-to-centre edges.
-- `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre links.
+- `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre
+  links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); sequence/C4/block/network → pure.
 - tests: 17 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block grid; network grid; routing).

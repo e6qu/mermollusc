@@ -79,6 +79,7 @@ export const layoutC4 = (ast: C4Ast): Scene => {
       label: el.label,
       shape: shapeOf(el.kind),
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
+      icon: null,
     };
   });
 

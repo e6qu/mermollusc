@@ -1,8 +1,9 @@
 import type { IconPack, IconRegistry } from "./registry.js";
 
 // Original 24×24 architecture glyphs authored here under the repo's AGPL license — not vendored,
-// so no third-party provenance is needed. Real OSS packs (Kubernetes Apache-2.0, simple-icons CC0,
-// devicon MIT) load through this same registry shape with their own provenance; see DO_NEXT.
+// so no third-party provenance is needed. Names match the network node kinds 1:1. Real OSS packs
+// (Kubernetes Apache-2.0, simple-icons CC0, devicon MIT) load through this same registry shape with
+// their own provenance; see DO_NEXT.
 const ICONS = new Map<string, string>([
   [
     "server",
@@ -23,6 +24,22 @@ const ICONS = new Map<string, string>([
   [
     "queue",
     '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="4" height="12"/><rect x="10" y="6" width="4" height="12"/><rect x="17" y="6" width="4" height="12"/></svg>',
+  ],
+  [
+    "router",
+    '<svg viewBox="0 0 24 24"><rect x="3" y="13" width="18" height="6" rx="1"/><rect x="5.5" y="8" width="1" height="5"/><rect x="11.5" y="6" width="1" height="7"/><rect x="17.5" y="8" width="1" height="5"/><circle cx="7" cy="16" r="1"/><circle cx="11" cy="16" r="1"/></svg>',
+  ],
+  [
+    "switch",
+    '<svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3 1.5-1.5L21 9l-5.5 5.5L14 13l3-3H3z"/><path d="M21 16H7l3 3-1.5 1.5L3 15l5.5-5.5L10 11l-3 3h14z"/></svg>',
+  ],
+  [
+    "firewall",
+    '<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z"/></svg>',
+  ],
+  [
+    "host",
+    '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"/><rect x="9" y="17" width="6" height="2"/><rect x="7" y="19" width="10" height="2" rx="1"/></svg>',
   ],
 ]);
 
