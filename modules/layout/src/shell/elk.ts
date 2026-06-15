@@ -98,6 +98,12 @@ export const layout = async (
 
 // Routes by family: flowchart through ELK (async), sequence through the pure lane layout.
 export const layoutDiagram = async (ast: DiagramAst): Promise<Result<Scene, LayoutError>> => {
-  if (ast.kind === "sequence") return ok(layoutSequence(ast));
-  return layout(ast);
+  switch (ast.kind) {
+    case "flowchart":
+      return layout(ast);
+    case "sequence":
+      return ok(layoutSequence(ast));
+    case "c4":
+      return err({ kind: "layout", message: "c4 layout not implemented yet" });
+  }
 };

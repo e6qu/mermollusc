@@ -13,6 +13,12 @@ export type {
   SequenceActor,
   SequenceMessage,
   SequenceAst,
+  C4ElementId,
+  C4RelId,
+  C4ElementKind,
+  C4Element,
+  C4Rel,
+  C4Ast,
   DiagramAst,
 } from "./ast.js";
 export type {

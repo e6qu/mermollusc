@@ -55,5 +55,29 @@ export interface SequenceAst {
   readonly messages: readonly SequenceMessage[];
 }
 
-// Grows one variant per family (c4, block/network, ...). The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst | SequenceAst;
+export type C4ElementId = Brand<string, "C4ElementId">;
+export type C4RelId = Brand<string, "C4RelId">;
+export type C4ElementKind = "person" | "system" | "container" | "boundary";
+
+export interface C4Element {
+  readonly id: C4ElementId;
+  readonly label: string;
+  readonly kind: C4ElementKind;
+  readonly parent: C4ElementId | null; // set when nested inside a boundary
+}
+
+export interface C4Rel {
+  readonly id: C4RelId;
+  readonly from: C4ElementId;
+  readonly to: C4ElementId;
+  readonly label: string;
+}
+
+export interface C4Ast {
+  readonly kind: "c4";
+  readonly elements: readonly C4Element[];
+  readonly rels: readonly C4Rel[];
+}
+
+// Grows one variant per family (block/network, ...). The `kind` tag discriminates.
+export type DiagramAst = FlowchartAst | SequenceAst | C4Ast;

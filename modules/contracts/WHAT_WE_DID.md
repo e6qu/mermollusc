@@ -11,3 +11,5 @@
 - Added `SceneEdge.stroke` (`solid`/`dashed`) + `arrow` (`none`/`filled`) so the renderer can
   draw dashed lines and arrowheads (and so sequence messages/lifelines are expressible).
 - Added the `SequenceSource` contract (actor-label + message-text spans) for sequence two-way edits.
+- Added the `C4Ast` variant (`C4Element` with `kind` + `parent` nesting, `C4Rel`); `DiagramAst` is
+  now `FlowchartAst | SequenceAst | C4Ast`.
