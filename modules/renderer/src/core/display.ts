@@ -66,12 +66,21 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   const cmds: DrawCmd[] = [];
   for (const node of scene.nodes) cmds.push(...nodeCmds(node));
   for (const edge of scene.edges) {
-    if (edge.waypoints.length >= 2) {
+    if (edge.waypoints.length < 2) continue;
+    cmds.push({
+      kind: "polyline",
+      points: edge.waypoints,
+      dashed: edge.stroke === "dashed",
+      arrow: edge.arrow === "filled",
+    });
+    const first = edge.waypoints[0];
+    const last = edge.waypoints[edge.waypoints.length - 1];
+    if (edge.label !== null && first !== undefined && last !== undefined) {
       cmds.push({
-        kind: "polyline",
-        points: edge.waypoints,
-        dashed: edge.stroke === "dashed",
-        arrow: edge.arrow === "filled",
+        kind: "label",
+        x: px((first.x + last.x) / 2),
+        y: px((first.y + last.y) / 2 - 8),
+        text: edge.label,
       });
     }
   }

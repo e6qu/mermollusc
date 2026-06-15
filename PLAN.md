@@ -71,7 +71,7 @@ Flowchart is a **complete two-way builder, live in the browser**. **Sequence ren
 | `@m/contracts` | ✅ flowchart + sequence AST, Scene IR (+shape, edge stroke/arrow), overrides, source-map | (types) |
 | `@m/parser` | ✅ flowchart (parse/parseWithSource/print + spans) · ✅ sequence · ✅ `parseDiagram` routing | 12 |
 | `@m/layout` | ✅ flowchart → Scene (ELK) + relax · ✅ sequence lane layout · ✅ `layoutDiagram` routing | 9 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines) · ⬜ edge labels | 4 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
 | `@m/icons` | ⬜ not started | — |
 | `@m/app` | ✅ interactive editor; renders flowchart + sequence; relabel/relax/regenerate (flowchart) | 1 node + 6 Playwright |
@@ -81,18 +81,16 @@ tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **Edge labels in the renderer** — draw `SceneEdge.label` at the midpoint (sequence message
-   text and flowchart edge labels currently don't render). Small, high-visibility.
-2. **Sequence two-way**: source spans for sequence → relabel/edit parity with flowchart.
-3. **More flowchart two-way patches**: add node, connect (insert edge), delete node/edge.
-4. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
+1. **Sequence two-way**: source spans for sequence → relabel/edit parity with flowchart.
+2. **More flowchart two-way patches**: add node, connect (insert edge), delete node/edge.
+3. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
    then block/network/cloud.
-5. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
+4. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
    devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
-6. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
-7. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
+5. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+6. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
    a diagram-type indicator.
-8. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
+7. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
    layout invariants); refine regenerate to unpinned-only.
 
 ## How to resume (fresh session / after compaction)

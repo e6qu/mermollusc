@@ -17,7 +17,7 @@ const scene: Scene = {
       from: snid("A"),
       to: snid("B"),
       waypoints: [point(30, 40), point(30, 80)],
-      label: null,
+      label: "go",
       stroke: "solid",
       arrow: "filled",
     },
@@ -33,9 +33,9 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "diamond")).toHaveLength(1);
   });
 
-  it("emits a centered label per node", () => {
+  it("emits labels for nodes and for labeled edges", () => {
     const labels = cmds.filter((c) => c.kind === "label");
-    expect(labels.map((l) => (l.kind === "label" ? l.text : ""))).toEqual(["A", "B"]);
+    expect(labels.map((l) => (l.kind === "label" ? l.text : ""))).toEqual(["A", "B", "go"]);
   });
 
   it("emits a polyline for the edge", () => {

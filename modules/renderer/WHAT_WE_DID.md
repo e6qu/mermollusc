@@ -8,3 +8,4 @@
 - tests: display-list unit + paint integration via a recording mock context (4 passing).
 - Honored `SceneEdge.stroke`/`arrow`: dashed line support (`setLineDash`) + filled arrowheads;
   layout maps flowchart `EdgeKind` → stroke/arrow.
+- Draw `SceneEdge.label` at the edge midpoint (sequence message text + flowchart edge labels).
