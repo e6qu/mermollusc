@@ -13,6 +13,7 @@ import {
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
+  BlockSource,
   C4Source,
   DiagramAst,
   LayoutOverrides,
@@ -24,6 +25,7 @@ import type {
 } from "@m/contracts";
 import { layout, layoutDiagram } from "@m/layout";
 import {
+  parseBlockWithSource,
   parseC4WithSource,
   parseDiagram,
   parseSequenceWithSource,
@@ -59,6 +61,7 @@ let scene: Scene | null = null;
 let source: SourceMap | null = null;
 let seqSource: SequenceSource | null = null;
 let c4Source: C4Source | null = null;
+let blockSource: BlockSource | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
@@ -100,34 +103,30 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   ast = diagram;
   scene = laid.value;
-  // Capture source spans for canvas→text edits (one per family).
+  // Capture source spans for canvas→text edits — one family is live at a time.
+  source = null;
+  seqSource = null;
+  c4Source = null;
+  blockSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
       source = isOk(withSource) ? withSource.value.source : null;
-      seqSource = null;
-      c4Source = null;
       break;
     }
     case "sequence": {
       const withSource = parseSequenceWithSource(text);
-      source = null;
       seqSource = isOk(withSource) ? withSource.value.source : null;
-      c4Source = null;
       break;
     }
     case "c4": {
       const withSource = parseC4WithSource(text);
-      source = null;
-      seqSource = null;
       c4Source = isOk(withSource) ? withSource.value.source : null;
       break;
     }
     case "block": {
-      // Block diagrams render read-only for now; no source spans captured yet.
-      source = null;
-      seqSource = null;
-      c4Source = null;
+      const withSource = parseBlockWithSource(text);
+      blockSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -240,8 +239,21 @@ canvas.addEventListener("dblclick", (ev) => {
     return;
   }
 
-  // sequence: rename an actor (its label span) or a message (its text span). Other families
-  // (e.g. block) have no source spans yet, so editing is a no-op.
+  if (ast.kind === "block") {
+    if (blockSource === null) return;
+    const span =
+      hit.kind === "node"
+        ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
+        : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
+    if (span === undefined) return;
+    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
+    if (next === null) return;
+    srcEl.value = patchSpan(srcEl.value, span, next);
+    void renderFromText(srcEl.value);
+    return;
+  }
+
+  // sequence: rename an actor (its label span) or a message (its text span).
   if (ast.kind !== "sequence" || seqSource === null) return;
   const span =
     hit.kind === "node"

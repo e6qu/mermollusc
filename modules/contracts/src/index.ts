@@ -37,4 +37,5 @@ export type {
   SourceMap,
   SequenceSource,
   C4Source,
+  BlockSource,
 } from "./core/index.js";

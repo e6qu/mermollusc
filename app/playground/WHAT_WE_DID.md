@@ -25,5 +25,7 @@
   direction exists); **Connect** button joins the first two selected nodes via `connect`; the
   **Delete** key removes selected nodes via `deleteNode` (guarded off while the textarea is
   focused). +2 Playwright flows.
-- Block family renders via the existing `parseDiagram`/`layoutDiagram` routing (read-only: the
-  source-capture switch keeps no spans for block yet; double-click is a no-op). +1 Playwright flow.
+- Block family renders via the existing `parseDiagram`/`layoutDiagram` routing. +1 Playwright flow.
+- Block two-way: the source-capture switch keeps a `BlockSource` (via `parseBlockWithSource`);
+  double-click a block or labelled edge → `patchSpan` rewrites its label span → re-render.
+  Refactored the switch to reset all four source holders up front. +1 Playwright flow.

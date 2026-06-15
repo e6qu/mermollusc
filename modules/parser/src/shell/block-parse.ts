@@ -1,9 +1,24 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, ok, type Result } from "@m/std";
-import type { BlockAst, BlockEdge, BlockNode, EdgeKind, NodeShape } from "@m/contracts";
+import { brand, err, map, ok, type Result } from "@m/std";
+import type {
+  BlockAst,
+  BlockEdge,
+  BlockNode,
+  BlockSource,
+  EdgeId,
+  EdgeKind,
+  NodeId,
+  NodeShape,
+  TextSpan,
+} from "@m/contracts";
 import type { ParseError } from "./parse.js";
 import { blockParser } from "./block-grammar.js";
 import { blockLexer } from "./block-tokens.js";
+
+export interface ParsedBlock {
+  readonly ast: BlockAst;
+  readonly source: BlockSource;
+}
 
 type Children = Record<string, CstElement[] | undefined>;
 
@@ -12,31 +27,65 @@ const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as 
 const imageOf = (c: Children, name: string): string | null =>
   childTokens(c, name)[0]?.image ?? null;
 
+// Block labels are conventionally quoted (`id["text"]`); accept and drop a surrounding pair.
+const cleanLabel = (raw: string): string => {
+  const t = raw.trim();
+  return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
+};
+
+// Span of the editable label inside a bracket/pipe token: skips surrounding whitespace and a
+// matching quote pair, so a patch replaces exactly the visible label text.
+const labelSpan = (t: IToken): TextSpan => {
+  const leading = t.image.length - t.image.trimStart().length;
+  const trimmed = t.image.trim();
+  const quoted = trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"');
+  const start = t.startOffset + leading + (quoted ? 1 : 0);
+  return { start, end: start + trimmed.length - (quoted ? 2 : 0) };
+};
+
 interface Ref {
   readonly id: string;
   readonly label: string;
   readonly shape: NodeShape;
   readonly explicit: boolean;
+  readonly labelSpan: TextSpan | null;
 }
-
-// Block labels are conventionally quoted (`id["text"]`); accept and drop a surrounding pair.
-const label = (raw: string): string => {
-  const t = raw.trim();
-  return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
-};
 
 const readNodeRef = (node: CstNode): Ref => {
   const id = imageOf(node.children, "Identifier") ?? "";
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return { id, label: id, shape: "rect", explicit: false };
+    return { id, label: id, shape: "rect", explicit: false, labelSpan: null };
   }
   const sc = shapeNode.children;
-  const square = imageOf(sc, "SquareText");
-  if (square !== null) return { id, label: label(square), shape: "rect", explicit: true };
-  const paren = imageOf(sc, "ParenText");
-  if (paren !== null) return { id, label: label(paren), shape: "round", explicit: true };
-  return { id, label: label(imageOf(sc, "CurlyText") ?? ""), shape: "diamond", explicit: true };
+  const square = childTokens(sc, "SquareText")[0];
+  if (square !== undefined) {
+    return {
+      id,
+      label: cleanLabel(square.image),
+      shape: "rect",
+      explicit: true,
+      labelSpan: labelSpan(square),
+    };
+  }
+  const paren = childTokens(sc, "ParenText")[0];
+  if (paren !== undefined) {
+    return {
+      id,
+      label: cleanLabel(paren.image),
+      shape: "round",
+      explicit: true,
+      labelSpan: labelSpan(paren),
+    };
+  }
+  const curly = childTokens(sc, "CurlyText")[0];
+  return {
+    id,
+    label: cleanLabel(curly?.image ?? ""),
+    shape: "diamond",
+    explicit: true,
+    labelSpan: curly === undefined ? null : labelSpan(curly),
+  };
 };
 
 const linkKind = (c: Children): EdgeKind => {
@@ -46,9 +95,11 @@ const linkKind = (c: Children): EdgeKind => {
   return "thick";
 };
 
-const buildAst = (cst: CstNode): Result<BlockAst, ParseError> => {
+const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const root = cst.children;
   const blockMap = new Map<string, BlockNode>();
+  const blockSpans = new Map<NodeId, TextSpan>();
+  const edgeSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
   let columns: number | null = null;
 
@@ -66,16 +117,14 @@ const buildAst = (cst: CstNode): Result<BlockAst, ParseError> => {
     const links = childNodes(chain.children, "link");
 
     for (const ref of refs) {
+      const id = brand<string, "NodeId">(ref.id);
       const existing = blockMap.get(ref.id);
       if (existing === undefined) {
-        blockMap.set(ref.id, {
-          id: brand<string, "NodeId">(ref.id),
-          label: ref.label,
-          shape: ref.shape,
-        });
+        blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape });
       } else if (ref.explicit) {
         blockMap.set(ref.id, { id: existing.id, label: ref.label, shape: ref.shape });
       }
+      if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
     }
 
     for (let i = 0; i < links.length; i++) {
@@ -85,24 +134,29 @@ const buildAst = (cst: CstNode): Result<BlockAst, ParseError> => {
       if (link === undefined || from === undefined || to === undefined) {
         return err({ kind: "parse", errors: ["internal: malformed edge chain"] });
       }
-      const label = imageOf(link.children, "PipeText");
+      const pipe = childTokens(link.children, "PipeText")[0];
+      const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
       edges.push({
-        id: brand<string, "EdgeId">(`e${edges.length}`),
+        id: edgeId,
         from: brand<string, "NodeId">(from.id),
         to: brand<string, "NodeId">(to.id),
         kind: linkKind(link.children),
-        label: label === null ? null : label.trim(),
+        label: pipe === undefined ? null : pipe.image.trim(),
       });
+      if (pipe !== undefined) edgeSpans.set(edgeId, labelSpan(pipe));
     }
   }
 
   const blocks = [...blockMap.values()];
   // Mermaid defaults to a single row when `columns` is omitted; clamp to a sane minimum.
   const resolved = columns === null ? Math.max(1, blocks.length) : Math.max(1, columns);
-  return ok({ kind: "block", columns: resolved, blocks, edges });
+  return ok({
+    ast: { kind: "block", columns: resolved, blocks, edges },
+    source: { blocks: blockSpans, edges: edgeSpans },
+  });
 };
 
-export const parseBlock = (text: string): Result<BlockAst, ParseError> => {
+export const parseBlockWithSource = (text: string): Result<ParsedBlock, ParseError> => {
   const lexed = blockLexer.tokenize(text);
   if (lexed.errors.length > 0) {
     return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
@@ -112,5 +166,8 @@ export const parseBlock = (text: string): Result<BlockAst, ParseError> => {
   if (blockParser.errors.length > 0) {
     return err({ kind: "parse", errors: blockParser.errors.map((e) => e.message) });
   }
-  return buildAst(cst);
+  return buildResult(cst);
 };
+
+export const parseBlock = (text: string): Result<BlockAst, ParseError> =>
+  map(parseBlockWithSource(text), (parsed) => parsed.ast);

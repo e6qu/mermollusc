@@ -4,5 +4,5 @@
 - Add property-based round-trip tests (fast-check) over generated flowchart ASTs.
 - Surface error positions (line/col) in `ParseError`, not just messages.
 - Grow the subset: `subgraph`, stadium `([])` / circle `(())` shapes, quoted labels, more link styles.
-- Block: source spans (`BlockSource`) for two-way editing; grouped `block:id … end`, column spans.
+- Block: grouped `block:id … end`, column spans, and bare-block relabel (wrap into `id["label"]`).
 - Add grammars for the remaining families (network/cloud) as they land.

@@ -62,27 +62,26 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Flowchart, sequence, C4, and block all render in the browser; flowchart/sequence/C4 are two-way**
+**Flowchart, sequence, C4, and block all render in the browser, and all four are two-way**
 (double-click → patch the source text); flowchart also has drag, relax/regenerate, add, connect, and delete.
-Block is read-path so far.
 
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
 | `@m/contracts` | ✅ flowchart + sequence + C4 + block AST, Scene IR (+shape, edge stroke/arrow), overrides, source-maps | (types) |
-| `@m/parser` | ✅ flowchart (+spans) · ✅ sequence (+spans) · ✅ C4 (nesting + label spans) · ✅ block · ✅ `parseDiagram` routing | 22 |
+| `@m/parser` | ✅ flowchart (+spans) · ✅ sequence (+spans) · ✅ C4 (+spans) · ✅ block (+spans) · ✅ `parseDiagram` routing | 25 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block grid · ✅ `layoutDiagram` routing | 15 |
 | `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete | 20 |
 | `@m/icons` | ✅ registry + resolver + built-in glyph pack · ⬜ OSS packs / in-node rendering | 3 |
-| `@m/app` | ✅ renders flowchart/sequence/C4/block; two-way for first three; flowchart drag/relax/regen/add/connect/delete | 1 node + 13 Playwright |
+| `@m/app` | ✅ renders + two-way edits flowchart/sequence/C4/block; flowchart drag/relax/regen/add/connect/delete | 1 node + 14 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **More families**: network/cloud. *(block-beta done: AST, parser, grid layout, render, app.)*
+1. **More families**: network/cloud. *(block-beta done end-to-end, incl. two-way relabel.)*
 2. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
    devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
 3. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.

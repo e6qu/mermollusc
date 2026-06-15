@@ -22,3 +22,6 @@
 - Added `parseBlock`: a fourth Chevrotain lexer/grammar for the `block-beta` subset — `columns N`
   directive plus block declarations and edge chains reusing the flowchart shape/link syntax
   (block labels unquoted); `parseDiagram` routes `block*` headers. +3 tests.
+- Added `parseBlockWithSource`: captures label `TextSpan`s (inner-of-quotes, whitespace-trimmed)
+  for explicitly-labelled blocks and pipe-labelled edges (`BlockSource`), for block two-way
+  editing; `parseBlock` is now the ast-only wrapper. +3 tests.
