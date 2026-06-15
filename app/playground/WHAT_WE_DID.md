@@ -15,3 +15,4 @@
   diagrams too; flowchart-only features (relax) guarded on `ast.kind`. +1 Playwright flow.
 - Sequence two-way: double-click an actor/message → `patchSpan` rewrites its `SequenceSource`
   span in the text → re-render. +1 Playwright flow.
+- **Add node** button: appends a fresh rect node to the flowchart text via `addNode`. +1 flow.

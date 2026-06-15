@@ -1,4 +1,5 @@
 import {
+  addNode,
   applyOverrides,
   emptySelection,
   hitTest,
@@ -38,7 +39,10 @@ const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
-if (relaxBtn === null || regenBtn === null) throw new Error("playground: missing toolbar buttons");
+const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
+if (relaxBtn === null || regenBtn === null || addBtn === null) {
+  throw new Error("playground: missing toolbar buttons");
+}
 
 let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
@@ -184,6 +188,16 @@ canvas.addEventListener("dblclick", (ev) => {
   const next = window.prompt("Text:", srcEl.value.slice(span.start, span.end));
   if (next === null) return;
   srcEl.value = patchSpan(srcEl.value, span, next);
+  void renderFromText(srcEl.value);
+});
+
+// Add node: append a fresh rect node to the flowchart text (flowchart only for now).
+addBtn.addEventListener("click", () => {
+  if (ast === null || ast.kind !== "flowchart") return;
+  const used = new Set<string>(ast.nodes.map((n) => n.id));
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  srcEl.value = addNode(srcEl.value, brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect");
   void renderFromText(srcEl.value);
 });
 
