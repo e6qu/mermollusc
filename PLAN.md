@@ -62,37 +62,36 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-Flowchart is a **complete two-way builder, live in the browser**. Sequence family is underway.
+Flowchart is a **complete two-way builder, live in the browser**. **Sequence renders end-to-end**
+(read path); two-way editing (relabel) is flowchart-only so far.
 
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
-| `@m/contracts` | ✅ flowchart + sequence AST, Scene IR (+shape), overrides, source-map | (types) |
-| `@m/parser` | ✅ flowchart (parse/parseWithSource/print + spans) · ✅ sequence (parseSequence) | 9 |
-| `@m/layout` | ✅ flowchart → Scene (ELK) + relax seeds · ⬜ sequence layout | 5 |
-| `@m/renderer` | ✅ Scene → canvas (box/diamond/labels/polylines) · ⬜ dashed/arrowheads | 4 |
+| `@m/contracts` | ✅ flowchart + sequence AST, Scene IR (+shape, edge stroke/arrow), overrides, source-map | (types) |
+| `@m/parser` | ✅ flowchart (parse/parseWithSource/print + spans) · ✅ sequence · ✅ `parseDiagram` routing | 12 |
+| `@m/layout` | ✅ flowchart → Scene (ELK) + relax · ✅ sequence lane layout · ✅ `layoutDiagram` routing | 9 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines) · ⬜ edge labels | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
 | `@m/icons` | ⬜ not started | — |
-| `@m/app` | ✅ interactive flowchart editor (edit/select/drag/relabel/relax/regenerate) | 1 node + 5 Playwright |
+| `@m/app` | ✅ interactive editor; renders flowchart + sequence; relabel/relax/regenerate (flowchart) | 1 node + 6 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **Finish the sequence family** (in flight): pure lane layout (actors row, lifelines, stacked
-   messages) → Scene — decide lifeline representation (SceneEdge vs minimal Scene extension);
-   renderer dashed lines + arrowheads per `MessageKind`; app routing via a header-sniffing
-   `parseDiagram` (`flowchart`/`graph` vs `sequenceDiagram`) → `DiagramAst`.
+1. **Edge labels in the renderer** — draw `SceneEdge.label` at the midpoint (sequence message
+   text and flowchart edge labels currently don't render). Small, high-visibility.
 2. **Sequence two-way**: source spans for sequence → relabel/edit parity with flowchart.
 3. **More flowchart two-way patches**: add node, connect (insert edge), delete node/edge.
 4. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
    then block/network/cloud.
 5. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
    devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
-6. **Renderer polish**: arrowheads, edge labels, theme + device-pixel-ratio, HTML-in-Canvas
-   backend behind feature detection.
-7. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
+6. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+7. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
+   a diagram-type indicator.
 8. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
    layout invariants); refine regenerate to unpinned-only.
 
