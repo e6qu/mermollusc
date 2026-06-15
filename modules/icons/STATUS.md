@@ -20,6 +20,9 @@
   - `gilbarbaraPack` — 30 per-*service* cloud icons from gilbarbara/logos **CC0** (AWS ec2/s3/lambda/
     rds/dynamodb/eks/…, some GCP, common tools).
   - resolve via `findIcon(registry, "simpleicons"|"devicon"|"gilbarbara", <name>)`.
+- **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/cncf.json` — the full CNCF landscape
+  (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
+  wanted. Kept out of the bundle so it can't affect app/test performance.
 - tests: 10 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
   simple-icons + devicon + gilbarbara vendored-pack provenance + resolution).
 - The **cloud** family renders these marks (kind→slug map); the **network** family accepts a

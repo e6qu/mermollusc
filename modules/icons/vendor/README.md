@@ -32,5 +32,15 @@ Only AGPL-compatible licenses are bundled here; vendor packs whose terms forbid 
 - **Contents:** a curated cloud subset (30 of ~1900) — per-service AWS marks (ec2, s3, lambda, rds,
   dynamodb, eks, …), some GCP services, and common tools. Trademarks remain the owners' (depict-only).
 
+## cncf.json (archival, git-LFS)
+
+- **Source:** https://github.com/cncf/landscape @ `abd3a6d7f623774086bdc78624522011660bc57d` (`hosted_logos/`)
+- **License:** Apache-2.0 (repo). The 2423 logos are member companies'/projects' **trademarks** —
+  depict-only, no endorsement; many are unrelated to diagramming.
+- **Storage:** ~64 MB, tracked via **git-LFS** (`.gitattributes`) and exempt from the pre-commit
+  hooks (see `.pre-commit-config.yaml`). It is **archival**: referenced by no source code and **not**
+  in `defaultRegistry`, so it never loads into the app or tests. To use a logo, read it from this
+  file and `registerPack`/`decodePack` it at runtime.
+
 To refresh or add a pack, edit the `PACKS` table in `tools/source-icons.mjs` with values verified
 against the live repo (commit ≥24h old, license confirmed, every path probed) and re-run it.

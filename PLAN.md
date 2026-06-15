@@ -88,7 +88,8 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    owner's call); author original BPMN glyphs; study the hand-drawn/xkcd style; extend the per-node
    `icon "<pack>/<name>"` override to the other families. *(simple-icons (CC0) + devicon (MIT,
    AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS service icons) bundled with pinned provenance;
-   official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable.)*
+   official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable. Full
+   CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark toggle) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.

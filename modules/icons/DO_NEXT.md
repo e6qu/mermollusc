@@ -1,7 +1,7 @@
 # @m/icons — do next
 
-- Vendor Kubernetes-community resource icons (Apache-2.0) + the CNCF landscape (Apache-2.0 repo;
-  bundle wholesale per the owner's call, with the trademark NOTICE) via `tools/source-icons.mjs`.
+- Vendor Kubernetes-community resource icons (Apache-2.0) via `tools/source-icons.mjs`.
+  (CNCF landscape is archived in full via git-LFS at `vendor/cncf.json`.)
 - Extend the curated simple-icons / gilbarbara slug lists as needed.
 - BPMN: author original AGPL glyphs (bpmn-io/bpmn-font has no license — can't vendor). AliCloud and
   the official AWS/Azure/GCP/Oracle architecture sets are user-loaded (not redistributable).
