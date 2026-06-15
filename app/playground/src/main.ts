@@ -1,7 +1,10 @@
+import { applyOverrides, emptySelection, hitTest, moveNode, selectOnly } from "@m/builder";
+import type { Selection } from "@m/builder";
+import type { LayoutOverrides, Scene, SceneNodeId } from "@m/contracts";
 import { layout } from "@m/layout";
-import { parse } from "@m/parser";
+import { parseWithSource } from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
-import { isOk } from "@m/std";
+import { isOk, point } from "@m/std";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -12,29 +15,95 @@ const SAMPLE = `flowchart TD
 
 const MARGIN = 24;
 
-const run = async (): Promise<void> => {
-  const canvas = document.querySelector<HTMLCanvasElement>("#stage");
-  if (canvas === null) throw new Error("playground: #stage canvas not found");
-  const ctx = canvas.getContext("2d");
-  if (ctx === null) throw new Error("playground: 2d context unavailable");
+const srcEl = document.querySelector<HTMLTextAreaElement>("#src");
+const canvas = document.querySelector<HTMLCanvasElement>("#stage");
+if (srcEl === null || canvas === null) throw new Error("playground: missing #src or #stage");
+const ctx = canvas.getContext("2d");
+if (ctx === null) throw new Error("playground: 2d context unavailable");
 
-  const parsed = parse(SAMPLE);
-  if (!isOk(parsed)) throw new Error(`parse failed: ${parsed.error.errors.join("; ")}`);
+let scene: Scene | null = null;
+let overrides: LayoutOverrides = new Map();
+let selection: Selection = emptySelection;
+let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
+  null;
 
-  const laid = await layout(parsed.value);
-  if (!isOk(laid)) throw new Error(`layout failed: ${laid.error.message}`);
-
-  const scene = laid.value;
-  canvas.width = Math.ceil(scene.extent.size.width) + MARGIN * 2;
-  canvas.height = Math.ceil(scene.extent.size.height) + MARGIN * 2;
-
+const paintScene = (): void => {
+  if (scene === null) return;
+  const shown = applyOverrides(scene, overrides);
+  canvas.width = Math.ceil(shown.extent.size.width) + MARGIN * 2;
+  canvas.height = Math.ceil(shown.extent.size.height) + MARGIN * 2;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
-  paint(ctx, toDisplayList(scene));
+  paint(ctx, toDisplayList(shown));
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 2;
+  for (const node of shown.nodes) {
+    if (selection.nodes.has(node.id)) {
+      const { origin, size } = node.bounds;
+      ctx.strokeRect(origin.x - 3, origin.y - 3, size.width + 6, size.height + 6);
+    }
+  }
   ctx.restore();
 };
 
-run().catch((e: unknown) => {
-  console.error(e);
+const renderFromText = async (text: string): Promise<void> => {
+  const parsed = parseWithSource(text);
+  if (!isOk(parsed)) {
+    console.error("parse failed:", parsed.error.errors.join("; "));
+    return;
+  }
+  const laid = await layout(parsed.value.ast);
+  if (!isOk(laid)) {
+    console.error("layout failed:", laid.error.message);
+    return;
+  }
+  scene = laid.value;
+  paintScene();
+};
+
+const scenePoint = (ev: PointerEvent) => {
+  const r = canvas.getBoundingClientRect();
+  return point(ev.clientX - r.left - MARGIN, ev.clientY - r.top - MARGIN);
+};
+
+canvas.addEventListener("pointerdown", (ev) => {
+  if (scene === null) return;
+  const shown = applyOverrides(scene, overrides);
+  const at = scenePoint(ev);
+  const hit = hitTest(shown, at);
+  selection = selectOnly(hit);
+  if (hit !== null && hit.kind === "node") {
+    const node = shown.nodes.find((n) => n.id === hit.id);
+    if (node !== undefined) {
+      drag = {
+        id: hit.id,
+        offsetX: at.x - node.bounds.origin.x,
+        offsetY: at.y - node.bounds.origin.y,
+      };
+      canvas.setPointerCapture(ev.pointerId);
+    }
+  }
+  paintScene();
 });
+
+canvas.addEventListener("pointermove", (ev) => {
+  if (drag === null) return;
+  const at = scenePoint(ev);
+  overrides = moveNode(overrides, drag.id, point(at.x - drag.offsetX, at.y - drag.offsetY));
+  paintScene();
+});
+
+canvas.addEventListener("pointerup", (ev) => {
+  if (drag !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    drag = null;
+  }
+});
+
+srcEl.value = SAMPLE;
+srcEl.addEventListener("input", () => {
+  overrides = new Map();
+  void renderFromText(srcEl.value);
+});
+void renderFromText(SAMPLE);

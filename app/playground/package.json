@@ -6,6 +6,7 @@
   "type": "module",
   "dependencies": {
     "@m/std": "workspace:*",
+    "@m/contracts": "workspace:*",
     "@m/builder": "workspace:*",
     "@m/parser": "workspace:*",
     "@m/layout": "workspace:*",

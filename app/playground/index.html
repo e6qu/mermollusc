@@ -4,9 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>mermollusc playground</title>
+    <style>
+      body { margin: 0; font-family: sans-serif; }
+      main { display: flex; gap: 12px; align-items: flex-start; padding: 12px; }
+      #src { width: 360px; height: 420px; font: 13px monospace; padding: 8px; }
+      #stage { border: 1px solid #cbd5e1; }
+    </style>
   </head>
   <body>
-    <canvas id="stage" width="800" height="600"></canvas>
+    <main>
+      <textarea id="src" spellcheck="false"></textarea>
+      <canvas id="stage" width="400" height="300"></canvas>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

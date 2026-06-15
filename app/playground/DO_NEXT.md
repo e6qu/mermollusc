@@ -1,6 +1,7 @@
 # @m/app (playground) — do next
 
-- Add a text editor pane (CodeMirror) and re-render on input; add a Playwright spec for that flow.
-- Wire `@m/builder` for selection/drag and two-way sync; add one e2e spec per new flow.
+- Double-click a node → relabel → patch the textarea text (canvas → text two-way); Playwright flow.
+- Buttons for regenerate / relax once `@m/layout` consumes overrides.
+- Swap the textarea for CodeMirror (syntax highlight, error markers).
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
 - Add a pixel/golden snapshot once flows stabilize.
