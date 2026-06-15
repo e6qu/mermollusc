@@ -1,7 +1,17 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { rectContains } from "../../src/core/geometry.js";
-import { err, flatMap, isErr, isOk, map, ok, type Result, unwrapOr } from "../../src/core/result.js";
+import {
+  err,
+  flatMap,
+  isErr,
+  isOk,
+  map,
+  mapErr,
+  ok,
+  type Result,
+  unwrapOr,
+} from "../../src/core/result.js";
 import { point, rect } from "../../src/shell/brand.js";
 
 // A Result generator over number values and string errors.
@@ -55,6 +65,15 @@ describe("Result — algebraic laws (property-based)", () => {
       fc.property(anyResult, fc.integer(), (r, fallback) => {
         const out = unwrapOr(r, fallback);
         expect(out).toBe(isOk(r) ? r.value : fallback);
+      }),
+    );
+  });
+
+  it("mapErr transforms err and passes ok through untouched", () => {
+    const f = (s: string): number => s.length;
+    fc.assert(
+      fc.property(anyResult, (r) => {
+        expect(mapErr(r, f)).toEqual(isOk(r) ? r : err(f(r.error)));
       }),
     );
   });

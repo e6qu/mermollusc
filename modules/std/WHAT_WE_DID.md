@@ -8,3 +8,6 @@
 - Added unit tests for `Result` and `rectContains` (5 passing).
 - Added the first property-based tests (fast-check, per the testing pyramid in AGENTS §7):
   `Result` functor/monad laws, `unwrapOr` totality, `rectContains` corner/edge invariants. +9 tests.
+- Added shell tests (`consoleLogger` warn/error→stderr + info/debug→stdout as JSON; `decode` ok/err
+  paths; `px`/`point`/`size`/`rect` shapes) and a `mapErr` property, lifting coverage ~64%→**100%**
+  and raising the ratchet to 100. +7 tests.
