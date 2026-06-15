@@ -1,6 +1,6 @@
-import { isErr, isOk } from "@m/std";
+import { brand, isErr, isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
-import { parseSequence } from "../../src/shell/seq-parse.js";
+import { parseSequence, parseSequenceWithSource } from "../../src/shell/seq-parse.js";
 
 describe("parseSequence", () => {
   it("parses participants and messages", () => {
@@ -30,5 +30,20 @@ describe("parseSequence", () => {
 
   it("fails loudly on a malformed message", () => {
     expect(isErr(parseSequence("sequenceDiagram\n  A->>\n"))).toBe(true);
+  });
+
+  it("captures message text and actor label spans", () => {
+    const text = "sequenceDiagram\n  participant A as Alice\n  A->>B: Hello\n";
+    const r = parseSequenceWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+
+    const message = r.value.source.messages.get(brand<string, "MessageId">("m0"));
+    expect(message).toBeDefined();
+    if (message !== undefined) expect(text.slice(message.start, message.end)).toBe("Hello");
+
+    const actor = r.value.source.actors.get(brand<string, "ActorId">("A"));
+    expect(actor).toBeDefined();
+    if (actor !== undefined) expect(text.slice(actor.start, actor.end)).toBe("Alice");
   });
 });

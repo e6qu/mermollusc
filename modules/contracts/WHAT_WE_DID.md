@@ -10,3 +10,4 @@
   `DiagramAst` union is now `FlowchartAst | SequenceAst`.
 - Added `SceneEdge.stroke` (`solid`/`dashed`) + `arrow` (`none`/`filled`) so the renderer can
   draw dashed lines and arrowheads (and so sequence messages/lifelines are expressible).
+- Added the `SequenceSource` contract (actor-label + message-text spans) for sequence two-way edits.

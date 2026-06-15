@@ -25,4 +25,4 @@ export type {
   Scene,
 } from "./scene.js";
 export type { LayoutOverrides, NodeOverride } from "./overrides.js";
-export type { TextSpan, NodeSpans, SourceMap } from "./source.js";
+export type { TextSpan, NodeSpans, SourceMap, SequenceSource } from "./source.js";

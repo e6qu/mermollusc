@@ -12,3 +12,5 @@
   messages, four arrow kinds; actors inferred from messages) → `SequenceAst`. +3 tests.
 - Added `parseDiagram` (header-sniff routing → `DiagramAst`); both grammars now tolerate leading
   blank/comment lines before the header. +3 tests.
+- Added `parseSequenceWithSource`: captures message-text and actor-label spans (`SequenceSource`)
+  for sequence two-way editing; `parseSequence` is now the ast-only wrapper. +1 test.

@@ -26,4 +26,5 @@ export type {
   TextSpan,
   NodeSpans,
   SourceMap,
+  SequenceSource,
 } from "./core/index.js";
