@@ -13,4 +13,6 @@ export type {
   SceneNode,
   SceneEdge,
   Scene,
+  LayoutOverrides,
+  NodeOverride,
 } from "./core/index.js";
