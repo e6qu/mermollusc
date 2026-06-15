@@ -1,5 +1,6 @@
 import type { Result } from "@m/std";
 import type { DiagramAst } from "@m/contracts";
+import { parseC4 } from "./c4-parse.js";
 import { parse } from "./parse.js";
 import type { ParseError } from "./parse.js";
 import { parseSequence } from "./seq-parse.js";
@@ -12,5 +13,6 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith("%%")) ?? "";
   if (header.startsWith("sequenceDiagram")) return parseSequence(text);
+  if (header.startsWith("C4")) return parseC4(text);
   return parse(text);
 };

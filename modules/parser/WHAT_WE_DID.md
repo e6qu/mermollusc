@@ -14,3 +14,5 @@
   blank/comment lines before the header. +3 tests.
 - Added `parseSequenceWithSource`: captures message-text and actor-label spans (`SequenceSource`)
   for sequence two-way editing; `parseSequence` is now the ast-only wrapper. +1 test.
+- Added `parseC4`: a third Chevrotain lexer/grammar for the C4 subset with recursive `Boundary`
+  nesting (CST→`C4Ast` sets each element's `parent`); `parseDiagram` routes `C4*` headers. +3 tests.
