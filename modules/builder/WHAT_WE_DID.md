@@ -8,3 +8,5 @@
   contract; `applyOverrides` repositions boxes immediately, edges re-route on relayout. 4 tests.
 - core: `relabelNode` (two-way) — rewrites only a node's label span via the parser `SourceMap`
   (bracketed splice / bare wrap), preserving the rest of the file. 3 tests (round-trip via reparse).
+- core: `patchSpan` primitive + structural appends `addNode` / `connect` (append a node/edge line,
+  reparse-verified). 3 tests.

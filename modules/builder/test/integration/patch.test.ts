@@ -1,7 +1,7 @@
 import { brand, isOk } from "@m/std";
 import { parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
-import { patchSpan, relabelNode } from "../../src/core/patch.js";
+import { addNode, connect, patchSpan, relabelNode } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 
@@ -40,5 +40,28 @@ describe("relabelNode", () => {
 
   it("patchSpan replaces exactly the given range", () => {
     expect(patchSpan("hello world", { start: 6, end: 11 }, "there")).toBe("hello there");
+  });
+
+  it("addNode appends a node declaration the parser accepts", () => {
+    const next = addNode("flowchart TD\n  A --> B\n", nid("C"), "Gamma", "round");
+    expect(next).toContain("C(Gamma)");
+    const r = parseWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.nodes.find((n) => n.id === "C")).toMatchObject({
+      label: "Gamma",
+      shape: "round",
+    });
+  });
+
+  it("connect appends an edge the parser accepts", () => {
+    const next = connect("flowchart TD\n  A[x]\n  B[y]\n", nid("A"), nid("B"), "dotted");
+    expect(next).toContain("A -.-> B");
+    const r = parseWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(
+      r.value.ast.edges.some((e) => e.from === "A" && e.to === "B" && e.kind === "dotted"),
+    ).toBe(true);
   });
 });
