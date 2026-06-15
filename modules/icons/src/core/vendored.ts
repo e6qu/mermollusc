@@ -1,5 +1,6 @@
 import type { IconPack } from "./registry.js";
 import devicon from "../../vendor/devicon.json";
+import gilbarbara from "../../vendor/gilbarbara.json";
 import simpleIcons from "../../vendor/simpleicons.json";
 
 // Bundled AGPL-compatible OSS packs, sourced with pinned provenance by tools/source-icons.mjs.
@@ -14,4 +15,9 @@ export const deviconPack: IconPack = {
   icons: new Map(Object.entries(devicon.icons)),
 };
 
-export const vendoredPacks: readonly IconPack[] = [simpleIconsPack, deviconPack];
+export const gilbarbaraPack: IconPack = {
+  meta: gilbarbara.meta,
+  icons: new Map(Object.entries(gilbarbara.icons)),
+};
+
+export const vendoredPacks: readonly IconPack[] = [simpleIconsPack, deviconPack, gilbarbaraPack];

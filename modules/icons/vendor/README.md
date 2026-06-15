@@ -25,5 +25,12 @@ Only AGPL-compatible licenses are bundled here; vendor packs whose terms forbid 
   icon sets are **not** redistributable and are not bundled; these are the (colored) brand logos.
 - **Note:** AliCloud is not in devicon; load it at runtime if needed.
 
+## gilbarbara.json
+
+- **Source:** https://github.com/gilbarbara/logos @ `42037415f0df19cd82b3853c18a967a81783f921`
+- **License:** CC0-1.0.
+- **Contents:** a curated cloud subset (30 of ~1900) — per-service AWS marks (ec2, s3, lambda, rds,
+  dynamodb, eks, …), some GCP services, and common tools. Trademarks remain the owners' (depict-only).
+
 To refresh or add a pack, edit the `PACKS` table in `tools/source-icons.mjs` with values verified
 against the live repo (commit ≥24h old, license confirmed, every path probed) and re-run it.

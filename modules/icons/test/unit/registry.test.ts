@@ -7,6 +7,7 @@ import {
   findIcon,
   packNames,
   deviconPack,
+  gilbarbaraPack,
   registerPack,
   simpleIconsPack,
 } from "../../src/core/index.js";
@@ -50,6 +51,14 @@ describe("icons registry", () => {
       expect(isOk(r)).toBe(true);
       if (isOk(r)) expect(r.value).toContain("<svg");
     }
+  });
+
+  it("bundles the vendored gilbarbara pack (CC0) with per-service AWS marks", () => {
+    expect(gilbarbaraPack.meta.license).toBe("CC0-1.0");
+    expect(gilbarbaraPack.meta.version).toMatch(/^[0-9a-f]{40}$/);
+    const r = findIcon(defaultRegistry, "gilbarbara", "aws-lambda");
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) expect(r.value).toContain("<svg");
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {
