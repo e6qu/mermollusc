@@ -25,3 +25,5 @@
   direction exists); **Connect** button joins the first two selected nodes via `connect`; the
   **Delete** key removes selected nodes via `deleteNode` (guarded off while the textarea is
   focused). +2 Playwright flows.
+- Block family renders via the existing `parseDiagram`/`layoutDiagram` routing (read-only: the
+  source-capture switch keeps no spans for block yet; double-click is a no-op). +1 Playwright flow.

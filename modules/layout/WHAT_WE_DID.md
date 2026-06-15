@@ -15,3 +15,5 @@
 - Added `layoutDiagram(ast)` routing by `ast.kind` (flowchart → ELK, sequence → lane). +1 test.
 - Added `layoutC4` (pure recursive nested-box layout: boundaries sized to wrap children,
   straight centre-to-centre relation edges); `layoutDiagram` routes C4. +3 tests.
+- Added `layoutBlock` (pure row-major grid in a uniform cell sized to the widest label; straight
+  centre-to-centre edges); `layoutDiagram` routes block. +3 tests.

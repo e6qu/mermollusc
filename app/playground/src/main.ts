@@ -123,6 +123,13 @@ const renderFromText = async (text: string): Promise<void> => {
       c4Source = isOk(withSource) ? withSource.value.source : null;
       break;
     }
+    case "block": {
+      // Block diagrams render read-only for now; no source spans captured yet.
+      source = null;
+      seqSource = null;
+      c4Source = null;
+      break;
+    }
   }
   paintScene();
 };
@@ -233,8 +240,9 @@ canvas.addEventListener("dblclick", (ev) => {
     return;
   }
 
-  // sequence: rename an actor (its label span) or a message (its text span)
-  if (seqSource === null) return;
+  // sequence: rename an actor (its label span) or a message (its text span). Other families
+  // (e.g. block) have no source spans yet, so editing is a no-op.
+  if (ast.kind !== "sequence" || seqSource === null) return;
   const span =
     hit.kind === "node"
       ? seqSource.actors.get(brand<string, "ActorId">(hit.id))

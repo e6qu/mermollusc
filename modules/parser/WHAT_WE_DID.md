@@ -19,3 +19,6 @@
 - Added `parseC4WithSource`: captures inner-label `TextSpan`s for every element (incl. nested
   boundary children) and relation (`C4Source`), for C4 two-way editing; `parseC4` is now the
   ast-only wrapper. +3 tests.
+- Added `parseBlock`: a fourth Chevrotain lexer/grammar for the `block-beta` subset — `columns N`
+  directive plus block declarations and edge chains reusing the flowchart shape/link syntax
+  (block labels unquoted); `parseDiagram` routes `block*` headers. +3 tests.

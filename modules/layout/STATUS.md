@@ -10,5 +10,7 @@
 - `layoutSequence(ast)` (pure): actors row, vertical dashed lifelines, stacked message arrows.
 - `layoutC4(ast)` (pure): nested-box layout — boundaries wrap their children; relations are
   straight centre-to-centre edges.
-- `layoutDiagram(ast)` routes by family: flowchart → ELK (async), sequence → lane, C4 → nested-box.
-- tests: 12 passing (toElkGraph/toScene; clean layout; relax; sequence; C4 nesting; routing).
+- `layoutBlock(ast)` (pure): row-major grid in a `columns`-wide uniform cell; straight
+  centre-to-centre edges.
+- `layoutDiagram(ast)` routes by family: flowchart → ELK (async); sequence/C4/block → pure layouts.
+- tests: 15 passing (toElkGraph/toScene; clean layout; relax; sequence; C4 nesting; block grid; routing).

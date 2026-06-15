@@ -19,6 +19,9 @@ export type {
   C4Element,
   C4Rel,
   C4Ast,
+  BlockNode,
+  BlockEdge,
+  BlockAst,
   DiagramAst,
 } from "./ast.js";
 export type {

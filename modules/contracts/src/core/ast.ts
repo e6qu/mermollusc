@@ -79,5 +79,27 @@ export interface C4Ast {
   readonly rels: readonly C4Rel[];
 }
 
-// Grows one variant per family (block/network, ...). The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst | SequenceAst | C4Ast;
+export interface BlockNode {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly shape: NodeShape;
+}
+
+export interface BlockEdge {
+  readonly id: EdgeId;
+  readonly from: NodeId;
+  readonly to: NodeId;
+  readonly kind: EdgeKind;
+  readonly label: string | null;
+}
+
+// A `block-beta` diagram: blocks flow into a `columns`-wide grid; edges connect them.
+export interface BlockAst {
+  readonly kind: "block";
+  readonly columns: number;
+  readonly blocks: readonly BlockNode[];
+  readonly edges: readonly BlockEdge[];
+}
+
+// Grows one variant per family (network, cloud, ...). The `kind` tag discriminates.
+export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst;

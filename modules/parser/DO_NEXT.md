@@ -4,4 +4,5 @@
 - Add property-based round-trip tests (fast-check) over generated flowchart ASTs.
 - Surface error positions (line/col) in `ParseError`, not just messages.
 - Grow the subset: `subgraph`, stadium `([])` / circle `(())` shapes, quoted labels, more link styles.
-- Add grammars for the other families (sequence, C4, block/network) as they land.
+- Block: source spans (`BlockSource`) for two-way editing; grouped `block:id … end`, column spans.
+- Add grammars for the remaining families (network/cloud) as they land.
