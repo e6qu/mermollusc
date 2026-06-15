@@ -30,7 +30,7 @@ test-unit:  ; $(VITEST) test/unit
 test-int:   ; $(VITEST) test/integration
 test-e2e:   ; @echo "no e2e suite for $(MODULE)"
 test-watch: ; $(EXEC) vitest
-cov:        ; $(EXEC) vitest run --coverage --passWithNoTests
+cov:        ; $(EXEC) vitest run --coverage --passWithNoTests test/unit test/integration
 
 check: typecheck lint fmt-check test
 

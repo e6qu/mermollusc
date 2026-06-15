@@ -78,7 +78,8 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 | `@m/app` | ✅ renders + two-way edits all five families; in-node icons; flowchart drag/relax/regen/add/connect/delete | 1 node + 17 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
-tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
+tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
+per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
@@ -88,8 +89,9 @@ tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 2. **More families**: cloud.
 3. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
 4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-5. **Cross-cutting**: per-layer coverage thresholds; regenerate unpinned-only. *(Property-based
-   tests started in std/builder/layout cores; extend to parser round-trips and the ELK path.)*
+5. **Cross-cutting**: regenerate unpinned-only; extend property tests to parser round-trips and the
+   ELK path; raise coverage ratchets as coverage climbs. *(Property-based tests + `make cov`
+   per-module coverage thresholds are now wired.)*
 
 ## How to resume (fresh session / after compaction)
 

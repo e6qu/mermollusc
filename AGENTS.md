@@ -126,8 +126,11 @@ just that module. `run`/`stop` use the module's `RUN_CMD`/`STOP_CMD` (libs defau
 - **Unit** (most numerous): pure `core/` functions, property-based with `fast-check`.
 - **Integration**: `shell` + `core` wired against fixtures.
 - **E2E / golden** (fewest, in `app`): text → pixels and text → edit → text snapshots.
-- `make cov` reports coverage. Per-layer thresholds are configured in each module's vitest
-  config as real tests land (not yet wired — see each module's `DO_NEXT.md`).
+- `make cov` reports coverage and **enforces per-module thresholds** (exits non-zero on a miss).
+  Each library module has a `vitest.config.ts` built from `tools/vitest.shared.mjs` (`all: true`
+  over `src/**`, barrels excluded) with a threshold ratchet set just below current coverage; raise
+  the ratchet as coverage climbs. `contracts` (types-only) and `app` (covered by Playwright e2e,
+  not vitest) carry no thresholds.
 - **Tests are typechecked.** Each module's `tsconfig.json` includes `test/` (the app also `e2e/`),
   so `make typecheck` catches fixture/mock drift under the same strict config as `src` — not just
   the editor. Note: Biome lint and the type-guard still scope to `src/` (the core rules are a
