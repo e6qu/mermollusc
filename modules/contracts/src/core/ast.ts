@@ -30,5 +30,30 @@ export interface FlowchartAst {
   readonly edges: readonly FlowEdge[];
 }
 
-// Grows one variant per family (sequence, c4, block/network, ...). The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst;
+export type ActorId = Brand<string, "ActorId">;
+export type MessageId = Brand<string, "MessageId">;
+
+// Mermaid sequence arrows: ->> (solid), -->> (dashed), -> (solidOpen), --> (dashedOpen).
+export type MessageKind = "solid" | "dashed" | "solidOpen" | "dashedOpen";
+
+export interface SequenceActor {
+  readonly id: ActorId;
+  readonly label: string;
+}
+
+export interface SequenceMessage {
+  readonly id: MessageId;
+  readonly from: ActorId;
+  readonly to: ActorId;
+  readonly text: string;
+  readonly kind: MessageKind;
+}
+
+export interface SequenceAst {
+  readonly kind: "sequence";
+  readonly actors: readonly SequenceActor[];
+  readonly messages: readonly SequenceMessage[];
+}
+
+// Grows one variant per family (c4, block/network, ...). The `kind` tag discriminates.
+export type DiagramAst = FlowchartAst | SequenceAst;

@@ -7,6 +7,12 @@ export type {
   FlowNode,
   FlowEdge,
   FlowchartAst,
+  ActorId,
+  MessageId,
+  MessageKind,
+  SequenceActor,
+  SequenceMessage,
+  SequenceAst,
   DiagramAst,
 } from "./ast.js";
 export type { SceneNodeId, SceneEdgeId, SceneNode, SceneEdge, Scene } from "./scene.js";
