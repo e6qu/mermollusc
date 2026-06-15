@@ -6,4 +6,6 @@ export { parseC4, parseC4WithSource } from "./c4-parse.js";
 export type { ParsedC4 } from "./c4-parse.js";
 export { parseBlock, parseBlockWithSource } from "./block-parse.js";
 export type { ParsedBlock } from "./block-parse.js";
+export { parseNetwork, parseNetworkWithSource } from "./net-parse.js";
+export type { ParsedNetwork } from "./net-parse.js";
 export { parseDiagram } from "./diagram.js";

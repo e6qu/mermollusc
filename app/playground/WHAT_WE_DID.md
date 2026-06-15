@@ -29,3 +29,5 @@
 - Block two-way: the source-capture switch keeps a `BlockSource` (via `parseBlockWithSource`);
   double-click a block or labelled edge → `patchSpan` rewrites its label span → re-render.
   Refactored the switch to reset all four source holders up front. +1 Playwright flow.
+- Network family: renders kind-typed nodes + undirected links via `parseDiagram`/`layoutDiagram`;
+  two-way via a `NetworkSource` (double-click a node or labelled link → `patchSpan`). +2 flows.

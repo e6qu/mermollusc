@@ -25,3 +25,6 @@
 - Added `parseBlockWithSource`: captures label `TextSpan`s (inner-of-quotes, whitespace-trimmed)
   for explicitly-labelled blocks and pipe-labelled edges (`BlockSource`), for block two-way
   editing; `parseBlock` is now the ast-only wrapper. +3 tests.
+- Added `parseNetwork` / `parseNetworkWithSource`: a fifth (single-mode) Chevrotain lexer/grammar
+  for the `network` subset — kind-typed nodes (kinds are keyword tokens) and undirected `--` links,
+  with inner-label spans (`NetworkSource`); `parseDiagram` routes `network*` headers. +3 tests.

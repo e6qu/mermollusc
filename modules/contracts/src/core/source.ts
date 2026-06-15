@@ -36,3 +36,10 @@ export interface BlockSource {
   readonly blocks: ReadonlyMap<NodeId, TextSpan>;
   readonly edges: ReadonlyMap<EdgeId, TextSpan>;
 }
+
+// Editable text spans for a network diagram: the inner label of each node that has a quoted label
+// and of each link that carries one. Unlabelled nodes/links have no entry.
+export interface NetworkSource {
+  readonly nodes: ReadonlyMap<NodeId, TextSpan>;
+  readonly links: ReadonlyMap<EdgeId, TextSpan>;
+}

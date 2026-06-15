@@ -101,5 +101,35 @@ export interface BlockAst {
   readonly edges: readonly BlockEdge[];
 }
 
-// Grows one variant per family (network, cloud, ...). The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst;
+export type NetworkNodeKind =
+  | "server"
+  | "database"
+  | "cloud"
+  | "router"
+  | "switch"
+  | "firewall"
+  | "host";
+
+export interface NetworkNode {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly kind: NetworkNodeKind;
+}
+
+export interface NetworkLink {
+  readonly id: EdgeId;
+  readonly from: NodeId;
+  readonly to: NodeId;
+  // Undirected connection; null when the link carries no label.
+  readonly label: string | null;
+}
+
+// A network diagram: kind-typed nodes joined by undirected links.
+export interface NetworkAst {
+  readonly kind: "network";
+  readonly nodes: readonly NetworkNode[];
+  readonly links: readonly NetworkLink[];
+}
+
+// Grows one variant per family (cloud, ...). The `kind` tag discriminates.
+export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst | NetworkAst;

@@ -15,10 +15,14 @@
   explicitly-labelled blocks and pipe-labelled edges): `block-beta` subset — `columns N` directive,
   block declarations `id` / `id["label"]` / `id(label)` / `id{label}` (quotes stripped), and edge
   chains reusing the flowchart link syntax. Columns default to a single row when omitted.
+- `parseNetwork(text)` / `parseNetworkWithSource(text)` → `NetworkAst` (+ `NetworkSource`: inner
+  label spans for quoted node/link labels): `network` subset — kind-typed node declarations
+  (`server`/`database`/`cloud`/`router`/`switch`/`firewall`/`host`) and undirected links
+  `a -- b : "label"`. Single-mode lexer (labels are always quoted).
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, or block parser.
+  lines) and routes to the flowchart, sequence, C4, block, or network parser.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 25 passing (printer; flowchart parse/round-trip/spans; sequence parse + spans; C4 parse
-  with nesting + label spans; block parse + label/edge spans; diagram routing).
+- tests: 28 passing (printer; flowchart parse/round-trip/spans; sequence parse + spans; C4 parse
+  with nesting + label spans; block parse + label/edge spans; network parse + label spans; routing).

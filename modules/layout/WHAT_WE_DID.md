@@ -17,3 +17,5 @@
   straight centre-to-centre relation edges); `layoutDiagram` routes C4. +3 tests.
 - Added `layoutBlock` (pure row-major grid in a uniform cell sized to the widest label; straight
   centre-to-centre edges); `layoutDiagram` routes block. +3 tests.
+- Added `layoutNetwork` (pure squarish-grid layout; undirected arrowless centre-to-centre links);
+  `layoutDiagram` routes network. +2 tests.

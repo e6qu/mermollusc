@@ -22,6 +22,10 @@ export type {
   BlockNode,
   BlockEdge,
   BlockAst,
+  NetworkNodeKind,
+  NetworkNode,
+  NetworkLink,
+  NetworkAst,
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
@@ -38,4 +42,5 @@ export type {
   SequenceSource,
   C4Source,
   BlockSource,
+  NetworkSource,
 } from "./core/index.js";

@@ -22,6 +22,10 @@ export type {
   BlockNode,
   BlockEdge,
   BlockAst,
+  NetworkNodeKind,
+  NetworkNode,
+  NetworkLink,
+  NetworkAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -41,4 +45,5 @@ export type {
   SequenceSource,
   C4Source,
   BlockSource,
+  NetworkSource,
 } from "./source.js";

@@ -17,6 +17,7 @@ import type {
   C4Source,
   DiagramAst,
   LayoutOverrides,
+  NetworkSource,
   NodeId,
   Scene,
   SceneNodeId,
@@ -28,6 +29,7 @@ import {
   parseBlockWithSource,
   parseC4WithSource,
   parseDiagram,
+  parseNetworkWithSource,
   parseSequenceWithSource,
   parseWithSource,
 } from "@m/parser";
@@ -62,6 +64,7 @@ let source: SourceMap | null = null;
 let seqSource: SequenceSource | null = null;
 let c4Source: C4Source | null = null;
 let blockSource: BlockSource | null = null;
+let netSource: NetworkSource | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
@@ -108,6 +111,7 @@ const renderFromText = async (text: string): Promise<void> => {
   seqSource = null;
   c4Source = null;
   blockSource = null;
+  netSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -127,6 +131,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "block": {
       const withSource = parseBlockWithSource(text);
       blockSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "network": {
+      const withSource = parseNetworkWithSource(text);
+      netSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -245,6 +254,20 @@ canvas.addEventListener("dblclick", (ev) => {
       hit.kind === "node"
         ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
         : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
+    if (span === undefined) return;
+    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
+    if (next === null) return;
+    srcEl.value = patchSpan(srcEl.value, span, next);
+    void renderFromText(srcEl.value);
+    return;
+  }
+
+  if (ast.kind === "network") {
+    if (netSource === null) return;
+    const span =
+      hit.kind === "node"
+        ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
+        : netSource.links.get(brand<string, "EdgeId">(hit.id));
     if (span === undefined) return;
     const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
     if (next === null) return;
