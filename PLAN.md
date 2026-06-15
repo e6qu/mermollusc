@@ -1,96 +1,106 @@
 # mermollusc — project plan
 
-A parser, graphical visualiser, and **two-way builder** for Mermaid-style diagrams, extended
-to software-architecture families (flowchart/graph, sequence, C4/architecture,
-block/network/cloud). Target: TypeScript + HTML Canvas, with Chrome's HTML-in-Canvas
-(`drawElement`) as a feature-detected progressive enhancement — never a dependency.
+A parser, visualiser, and **two-way builder** for Mermaid-style diagrams, extended to
+software-architecture families (flowchart/graph, sequence, C4/architecture, block/network/cloud).
+TypeScript + HTML Canvas; HTML-in-Canvas (`drawElement`) is a future progressive enhancement,
+never a dependency.
 
-See `AGENTS.md` for the operating rules. This file is the high-level map; each module owns its
-own `PLAN.md`.
+Operating rules live in `AGENTS.md`. This file is the high-level map + status + roadmap. Each
+module owns its own `PLAN.md` / `STATUS.md` / `WHAT_WE_DID.md` / `DO_NEXT.md` / `BUGS.md` — read
+those for detail. **To resume work, see "How to resume" at the bottom.**
 
-## Pipeline
+## Pipeline & dependency DAG
 
 ```
 text ──▶ parser ──AST──▶ layout ──SceneGraph IR──▶ renderer ──▶ canvas
-                                                        ▲
-                          builder (hit-test, drag, two-way sync) ┘
-```
+                                                       ▲
+                         builder (hit-test, drag, two-way sync) ┘
 
-Two contracts (`AST`, `SceneGraph IR`) in `@m/contracts` are the seams. Lock them first;
-everything else parallelizes against them.
-
-## Modules & dependency DAG
-
-```
 std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
 ```
 
+`@m/contracts` holds the two seams (AST, SceneGraph IR) plus `LayoutOverrides` and `SourceMap`.
+
 | module | owns |
 |--------|------|
-| `@m/std` | branded-type kit, `Result`, `Logger` contract, geometry primitives |
-| `@m/contracts` | AST + SceneGraph IR type definitions |
-| `@m/parser` | text → AST, and AST → text (printer); round-trip is property-tested |
-| `@m/layout` | AST → positioned SceneGraph; ELK adapter behind a typed shell facade |
-| `@m/renderer` | SceneGraph → canvas; Canvas2D impl + HTML-in-Canvas enhancement |
-| `@m/icons` | icon-pack registry + loaders (OSS packs bundled; cloud packs user-loaded) |
-| `@m/builder` | hit-testing, selection, drag, text↔diagram two-way sync |
-| `@m/app` (playground) | wires everything; hosts e2e/golden tests |
+| `@m/std` | branded-type kit, `Result`, generic `Logger` contract, geometry primitives, `brand()`/`decode()` |
+| `@m/contracts` | AST (flowchart, sequence) + SceneGraph IR + overrides + source-map types |
+| `@m/parser` | text → AST (+ source spans), AST → text (printer) |
+| `@m/layout` | AST → positioned Scene (ELK), relax via semi-interactive seeds |
+| `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
+| `@m/icons` | icon-pack registry + loaders (OSS bundled; cloud packs user-loaded) |
+| `@m/builder` | hit-testing, selection, sidecar overrides, two-way text patching |
+| `@m/app` (playground) | wires everything; hosts node e2e + Playwright flows |
 
 ## Decisions (locked)
 
-- **Layout engine:** ELK (`elkjs`) only — needed for nesting/ports/orthogonal routing (C4,
-  block, network). No `@types/elkjs` exists (verified 2026-06-14); its surface is quarantined
-  behind a `decode()` facade in `layout/src/shell`.
-- **Type boundary:** two sanctioned helpers (`brand`, `decode`), shell-only. See AGENTS §3.
-- **Toolchain:** pnpm workspaces + catalog, Vitest (+fast-check), tsup (lib builds), Vite (app),
-  Zod (decoders), Biome (format + lint + `noExplicitAny`) + `tools/guard-types.mjs` for the
-  `as`/`unknown`/wildcard bans Biome can't express.
-- **Runtime / package manager: pnpm + Node, not Bun or Deno** (evaluated 2026-06-14; local:
-  node 26.0.0, pnpm 11.6.0, bun 1.3.10, deno 2.7.14). The deliverable is a browser canvas
-  library + builder, so the load-bearing tools are Vite (browser bundling) and Vitest (DOM/canvas
-  test environments) — both Node-ecosystem-first. Bun's catalog + isolated installs still had
-  documented monorepo dedup bugs in 1.3.x; Deno's strengths (permissions sandbox, web APIs, jsr)
-  don't help a client-side tool and adopting it would force replacing Biome + Vitest. pnpm's
-  workspace/catalog story is mature and zero-migration. Future lever, not now: Bun purely as
-  installer/script-runner ("Bun install + Vite") if install/CI speed ever hurts.
-- **Parser:** Chevrotain, one grammar per family, producing a CST with source spans.
-- **Mermaid fidelity:** a pragmatic subset, grown against pinned Mermaid fixtures — not
-  bug-for-bug compatibility up front.
-- **Layout execution:** elkjs runs in a Web Worker; the pipeline from layout onward is async.
-- **Sync source of truth:** text/CST is authoritative for structure; structural canvas edits patch
-  text ranges so formatting/comments survive. Manual geometry lives in a **sidecar overrides layer**
-  (`nodeId → position/size/pinned`), never in the Mermaid text. *Regenerate* re-runs ELK on unpinned
-  nodes only; *relax* feeds manual positions to ELK as soft seeds; a structural edit keeps overrides
-  and auto-places only new nodes. (See `modules/builder/PLAN.md`.)
+- **Layout engine:** ELK (`elkjs`) only — needed for nesting/ports/orthogonal routing. It ships
+  its own TS types (`lib/elk-api.d.ts`); we use the bundled node-safe entry `elkjs/lib/elk.bundled.js`
+  and still decode its result with Zod at the shell boundary.
+- **Layout execution:** runs inline (node + browser) with an async API; the app may inject a Web
+  Worker (`workerFactory`) later to offload.
+- **Type boundary:** two sanctioned helpers (`brand`, `decode`), shell-only (AGENTS §3).
+- **Toolchain:** pnpm workspaces + catalog · Vitest (+fast-check) · tsup · Vite · Zod · Biome +
+  `tools/guard-types.mjs` (bans, in core, `as`/`unknown`/`undefined`/optional/`Record<string>`;
+  bans wildcards + suppressions across src). **Runtime: pnpm + Node, not Bun/Deno.**
+- **Parser:** Chevrotain, one lexer+grammar per family, producing a CST; spans captured for sync.
+- **Mermaid fidelity:** a pragmatic subset, grown against fixtures — not bug-for-bug up front.
+- **Sync model:** text/CST is authoritative for structure; structural canvas edits patch text
+  ranges (formatting/comments survive). Manual geometry lives in a **sidecar overrides layer**
+  (`nodeId → position/size/pinned`), never in the text. *Relax* = re-run ELK semi-interactive
+  seeded by current positions; *Regenerate* = clean re-layout (drops overrides). Refining
+  regenerate to unpinned-only is future (ELK can't cleanly fix a subset).
 - **Supply chain:** pin only stable releases ≥24h old; `make deps-check` audits the catalog.
+- **License:** AGPL-3.0-or-later (verbatim FSF `LICENSE`); every `package.json` carries the SPDX
+  field. Bundled icon packs must be AGPL-compatible + attributed; vendor cloud packs stay
+  user-loaded, never redistributed.
 
-## Pinned versions — provenance
+Pinned versions (verified 2026-06-14, in `pnpm-workspace.yaml` catalog / `.pre-commit-config.yaml`):
+typescript 6.0.3 · biome 2.5.0 · vitest 4.1.8 · tsup 8.5.1 · vite 8.0.16 · zod 4.4.3 ·
+elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrotain 12.0.0 ·
+@playwright/test 1.60.0 · pre-commit-hooks v6.0.0 · gitleaks v8.30.1 · semgrep 1.166.0.
 
-Verified 2026-06-14 via `npm view <pkg> version`; pinned in `pnpm-workspace.yaml` catalog:
-typescript 6.0.3 · @biomejs/biome 2.5.0 · vitest 4.1.8 · tsup 8.5.1 · vite 8.0.16 ·
-zod 4.4.3 · elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 ·
-chevrotain 12.0.0 · @playwright/test 1.60.0.
+## Status — what's built
 
-Pre-commit pipeline tools (pinned in `.pre-commit-config.yaml` / `Makefile`, verified ≥24h on
-2026-06-14): pre-commit-hooks v6.0.0 · gitleaks v8.30.1 · semgrep 1.166.0.
+Flowchart is a **complete two-way builder, live in the browser**. Sequence family is underway.
 
-## License
+| module | state | tests |
+|--------|-------|-------|
+| `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
+| `@m/contracts` | ✅ flowchart + sequence AST, Scene IR (+shape), overrides, source-map | (types) |
+| `@m/parser` | ✅ flowchart (parse/parseWithSource/print + spans) · ✅ sequence (parseSequence) | 9 |
+| `@m/layout` | ✅ flowchart → Scene (ELK) + relax seeds · ⬜ sequence layout | 5 |
+| `@m/renderer` | ✅ Scene → canvas (box/diamond/labels/polylines) · ⬜ dashed/arrowheads | 4 |
+| `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
+| `@m/icons` | ⬜ not started | — |
+| `@m/app` | ✅ interactive flowchart editor (edit/select/drag/relabel/relax/regenerate) | 1 node + 5 Playwright |
 
-**AGPL-3.0-or-later** (SPDX). `LICENSE` is the verbatim FSF text, downloaded 2026-06-14 from
-`https://www.gnu.org/licenses/agpl-3.0.txt` (sha256 `0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0`).
-Every `package.json` carries the SPDX field. Bundled icon packs must be license-compatible with
-AGPL and properly attributed (Apache-2.0 / CC-BY OSS packs are fine; vendor cloud packs stay
-user-loaded, never redistributed — see `modules/icons`).
+CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
+tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
-## Milestones
+## Roadmap — the plan ahead
 
-1. **Scaffold** (this phase): repo skeleton, contracts seams, green `make check` on empty tree.
-2. **Vertical slice — flowchart**: parser→layout→renderer→builder end-to-end on flowchart only,
-   including two-way sync, to prove the contracts and the sync machinery before fanning out.
-3. **Fan-out families**: sequence, C4, block/network across parser + layout.
-4. **Icons**: OSS packs (Kubernetes/CNCF/simple-icons/devicon) + cloud-pack loaders.
-5. **HTML-in-Canvas** enhancement path for rich nodes, behind feature detection.
+1. **Finish the sequence family** (in flight): pure lane layout (actors row, lifelines, stacked
+   messages) → Scene — decide lifeline representation (SceneEdge vs minimal Scene extension);
+   renderer dashed lines + arrowheads per `MessageKind`; app routing via a header-sniffing
+   `parseDiagram` (`flowchart`/`graph` vs `sequenceDiagram`) → `DiagramAst`.
+2. **Sequence two-way**: source spans for sequence → relabel/edit parity with flowchart.
+3. **More flowchart two-way patches**: add node, connect (insert edge), delete node/edge.
+4. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
+   then block/network/cloud.
+5. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
+   devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
+6. **Renderer polish**: arrowheads, edge labels, theme + device-pixel-ratio, HTML-in-Canvas
+   backend behind feature detection.
+7. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
+8. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
+   layout invariants); refine regenerate to unpinned-only.
 
-## Family scope (v1)
+## How to resume (fresh session / after compaction)
 
-Flowchart/graph · Sequence · C4/architecture · Block/network/cloud. Full two-way builder.
+1. Read `AGENTS.md` (hard rules + structure) then this file (architecture, decisions, status, roadmap).
+2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
+   actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
+3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
+   pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
+   `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).
