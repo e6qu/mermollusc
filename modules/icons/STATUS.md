@@ -14,17 +14,19 @@
   This is the compliant path for vendor cloud packs (AWS/Azure/GCP) — loaded at runtime, never
   bundled.
 - **Bundled OSS packs** (vendored with pinned provenance by `tools/source-icons.mjs`, in `defaultRegistry`):
-  - `simpleIconsPack` — 19 cloud-native/devops marks from simple-icons **CC0-1.0**.
+  - `simpleIconsPack` — 36 cloud-native/devops marks from simple-icons **CC0-1.0**.
   - `deviconPack` — 32 colored brand/tool logos from devicon **MIT**, including the **AWS / Azure /
     Google Cloud / Oracle** brand marks (the official *architecture* icon sets stay non-redistributable).
   - `gilbarbaraPack` — 30 per-*service* cloud icons from gilbarbara/logos **CC0** (AWS ec2/s3/lambda/
     rds/dynamodb/eks/…, some GCP, common tools).
-  - resolve via `findIcon(registry, "simpleicons"|"devicon"|"gilbarbara", <name>)`.
+  - `k8sPack` — 25 official Kubernetes *resource* shapes from kubernetes/community **Apache-2.0**
+    (pod, deploy, svc, ing, cm, secret, sts, ds, rs, job, cronjob, hpa, crd, netpol, … + node).
+  - resolve via `findIcon(registry, "simpleicons"|"devicon"|"gilbarbara"|"k8s", <name>)`.
 - **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/cncf.json` — the full CNCF landscape
   (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
   wanted. Kept out of the bundle so it can't affect app/test performance.
-- tests: 10 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
-  simple-icons + devicon + gilbarbara vendored-pack provenance + resolution).
+- tests: 11 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
+  simple-icons + devicon + gilbarbara + k8s vendored-pack provenance + resolution).
 - The **cloud** family renders these marks (kind→slug map); the **network** family accepts a
   per-node `icon "<pack>/<name>"` override that resolves against any registered pack.
 - Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); the per-node override on

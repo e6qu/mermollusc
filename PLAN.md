@@ -75,7 +75,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
-| `@m/icons` | ✅ registry + resolver + built-in pack · ✅ in-node rendering · ✅ user-loaded packs · ✅ vendored simple-icons (CC0) + devicon (MIT, AWS/Azure/GCP/Oracle) + gilbarbara (CC0, AWS services) | 10 |
+| `@m/icons` | ✅ registry/resolver/built-in · in-node rendering · user-loaded packs · vendored simple-icons + devicon + gilbarbara + k8s (4 packs) · CNCF archived (LFS) | 11 |
 | `@m/app` | ✅ renders + two-way edits all six families; in-node icons (+ per-node override) + load-pack; HiDPI canvas; persisted dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 26 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
@@ -84,10 +84,10 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
-1. **Icons**: vendor Kubernetes-community (Apache-2.0) + CNCF landscape (Apache-2.0, wholesale per
-   owner's call); author original BPMN glyphs; study the hand-drawn/xkcd style; extend the per-node
-   `icon "<pack>/<name>"` override to the other families. *(simple-icons (CC0) + devicon (MIT,
-   AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS service icons) bundled with pinned provenance;
+1. **Icons**: author original BPMN glyphs; study the hand-drawn/xkcd style; extend the per-node
+   `icon "<pack>/<name>"` override to the other families. *(simple-icons (CC0, 36) + devicon (MIT,
+   AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS services) + Kubernetes-community (Apache-2.0,
+   resource shapes) bundled with pinned provenance; CNCF landscape archived via git-LFS;
    official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable. Full
    CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette

@@ -24,6 +24,9 @@
   bundled as `deviconPack`. +1 test.
 - Vendored **gilbarbara/logos** (CC0): a curated 30-icon cloud subset — per-*service* AWS marks
   (ec2/s3/lambda/rds/…) + GCP + tools → `vendor/gilbarbara.json`, bundled as `gilbarbaraPack`. +1 test.
+- Vendored **Kubernetes-community** resource icons (Apache-2.0): 25 official unlabeled shapes
+  (pod/deploy/svc/…/node) → `vendor/k8s.json`, bundled as `k8sPack`. +1 test. Extended simple-icons
+  from 19→36 slugs (envoy, argo, vault, consul, jaeger, opentelemetry, vmware, datadog, …).
 - Archived the **full CNCF landscape** (2423 logos, ~64 MB, Apache-2.0) at a pinned commit to
   `vendor/cncf.json` via **git-LFS** (`.gitattributes` + a pre-commit `exclude`). Deliberately *not*
   imported/registered — it'd bloat the bundle and risk the e2e gate; it's an archival asset.

@@ -8,6 +8,7 @@ import {
   packNames,
   deviconPack,
   gilbarbaraPack,
+  k8sPack,
   registerPack,
   simpleIconsPack,
 } from "../../src/core/index.js";
@@ -59,6 +60,16 @@ describe("icons registry", () => {
     const r = findIcon(defaultRegistry, "gilbarbara", "aws-lambda");
     expect(isOk(r)).toBe(true);
     if (isOk(r)) expect(r.value).toContain("<svg");
+  });
+
+  it("bundles the vendored Kubernetes-community pack (Apache-2.0) with resource shapes", () => {
+    expect(k8sPack.meta.license).toBe("Apache-2.0");
+    expect(k8sPack.meta.version).toMatch(/^[0-9a-f]{40}$/);
+    for (const name of ["pod", "deploy", "svc", "node"]) {
+      const r = findIcon(defaultRegistry, "k8s", name);
+      expect(isOk(r)).toBe(true);
+      if (isOk(r)) expect(r.value).toContain("<svg");
+    }
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {

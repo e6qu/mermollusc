@@ -32,6 +32,13 @@ Only AGPL-compatible licenses are bundled here; vendor packs whose terms forbid 
 - **Contents:** a curated cloud subset (30 of ~1900) — per-service AWS marks (ec2, s3, lambda, rds,
   dynamodb, eks, …), some GCP services, and common tools. Trademarks remain the owners' (depict-only).
 
+## k8s.json
+
+- **Source:** https://github.com/kubernetes/community @ `8b03bb61ff9b1e76ec42b413830bd743e892ae3c`
+- **License:** Apache-2.0.
+- **Contents:** 25 official Kubernetes *resource* shapes (unlabeled) — pod, deploy, svc, ing, cm,
+  secret, ns, pv/pvc, sts, ds, rs, job, cronjob, hpa, sa, role/rb, crd, netpol, … + node.
+
 ## cncf.json (archival, git-LFS)
 
 - **Source:** https://github.com/cncf/landscape @ `abd3a6d7f623774086bdc78624522011660bc57d` (`hosted_logos/`)
