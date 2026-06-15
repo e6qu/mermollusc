@@ -39,3 +39,4 @@
 - "Load icons" affordance: a file input reads a pack, `decodePack` validates it at the boundary,
   `registerPack` merges it into a mutable registry (clearing the rasterised-glyph cache), and the
   scene re-renders; a same-id pack overrides the built-in. Loud on parse/decode failure. +2 flows.
+- Dark/Light theme toggle: swaps the renderer `Theme` and the canvas `backgroundColor`, repaints. +1 flow.

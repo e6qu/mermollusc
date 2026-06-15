@@ -19,6 +19,8 @@
 - **Load icons**: a file input decodes a user pack (`decodePack`) and merges it into the active
   registry (`registerPack`); a pack with id "arch" overrides the built-in network glyphs. This is
   how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
-- Playwright (`make e2e-ui`): 20 flows — the 16 family/edit flows plus network-icons, dpr, and
-  load-pack (valid + malformed).
-- Not yet: CodeMirror editor; dark-theme toggle; HTML-in-Canvas.
+- Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
+  repaints.
+- Playwright (`make e2e-ui`): 21 flows — the 16 family/edit flows plus network-icons, dpr,
+  load-pack (valid + malformed), and theme.
+- Not yet: CodeMirror editor; theme persistence; HTML-in-Canvas.

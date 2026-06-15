@@ -72,10 +72,10 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing · property round-trip | 29 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 19 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, themeable palette) | 7 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 9-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs (`decodePack`/`registerPack`) · ⬜ vendored OSS packs | 7 |
-| `@m/app` | ✅ renders + two-way edits all five families; in-node icons + load-pack; HiDPI canvas; flowchart drag/relax/regen/add/connect/delete | 1 node + 20 Playwright |
+| `@m/app` | ✅ renders + two-way edits all five families; in-node icons + load-pack; HiDPI canvas; dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 21 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -88,8 +88,8 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    user-loaded pack path (`decodePack`/`registerPack`), and the app's "Load icons" affordance are
    done; vendor cloud packs (AWS/Azure/GCP) load at runtime, never bundled — license-restricted.)*
 2. **More families**: cloud.
-3. **Renderer polish**: HTML-in-Canvas backend behind feature detection; dark-theme toggle in the
-   app. *(Themeable palette + device-pixel-ratio done.)*
+3. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
+   (light/dark toggle) + device-pixel-ratio done.)*
 4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
 5. **Cross-cutting**: regenerate unpinned-only; extend property tests to the ELK flowchart path;
    raise coverage ratchets as coverage climbs. *(Property-based tests (incl. the parser

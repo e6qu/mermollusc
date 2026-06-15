@@ -34,7 +34,8 @@ import {
   parseSequenceWithSource,
   parseWithSource,
 } from "@m/parser";
-import { paint, toDisplayList } from "@m/renderer";
+import { darkTheme, defaultTheme, paint, toDisplayList } from "@m/renderer";
+import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
 const SAMPLE = `flowchart TD
@@ -55,12 +56,14 @@ const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
+const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 if (
   relaxBtn === null ||
   regenBtn === null ||
   addBtn === null ||
   connectBtn === null ||
+  themeBtn === null ||
   loadPackEl === null
 ) {
   throw new Error("playground: missing toolbar controls");
@@ -84,6 +87,7 @@ let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY
 const iconImages = new Map<string, CanvasImageSource>();
 // The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
 let registry = defaultRegistry;
+let theme: Theme = defaultTheme;
 
 const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   // An <img> can only decode an SVG that declares its namespace and an intrinsic size.
@@ -125,11 +129,12 @@ const paintScene = (): void => {
   canvas.height = Math.round(cssHeight * dpr);
   canvas.style.width = `${cssWidth}px`;
   canvas.style.height = `${cssHeight}px`;
+  canvas.style.backgroundColor = theme.background;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
-  paint(ctx, toDisplayList(shown), iconImages);
+  paint(ctx, toDisplayList(shown), iconImages, theme);
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 2;
   for (const node of shown.nodes) {
@@ -385,6 +390,13 @@ relaxBtn.addEventListener("click", () => {
 regenBtn.addEventListener("click", () => {
   overrides = new Map();
   void renderFromText(srcEl.value);
+});
+
+// Theme toggle: switch the palette and repaint (no re-layout — only colours change).
+themeBtn.addEventListener("click", () => {
+  theme = theme === defaultTheme ? darkTheme : defaultTheme;
+  themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
+  paintScene();
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the

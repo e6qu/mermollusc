@@ -94,6 +94,7 @@ describe("paint", () => {
 
   it("uses the supplied theme's font and text colour", () => {
     const theme: Theme = {
+      background: "#000000",
       nodeFill: "#000001",
       stroke: "#000002",
       text: "#000003",

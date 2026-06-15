@@ -28,8 +28,10 @@ export type IconImages = ReadonlyMap<string, CanvasImageSource>;
 
 const iconKey = (pack: string, name: string): string => `${pack}/${name}`;
 
-// The renderer's colour/font palette. Callers may supply their own; `defaultTheme` is the light one.
+// The renderer's colour/font palette. `paint` uses node/stroke/text/font; `background` is the
+// surface colour the host fills behind the canvas. Callers may supply their own theme.
 export interface Theme {
+  readonly background: string;
   readonly nodeFill: string;
   readonly stroke: string;
   readonly text: string;
@@ -37,9 +39,18 @@ export interface Theme {
 }
 
 export const defaultTheme: Theme = {
+  background: "#ffffff",
   nodeFill: "#eef2ff",
   stroke: "#334155",
   text: "#0f172a",
+  font: "14px sans-serif",
+};
+
+export const darkTheme: Theme = {
+  background: "#0f172a",
+  nodeFill: "#1e293b",
+  stroke: "#94a3b8",
+  text: "#e2e8f0",
   font: "14px sans-serif",
 };
 

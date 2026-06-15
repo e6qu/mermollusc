@@ -15,3 +15,4 @@
   skipping the glyph if no image was supplied. +2 tests (display-list icon cmd, paint drawImage).
 - Added a `Theme` parameter (`defaultTheme`) — node fill / stroke / text colours + font, replacing
   the hardcoded palette; `drawArrowHead` takes the stroke colour. +1 test.
+- Added a `background` field + a `darkTheme` palette (the app fills the canvas surface with it).
