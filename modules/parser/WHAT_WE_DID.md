@@ -28,3 +28,5 @@
 - Added `parseNetwork` / `parseNetworkWithSource`: a fifth (single-mode) Chevrotain lexer/grammar
   for the `network` subset — kind-typed nodes (kinds are keyword tokens) and undirected `--` links,
   with inner-label spans (`NetworkSource`); `parseDiagram` routes `network*` headers. +3 tests.
+- Added a property-based round-trip (fast-check): generate flowchart ASTs (safe labels, parser-
+  reproducible shapes, `n*`/`e*` ids) and assert `parse(print(ast)) === ast`. +1 test.

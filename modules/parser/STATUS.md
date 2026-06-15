@@ -24,5 +24,6 @@
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 28 passing (printer; flowchart parse/round-trip/spans; sequence parse + spans; C4 parse
-  with nesting + label spans; block parse + label/edge spans; network parse + label spans; routing).
+- tests: 29 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
+  + label spans; block parse + label/edge spans; network parse + label spans; routing; plus a
+  **property-based** `parse(print(ast)) === ast` round-trip over generated flowchart ASTs).

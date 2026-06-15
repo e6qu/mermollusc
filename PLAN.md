@@ -70,7 +70,7 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
-| `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing | 28 |
+| `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing · property round-trip | 29 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 19 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, themeable palette) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
@@ -91,9 +91,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 3. **Renderer polish**: HTML-in-Canvas backend behind feature detection; dark-theme toggle in the
    app. *(Themeable palette + device-pixel-ratio done.)*
 4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-5. **Cross-cutting**: regenerate unpinned-only; extend property tests to parser round-trips and the
-   ELK path; raise coverage ratchets as coverage climbs. *(Property-based tests + `make cov`
-   per-module coverage thresholds are now wired.)*
+5. **Cross-cutting**: regenerate unpinned-only; extend property tests to the ELK flowchart path;
+   raise coverage ratchets as coverage climbs. *(Property-based tests (incl. the parser
+   print→parse round-trip) + `make cov` per-module coverage thresholds are wired.)*
 
 ## How to resume (fresh session / after compaction)
 
