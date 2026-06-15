@@ -19,3 +19,6 @@
   ≥24h old, probed every icon path for HTTP 200, then fetched 19 cloud-native/devops marks →
   `vendor/simpleicons.json` (+ `vendor/README.md` provenance/trademark note). Bundled via
   `src/core/vendored.ts` into `defaultRegistry`. +1 test. (AWS/Azure marks aren't in simple-icons.)
+- Vendored **devicon** (MIT) the same way (license + ≥24h pin + path probes via authed `gh api`):
+  32 colored brand/tool logos including the **AWS/Azure/GCP/Oracle** marks → `vendor/devicon.json`,
+  bundled as `deviconPack`. +1 test.

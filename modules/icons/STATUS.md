@@ -13,12 +13,13 @@
   payload (`{ meta, icons }`) into an `IconPack`; `registerPack(registry, pack)` (pure) merges it.
   This is the compliant path for vendor cloud packs (AWS/Azure/GCP) — loaded at runtime, never
   bundled.
-- **Bundled OSS pack**: `simpleIconsPack` — 19 cloud-native/devops brand marks (kubernetes, docker,
-  googlecloud, postgresql, kafka, cloudflare, …) vendored from simple-icons **CC0-1.0** at a pinned
-  commit by `tools/source-icons.mjs` (`vendor/simpleicons.json` + provenance). It's in `defaultRegistry`
-  so `findIcon(registry, "simpleicons", <slug>)` resolves. (AWS/Azure marks aren't in simple-icons.)
-- tests: 8 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
-  vendored-pack provenance + resolution).
+- **Bundled OSS packs** (vendored with pinned provenance by `tools/source-icons.mjs`, in `defaultRegistry`):
+  - `simpleIconsPack` — 19 cloud-native/devops marks from simple-icons **CC0-1.0**.
+  - `deviconPack` — 32 colored brand/tool logos from devicon **MIT**, including the **AWS / Azure /
+    Google Cloud / Oracle** brand marks (the official *architecture* icon sets stay non-redistributable).
+  - resolve via `findIcon(registry, "simpleicons"|"devicon", <name>)`.
+- tests: 9 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
+  simple-icons + devicon vendored-pack provenance + resolution).
 - The **cloud** family renders these marks (kind→slug map); the **network** family accepts a
   per-node `icon "<pack>/<name>"` override that resolves against any registered pack.
 - Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); the per-node override on

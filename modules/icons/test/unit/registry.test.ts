@@ -6,6 +6,7 @@ import {
   defaultRegistry,
   findIcon,
   packNames,
+  deviconPack,
   registerPack,
   simpleIconsPack,
 } from "../../src/core/index.js";
@@ -39,6 +40,16 @@ describe("icons registry", () => {
     expect(isOk(r)).toBe(true);
     if (isOk(r)) expect(r.value).toContain("<svg");
     expect(packNames(simpleIconsPack)).toContain("docker");
+  });
+
+  it("bundles the vendored devicon pack (MIT) with the AWS/Azure/GCP brand marks", () => {
+    expect(deviconPack.meta.license).toBe("MIT");
+    expect(deviconPack.meta.version).toMatch(/^[0-9a-f]{40}$/);
+    for (const name of ["aws", "azure", "googlecloud", "oracle"]) {
+      const r = findIcon(defaultRegistry, "devicon", name);
+      expect(isOk(r)).toBe(true);
+      if (isOk(r)) expect(r.value).toContain("<svg");
+    }
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {

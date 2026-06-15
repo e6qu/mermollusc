@@ -48,6 +48,48 @@ const PACKS = {
       githubactions: "icons/githubactions.svg",
     },
   },
+  // devicon: MIT. Colored brand/tool logos — includes the AWS/Azure/GCP/Oracle marks (the official
+  // *architecture* icon sets remain non-redistributable; these are the brand logos). Trademarks
+  // remain the owners'. Names are friendly aliases; paths are the verified devicon files.
+  devicon: {
+    repo: "devicons/devicon",
+    ref: "7330accdbc47e2dc0c19789a48533c4a3c50fe58",
+    license: "MIT",
+    icons: {
+      aws: "icons/amazonwebservices/amazonwebservices-original-wordmark.svg",
+      azure: "icons/azure/azure-original.svg",
+      googlecloud: "icons/googlecloud/googlecloud-original.svg",
+      oracle: "icons/oracle/oracle-original.svg",
+      kubernetes: "icons/kubernetes/kubernetes-original.svg",
+      docker: "icons/docker/docker-original.svg",
+      podman: "icons/podman/podman-original.svg",
+      terraform: "icons/terraform/terraform-original.svg",
+      ansible: "icons/ansible/ansible-original.svg",
+      vagrant: "icons/vagrant/vagrant-original.svg",
+      nginx: "icons/nginx/nginx-original.svg",
+      cloudflare: "icons/cloudflare/cloudflare-original.svg",
+      digitalocean: "icons/digitalocean/digitalocean-original.svg",
+      heroku: "icons/heroku/heroku-original.svg",
+      redis: "icons/redis/redis-original.svg",
+      postgresql: "icons/postgresql/postgresql-original.svg",
+      mongodb: "icons/mongodb/mongodb-original.svg",
+      mysql: "icons/mysql/mysql-original.svg",
+      sqlite: "icons/sqlite/sqlite-original.svg",
+      elasticsearch: "icons/elasticsearch/elasticsearch-original.svg",
+      kibana: "icons/kibana/kibana-original.svg",
+      apachekafka: "icons/apachekafka/apachekafka-original.svg",
+      rabbitmq: "icons/rabbitmq/rabbitmq-original.svg",
+      grafana: "icons/grafana/grafana-original.svg",
+      prometheus: "icons/prometheus/prometheus-original.svg",
+      helm: "icons/helm/helm-original.svg",
+      rancher: "icons/rancher/rancher-original.svg",
+      consul: "icons/consul/consul-original.svg",
+      vault: "icons/vault/vault-original.svg",
+      jenkins: "icons/jenkins/jenkins-original.svg",
+      gitlab: "icons/gitlab/gitlab-original.svg",
+      github: "icons/github/github-original.svg",
+    },
+  },
 };
 
 const SHA = /^[0-9a-f]{40}$/;
