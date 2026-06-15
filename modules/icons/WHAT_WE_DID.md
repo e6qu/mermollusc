@@ -9,3 +9,9 @@
   network node kind 1:1.
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
+- Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`
+  into an `IconPack`) + pure `registerPack`. Lets vendor cloud packs (AWS/Azure/GCP) load at runtime
+  without redistribution. +4 tests.
+- Added `tools/source-icons.mjs`: a provenance-pinned fetcher that writes a bundleable OSS pack to
+  `modules/icons/vendor/<id>.json`. Fail-loud — rejects missing specs and non-SHA refs; needs
+  network + verified pins to run (not yet executed). Verified its offline guards.

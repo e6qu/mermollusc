@@ -36,3 +36,10 @@ export const findIcon = (
 };
 
 export const packNames = (pack: IconPack): readonly string[] => [...pack.icons.keys()];
+
+// Pure registry merge: returns a new registry with `pack` added (or replacing one of the same id).
+export const registerPack = (registry: IconRegistry, pack: IconPack): IconRegistry => {
+  const packs = new Map(registry.packs);
+  packs.set(pack.meta.id, pack);
+  return { packs };
+};

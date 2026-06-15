@@ -1,1 +1,1 @@
-export {};
+export { decodePack } from "./load.js";
