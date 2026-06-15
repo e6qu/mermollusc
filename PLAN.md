@@ -68,12 +68,12 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 
 | module | state | tests |
 |--------|-------|-------|
-| `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
+| `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws) | 14 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network (all +spans) · ✅ `parseDiagram` routing | 28 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 17 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ block/network grid (+icon refs) · ✅ routing | 19 |
 | `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines, in-node icon glyphs) | 6 |
-| `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete | 20 |
+| `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 9-glyph built-in pack · ✅ in-node rendering (network kinds) · ⬜ OSS packs | 3 |
 | `@m/app` | ✅ renders + two-way edits all five families; in-node icons; flowchart drag/relax/regen/add/connect/delete | 1 node + 17 Playwright |
 
@@ -88,7 +88,8 @@ tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 2. **More families**: cloud.
 3. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
 4. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-5. **Cross-cutting**: per-layer coverage thresholds; property-based tests; regenerate unpinned-only.
+5. **Cross-cutting**: per-layer coverage thresholds; regenerate unpinned-only. *(Property-based
+   tests started in std/builder/layout cores; extend to parser round-trips and the ELK path.)*
 
 ## How to resume (fresh session / after compaction)
 

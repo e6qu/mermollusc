@@ -12,3 +12,6 @@
   reparse-verified). 3 tests.
 - core: `deleteNode` (line-based, bracket-aware — strips labels before matching the id so a label
   mention can't false-match; removes the decl + referencing edge lines). 2 tests.
+- Added property-based tests (fast-check): `patchSpan` splices exactly the span and round-trips,
+  `moveNode`+`applyOverrides` repositions exactly one node, `addNode`/`deleteNode` text invariants.
+  +5 tests.

@@ -19,3 +19,5 @@
   centre-to-centre edges); `layoutDiagram` routes block. +3 tests.
 - Added `layoutNetwork` (pure squarish-grid layout; undirected arrowless centre-to-centre links);
   `layoutDiagram` routes network. +2 tests.
+- Added property-based tests (fast-check): block/network layouts preserve node identity and fit
+  every box inside the reported extent. +2 tests.
