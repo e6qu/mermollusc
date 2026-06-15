@@ -13,4 +13,5 @@
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 9 passing (printer; parse + round-trip + fail-loud; source spans; sequence parse).
+- tests: 13 passing (printer; parse + round-trip + fail-loud; flowchart + sequence source spans;
+  sequence parse; diagram routing).

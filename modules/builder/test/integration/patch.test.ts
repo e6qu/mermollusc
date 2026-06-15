@@ -1,7 +1,7 @@
 import { brand, isOk } from "@m/std";
 import { parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
-import { relabelNode } from "../../src/core/patch.js";
+import { patchSpan, relabelNode } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 
@@ -36,5 +36,9 @@ describe("relabelNode", () => {
   it("fails loudly for an unknown node", () => {
     const text = "flowchart TD\n  A --> B\n";
     expect(relabelNode(text, sourceOf(text), nid("Z"), "x").ok).toBe(false);
+  });
+
+  it("patchSpan replaces exactly the given range", () => {
+    expect(patchSpan("hello world", { start: 6, end: 11 }, "there")).toBe("hello there");
   });
 });
