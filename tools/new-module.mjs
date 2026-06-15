@@ -61,7 +61,7 @@ const files = {
 `,
   "tsconfig.json": `{
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "include": ["src", "test"]
 }
 `,
   "src/index.ts": "export {};\n",

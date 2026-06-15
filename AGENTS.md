@@ -128,6 +128,10 @@ just that module. `run`/`stop` use the module's `RUN_CMD`/`STOP_CMD` (libs defau
 - **E2E / golden** (fewest, in `app`): text → pixels and text → edit → text snapshots.
 - `make cov` reports coverage. Per-layer thresholds are configured in each module's vitest
   config as real tests land (not yet wired — see each module's `DO_NEXT.md`).
+- **Tests are typechecked.** Each module's `tsconfig.json` includes `test/` (the app also `e2e/`),
+  so `make typecheck` catches fixture/mock drift under the same strict config as `src` — not just
+  the editor. Note: Biome lint and the type-guard still scope to `src/` (the core rules are a
+  source-code contract); the strict compiler is what guards the tests.
 
 ## 8. Logging
 
