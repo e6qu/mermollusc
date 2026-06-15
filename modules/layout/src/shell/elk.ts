@@ -2,7 +2,7 @@ import { decode, err, ok, type Point, type Result } from "@m/std";
 import type { DiagramAst, FlowchartAst, NodeId, Scene } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
-import { layoutSequence, toElkGraph, toScene } from "../core/index.js";
+import { layoutC4, layoutSequence, toElkGraph, toScene } from "../core/index.js";
 import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "../core/index.js";
 
 const elk = new ELK();
@@ -104,6 +104,6 @@ export const layoutDiagram = async (ast: DiagramAst): Promise<Result<Scene, Layo
     case "sequence":
       return ok(layoutSequence(ast));
     case "c4":
-      return err({ kind: "layout", message: "c4 layout not implemented yet" });
+      return ok(layoutC4(ast));
   }
 };

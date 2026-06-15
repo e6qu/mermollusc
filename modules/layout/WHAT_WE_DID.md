@@ -13,3 +13,5 @@
 - Added `layoutSequence` (pure, no ELK): lane layout — actors row, vertical dashed lifelines
   (reusing SceneEdge self-edges), messages as horizontal arrows styled by `MessageKind`. +3 tests.
 - Added `layoutDiagram(ast)` routing by `ast.kind` (flowchart → ELK, sequence → lane). +1 test.
+- Added `layoutC4` (pure recursive nested-box layout: boundaries sized to wrap children,
+  straight centre-to-centre relation edges); `layoutDiagram` routes C4. +3 tests.
