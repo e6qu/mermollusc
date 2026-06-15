@@ -1,6 +1,7 @@
 # @m/icons — do next
 
-- Study the hand-drawn/xkcd style (sketchy render mode vs. authored stick-glyph pack).
+- Author an original AGPL `sketch` glyph pack (stickman/wobbly shapes) to pair with the renderer's
+  planned hand-drawn "Sketch" mode (see `@m/renderer` DO_NEXT — rough.js + Patrick Hand, studied).
   (BPMN glyphs authored; simple-icons/devicon/gilbarbara/k8s bundled; CNCF archived via git-LFS.)
 - Extend the curated simple-icons / gilbarbara slug lists as needed.
 - BPMN: author original AGPL glyphs (bpmn-io/bpmn-font has no license — can't vendor). AliCloud and
