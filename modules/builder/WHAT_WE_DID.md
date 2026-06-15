@@ -6,3 +6,5 @@
 - core: pure selection model — `Selection`, `selectOnly`, `toggle`, `isSelected`. 4 unit tests.
 - core: sidecar overrides — `moveNode`/`clearOverride`/`applyOverrides` over the `LayoutOverrides`
   contract; `applyOverrides` repositions boxes immediately, edges re-route on relayout. 4 tests.
+- core: `relabelNode` (two-way) — rewrites only a node's label span via the parser `SourceMap`
+  (bracketed splice / bare wrap), preserving the rest of the file. 3 tests (round-trip via reparse).
