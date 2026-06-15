@@ -9,3 +9,5 @@
   drag-to-move (sidecar override). 3 Playwright flows.
 - Double-click relabel: canvas edit → `relabelNode` → textarea text patched → re-render
   (canvas → text two-way). +1 Playwright flow (dialog-driven).
+- Relax / Regenerate buttons: Relax re-runs `layout(ast, seed)` from current positions;
+  Regenerate clears overrides and lays out cleanly. +1 Playwright flow (drag→relax→regenerate).

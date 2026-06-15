@@ -7,13 +7,22 @@
     <style>
       body { margin: 0; font-family: sans-serif; }
       main { display: flex; gap: 12px; align-items: flex-start; padding: 12px; }
+      .panel { display: flex; flex-direction: column; gap: 8px; }
       #src { width: 360px; height: 420px; font: 13px monospace; padding: 8px; }
+      .toolbar { display: flex; gap: 8px; }
+      button { padding: 6px 12px; }
       #stage { border: 1px solid #cbd5e1; }
     </style>
   </head>
   <body>
     <main>
-      <textarea id="src" spellcheck="false"></textarea>
+      <div class="panel">
+        <textarea id="src" spellcheck="false"></textarea>
+        <div class="toolbar">
+          <button id="relax" type="button">Relax</button>
+          <button id="regenerate" type="button">Regenerate</button>
+        </div>
+      </div>
       <canvas id="stage" width="400" height="300"></canvas>
     </main>
     <script type="module" src="/src/main.ts"></script>

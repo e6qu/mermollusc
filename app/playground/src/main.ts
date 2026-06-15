@@ -7,11 +7,18 @@ import {
   selectOnly,
 } from "@m/builder";
 import type { Selection } from "@m/builder";
-import type { LayoutOverrides, NodeId, Scene, SceneNodeId, SourceMap } from "@m/contracts";
+import type {
+  FlowchartAst,
+  LayoutOverrides,
+  NodeId,
+  Scene,
+  SceneNodeId,
+  SourceMap,
+} from "@m/contracts";
 import { layout } from "@m/layout";
 import { parseWithSource } from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
-import { brand, isOk, point } from "@m/std";
+import { brand, isOk, point, type Point } from "@m/std";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -27,7 +34,11 @@ const canvas = document.querySelector<HTMLCanvasElement>("#stage");
 if (srcEl === null || canvas === null) throw new Error("playground: missing #src or #stage");
 const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
+const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
+const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
+if (relaxBtn === null || regenBtn === null) throw new Error("playground: missing toolbar buttons");
 
+let ast: FlowchartAst | null = null;
 let scene: Scene | null = null;
 let source: SourceMap | null = null;
 let overrides: LayoutOverrides = new Map();
@@ -66,8 +77,26 @@ const renderFromText = async (text: string): Promise<void> => {
     console.error("layout failed:", laid.error.message);
     return;
   }
+  ast = parsed.value.ast;
   scene = laid.value;
   source = parsed.value.source;
+  paintScene();
+};
+
+// Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
+const relax = async (): Promise<void> => {
+  if (ast === null || scene === null) return;
+  const shown = applyOverrides(scene, overrides);
+  const seed = new Map<NodeId, Point>(
+    shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
+  );
+  const laid = await layout(ast, seed);
+  if (!isOk(laid)) {
+    console.error("relax failed:", laid.error.message);
+    return;
+  }
+  scene = laid.value;
+  overrides = new Map();
   paintScene();
 };
 
@@ -127,6 +156,15 @@ canvas.addEventListener("dblclick", (ev) => {
   }
   srcEl.value = patched.value;
   void renderFromText(patched.value);
+});
+
+relaxBtn.addEventListener("click", () => {
+  void relax();
+});
+// Regenerate: drop manual positions and lay out cleanly from the text.
+regenBtn.addEventListener("click", () => {
+  overrides = new Map();
+  void renderFromText(srcEl.value);
 });
 
 srcEl.value = SAMPLE;
