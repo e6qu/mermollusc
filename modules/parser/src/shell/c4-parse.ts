@@ -1,9 +1,23 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, ok, type Result } from "@m/std";
-import type { C4Ast, C4Element, C4ElementId, C4ElementKind, C4Rel } from "@m/contracts";
+import { brand, err, map, ok, type Result } from "@m/std";
+import type {
+  C4Ast,
+  C4Element,
+  C4ElementId,
+  C4ElementKind,
+  C4Rel,
+  C4RelId,
+  C4Source,
+  TextSpan,
+} from "@m/contracts";
 import type { ParseError } from "./parse.js";
 import { c4Parser } from "./c4-grammar.js";
 import { c4Lexer } from "./c4-tokens.js";
+
+export interface ParsedC4 {
+  readonly ast: C4Ast;
+  readonly source: C4Source;
+}
 
 type Children = Record<string, CstElement[] | undefined>;
 
@@ -13,23 +27,41 @@ const imageOf = (c: Children, name: string): string | null =>
   childTokens(c, name)[0]?.image ?? null;
 const unquote = (s: string): string => s.slice(1, -1);
 
+// Inner span of a `"…"` token (offsets of the text between the quotes), so a relabel patch
+// replaces only the label and leaves the quotes in place. Derived from the image length because
+// Chevrotain's `endOffset` is optional.
+const innerSpan = (t: IToken): TextSpan => ({
+  start: t.startOffset + 1,
+  end: t.startOffset + t.image.length - 1,
+});
+
 const elementKind = (c: Children): C4ElementKind => {
   if (childTokens(c, "Person").length > 0) return "person";
   if (childTokens(c, "System").length > 0) return "system";
   return "container";
 };
 
-const walkItems = (
-  items: readonly CstNode[],
-  parent: C4ElementId | null,
-  elements: C4Element[],
-  rels: C4Rel[],
-): void => {
+interface C4Acc {
+  readonly elements: C4Element[];
+  readonly rels: C4Rel[];
+  readonly elementSpans: Map<C4ElementId, TextSpan>;
+  readonly relSpans: Map<C4RelId, TextSpan>;
+}
+
+const quotedSpan = (c: Children): TextSpan | null => {
+  const tok = childTokens(c, "QuotedString")[0];
+  return tok === undefined ? null : innerSpan(tok);
+};
+
+const walkItems = (items: readonly CstNode[], parent: C4ElementId | null, acc: C4Acc): void => {
   for (const item of items) {
     const el = childNodes(item.children, "element")[0];
     if (el !== undefined) {
-      elements.push({
-        id: brand<string, "C4ElementId">(imageOf(el.children, "C4Identifier") ?? ""),
+      const id = brand<string, "C4ElementId">(imageOf(el.children, "C4Identifier") ?? "");
+      const span = quotedSpan(el.children);
+      if (span !== null) acc.elementSpans.set(id, span);
+      acc.elements.push({
+        id,
         label: unquote(imageOf(el.children, "QuotedString") ?? '""'),
         kind: elementKind(el.children),
         parent,
@@ -39,20 +71,25 @@ const walkItems = (
     const boundary = childNodes(item.children, "boundary")[0];
     if (boundary !== undefined) {
       const id = brand<string, "C4ElementId">(imageOf(boundary.children, "C4Identifier") ?? "");
-      elements.push({
+      const span = quotedSpan(boundary.children);
+      if (span !== null) acc.elementSpans.set(id, span);
+      acc.elements.push({
         id,
         label: unquote(imageOf(boundary.children, "QuotedString") ?? '""'),
         kind: "boundary",
         parent,
       });
-      walkItems(childNodes(boundary.children, "item"), id, elements, rels);
+      walkItems(childNodes(boundary.children, "item"), id, acc);
       continue;
     }
     const rel = childNodes(item.children, "rel")[0];
     if (rel === undefined) continue;
     const ids = childTokens(rel.children, "C4Identifier");
-    rels.push({
-      id: brand<string, "C4RelId">(`r${rels.length}`),
+    const relId = brand<string, "C4RelId">(`r${acc.rels.length}`);
+    const span = quotedSpan(rel.children);
+    if (span !== null) acc.relSpans.set(relId, span);
+    acc.rels.push({
+      id: relId,
       from: brand<string, "C4ElementId">(ids[0]?.image ?? ""),
       to: brand<string, "C4ElementId">(ids[1]?.image ?? ""),
       label: unquote(imageOf(rel.children, "QuotedString") ?? '""'),
@@ -60,14 +97,21 @@ const walkItems = (
   }
 };
 
-const buildAst = (cst: CstNode): Result<C4Ast, ParseError> => {
-  const elements: C4Element[] = [];
-  const rels: C4Rel[] = [];
-  walkItems(childNodes(cst.children, "item"), null, elements, rels);
-  return ok({ kind: "c4", elements, rels });
+const buildResult = (cst: CstNode): Result<ParsedC4, ParseError> => {
+  const acc: C4Acc = {
+    elements: [],
+    rels: [],
+    elementSpans: new Map(),
+    relSpans: new Map(),
+  };
+  walkItems(childNodes(cst.children, "item"), null, acc);
+  return ok({
+    ast: { kind: "c4", elements: acc.elements, rels: acc.rels },
+    source: { elements: acc.elementSpans, rels: acc.relSpans },
+  });
 };
 
-export const parseC4 = (text: string): Result<C4Ast, ParseError> => {
+export const parseC4WithSource = (text: string): Result<ParsedC4, ParseError> => {
   const lexed = c4Lexer.tokenize(text);
   if (lexed.errors.length > 0) {
     return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
@@ -77,5 +121,8 @@ export const parseC4 = (text: string): Result<C4Ast, ParseError> => {
   if (c4Parser.errors.length > 0) {
     return err({ kind: "parse", errors: c4Parser.errors.map((e) => e.message) });
   }
-  return buildAst(cst);
+  return buildResult(cst);
 };
+
+export const parseC4 = (text: string): Result<C4Ast, ParseError> =>
+  map(parseC4WithSource(text), (parsed) => parsed.ast);

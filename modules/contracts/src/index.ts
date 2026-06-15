@@ -33,4 +33,5 @@ export type {
   NodeSpans,
   SourceMap,
   SequenceSource,
+  C4Source,
 } from "./core/index.js";

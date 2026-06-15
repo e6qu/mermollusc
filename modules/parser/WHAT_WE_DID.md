@@ -16,3 +16,6 @@
   for sequence two-way editing; `parseSequence` is now the ast-only wrapper. +1 test.
 - Added `parseC4`: a third Chevrotain lexer/grammar for the C4 subset with recursive `Boundary`
   nesting (CST→`C4Ast` sets each element's `parent`); `parseDiagram` routes `C4*` headers. +3 tests.
+- Added `parseC4WithSource`: captures inner-label `TextSpan`s for every element (incl. nested
+  boundary children) and relation (`C4Source`), for C4 two-way editing; `parseC4` is now the
+  ast-only wrapper. +3 tests.

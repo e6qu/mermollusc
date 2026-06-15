@@ -1,7 +1,7 @@
 // Maps AST identities back to byte ranges in the source text, so the builder can patch the
 // exact span a node/edge came from (two-way sync) without reformatting the rest of the file.
 
-import type { ActorId, MessageId, NodeId } from "./ast.js";
+import type { ActorId, C4ElementId, C4RelId, MessageId, NodeId } from "./ast.js";
 
 export interface TextSpan {
   readonly start: number;
@@ -22,4 +22,10 @@ export interface SourceMap {
 export interface SequenceSource {
   readonly actors: ReadonlyMap<ActorId, TextSpan>;
   readonly messages: ReadonlyMap<MessageId, TextSpan>;
+}
+
+// Editable text spans for a C4 diagram: the inner (unquoted) label of each element and relation.
+export interface C4Source {
+  readonly elements: ReadonlyMap<C4ElementId, TextSpan>;
+  readonly rels: ReadonlyMap<C4RelId, TextSpan>;
 }

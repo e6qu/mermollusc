@@ -18,3 +18,6 @@
 - **Add node** button: appends a fresh rect node to the flowchart text via `addNode`. +1 flow.
 - C4 renders via the existing `parseDiagram`/`layoutDiagram` routing (explicit per-family
   source-capture switch); nested boundaries draw as container outlines. +1 Playwright flow.
+- C4 two-way: the source-capture switch now keeps a `C4Source` (via `parseC4WithSource`); double-
+  click an element or relation → `patchSpan` rewrites its inner-label span in the text → re-render.
+  +1 Playwright flow.

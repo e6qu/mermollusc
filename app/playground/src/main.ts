@@ -10,6 +10,7 @@ import {
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
+  C4Source,
   DiagramAst,
   LayoutOverrides,
   NodeId,
@@ -19,7 +20,12 @@ import type {
   SourceMap,
 } from "@m/contracts";
 import { layout, layoutDiagram } from "@m/layout";
-import { parseDiagram, parseSequenceWithSource, parseWithSource } from "@m/parser";
+import {
+  parseC4WithSource,
+  parseDiagram,
+  parseSequenceWithSource,
+  parseWithSource,
+} from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
@@ -48,6 +54,7 @@ let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
 let source: SourceMap | null = null;
 let seqSource: SequenceSource | null = null;
+let c4Source: C4Source | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
@@ -87,23 +94,27 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   ast = diagram;
   scene = laid.value;
-  // Capture source spans for canvas→text edits (per family; C4 has none yet).
+  // Capture source spans for canvas→text edits (one per family).
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
       source = isOk(withSource) ? withSource.value.source : null;
       seqSource = null;
+      c4Source = null;
       break;
     }
     case "sequence": {
       const withSource = parseSequenceWithSource(text);
       source = null;
       seqSource = isOk(withSource) ? withSource.value.source : null;
+      c4Source = null;
       break;
     }
     case "c4": {
+      const withSource = parseC4WithSource(text);
       source = null;
       seqSource = null;
+      c4Source = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -185,6 +196,20 @@ canvas.addEventListener("dblclick", (ev) => {
     }
     srcEl.value = patched.value;
     void renderFromText(patched.value);
+    return;
+  }
+
+  if (ast.kind === "c4") {
+    if (c4Source === null) return;
+    const span =
+      hit.kind === "node"
+        ? c4Source.elements.get(brand<string, "C4ElementId">(hit.id))
+        : c4Source.rels.get(brand<string, "C4RelId">(hit.id));
+    if (span === undefined) return;
+    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
+    if (next === null) return;
+    srcEl.value = patchSpan(srcEl.value, span, next);
+    void renderFromText(srcEl.value);
     return;
   }
 
