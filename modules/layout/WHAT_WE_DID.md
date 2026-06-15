@@ -10,3 +10,5 @@
   layout (verified empirically — a flipped seed flips the result). Replaced the string-keyed ELK
   option dict in core with a typed `LayoutConfig`; the option bag is assembled in the shell.
 - tests: unit (toElkGraph/toScene) + integration (clean layout, relax) — 5 passing.
+- Added `layoutSequence` (pure, no ELK): lane layout — actors row, vertical dashed lifelines
+  (reusing SceneEdge self-edges), messages as horizontal arrows styled by `MessageKind`. +3 tests.

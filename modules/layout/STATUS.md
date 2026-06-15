@@ -7,4 +7,6 @@
   manual positions; an empty seed (the default) is a clean layout (regenerate).
 - core uses a typed `LayoutConfig`; the string-keyed ELK option bag is built only in the shell.
 - core (pure): `toElkGraph(ast, seed)` and `toScene(positioned, ast)`.
-- tests: 5 passing (toElkGraph/toScene; clean layout; relax flips order when seeded).
+- `layoutSequence(ast)` (pure, no ELK): actors in a row, vertical dashed lifelines, messages as
+  horizontal arrows stacked in order → `Scene`.
+- tests: 8 passing (toElkGraph/toScene; clean layout; relax; sequence lane layout).

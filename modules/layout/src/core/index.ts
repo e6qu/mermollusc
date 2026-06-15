@@ -1,4 +1,5 @@
 export { toElkGraph, toScene } from "./transform.js";
+export { layoutSequence } from "./sequence.js";
 export type {
   LayoutConfig,
   LayoutGraph,
