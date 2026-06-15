@@ -35,3 +35,5 @@
   `parseDiagram` routes `cloud*` headers. +3 tests.
 - Added `parseCloudWithSource`: inner-label `TextSpan`s for groups, leaves, and links (`CloudSource`)
   for cloud two-way editing; `parseCloud` is now the ast-only wrapper. +1 test.
+- Network: added an optional per-node `icon "<pack>/<name>"` override (an `Icon` keyword + a second
+  quoted string) → `NetworkNode.icon: IconRef | null`; malformed refs parse to null. +2 tests.

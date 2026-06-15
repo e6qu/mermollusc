@@ -27,3 +27,4 @@
   out with all node ids preserved and every box inside the reported extent. +1 test.
 - Mapped cloud service kinds to representative vendored simple-icons glyphs (compute→docker,
   storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
+- `layoutNetwork` now honours a `NetworkNode.icon` override (falls back to the kind's arch glyph).

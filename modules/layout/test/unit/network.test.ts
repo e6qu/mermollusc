@@ -9,9 +9,9 @@ const eid = (s: string) => brand<string, "EdgeId">(s);
 const ast: NetworkAst = {
   kind: "network",
   nodes: [
-    { id: nid("a"), label: "A", kind: "server" },
-    { id: nid("b"), label: "B", kind: "database" },
-    { id: nid("c"), label: "C", kind: "cloud" },
+    { id: nid("a"), label: "A", kind: "server", icon: null },
+    { id: nid("b"), label: "B", kind: "database", icon: null },
+    { id: nid("c"), label: "C", kind: "cloud", icon: null },
   ],
   links: [{ id: eid("l0"), from: nid("a"), to: nid("b"), label: null }],
 };

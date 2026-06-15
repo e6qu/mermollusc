@@ -35,6 +35,10 @@ class NetworkParser extends CstParser {
     this.SUBRULE(this.kind);
     this.CONSUME(NetTok.Identifier);
     this.OPTION(() => this.CONSUME(NetTok.QuotedString));
+    this.OPTION2(() => {
+      this.CONSUME(NetTok.Icon);
+      this.CONSUME2(NetTok.QuotedString);
+    });
   });
 
   private readonly kind = this.RULE("kind", () =>

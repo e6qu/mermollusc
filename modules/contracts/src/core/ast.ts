@@ -1,6 +1,7 @@
 // AST contract: the parser's output and the layout's input.
 
 import type { Brand } from "@m/std";
+import type { IconRef } from "./scene.js";
 
 export type NodeId = Brand<string, "NodeId">;
 export type EdgeId = Brand<string, "EdgeId">;
@@ -114,6 +115,8 @@ export interface NetworkNode {
   readonly id: NodeId;
   readonly label: string;
   readonly kind: NetworkNodeKind;
+  // An explicit `icon "<pack>/<name>"` override; null means use the kind's default glyph.
+  readonly icon: IconRef | null;
 }
 
 export interface NetworkLink {

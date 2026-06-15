@@ -62,7 +62,7 @@ describe("layoutNetwork — grid invariants (property-based)", () => {
         (ids, kinds) => {
           const ast: NetworkAst = {
             kind: "network",
-            nodes: ids.map((id, i) => ({ id: nid(id), label: id, kind: kinds[i] ?? "host" })),
+            nodes: ids.map((id, i) => ({ id: nid(id), label: id, kind: kinds[i] ?? "host", icon: null })),
             links: [],
           };
           const scene = layoutNetwork(ast);

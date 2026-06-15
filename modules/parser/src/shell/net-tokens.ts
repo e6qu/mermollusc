@@ -15,6 +15,7 @@ const Router = createToken({ name: "Router", pattern: /router/, longer_alt: Iden
 const Switch = createToken({ name: "Switch", pattern: /switch/, longer_alt: Identifier });
 const Firewall = createToken({ name: "Firewall", pattern: /firewall/, longer_alt: Identifier });
 const Host = createToken({ name: "Host", pattern: /host/, longer_alt: Identifier });
+const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier });
 
 const Dash = createToken({ name: "Dash", pattern: /--/ });
 const Colon = createToken({ name: "Colon", pattern: /:/ });
@@ -37,6 +38,7 @@ const order: TokenType[] = [
   Switch,
   Firewall,
   Host,
+  Icon,
   Dash,
   Colon,
   QuotedString,
@@ -55,6 +57,7 @@ export const NetTok = {
   Switch,
   Firewall,
   Host,
+  Icon,
   Dash,
   Colon,
   QuotedString,

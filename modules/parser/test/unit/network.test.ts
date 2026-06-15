@@ -45,3 +45,28 @@ describe("parseNetworkWithSource", () => {
     expect(r.value.source.nodes.get(nid("r1"))).toBeUndefined();
   });
 });
+
+describe("parseNetwork — per-node icon override", () => {
+  it("parses `icon \"<pack>/<name>\"` with and without a label", () => {
+    const r = parseNetwork(
+      'network\n  server web "Web" icon "simpleicons/nginx"\n  host bare icon "simpleicons/docker"\n  router plain\n',
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const byId = new Map(r.value.nodes.map((n) => [n.id, n]));
+    expect(byId.get(nid("web"))?.label).toBe("Web");
+    expect(byId.get(nid("web"))?.icon).toEqual({ pack: "simpleicons", name: "nginx" });
+    // No label, icon present → label falls back to the id.
+    expect(byId.get(nid("bare"))?.label).toBe("bare");
+    expect(byId.get(nid("bare"))?.icon).toEqual({ pack: "simpleicons", name: "docker" });
+    // No override → null (layout uses the kind default).
+    expect(byId.get(nid("plain"))?.icon).toBeNull();
+  });
+
+  it("ignores a malformed icon reference (no pack/name split)", () => {
+    const r = parseNetwork('network\n  server x "Y" icon "bogus"\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.nodes[0]?.icon).toBeNull();
+  });
+});

@@ -2,6 +2,7 @@ import type { CstElement, CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   EdgeId,
+  IconRef,
   NetworkAst,
   NetworkLink,
   NetworkNode,
@@ -50,6 +51,13 @@ const innerSpan = (t: IToken): TextSpan => ({
   end: t.startOffset + t.image.length - 1,
 });
 
+// `"<pack>/<name>"` → an icon ref; null if it isn't a well-formed two-part reference.
+const parseIconRef = (image: string): IconRef | null => {
+  const slash = image.indexOf("/");
+  if (slash <= 1 || slash >= image.length - 2) return null;
+  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
+};
+
 const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const root = cst.children;
   const nodeMap = new Map<string, NetworkNode>();
@@ -64,11 +72,17 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
       const nodeId = brand<string, "NodeId">(id);
       const kindNode = childNodes(decl.children, "kind")[0];
       const kind = kindNode === undefined ? "host" : kindOf(kindNode.children);
-      const labelToken = childTokens(decl.children, "QuotedString")[0];
+      // Grammar order is `[label] [icon "ref"]`: with an `icon`, the ref is the last quoted string
+      // and a label exists only when there are two; without one, the sole quoted string is the label.
+      const quotes = childTokens(decl.children, "QuotedString");
+      const hasIcon = childTokens(decl.children, "Icon").length > 0;
+      const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
+      const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
       nodeMap.set(id, {
         id: nodeId,
         label: labelToken === undefined ? id : unquote(labelToken.image),
         kind,
+        icon: iconToken === undefined ? null : parseIconRef(iconToken.image),
       });
       if (labelToken !== undefined) nodeSpans.set(nodeId, innerSpan(labelToken));
       continue;
