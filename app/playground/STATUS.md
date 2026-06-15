@@ -20,7 +20,7 @@
   registry (`registerPack`); a pack with id "arch" overrides the built-in network glyphs. This is
   how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
-  repaints.
-- Playwright (`make e2e-ui`): 23 flows — adds cloud render + cloud relabel to the prior 21
-  (family/edit flows, network-icons, dpr, load-pack ×2, theme).
-- Not yet: CodeMirror editor; theme persistence; HTML-in-Canvas.
+  repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
+- Playwright (`make e2e-ui`): 25 flows — cloud render/relabel, theme toggle + persistence, plus the
+  prior family/edit flows, network-icons, dpr, and load-pack ×2.
+- Not yet: CodeMirror editor; HTML-in-Canvas.

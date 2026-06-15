@@ -44,3 +44,5 @@
   containers + service-kind glyphs. +1 Playwright flow.
 - Cloud two-way: the source-capture switch keeps a `CloudSource` (via `parseCloudWithSource`);
   double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.
+- Theme persistence: initial theme reads `localStorage` then falls back to `prefers-color-scheme`;
+  the toggle persists the explicit choice. +2 Playwright flows (OS preference, persist-over-reload).

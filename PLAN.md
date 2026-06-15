@@ -76,7 +76,7 @@ end-to-end).
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 12-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs (`decodePack`/`registerPack`) · ⬜ vendored OSS packs | 7 |
-| `@m/app` | ✅ renders + two-way edits all six families; in-node icons + load-pack; HiDPI canvas; dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 23 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families; in-node icons + load-pack; HiDPI canvas; persisted dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 25 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -91,6 +91,7 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark toggle) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
+   *(Theme persistence done.)*
 4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
    *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
    the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*

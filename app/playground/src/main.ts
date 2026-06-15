@@ -90,7 +90,14 @@ let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY
 const iconImages = new Map<string, CanvasImageSource>();
 // The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
 let registry = defaultRegistry;
-let theme: Theme = defaultTheme;
+
+// Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
+const THEME_KEY = "mermollusc-theme";
+const prefersDark = (): boolean =>
+  window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+const storedTheme = localStorage.getItem(THEME_KEY);
+let theme: Theme =
+  storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
 
 const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   // An <img> can only decode an SVG that declares its namespace and an intrinsic size.
@@ -416,12 +423,17 @@ regenBtn.addEventListener("click", () => {
   void renderFromText(srcEl.value);
 });
 
-// Theme toggle: switch the palette and repaint (no re-layout — only colours change).
+// Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only).
+const syncThemeLabel = (): void => {
+  themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
+};
 themeBtn.addEventListener("click", () => {
   theme = theme === defaultTheme ? darkTheme : defaultTheme;
-  themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
+  localStorage.setItem(THEME_KEY, theme === darkTheme ? "dark" : "light");
+  syncThemeLabel();
   paintScene();
 });
+syncThemeLabel();
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
 // active registry (a pack with id "arch" overrides the built-in glyphs). This is how vendor cloud
