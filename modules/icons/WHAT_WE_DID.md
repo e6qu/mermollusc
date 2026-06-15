@@ -14,5 +14,8 @@
   into an `IconPack`) + pure `registerPack`. Lets vendor cloud packs (AWS/Azure/GCP) load at runtime
   without redistribution. +4 tests.
 - Added `tools/source-icons.mjs`: a provenance-pinned fetcher that writes a bundleable OSS pack to
-  `modules/icons/vendor/<id>.json`. Fail-loud — rejects missing specs and non-SHA refs; needs
-  network + verified pins to run (not yet executed). Verified its offline guards.
+  `modules/icons/vendor/<id>.json`. Fail-loud — rejects missing specs and non-SHA refs.
+- Vendored **simple-icons** (CC0-1.0) with it: verified the license (GitHub API), pinned a commit
+  ≥24h old, probed every icon path for HTTP 200, then fetched 19 cloud-native/devops marks →
+  `vendor/simpleicons.json` (+ `vendor/README.md` provenance/trademark note). Bundled via
+  `src/core/vendored.ts` into `defaultRegistry`. +1 test. (AWS/Azure marks aren't in simple-icons.)

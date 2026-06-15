@@ -1,4 +1,5 @@
 import type { IconPack, IconRegistry } from "./registry.js";
+import { vendoredPacks } from "./vendored.js";
 
 // Original 24×24 architecture glyphs authored here under the repo's AGPL license — not vendored,
 // so no third-party provenance is needed. Names match the network node kinds 1:1. Real OSS packs
@@ -65,6 +66,7 @@ export const builtinPack: IconPack = {
   icons: ICONS,
 };
 
+// The built-in glyph pack plus the bundled, provenance-pinned OSS packs.
 export const defaultRegistry: IconRegistry = {
-  packs: new Map([[builtinPack.meta.id, builtinPack]]),
+  packs: new Map([builtinPack, ...vendoredPacks].map((pack) => [pack.meta.id, pack])),
 };

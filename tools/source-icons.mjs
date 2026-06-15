@@ -15,14 +15,40 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "modules/icons/vendor");
 
-// Shape (kept as a comment so no guessed values are committed):
-//   devicon: {
-//     repo: "devicons/devicon",
-//     ref: "<verified 40-char commit sha>",
-//     license: "MIT",
-//     icons: { docker: "icons/docker/docker-original.svg", kubernetes: "icons/.../..svg" },
-//   }
-const PACKS = {};
+// Each entry's repo/ref/license/paths were verified against the live repo before committing
+// (license via the GitHub API, commit ≥24h old, every path probed for HTTP 200). Add more the same
+// way — never paste a guessed commit, path, or license.
+const PACKS = {
+  // simple-icons: CC0-1.0 brand marks. The SVG files are public domain; the *trademarks* remain the
+  // respective owners' (use to depict, not to imply endorsement). AWS/Azure marks were removed from
+  // simple-icons at the owners' request, so they are not here — load those at runtime if needed.
+  simpleicons: {
+    repo: "simple-icons/simple-icons",
+    ref: "0fc52ed37564358d91c764b762fba913090cd26b",
+    license: "CC0-1.0",
+    icons: {
+      googlecloud: "icons/googlecloud.svg",
+      googlecloudstorage: "icons/googlecloudstorage.svg",
+      kubernetes: "icons/kubernetes.svg",
+      docker: "icons/docker.svg",
+      terraform: "icons/terraform.svg",
+      ansible: "icons/ansible.svg",
+      nginx: "icons/nginx.svg",
+      redis: "icons/redis.svg",
+      postgresql: "icons/postgresql.svg",
+      mongodb: "icons/mongodb.svg",
+      cloudflare: "icons/cloudflare.svg",
+      grafana: "icons/grafana.svg",
+      prometheus: "icons/prometheus.svg",
+      helm: "icons/helm.svg",
+      istio: "icons/istio.svg",
+      apachekafka: "icons/apachekafka.svg",
+      rabbitmq: "icons/rabbitmq.svg",
+      elasticsearch: "icons/elasticsearch.svg",
+      githubactions: "icons/githubactions.svg",
+    },
+  },
+};
 
 const SHA = /^[0-9a-f]{40}$/;
 

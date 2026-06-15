@@ -7,6 +7,7 @@ import {
   findIcon,
   packNames,
   registerPack,
+  simpleIconsPack,
 } from "../../src/core/index.js";
 
 describe("icons registry", () => {
@@ -26,6 +27,18 @@ describe("icons registry", () => {
     expect(builtinPack.meta.license).toBe("AGPL-3.0-or-later");
     expect(builtinPack.meta.source).toContain("built-in");
     expect(packNames(builtinPack)).toContain("server");
+  });
+
+  it("bundles the vendored simple-icons pack with pinned CC0 provenance", () => {
+    expect(simpleIconsPack.meta.license).toBe("CC0-1.0");
+    expect(simpleIconsPack.meta.source).toContain("simple-icons");
+    // version is a pinned 40-char commit SHA
+    expect(simpleIconsPack.meta.version).toMatch(/^[0-9a-f]{40}$/);
+    // resolves through the default registry as real SVG markup
+    const r = findIcon(defaultRegistry, "simpleicons", "kubernetes");
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) expect(r.value).toContain("<svg");
+    expect(packNames(simpleIconsPack)).toContain("docker");
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {

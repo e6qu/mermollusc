@@ -75,7 +75,7 @@ end-to-end).
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid (+icon refs) · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
-| `@m/icons` | ✅ registry + resolver + 12-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs (`decodePack`/`registerPack`) · ⬜ vendored OSS packs | 7 |
+| `@m/icons` | ✅ registry + resolver + 12-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs · ✅ vendored simple-icons (CC0, 19 marks, pinned) | 8 |
 | `@m/app` | ✅ renders + two-way edits all six families; in-node icons + load-pack; HiDPI canvas; persisted dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 25 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
@@ -84,10 +84,11 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
-1. **Icons OSS packs** (`@m/icons`): run `tools/source-icons.mjs` (network) to bundle Kubernetes
-   (Apache-2.0)/simple-icons (CC0)/devicon (MIT) with pinned provenance. *(In-node rendering, the
-   user-loaded pack path (`decodePack`/`registerPack`), and the app's "Load icons" affordance are
-   done; vendor cloud packs (AWS/Azure/GCP) load at runtime, never bundled — license-restricted.)*
+1. **Icons**: a diagram-level way to reference a specific pack/icon so the vendored marks render
+   (e.g. `icon "<pack>/<name>"` on a node, or a kind→slug map). Vendor devicon (MIT) +
+   Kubernetes-community (Apache-2.0) too. *(simple-icons (CC0) bundled with pinned provenance;
+   in-node rendering, user-loaded packs, and "Load icons" are done; AWS/Azure are user-loaded —
+   license-restricted.)*
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark toggle) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.

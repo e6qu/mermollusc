@@ -12,8 +12,12 @@
 - **User-loaded packs**: `decodePack(input)` (shell, via `decode()`) validates an external pack
   payload (`{ meta, icons }`) into an `IconPack`; `registerPack(registry, pack)` (pure) merges it.
   This is the compliant path for vendor cloud packs (AWS/Azure/GCP) — loaded at runtime, never
-  bundled. `tools/source-icons.mjs` is the provenance-pinned fetcher for *bundleable* OSS packs
-  (Apache-2.0/MIT/CC0); it refuses to run without verified 40-char commit pins (network required).
-- tests: 7 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find).
-- Not yet: vendored OSS packs committed (run the sourcing script with network + verified pins);
-  app affordance to load a user pack from a file/URL.
+  bundled.
+- **Bundled OSS pack**: `simpleIconsPack` — 19 cloud-native/devops brand marks (kubernetes, docker,
+  googlecloud, postgresql, kafka, cloudflare, …) vendored from simple-icons **CC0-1.0** at a pinned
+  commit by `tools/source-icons.mjs` (`vendor/simpleicons.json` + provenance). It's in `defaultRegistry`
+  so `findIcon(registry, "simpleicons", <slug>)` resolves. (AWS/Azure marks aren't in simple-icons.)
+- tests: 8 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
+  vendored-pack provenance + resolution).
+- Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); a diagram-level way to
+  reference a specific pack/icon so vendored glyphs render (today they're resolvable/loadable only).
