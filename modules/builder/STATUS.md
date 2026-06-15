@@ -8,4 +8,6 @@
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines; line-based, bracket-aware).
 - tests: 20 passing.
-- Not yet: span-accurate delete; multi-select + DOM connect/delete affordances in the app.
+- The app now wires these into affordances: shift-click multi-select → **Connect**; select +
+  **Delete** key → `deleteNode`.
+- Not yet: span-accurate delete; `deleteEdge` / change-direction.

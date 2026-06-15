@@ -1,12 +1,15 @@
 import {
   addNode,
   applyOverrides,
+  connect,
+  deleteNode,
   emptySelection,
   hitTest,
   moveNode,
   patchSpan,
   relabelNode,
   selectOnly,
+  toggle,
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
@@ -46,7 +49,8 @@ if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
-if (relaxBtn === null || regenBtn === null || addBtn === null) {
+const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
+if (relaxBtn === null || regenBtn === null || addBtn === null || connectBtn === null) {
   throw new Error("playground: missing toolbar buttons");
 }
 
@@ -57,6 +61,8 @@ let seqSource: SequenceSource | null = null;
 let c4Source: C4Source | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
+// Set membership is unordered, but `connect` needs a direction, so we track click order.
+let selectionOrder: SceneNodeId[] = [];
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
   null;
 
@@ -148,8 +154,22 @@ canvas.addEventListener("pointerdown", (ev) => {
   const shown = applyOverrides(scene, overrides);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
-  selection = selectOnly(hit);
-  if (hit !== null && hit.kind === "node") {
+  const additive = ev.shiftKey || ev.metaKey;
+
+  if (additive && hit !== null) {
+    selection = toggle(selection, hit);
+    if (hit.kind === "node") {
+      selectionOrder = selection.nodes.has(hit.id)
+        ? [...selectionOrder.filter((id) => id !== hit.id), hit.id]
+        : selectionOrder.filter((id) => id !== hit.id);
+    }
+  } else {
+    selection = selectOnly(hit);
+    selectionOrder = hit !== null && hit.kind === "node" ? [hit.id] : [];
+  }
+
+  // A plain click on a node starts a drag; an additive click only edits the selection.
+  if (!additive && hit !== null && hit.kind === "node") {
     const node = shown.nodes.find((n) => n.id === hit.id);
     if (node !== undefined) {
       drag = {
@@ -234,6 +254,35 @@ addBtn.addEventListener("click", () => {
   while (used.has(`n${n}`)) n++;
   srcEl.value = addNode(srcEl.value, brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect");
   void renderFromText(srcEl.value);
+});
+
+// Connect: draw an edge between the first two shift-selected nodes (in click order).
+connectBtn.addEventListener("click", () => {
+  if (ast === null || ast.kind !== "flowchart" || selectionOrder.length < 2) return;
+  const [from, to] = selectionOrder;
+  if (from === undefined || to === undefined) return;
+  srcEl.value = connect(
+    srcEl.value,
+    brand<string, "NodeId">(from),
+    brand<string, "NodeId">(to),
+    "arrow",
+  );
+  void renderFromText(srcEl.value);
+});
+
+// Delete key removes the selected nodes (and their edges) from the flowchart text. Guarded on the
+// textarea not being focused so it never hijacks a Backspace while editing the source.
+window.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Delete" && ev.key !== "Backspace") return;
+  if (document.activeElement === srcEl) return;
+  if (ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) return;
+  ev.preventDefault();
+  let text = srcEl.value;
+  for (const id of selectionOrder) text = deleteNode(text, brand<string, "NodeId">(id));
+  selection = emptySelection;
+  selectionOrder = [];
+  srcEl.value = text;
+  void renderFromText(text);
 });
 
 relaxBtn.addEventListener("click", () => {

@@ -21,3 +21,7 @@
 - C4 two-way: the source-capture switch now keeps a `C4Source` (via `parseC4WithSource`); double-
   click an element or relation → `patchSpan` rewrites its inner-label span in the text → re-render.
   +1 Playwright flow.
+- Builder UI affordances (flowchart): shift/⌘-click multi-select (tracked in click order so a
+  direction exists); **Connect** button joins the first two selected nodes via `connect`; the
+  **Delete** key removes selected nodes via `deleteNode` (guarded off while the textarea is
+  focused). +2 Playwright flows.
