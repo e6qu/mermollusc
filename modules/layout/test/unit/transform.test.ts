@@ -20,7 +20,7 @@ const ast: FlowchartAst = {
 describe("toElkGraph", () => {
   it("maps direction and graph shape", () => {
     const g = toElkGraph(ast);
-    expect(g.layoutOptions["elk.direction"]).toBe("RIGHT");
+    expect(g.config.direction).toBe("RIGHT");
     expect(g.children.map((c) => c.id)).toEqual(["A", "B"]);
     expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"] }]);
     expect(g.children[0]?.width ?? 0).toBeGreaterThan(0);

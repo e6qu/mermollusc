@@ -1,9 +1,9 @@
-import { decode, err, type Result } from "@m/std";
-import type { FlowchartAst, Scene } from "@m/contracts";
+import { decode, err, type Point, type Result } from "@m/std";
+import type { FlowchartAst, NodeId, Scene } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
 import { toElkGraph, toScene } from "../core/index.js";
-import type { LayoutError, LayoutGraph, PositionedGraph } from "../core/index.js";
+import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "../core/index.js";
 
 const elk = new ELK();
 
@@ -28,11 +28,32 @@ const ResultZ = z.object({
   edges: z.array(EdgeZ).optional(),
 });
 
-// elkjs wants mutable arrays; the core produces readonly. Spread at the boundary.
+// The string-keyed option bag is ELK's API surface, kept at this boundary; the core works with
+// the typed LayoutConfig instead.
+const elkLayoutOptions = (c: LayoutConfig): Record<string, string> => {
+  const base: Record<string, string> = {
+    "elk.algorithm": "layered",
+    "elk.direction": c.direction,
+    "elk.spacing.nodeNode": String(c.nodeSpacing),
+    "elk.layered.spacing.nodeNodeBetweenLayers": String(c.layerSpacing),
+  };
+  if (!c.interactive) return base;
+  return {
+    ...base,
+    "elk.layered.crossingMinimization.semiInteractive": "true",
+    "elk.layered.cycleBreaking.strategy": "INTERACTIVE",
+    "elk.layered.layering.strategy": "INTERACTIVE",
+  };
+};
+
 const toElkInput = (g: LayoutGraph) => ({
   id: g.id,
-  layoutOptions: { ...g.layoutOptions },
-  children: g.children.map((c) => ({ id: c.id, width: c.width, height: c.height })),
+  layoutOptions: elkLayoutOptions(g.config),
+  children: g.children.map((c) =>
+    c.position === null
+      ? { id: c.id, width: c.width, height: c.height }
+      : { id: c.id, width: c.width, height: c.height, x: c.position.x, y: c.position.y },
+  ),
   edges: g.edges.map((e) => ({ id: e.id, sources: [...e.sources], targets: [...e.targets] })),
 });
 
@@ -56,9 +77,12 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => ({
   }),
 });
 
-export const layout = async (ast: FlowchartAst): Promise<Result<Scene, LayoutError>> => {
+export const layout = async (
+  ast: FlowchartAst,
+  seed: ReadonlyMap<NodeId, Point> = new Map(),
+): Promise<Result<Scene, LayoutError>> => {
   try {
-    const raw = await elk.layout(toElkInput(toElkGraph(ast)));
+    const raw = await elk.layout(toElkInput(toElkGraph(ast, seed)));
     const decoded = decode(ResultZ, raw);
     if (!decoded.ok) {
       return err({

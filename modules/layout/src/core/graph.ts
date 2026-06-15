@@ -1,7 +1,15 @@
+export interface LayoutConfig {
+  readonly direction: "DOWN" | "UP" | "RIGHT" | "LEFT";
+  readonly interactive: boolean;
+  readonly nodeSpacing: number;
+  readonly layerSpacing: number;
+}
+
 export interface LayoutNode {
   readonly id: string;
   readonly width: number;
   readonly height: number;
+  readonly position: { readonly x: number; readonly y: number } | null;
 }
 export interface LayoutEdge {
   readonly id: string;
@@ -10,7 +18,7 @@ export interface LayoutEdge {
 }
 export interface LayoutGraph {
   readonly id: string;
-  readonly layoutOptions: Readonly<Record<string, string>>;
+  readonly config: LayoutConfig;
   readonly children: readonly LayoutNode[];
   readonly edges: readonly LayoutEdge[];
 }

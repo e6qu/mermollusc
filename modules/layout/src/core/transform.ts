@@ -1,16 +1,17 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { brand, err, ok, point, rect, type Point, type Result } from "@m/std";
 import type {
   FlowDirection,
   FlowEdge,
   FlowNode,
   FlowchartAst,
+  NodeId,
   Scene,
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
-import type { LayoutError, LayoutGraph, PositionedGraph } from "./graph.js";
+import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "./graph.js";
 
-const ELK_DIRECTION: Record<FlowDirection, string> = {
+const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
   TB: "DOWN",
   BT: "UP",
   LR: "RIGHT",
@@ -22,19 +23,33 @@ const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
 const MIN_NODE_WIDTH = 48;
+const NODE_SPACING = 40;
 
 const nodeWidth = (label: string): number =>
   Math.max(MIN_NODE_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
 
-export const toElkGraph = (ast: FlowchartAst): LayoutGraph => ({
+// A non-empty `seed` (node → current position) switches ELK into semi-interactive layered
+// layout: it relaxes the graph around the given coordinates instead of laying out from scratch.
+export const toElkGraph = (
+  ast: FlowchartAst,
+  seed: ReadonlyMap<NodeId, Point> = new Map(),
+): LayoutGraph => ({
   id: "root",
-  layoutOptions: {
-    "elk.algorithm": "layered",
-    "elk.direction": ELK_DIRECTION[ast.direction],
-    "elk.spacing.nodeNode": "40",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "40",
+  config: {
+    direction: ELK_DIRECTION[ast.direction],
+    interactive: seed.size > 0,
+    nodeSpacing: NODE_SPACING,
+    layerSpacing: NODE_SPACING,
   },
-  children: ast.nodes.map((n) => ({ id: n.id, width: nodeWidth(n.label), height: NODE_HEIGHT })),
+  children: ast.nodes.map((n) => {
+    const at = seed.get(n.id);
+    return {
+      id: n.id,
+      width: nodeWidth(n.label),
+      height: NODE_HEIGHT,
+      position: at === undefined ? null : { x: at.x, y: at.y },
+    };
+  }),
   edges: ast.edges.map((e) => ({ id: e.id, sources: [e.from], targets: [e.to] })),
 });
 

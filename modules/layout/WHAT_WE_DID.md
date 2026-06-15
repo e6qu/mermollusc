@@ -6,4 +6,7 @@
 - core: `toElkGraph` (FlowchartAst → ELK graph spec, layered, direction-mapped, heuristic node
   sizing) and `toScene` (decoded ELK result → branded `Scene`, fail-loud on AST mismatch).
 - shell: `layout()` runs ELK and decodes its result via a Zod schema before handing to core.
-- tests: unit (toElkGraph/toScene) + integration (real ELK run) — 4 passing.
+- Added relax: `layout(ast, seed)` seeds node positions and runs ELK semi-interactive layered
+  layout (verified empirically — a flipped seed flips the result). Replaced the string-keyed ELK
+  option dict in core with a typed `LayoutConfig`; the option bag is assembled in the shell.
+- tests: unit (toElkGraph/toScene) + integration (clean layout, relax) — 5 passing.
