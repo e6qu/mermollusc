@@ -8,3 +8,5 @@
 - Added tests: printer unit + parse/round-trip/fail-loud integration (4 passing).
 - Added `parseWithSource`: captures per-node id/label `TextSpan`s (the `SourceMap` contract) from
   Chevrotain token offsets, for two-way text patching. `parse` became an ast-only wrapper. +2 tests.
+- Added `parseSequence`: a second Chevrotain lexer/grammar for `sequenceDiagram` (participants,
+  messages, four arrow kinds; actors inferred from messages) → `SequenceAst`. +3 tests.
