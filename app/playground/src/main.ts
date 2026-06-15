@@ -87,15 +87,25 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   ast = diagram;
   scene = laid.value;
-  // Capture source spans for canvas→text edits (per family).
-  if (diagram.kind === "flowchart") {
-    const withSource = parseWithSource(text);
-    source = isOk(withSource) ? withSource.value.source : null;
-    seqSource = null;
-  } else {
-    source = null;
-    const withSource = parseSequenceWithSource(text);
-    seqSource = isOk(withSource) ? withSource.value.source : null;
+  // Capture source spans for canvas→text edits (per family; C4 has none yet).
+  switch (diagram.kind) {
+    case "flowchart": {
+      const withSource = parseWithSource(text);
+      source = isOk(withSource) ? withSource.value.source : null;
+      seqSource = null;
+      break;
+    }
+    case "sequence": {
+      const withSource = parseSequenceWithSource(text);
+      source = null;
+      seqSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "c4": {
+      source = null;
+      seqSource = null;
+      break;
+    }
   }
   paintScene();
 };

@@ -62,29 +62,28 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Both flowchart and sequence are two-way builders, live in the browser** — edit text → render,
-and double-click a node/actor/message → patch the source text. (Flowchart also has drag +
-relax/regenerate.)
+**Flowchart, sequence, and C4 all render in the browser.** Flowchart and sequence are two-way
+(double-click → patch the source text); flowchart also has drag, relax/regenerate, and add/delete.
+C4 (with nested boundaries) is read-path so far.
 
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
 | `@m/contracts` | ✅ flowchart + sequence + C4 AST, Scene IR (+shape, edge stroke/arrow), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart (+spans) · ✅ sequence (+spans) · ✅ C4 (nesting) · ✅ `parseDiagram` routing | 16 |
-| `@m/layout` | ✅ flowchart → Scene (ELK) + relax · ✅ sequence lane layout · ✅ `layoutDiagram` routing | 9 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, node + edge labels, dashed/arrow polylines) | 4 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ `layoutDiagram` routing | 12 |
+| `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
 | `@m/icons` | ⬜ not started | — |
-| `@m/app` | ✅ interactive editor; flowchart + sequence both two-way (relabel); flowchart drag + relax/regenerate | 1 node + 7 Playwright |
+| `@m/app` | ✅ renders flowchart + sequence + C4; flowchart/sequence two-way; flowchart drag/relax/regenerate/add | 1 node + 9 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **Finish C4** (AST + parser done): hierarchical layout — ELK nested children → `Scene` with
-   container bounds (flatten ELK's parent-relative coords to absolute); renderer container-box
-   styling; app routing + a C4 sample. *This is the next concrete step.*
+1. **C4 two-way + polish**: source spans for C4 (relabel parity); refine nested layout (rows wrap,
+   person glyphs). *(C4 read-path is done: AST, parser, nested-box layout, render, app.)*
 2. **Builder UI**: app affordances for `connect` (multi-select two nodes) and `deleteNode` (delete key).
 3. **More families**: block/network/cloud.
 4. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
