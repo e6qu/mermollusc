@@ -69,8 +69,8 @@ relax/regenerate.)
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` | 5 |
-| `@m/contracts` | ✅ flowchart + sequence AST, Scene IR (+shape, edge stroke/arrow), overrides, source-map | (types) |
-| `@m/parser` | ✅ flowchart (parse/parseWithSource/print + spans) · ✅ sequence · ✅ `parseDiagram` routing | 12 |
+| `@m/contracts` | ✅ flowchart + sequence + C4 AST, Scene IR (+shape, edge stroke/arrow), overrides, source-maps | (types) |
+| `@m/parser` | ✅ flowchart (+spans) · ✅ sequence (+spans) · ✅ C4 (nesting) · ✅ `parseDiagram` routing | 16 |
 | `@m/layout` | ✅ flowchart → Scene (ELK) + relax · ✅ sequence lane layout · ✅ `layoutDiagram` routing | 9 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
@@ -82,17 +82,16 @@ tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **More two-way patches**: add node, connect (insert edge), delete node/edge (flowchart first,
-   then sequence).
-2. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
-   then block/network/cloud.
-3. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
+1. **Finish C4** (AST + parser done): hierarchical layout — ELK nested children → `Scene` with
+   container bounds (flatten ELK's parent-relative coords to absolute); renderer container-box
+   styling; app routing + a C4 sample. *This is the next concrete step.*
+2. **Builder UI**: app affordances for `connect` (multi-select two nodes) and `deleteNode` (delete key).
+3. **More families**: block/network/cloud.
+4. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
    devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
-4. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
-5. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
-   a diagram-type indicator.
-6. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
-   layout invariants); refine regenerate to unpinned-only.
+5. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+6. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
+7. **Cross-cutting**: per-layer coverage thresholds; property-based tests; regenerate unpinned-only.
 
 ## How to resume (fresh session / after compaction)
 
