@@ -1,8 +1,9 @@
 import { brand, isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
-import { parseCloud } from "../../src/shell/cloud-parse.js";
+import { parseCloud, parseCloudWithSource } from "../../src/shell/cloud-parse.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
+const eid = (s: string) => brand<string, "EdgeId">(s);
 
 const SAMPLE = `cloud
   group "AWS" {
@@ -47,5 +48,21 @@ describe("parseCloud", () => {
     expect(r.value.links[0]?.from).toBe("web");
     expect(r.value.links[0]?.to).toBe("db");
     expect(r.value.links[0]?.label).toBe("query");
+  });
+});
+
+describe("parseCloudWithSource", () => {
+  it("captures inner-label spans for groups, service leaves, and links", () => {
+    const r = parseCloudWithSource(SAMPLE);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+
+    const at = (span: { start: number; end: number } | undefined) =>
+      span === undefined ? "" : SAMPLE.slice(span.start, span.end);
+
+    expect(at(r.value.source.groups.get(nid("g0")))).toBe("AWS");
+    expect(at(r.value.source.groups.get(nid("g1")))).toBe("us-east-1");
+    expect(at(r.value.source.nodes.get(nid("web")))).toBe("Web");
+    expect(at(r.value.source.links.get(eid("l0")))).toBe("query");
   });
 });

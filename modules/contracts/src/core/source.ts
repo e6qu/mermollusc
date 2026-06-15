@@ -43,3 +43,11 @@ export interface NetworkSource {
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
 }
+
+// Editable text spans for a cloud diagram: the inner label of each group, each labelled service
+// leaf, and each labelled link. Keyed by the element/link id.
+export interface CloudSource {
+  readonly groups: ReadonlyMap<NodeId, TextSpan>;
+  readonly nodes: ReadonlyMap<NodeId, TextSpan>;
+  readonly links: ReadonlyMap<EdgeId, TextSpan>;
+}

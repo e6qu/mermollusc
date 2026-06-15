@@ -40,5 +40,7 @@
   `registerPack` merges it into a mutable registry (clearing the rasterised-glyph cache), and the
   scene re-renders; a same-id pack overrides the built-in. Loud on parse/decode failure. +2 flows.
 - Dark/Light theme toggle: swaps the renderer `Theme` and the canvas `backgroundColor`, repaints. +1 flow.
-- Cloud family renders via the existing `parseDiagram`/`layoutDiagram` routing (read-only): nested
-  group containers + service-kind glyphs. +1 Playwright flow.
+- Cloud family renders via the existing `parseDiagram`/`layoutDiagram` routing: nested group
+  containers + service-kind glyphs. +1 Playwright flow.
+- Cloud two-way: the source-capture switch keeps a `CloudSource` (via `parseCloudWithSource`);
+  double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.

@@ -6,9 +6,9 @@
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
-  - double-click rename → patches the source text (flowchart node labels; sequence actor/message
-    text; C4 element/relation labels; block block/edge labels; network node/link labels) —
-    **canvas → text two-way for all five families**;
+  - double-click rename → patches the source text (flowchart nodes; sequence actor/message text;
+    C4 element/relation; block block/edge; network node/link; cloud group/leaf/link labels) —
+    **canvas → text two-way for all six families**;
   - flowchart-only: **Add node** / **Connect** (two selected nodes → edge) buttons; **Delete** key
     removes selected nodes; **Relax** / **Regenerate** buttons.
 - node e2e composition test (text → pixels) passing.
@@ -21,6 +21,6 @@
   how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints.
-- Playwright (`make e2e-ui`): 22 flows — adds cloud (nested groups + service glyphs) to the prior
-  21 (family/edit flows, network-icons, dpr, load-pack ×2, theme).
-- Not yet: cloud two-way edit; CodeMirror editor; theme persistence; HTML-in-Canvas.
+- Playwright (`make e2e-ui`): 23 flows — adds cloud render + cloud relabel to the prior 21
+  (family/edit flows, network-icons, dpr, load-pack ×2, theme).
+- Not yet: CodeMirror editor; theme persistence; HTML-in-Canvas.

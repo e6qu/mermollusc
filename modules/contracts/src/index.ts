@@ -49,4 +49,5 @@ export type {
   C4Source,
   BlockSource,
   NetworkSource,
+  CloudSource,
 } from "./core/index.js";

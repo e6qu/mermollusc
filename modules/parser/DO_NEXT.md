@@ -6,4 +6,4 @@
 - Grow the subset: `subgraph`, stadium `([])` / circle `(())` shapes, quoted labels, more link styles.
 - Block: grouped `block:id … end`, column spans, and bare-block relabel (wrap into `id["label"]`).
 - Network: subnet/zone grouping; bare-node relabel (wrap into `kind id "label"`).
-- Cloud: source spans (`CloudSource`) for two-way relabel of groups/leaves/links.
+- Cloud: bare-leaf relabel (wrap into `kind id "label"`); group/region collapse.

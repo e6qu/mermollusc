@@ -19,14 +19,15 @@
   label spans for quoted node/link labels): `network` subset — kind-typed node declarations
   (`server`/`database`/`cloud`/`router`/`switch`/`firewall`/`host`) and undirected links
   `a -- b : "label"`. Single-mode lexer (labels are always quoted).
-- `parseCloud(text)` → `Result<CloudAst, ParseError>`: `cloud` subset — nestable `group "label"
-  { … }` (synthetic ids `g0`…), kind-typed service leaves (`compute`/`storage`/`database`/`queue`/
-  `cdn`), and undirected links `a -- b : "label"`. (Read-path; no source spans yet.)
+- `parseCloud(text)` / `parseCloudWithSource(text)` → `CloudAst` (+ `CloudSource`: inner-label spans
+  for groups, service leaves, and links): `cloud` subset — nestable `group "label" { … }` (synthetic
+  ids `g0`…), kind-typed leaves (`compute`/`storage`/`database`/`queue`/`cdn`), undirected links
+  `a -- b : "label"`. `parseCloud` is the ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
   lines) and routes to the flowchart, sequence, C4, block, network, or cloud parser.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 32 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
-  + label spans; block parse + label/edge spans; network parse + label spans; cloud parse with
-  nested groups; routing; plus a **property-based** `parse(print(ast)) === ast` round-trip).
+- tests: 33 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
+  + label spans; block parse + label/edge spans; network parse + label spans; cloud parse + nested
+  groups + label spans; routing; plus a **property-based** `parse(print(ast)) === ast` round-trip).

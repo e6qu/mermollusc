@@ -33,3 +33,5 @@
 - Added `parseCloud`: a sixth Chevrotain lexer/grammar for the `cloud` subset — recursive
   `group "label" { … }` (synthetic `g*` ids), kind-typed service leaves, undirected `--` links;
   `parseDiagram` routes `cloud*` headers. +3 tests.
+- Added `parseCloudWithSource`: inner-label `TextSpan`s for groups, leaves, and links (`CloudSource`)
+  for cloud two-way editing; `parseCloud` is now the ast-only wrapper. +1 test.

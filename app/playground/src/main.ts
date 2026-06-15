@@ -15,6 +15,7 @@ import type { Selection } from "@m/builder";
 import type {
   BlockSource,
   C4Source,
+  CloudSource,
   DiagramAst,
   LayoutOverrides,
   NetworkSource,
@@ -29,6 +30,7 @@ import { layout, layoutDiagram } from "@m/layout";
 import {
   parseBlockWithSource,
   parseC4WithSource,
+  parseCloudWithSource,
   parseDiagram,
   parseNetworkWithSource,
   parseSequenceWithSource,
@@ -76,6 +78,7 @@ let seqSource: SequenceSource | null = null;
 let c4Source: C4Source | null = null;
 let blockSource: BlockSource | null = null;
 let netSource: NetworkSource | null = null;
+let cloudSource: CloudSource | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
@@ -166,6 +169,7 @@ const renderFromText = async (text: string): Promise<void> => {
   c4Source = null;
   blockSource = null;
   netSource = null;
+  cloudSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -192,9 +196,11 @@ const renderFromText = async (text: string): Promise<void> => {
       netSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
-    case "cloud":
-      // Read-only for now; nested groups + service glyphs render, no source spans captured yet.
+    case "cloud": {
+      const withSource = parseCloudWithSource(text);
+      cloudSource = isOk(withSource) ? withSource.value.source : null;
       break;
+    }
   }
   await ensureIcons(scene);
   paintScene();
@@ -326,6 +332,21 @@ canvas.addEventListener("dblclick", (ev) => {
       hit.kind === "node"
         ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
         : netSource.links.get(brand<string, "EdgeId">(hit.id));
+    if (span === undefined) return;
+    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
+    if (next === null) return;
+    srcEl.value = patchSpan(srcEl.value, span, next);
+    void renderFromText(srcEl.value);
+    return;
+  }
+
+  if (ast.kind === "cloud") {
+    if (cloudSource === null) return;
+    const id = brand<string, "NodeId">(hit.id);
+    const span =
+      hit.kind === "node"
+        ? (cloudSource.nodes.get(id) ?? cloudSource.groups.get(id))
+        : cloudSource.links.get(brand<string, "EdgeId">(hit.id));
     if (span === undefined) return;
     const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
     if (next === null) return;

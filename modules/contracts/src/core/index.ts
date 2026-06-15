@@ -52,4 +52,5 @@ export type {
   C4Source,
   BlockSource,
   NetworkSource,
+  CloudSource,
 } from "./source.js";
