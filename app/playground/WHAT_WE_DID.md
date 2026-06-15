@@ -36,3 +36,6 @@
   URL), caches it by `${pack}/${name}`, and hands the map to `paint`. +1 Playwright flow.
 - HiDPI: `paintScene` sizes the canvas backing store to `devicePixelRatio`, pins the CSS box size,
   and draws in CSS px via a dpr `setTransform`. +1 Playwright flow (deviceScaleFactor 2).
+- "Load icons" affordance: a file input reads a pack, `decodePack` validates it at the boundary,
+  `registerPack` merges it into a mutable registry (clearing the rasterised-glyph cache), and the
+  scene re-renders; a same-id pack overrides the built-in. Loud on parse/decode failure. +2 flows.

@@ -16,5 +16,9 @@
   image, cached), handed to `paint` and drawn above each node's label.
 - HiDPI: the canvas backing store is sized to `devicePixelRatio` (drawing in CSS px via a dpr
   transform) so rendering stays crisp on retina displays.
-- Playwright (`make e2e-ui`): 18 flows — the 16 family/edit flows plus network-icons and dpr.
+- **Load icons**: a file input decodes a user pack (`decodePack`) and merges it into the active
+  registry (`registerPack`); a pack with id "arch" overrides the built-in network glyphs. This is
+  how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
+- Playwright (`make e2e-ui`): 20 flows — the 16 family/edit flows plus network-icons, dpr, and
+  load-pack (valid + malformed).
 - Not yet: CodeMirror editor; dark-theme toggle; HTML-in-Canvas.

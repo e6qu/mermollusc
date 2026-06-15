@@ -24,7 +24,7 @@ import type {
   SequenceSource,
   SourceMap,
 } from "@m/contracts";
-import { defaultRegistry, findIcon } from "@m/icons";
+import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
 import {
   parseBlockWithSource,
@@ -55,8 +55,15 @@ const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
-if (relaxBtn === null || regenBtn === null || addBtn === null || connectBtn === null) {
-  throw new Error("playground: missing toolbar buttons");
+const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
+if (
+  relaxBtn === null ||
+  regenBtn === null ||
+  addBtn === null ||
+  connectBtn === null ||
+  loadPackEl === null
+) {
+  throw new Error("playground: missing toolbar controls");
 }
 
 let ast: DiagramAst | null = null;
@@ -75,6 +82,8 @@ let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
+// The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
+let registry = defaultRegistry;
 
 const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   // An <img> can only decode an SVG that declares its namespace and an intrinsic size.
@@ -95,7 +104,7 @@ const ensureIcons = async (s: Scene): Promise<void> => {
     if (node.icon === null) continue;
     const key = `${node.icon.pack}/${node.icon.name}`;
     if (iconImages.has(key)) continue;
-    const resolved = findIcon(defaultRegistry, node.icon.pack, node.icon.name);
+    const resolved = findIcon(registry, node.icon.pack, node.icon.name);
     if (!isOk(resolved)) {
       console.error("icon resolve failed:", resolved.error.message);
       continue;
@@ -376,6 +385,34 @@ relaxBtn.addEventListener("click", () => {
 regenBtn.addEventListener("click", () => {
   overrides = new Map();
   void renderFromText(srcEl.value);
+});
+
+// Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
+// active registry (a pack with id "arch" overrides the built-in glyphs). This is how vendor cloud
+// packs (AWS/Azure/GCP) are used without bundling them. Failures are logged loudly, not swallowed.
+const loadPack = async (file: File): Promise<void> => {
+  const text = await file.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    console.error("pack parse failed:", e instanceof Error ? e.message : String(e));
+    return;
+  }
+  const decoded = decodePack(json);
+  if (!isOk(decoded)) {
+    console.error("pack decode failed:", decoded.error.issues.join("; "));
+    return;
+  }
+  registry = registerPack(registry, decoded.value);
+  iconImages.clear(); // drop stale glyphs so overridden packs re-rasterise
+  void renderFromText(srcEl.value);
+};
+
+loadPackEl.addEventListener("change", () => {
+  const file = loadPackEl.files?.[0];
+  if (file === undefined || file === null) return;
+  void loadPack(file);
 });
 
 srcEl.value = SAMPLE;

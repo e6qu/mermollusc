@@ -75,7 +75,7 @@ Network nodes show built-in glyphs (icons-in-nodes is wired end-to-end).
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, themeable palette) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 9-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs (`decodePack`/`registerPack`) · ⬜ vendored OSS packs | 7 |
-| `@m/app` | ✅ renders + two-way edits all five families; in-node icons; HiDPI canvas; flowchart drag/relax/regen/add/connect/delete | 1 node + 18 Playwright |
+| `@m/app` | ✅ renders + two-way edits all five families; in-node icons + load-pack; HiDPI canvas; flowchart drag/relax/regen/add/connect/delete | 1 node + 20 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -84,9 +84,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 ## Roadmap — the plan ahead
 
 1. **Icons OSS packs** (`@m/icons`): run `tools/source-icons.mjs` (network) to bundle Kubernetes
-   (Apache-2.0)/simple-icons (CC0)/devicon (MIT) with pinned provenance; add an app affordance to
-   load user cloud packs. *(In-node rendering + user-loaded pack path (`decodePack`/`registerPack`)
-   done; vendor cloud packs (AWS/Azure/GCP) are user-loaded, never bundled — license-restricted.)*
+   (Apache-2.0)/simple-icons (CC0)/devicon (MIT) with pinned provenance. *(In-node rendering, the
+   user-loaded pack path (`decodePack`/`registerPack`), and the app's "Load icons" affordance are
+   done; vendor cloud packs (AWS/Azure/GCP) load at runtime, never bundled — license-restricted.)*
 2. **More families**: cloud.
 3. **Renderer polish**: HTML-in-Canvas backend behind feature detection; dark-theme toggle in the
    app. *(Themeable palette + device-pixel-ratio done.)*
