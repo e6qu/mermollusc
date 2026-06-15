@@ -18,8 +18,11 @@ Read it before touching any module. These rules **override** convenience.
    from memory. Pin the latest *stable* release that is **at least 24h old** — never one younger
    than a day, since a fresh release may be a hijack. Choose it with `tools/pick-version.mjs <pkg>`
    and audit the catalog with `make deps-check`. Pins live in the `catalog:` of `pnpm-workspace.yaml`.
-4. **Strong types only.** No `any`. No `unknown` in `src/core`. No `as` casts except the two
-   sanctioned boundary helpers (§3). Branded types over primitives; closed unions over
+4. **Strong types only.** No `any` anywhere. In `src/core`: no `unknown`, no `as` (except the two
+   sanctioned helpers, §3), no authored `undefined` or optional `?:` (use `null`, required fields,
+   or default params), no `Record<string|number,…>` or index-signature dicts (use closed-union
+   keys or typed fields). No type/lint suppressions (`@ts-ignore`, `@ts-expect-error`,
+   `@ts-nocheck`, `biome-ignore`) anywhere. Branded types over primitives; closed unions over
    strings. Smart constructors validate.
 5. **Provenance.** Any bundled asset (e.g. icon packs) carries source URL, license, and a
    pinned commit. No unsourced assets.
@@ -79,9 +82,10 @@ The five doc files, by purpose:
 
 ## 3. Type policy & the two sanctioned boundaries
 
-- Functional core: **zero** `any` / `unknown` / `as`. Enforced by Biome (`noExplicitAny`) plus
-  `tools/guard-types.mjs` (TS compiler API; bans `as` (except `as const`) and `unknown` types
-  inside `src/core`). `make lint` runs both.
+- Functional core: **zero** `any` / `unknown` / `as` / authored `undefined` / optional `?:` /
+  string-or-number-keyed dicts. Enforced by Biome (`noExplicitAny`) plus `tools/guard-types.mjs`
+  (TS compiler API), which also bans wildcard imports/exports and type/lint suppressions across
+  `src`. `make lint` runs both.
 - Exactly two unsafe operations exist, **only in `src/shell/`**, each a named, commented helper:
   - `brand<T, B>(value)` — the single sanctioned `as` cast, to mint a branded value after its
     smart constructor has validated it.
