@@ -12,4 +12,6 @@
 - Relax / Regenerate buttons: Relax re-runs `layout(ast, seed)` from current positions;
   Regenerate clears overrides and lays out cleanly. +1 Playwright flow (drag→relax→regenerate).
 - Routed rendering through `parseDiagram` + `layoutDiagram` so the playground renders **sequence**
-  diagrams too; flowchart-only features (relabel, relax) guarded on `ast.kind`. +1 Playwright flow.
+  diagrams too; flowchart-only features (relax) guarded on `ast.kind`. +1 Playwright flow.
+- Sequence two-way: double-click an actor/message → `patchSpan` rewrites its `SequenceSource`
+  span in the text → re-render. +1 Playwright flow.

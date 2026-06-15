@@ -5,7 +5,10 @@
 - `main.ts`: source `<textarea>` ↔ canvas.
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (routes flowchart vs sequence);
   - click → hit-test + select (blue highlight); drag → move a node (sidecar override);
-  - flowchart-only: double-click relabel (canvas → text), **Relax** / **Regenerate** buttons.
+  - double-click rename → patches the source text (flowchart node labels; sequence actor/message
+    text) — **canvas → text two-way for both families**;
+  - flowchart-only: **Relax** / **Regenerate** buttons.
 - node e2e composition test (text → pixels) passing.
-- Playwright (`make e2e-ui`): 6 flows — load, edit, click, relabel, drag→relax→regenerate, sequence render.
-- Not yet: sequence two-way edit (needs sequence source spans); CodeMirror; HTML-in-Canvas.
+- Playwright (`make e2e-ui`): 7 flows — load, edit, click, flowchart relabel,
+  drag→relax→regenerate, sequence render, sequence relabel.
+- Not yet: CodeMirror editor; HTML-in-Canvas; add/connect/delete patches.

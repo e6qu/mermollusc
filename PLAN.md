@@ -62,8 +62,9 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-Flowchart is a **complete two-way builder, live in the browser**. **Sequence renders end-to-end**
-(read path); two-way editing (relabel) is flowchart-only so far.
+**Both flowchart and sequence are two-way builders, live in the browser** — edit text → render,
+and double-click a node/actor/message → patch the source text. (Flowchart also has drag +
+relax/regenerate.)
 
 | module | state | tests |
 |--------|-------|-------|
@@ -74,23 +75,23 @@ Flowchart is a **complete two-way builder, live in the browser**. **Sequence ren
 | `@m/renderer` | ✅ Scene → canvas (shapes, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
 | `@m/icons` | ⬜ not started | — |
-| `@m/app` | ✅ interactive editor; renders flowchart + sequence; relabel/relax/regenerate (flowchart) | 1 node + 6 Playwright |
+| `@m/app` | ✅ interactive editor; flowchart + sequence both two-way (relabel); flowchart drag + relax/regenerate | 1 node + 7 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green.
 
 ## Roadmap — the plan ahead
 
-1. **Sequence two-way**: source spans for sequence → relabel/edit parity with flowchart.
-2. **More flowchart two-way patches**: add node, connect (insert edge), delete node/edge.
-3. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
+1. **More two-way patches**: add node, connect (insert edge), delete node/edge (flowchart first,
+   then sequence).
+2. **Next families**: C4/architecture (nested containers → ELK hierarchy + Scene `parent`),
    then block/network/cloud.
-4. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
+3. **Icons** (`@m/icons`): bundle OSS packs (Kubernetes Apache-2.0, CNCF, simple-icons CC0,
    devicon MIT) with per-pack provenance; loaders for user-supplied vendor cloud packs.
-5. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
-6. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
+4. **Renderer polish**: theme + device-pixel-ratio, HTML-in-Canvas backend behind feature detection.
+5. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests,
    a diagram-type indicator.
-7. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
+6. **Cross-cutting**: per-layer coverage thresholds; property-based tests (parser round-trip,
    layout invariants); refine regenerate to unpinned-only.
 
 ## How to resume (fresh session / after compaction)

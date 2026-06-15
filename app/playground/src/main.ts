@@ -3,6 +3,7 @@ import {
   emptySelection,
   hitTest,
   moveNode,
+  patchSpan,
   relabelNode,
   selectOnly,
 } from "@m/builder";
@@ -13,10 +14,11 @@ import type {
   NodeId,
   Scene,
   SceneNodeId,
+  SequenceSource,
   SourceMap,
 } from "@m/contracts";
 import { layout, layoutDiagram } from "@m/layout";
-import { parseDiagram, parseWithSource } from "@m/parser";
+import { parseDiagram, parseSequenceWithSource, parseWithSource } from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
@@ -41,6 +43,7 @@ if (relaxBtn === null || regenBtn === null) throw new Error("playground: missing
 let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
 let source: SourceMap | null = null;
+let seqSource: SequenceSource | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
@@ -80,12 +83,15 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   ast = diagram;
   scene = laid.value;
-  // Source spans (for canvas→text relabel) are flowchart-only for now.
+  // Capture source spans for canvas→text edits (per family).
   if (diagram.kind === "flowchart") {
     const withSource = parseWithSource(text);
     source = isOk(withSource) ? withSource.value.source : null;
+    seqSource = null;
   } else {
     source = null;
+    const withSource = parseSequenceWithSource(text);
+    seqSource = isOk(withSource) ? withSource.value.source : null;
   }
   paintScene();
 };
@@ -146,23 +152,39 @@ canvas.addEventListener("pointerup", (ev) => {
   }
 });
 
-// Two-way edit: relabel a node on the canvas, write the patch back into the source text.
+// Two-way edit: rename what was double-clicked and write the patch back into the source text.
 canvas.addEventListener("dblclick", (ev) => {
-  if (scene === null || source === null) return;
+  if (scene === null || ast === null) return;
   const shown = applyOverrides(scene, overrides);
   const hit = hitTest(shown, scenePoint(ev));
-  if (hit === null || hit.kind !== "node") return;
-  const current = shown.nodes.find((n) => n.id === hit.id)?.label ?? "";
-  const next = window.prompt("Label:", current);
-  if (next === null) return;
-  const id: NodeId = brand<string, "NodeId">(hit.id);
-  const patched = relabelNode(srcEl.value, source, id, next);
-  if (!isOk(patched)) {
-    console.error("relabel failed:", patched.error.message);
+  if (hit === null) return;
+
+  if (ast.kind === "flowchart") {
+    if (source === null || hit.kind !== "node") return;
+    const current = shown.nodes.find((n) => n.id === hit.id)?.label ?? "";
+    const next = window.prompt("Label:", current);
+    if (next === null) return;
+    const patched = relabelNode(srcEl.value, source, brand<string, "NodeId">(hit.id), next);
+    if (!isOk(patched)) {
+      console.error("relabel failed:", patched.error.message);
+      return;
+    }
+    srcEl.value = patched.value;
+    void renderFromText(patched.value);
     return;
   }
-  srcEl.value = patched.value;
-  void renderFromText(patched.value);
+
+  // sequence: rename an actor (its label span) or a message (its text span)
+  if (seqSource === null) return;
+  const span =
+    hit.kind === "node"
+      ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
+      : seqSource.messages.get(brand<string, "MessageId">(hit.id));
+  if (span === undefined) return;
+  const next = window.prompt("Text:", srcEl.value.slice(span.start, span.end));
+  if (next === null) return;
+  srcEl.value = patchSpan(srcEl.value, span, next);
+  void renderFromText(srcEl.value);
 });
 
 relaxBtn.addEventListener("click", () => {
