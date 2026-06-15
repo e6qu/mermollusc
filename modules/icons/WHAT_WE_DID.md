@@ -8,6 +8,8 @@
 - Added four more original AGPL glyphs (router/switch/firewall/host) so the pack covers every
   network node kind 1:1.
 - Added three more (compute/storage/cdn) for the cloud service kinds (database/queue reused).
+- Authored an original AGPL **BPMN** glyph pack (`bpmnPack`, 12 outlined glyphs: events, task,
+  subprocess, exclusive/parallel/inclusive gateways, data-object/store) in `defaultRegistry`. +1 test.
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
 - Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`

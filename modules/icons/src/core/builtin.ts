@@ -1,3 +1,4 @@
+import { bpmnPack } from "./bpmn.js";
 import type { IconPack, IconRegistry } from "./registry.js";
 import { vendoredPacks } from "./vendored.js";
 
@@ -66,7 +67,7 @@ export const builtinPack: IconPack = {
   icons: ICONS,
 };
 
-// The built-in glyph pack plus the bundled, provenance-pinned OSS packs.
+// The built-in glyph packs (arch + BPMN) plus the bundled, provenance-pinned OSS packs.
 export const defaultRegistry: IconRegistry = {
-  packs: new Map([builtinPack, ...vendoredPacks].map((pack) => [pack.meta.id, pack])),
+  packs: new Map([builtinPack, bpmnPack, ...vendoredPacks].map((pack) => [pack.meta.id, pack])),
 };

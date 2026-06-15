@@ -2,6 +2,7 @@ import { isErr, isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
 import type { IconPack } from "../../src/core/index.js";
 import {
+  bpmnPack,
   builtinPack,
   defaultRegistry,
   findIcon,
@@ -70,6 +71,16 @@ describe("icons registry", () => {
       expect(isOk(r)).toBe(true);
       if (isOk(r)) expect(r.value).toContain("<svg");
     }
+  });
+
+  it("bundles the original AGPL BPMN glyph pack (events / tasks / gateways)", () => {
+    expect(bpmnPack.meta.license).toBe("AGPL-3.0-or-later");
+    for (const name of ["start-event", "end-event", "task", "exclusive-gateway", "data-store"]) {
+      const r = findIcon(defaultRegistry, "bpmn", name);
+      expect(isOk(r)).toBe(true);
+      if (isOk(r)) expect(r.value).toContain("<svg");
+    }
+    expect(packNames(bpmnPack)).toContain("parallel-gateway");
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {
