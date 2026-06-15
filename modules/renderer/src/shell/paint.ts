@@ -36,6 +36,8 @@ export interface Theme {
   readonly stroke: string;
   readonly text: string;
   readonly font: string;
+  // When true, shapes are drawn with wobbly, double-stroked "hand-drawn" outlines (no fill).
+  readonly sketch: boolean;
 }
 
 export const defaultTheme: Theme = {
@@ -44,6 +46,7 @@ export const defaultTheme: Theme = {
   stroke: "#334155",
   text: "#0f172a",
   font: "14px sans-serif",
+  sketch: false,
 };
 
 export const darkTheme: Theme = {
@@ -52,9 +55,55 @@ export const darkTheme: Theme = {
   stroke: "#94a3b8",
   text: "#e2e8f0",
   font: "14px sans-serif",
+  sketch: false,
 };
 
 const ARROW_SIZE = 9;
+
+// Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
+const lcg = (seed: number) => {
+  let s = seed >>> 0 || 1;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+};
+
+const seedOf = (a: number, b: number, c: number): number =>
+  (Math.imul(Math.imul(7, 31) + Math.floor(a), 31) +
+    Math.imul(Math.floor(b), 31) +
+    Math.floor(c)) >>>
+  0;
+
+// A wobbly, double-stroked line — the hand-drawn look — using only moveTo/lineTo/stroke so it works
+// against the structural Canvas2D (and its test mock). Seeded jitter keeps it stable per shape.
+const sketchLine = (
+  ctx: Canvas2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  seed: number,
+): void => {
+  const rnd = lcg(seed);
+  const j = (m: number): number => (rnd() * 2 - 1) * m;
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.beginPath();
+    ctx.moveTo(x1 + j(1.5), y1 + j(1.5));
+    for (let i = 1; i <= 3; i++) {
+      const t = i / 3;
+      ctx.lineTo(x1 + (x2 - x1) * t + j(2), y1 + (y2 - y1) * t + j(2));
+    }
+    ctx.stroke();
+  }
+};
+
+const sketchRect = (ctx: Canvas2D, x: number, y: number, w: number, h: number, s: number): void => {
+  sketchLine(ctx, x, y, x + w, y, s);
+  sketchLine(ctx, x + w, y, x + w, y + h, s + 1);
+  sketchLine(ctx, x + w, y + h, x, y + h, s + 2);
+  sketchLine(ctx, x, y + h, x, y, s + 3);
+};
 
 const drawArrowHead = (ctx: Canvas2D, points: readonly Point[], stroke: string): void => {
   const tip = points[points.length - 1];
@@ -86,8 +135,12 @@ export const paint = (
   for (const cmd of cmds) {
     switch (cmd.kind) {
       case "box": {
-        ctx.fillStyle = theme.nodeFill;
         ctx.strokeStyle = theme.stroke;
+        if (theme.sketch) {
+          sketchRect(ctx, cmd.x, cmd.y, cmd.width, cmd.height, seedOf(cmd.x, cmd.y, cmd.width));
+          break;
+        }
+        ctx.fillStyle = theme.nodeFill;
         ctx.beginPath();
         ctx.roundRect(cmd.x, cmd.y, cmd.width, cmd.height, cmd.radius);
         ctx.fill();
@@ -97,8 +150,16 @@ export const paint = (
       case "diamond": {
         const hw = cmd.width / 2;
         const hh = cmd.height / 2;
-        ctx.fillStyle = theme.nodeFill;
         ctx.strokeStyle = theme.stroke;
+        if (theme.sketch) {
+          const s = seedOf(cmd.cx, cmd.cy, cmd.width);
+          sketchLine(ctx, cmd.cx, cmd.cy - hh, cmd.cx + hw, cmd.cy, s);
+          sketchLine(ctx, cmd.cx + hw, cmd.cy, cmd.cx, cmd.cy + hh, s + 1);
+          sketchLine(ctx, cmd.cx, cmd.cy + hh, cmd.cx - hw, cmd.cy, s + 2);
+          sketchLine(ctx, cmd.cx - hw, cmd.cy, cmd.cx, cmd.cy - hh, s + 3);
+          break;
+        }
+        ctx.fillStyle = theme.nodeFill;
         ctx.beginPath();
         ctx.moveTo(cmd.cx, cmd.cy - hh);
         ctx.lineTo(cmd.cx + hw, cmd.cy);
@@ -113,6 +174,17 @@ export const paint = (
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
         ctx.strokeStyle = theme.stroke;
+        // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
+        if (theme.sketch && !cmd.dashed) {
+          let prev = first;
+          let seed = seedOf(first.x, first.y, cmd.points.length);
+          for (const p of rest) {
+            sketchLine(ctx, prev.x, prev.y, p.x, p.y, seed++);
+            prev = p;
+          }
+          if (cmd.arrow) drawArrowHead(ctx, cmd.points, theme.stroke);
+          break;
+        }
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
         ctx.beginPath();
         ctx.moveTo(first.x, first.y);

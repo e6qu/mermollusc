@@ -2,7 +2,7 @@ import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
-import { type Canvas2D, paint, type Theme } from "../../src/shell/paint.js";
+import { type Canvas2D, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
 
 class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
@@ -99,6 +99,7 @@ describe("paint", () => {
       stroke: "#000002",
       text: "#000003",
       font: "11px monospace",
+      sketch: false,
     };
     const nodeOnly: Scene = {
       nodes: [
@@ -112,6 +113,21 @@ describe("paint", () => {
     expect(ctx.font).toBe("11px monospace");
     // For a node-only scene the label is the last draw, so the final fill is the text colour.
     expect(ctx.fillStyle).toBe("#000003");
+  });
+
+  it("sketch theme draws wobbly outlines (no roundRect) instead of crisp shapes", () => {
+    const crisp = new RecordingCtx();
+    paint(crisp, toDisplayList(scene), new Map(), defaultTheme);
+    const sketchy = new RecordingCtx();
+    paint(sketchy, toDisplayList(scene), new Map(), { ...defaultTheme, sketch: true });
+    // Crisp mode uses roundRect for the box; sketch mode never does (it strokes wobbly lines).
+    expect(crisp.calls.filter((c) => c === "roundRect").length).toBeGreaterThanOrEqual(1);
+    expect(sketchy.calls.filter((c) => c === "roundRect")).toHaveLength(0);
+    // Sketch mode is stroke-heavy (multi-pass lines), labels still render.
+    expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(
+      crisp.calls.filter((c) => c === "stroke").length,
+    );
+    expect(sketchy.calls).toContain("fillText:A");
   });
 
   it("draws an icon glyph only when its image is supplied", () => {

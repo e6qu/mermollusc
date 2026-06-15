@@ -16,3 +16,6 @@
 - Added a `Theme` parameter (`defaultTheme`) — node fill / stroke / text colours + font, replacing
   the hardcoded palette; `drawArrowHead` takes the stroke colour. +1 test.
 - Added a `background` field + a `darkTheme` palette (the app fills the canvas surface with it).
+- Added a `Theme.sketch` hand-drawn mode: boxes/diamonds/solid edges drawn as wobbly double-stroked
+  outlines via a seeded LCG jitter (deterministic, structural-`Canvas2D`-only — evaluated rough.js but
+  a self-rolled sketch keeps the mock tests + no dep). Dashed edges/arrowheads stay crisp. +1 test.

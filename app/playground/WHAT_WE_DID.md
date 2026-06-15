@@ -44,6 +44,8 @@
   containers + service-kind glyphs (now the vendored simple-icons brand marks). +1 Playwright flow.
 - Made the SVG rasteriser inject `xmlns`/size only when absent, so vendored packs that already
   declare a namespace (simple-icons) decode without a duplicate-attribute error.
+- Sketch toggle: composes `theme.sketch` + a system handwriting font onto the active (light/dark)
+  theme and repaints for the hand-drawn look. +1 Playwright flow.
 - Cloud two-way: the source-capture switch keeps a `CloudSource` (via `parseCloudWithSource`);
   double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.
 - Theme persistence: initial theme reads `localStorage` then falls back to `prefers-color-scheme`;

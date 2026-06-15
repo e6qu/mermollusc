@@ -59,6 +59,7 @@ const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
+const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 if (
   relaxBtn === null ||
@@ -66,6 +67,7 @@ if (
   addBtn === null ||
   connectBtn === null ||
   themeBtn === null ||
+  sketchBtn === null ||
   loadPackEl === null
 ) {
   throw new Error("playground: missing toolbar controls");
@@ -98,6 +100,10 @@ const prefersDark = (): boolean =>
 const storedTheme = localStorage.getItem(THEME_KEY);
 let theme: Theme =
   storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
+// Sketch mode is orthogonal to light/dark — composed onto the active theme at paint time.
+let sketch = false;
+const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
+const activeTheme = (): Theme => (sketch ? { ...theme, sketch: true, font: SKETCH_FONT } : theme);
 
 const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   // An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
@@ -144,12 +150,13 @@ const paintScene = (): void => {
   canvas.height = Math.round(cssHeight * dpr);
   canvas.style.width = `${cssWidth}px`;
   canvas.style.height = `${cssHeight}px`;
-  canvas.style.backgroundColor = theme.background;
+  const active = activeTheme();
+  canvas.style.backgroundColor = active.background;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
-  paint(ctx, toDisplayList(shown), iconImages, theme);
+  paint(ctx, toDisplayList(shown), iconImages, active);
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 2;
   for (const node of shown.nodes) {
@@ -439,6 +446,13 @@ themeBtn.addEventListener("click", () => {
   paintScene();
 });
 syncThemeLabel();
+
+// Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Repaints, no re-layout.
+sketchBtn.addEventListener("click", () => {
+  sketch = !sketch;
+  sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
+  paintScene();
+});
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
 // active registry (a pack with id "arch" overrides the built-in glyphs). This is how vendor cloud

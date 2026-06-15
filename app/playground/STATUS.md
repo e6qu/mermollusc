@@ -21,6 +21,8 @@
   how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
-- Playwright (`make e2e-ui`): 26 flows — adds network per-node icon override to the prior 25
-  (family/edit flows, cloud render/relabel, theme toggle + persistence, network-icons, dpr, load-pack ×2).
+- Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the
+  hand-drawn look; repaints (no re-layout).
+- Playwright (`make e2e-ui`): 27 flows — adds the sketch toggle to the prior 26 (family/edit flows,
+  cloud render/relabel, theme toggle + persistence, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

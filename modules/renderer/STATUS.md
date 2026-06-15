@@ -8,6 +8,10 @@
 - shell: `paint(ctx, cmds, iconImages?, theme?)` executes the display list against a `Canvas2D`
   (structural subset of `CanvasRenderingContext2D`; a real 2D context is assignable). `iconImages`
   maps `${pack}/${name}` → a pre-rasterised `CanvasImageSource` (missing → glyph skipped); `theme`
-  (`Theme` — `defaultTheme` light / `darkTheme`) supplies the surface + node/stroke/text colours + font.
+  (`Theme` — `defaultTheme` light / `darkTheme`, each with a `sketch` flag) supplies the surface +
+  node/stroke/text colours + font.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
-- tests: 7 passing (display-list unit incl. icon; paint against a recording mock — drawImage, theme).
+- **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges become wobbly, double-stroked
+  hand-drawn outlines via a seeded LCG jitter — deterministic, no fill, using only the structural
+  `Canvas2D` (no rough.js dep, so the mock-based tests still hold). Dashed edges/arrowheads stay crisp.
+- tests: 8 passing (display-list unit incl. icon; paint against a recording mock — drawImage, theme, sketch).

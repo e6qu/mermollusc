@@ -73,10 +73,10 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network (+icon override) · cloud (nested) — all +spans · ✅ routing · property round-trip | 35 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark + sketch themes) | 8 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry/resolver · built-in arch + BPMN packs · in-node rendering · user-loaded packs · vendored simple-icons/devicon/gilbarbara/k8s · CNCF archived (LFS) | 12 |
-| `@m/app` | ✅ renders + two-way edits all six families; in-node icons (+ per-node override) + load-pack; HiDPI canvas; persisted dark/light theme; flowchart drag/relax/regen/add/connect/delete | 1 node + 26 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families; in-node icons (+ override) + load-pack; HiDPI; persisted dark/light + sketch themes; flowchart drag/relax/regen/add/connect/delete | 1 node + 27 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -84,14 +84,15 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
-1. **Icons**: study the hand-drawn/xkcd style; extend the per-node `icon "<pack>/<name>"` override
-   to the other families. *(original AGPL BPMN pack authored; simple-icons (CC0, 36) + devicon (MIT,
+1. **Icons**: extend the per-node `icon "<pack>/<name>"` override to the other families; optional
+   authored `sketch` glyph pack to pair with the hand-drawn mode. *(hand-drawn Sketch mode shipped;
+   original AGPL BPMN pack authored; simple-icons (CC0, 36) + devicon (MIT,
    AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS services) + Kubernetes-community (Apache-2.0,
    resource shapes) bundled with pinned provenance; CNCF landscape archived via git-LFS;
    official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable. Full
    CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
-2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
-   (light/dark toggle) + device-pixel-ratio done.)*
+2. **Renderer polish**: HTML-in-Canvas backend behind feature detection; real text measurement →
+   node sizes. *(Themeable palette (light/dark + hand-drawn sketch mode) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
    *(Theme persistence done.)*
 4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
