@@ -6,3 +6,5 @@
 - shell: `Canvas2D` structural interface + `paint(ctx, cmds)` painter (rounded boxes, diamonds,
   polylines, text).
 - tests: display-list unit + paint integration via a recording mock context (4 passing).
+- Honored `SceneEdge.stroke`/`arrow`: dashed line support (`setLineDash`) + filled arrowheads;
+  layout maps flowchart `EdgeKind` → stroke/arrow.

@@ -6,6 +6,9 @@ import type { NodeShape } from "./ast.js";
 export type SceneNodeId = Brand<string, "SceneNodeId">;
 export type SceneEdgeId = Brand<string, "SceneEdgeId">;
 
+export type EdgeStroke = "solid" | "dashed";
+export type EdgeArrow = "none" | "filled";
+
 export interface SceneNode {
   readonly id: SceneNodeId;
   readonly bounds: Rect;
@@ -20,6 +23,8 @@ export interface SceneEdge {
   readonly to: SceneNodeId;
   readonly waypoints: readonly Point[];
   readonly label: string | null;
+  readonly stroke: EdgeStroke;
+  readonly arrow: EdgeArrow;
 }
 
 export interface Scene {

@@ -18,7 +18,12 @@ export type DrawCmd =
       readonly width: Px;
       readonly height: Px;
     }
-  | { readonly kind: "polyline"; readonly points: readonly Point[] }
+  | {
+      readonly kind: "polyline";
+      readonly points: readonly Point[];
+      readonly dashed: boolean;
+      readonly arrow: boolean;
+    }
   | { readonly kind: "label"; readonly x: Px; readonly y: Px; readonly text: string };
 
 const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
@@ -61,7 +66,14 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   const cmds: DrawCmd[] = [];
   for (const node of scene.nodes) cmds.push(...nodeCmds(node));
   for (const edge of scene.edges) {
-    if (edge.waypoints.length >= 2) cmds.push({ kind: "polyline", points: edge.waypoints });
+    if (edge.waypoints.length >= 2) {
+      cmds.push({
+        kind: "polyline",
+        points: edge.waypoints,
+        dashed: edge.stroke === "dashed",
+        arrow: edge.arrow === "filled",
+      });
+    }
   }
   return cmds;
 };

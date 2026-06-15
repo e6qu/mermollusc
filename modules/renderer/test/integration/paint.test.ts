@@ -36,6 +36,9 @@ class RecordingCtx implements Canvas2D {
   roundRect(): void {
     this.calls.push("roundRect");
   }
+  setLineDash(): void {
+    this.calls.push("setLineDash");
+  }
 }
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
@@ -47,7 +50,15 @@ const scene: Scene = {
     { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null },
   ],
   edges: [
-    { id: seid("e0"), from: snid("A"), to: snid("B"), waypoints: [point(30, 40), point(30, 80)], label: null },
+    {
+      id: seid("e0"),
+      from: snid("A"),
+      to: snid("B"),
+      waypoints: [point(30, 40), point(30, 80)],
+      label: null,
+      stroke: "solid",
+      arrow: "filled",
+    },
   ],
   extent: rect(0, 0, 60, 120),
 };

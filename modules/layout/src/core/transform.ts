@@ -1,5 +1,8 @@
 import { brand, err, ok, point, rect, type Point, type Result } from "@m/std";
 import type {
+  EdgeArrow,
+  EdgeKind,
+  EdgeStroke,
   FlowDirection,
   FlowEdge,
   FlowNode,
@@ -9,6 +12,13 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
+
+const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow: EdgeArrow }> = {
+  arrow: { stroke: "solid", arrow: "filled" },
+  open: { stroke: "solid", arrow: "none" },
+  dotted: { stroke: "dashed", arrow: "filled" },
+  thick: { stroke: "solid", arrow: "filled" },
+};
 import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "./graph.js";
 
 const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
@@ -84,6 +94,7 @@ export const toScene = (
       to: brand<string, "SceneNodeId">(astEdge.to),
       waypoints: pe.points.map((p) => point(p.x, p.y)),
       label: astEdge.label,
+      ...EDGE_STYLE[astEdge.kind],
     });
   }
 

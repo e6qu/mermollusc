@@ -12,7 +12,15 @@ const scene: Scene = {
     { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null },
   ],
   edges: [
-    { id: seid("e0"), from: snid("A"), to: snid("B"), waypoints: [point(30, 40), point(30, 100)], label: null },
+    {
+      id: seid("e0"),
+      from: snid("A"),
+      to: snid("B"),
+      waypoints: [point(30, 40), point(30, 100)],
+      label: null,
+      stroke: "solid",
+      arrow: "filled",
+    },
   ],
   extent: rect(0, 0, 60, 140),
 };

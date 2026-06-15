@@ -16,6 +16,8 @@ export type {
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
+  EdgeStroke,
+  EdgeArrow,
   SceneNode,
   SceneEdge,
   Scene,

@@ -1,3 +1,4 @@
+import type { Point } from "@m/std";
 import type { DrawCmd } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
@@ -17,11 +18,29 @@ export interface Canvas2D {
   fill(): void;
   fillText(text: string, x: number, y: number): void;
   roundRect(x: number, y: number, w: number, h: number, radius: number): void;
+  setLineDash(segments: readonly number[]): void;
 }
 
 const NODE_FILL = "#eef2ff";
 const STROKE = "#334155";
 const TEXT = "#0f172a";
+const ARROW_SIZE = 9;
+
+const drawArrowHead = (ctx: Canvas2D, points: readonly Point[]): void => {
+  const tip = points[points.length - 1];
+  const prev = points[points.length - 2];
+  if (tip === undefined || prev === undefined) return;
+  const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+  const left = angle + Math.PI - 0.4;
+  const right = angle + Math.PI + 0.4;
+  ctx.fillStyle = STROKE;
+  ctx.beginPath();
+  ctx.moveTo(tip.x + ARROW_SIZE * Math.cos(left), tip.y + ARROW_SIZE * Math.sin(left));
+  ctx.lineTo(tip.x, tip.y);
+  ctx.lineTo(tip.x + ARROW_SIZE * Math.cos(right), tip.y + ARROW_SIZE * Math.sin(right));
+  ctx.closePath();
+  ctx.fill();
+};
 
 export const paint = (ctx: Canvas2D, cmds: readonly DrawCmd[]): void => {
   ctx.lineWidth = 1.5;
@@ -59,10 +78,13 @@ export const paint = (ctx: Canvas2D, cmds: readonly DrawCmd[]): void => {
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
         ctx.strokeStyle = STROKE;
+        ctx.setLineDash(cmd.dashed ? [6, 4] : []);
         ctx.beginPath();
         ctx.moveTo(first.x, first.y);
         for (const p of rest) ctx.lineTo(p.x, p.y);
         ctx.stroke();
+        ctx.setLineDash([]);
+        if (cmd.arrow) drawArrowHead(ctx, cmd.points);
         break;
       }
       case "label": {

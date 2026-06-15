@@ -8,3 +8,5 @@
 - Added the `SourceMap` contract (`TextSpan`, `NodeSpans`): AST id/label → source byte ranges.
 - Added the `SequenceAst` variant (actors, messages, `ActorId`/`MessageId`/`MessageKind`); the
   `DiagramAst` union is now `FlowchartAst | SequenceAst`.
+- Added `SceneEdge.stroke` (`solid`/`dashed`) + `arrow` (`none`/`filled`) so the renderer can
+  draw dashed lines and arrowheads (and so sequence messages/lifelines are expressible).
