@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   layoutBlock,
   layoutC4,
+  layoutCloud,
   layoutNetwork,
   layoutSequence,
   toElkGraph,
@@ -116,5 +117,7 @@ export const layoutDiagram = async (ast: DiagramAst): Promise<Result<Scene, Layo
       return ok(layoutBlock(ast));
     case "network":
       return ok(layoutNetwork(ast));
+    case "cloud":
+      return ok(layoutCloud(ast));
   }
 };

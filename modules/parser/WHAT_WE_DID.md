@@ -30,3 +30,6 @@
   with inner-label spans (`NetworkSource`); `parseDiagram` routes `network*` headers. +3 tests.
 - Added a property-based round-trip (fast-check): generate flowchart ASTs (safe labels, parser-
   reproducible shapes, `n*`/`e*` ids) and assert `parse(print(ast)) === ast`. +1 test.
+- Added `parseCloud`: a sixth Chevrotain lexer/grammar for the `cloud` subset — recursive
+  `group "label" { … }` (synthetic `g*` ids), kind-typed service leaves, undirected `--` links;
+  `parseDiagram` routes `cloud*` headers. +3 tests.

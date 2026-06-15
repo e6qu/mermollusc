@@ -21,3 +21,5 @@
   `layoutDiagram` routes network. +2 tests.
 - Added property-based tests (fast-check): block/network layouts preserve node identity and fit
   every box inside the reported extent. +2 tests.
+- Added `layoutCloud` (pure recursive nested-box, modelled on `layoutC4`): groups → container
+  boxes wrapping children, service leaves get a kind `icon` ref, undirected links. +3 tests.

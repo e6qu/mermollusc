@@ -14,6 +14,8 @@
   centre-to-centre edges.
 - `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre
   links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
-- `layoutDiagram(ast)` routes by family: flowchart → ELK (async); sequence/C4/block/network → pure.
-- tests: 19 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
-  routing; property-based: block/network preserve ids and fit every box inside the extent).
+- `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
+  service leaves carry a kind glyph; undirected links.
+- `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
+- tests: 22 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
+  cloud nesting + icons; routing; property-based: block/network preserve ids + fit the extent).

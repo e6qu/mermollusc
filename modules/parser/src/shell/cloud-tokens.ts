@@ -1,0 +1,72 @@
+import { createToken, Lexer, type TokenType } from "chevrotain";
+
+// Single-mode lexer (labels always quoted). `group` opens a nested box; the kind keywords introduce
+// service leaves; `--` is the undirected link.
+const Identifier = createToken({ name: "CloudIdentifier", pattern: /[A-Za-z0-9_]+/ });
+const CloudHeader = createToken({ name: "CloudHeader", pattern: /cloud/, longer_alt: Identifier });
+const Group = createToken({ name: "Group", pattern: /group/, longer_alt: Identifier });
+const Compute = createToken({ name: "Compute", pattern: /compute/, longer_alt: Identifier });
+const Storage = createToken({ name: "Storage", pattern: /storage/, longer_alt: Identifier });
+const Database = createToken({
+  name: "CloudDatabase",
+  pattern: /database/,
+  longer_alt: Identifier,
+});
+const Queue = createToken({ name: "CloudQueue", pattern: /queue/, longer_alt: Identifier });
+const Cdn = createToken({ name: "Cdn", pattern: /cdn/, longer_alt: Identifier });
+
+const Dash = createToken({ name: "CloudDash", pattern: /--/ });
+const Colon = createToken({ name: "CloudColon", pattern: /:/ });
+const LBrace = createToken({ name: "CloudLBrace", pattern: /\{/ });
+const RBrace = createToken({ name: "CloudRBrace", pattern: /\}/ });
+const QuotedString = createToken({ name: "CloudQuoted", pattern: /"[^"\n]*"/ });
+const NewLine = createToken({ name: "CloudNewLine", pattern: /\r?\n/, line_breaks: true });
+const Semicolon = createToken({ name: "CloudSemicolon", pattern: /;/ });
+const WhiteSpace = createToken({
+  name: "CloudWhiteSpace",
+  pattern: /[ \t]+/,
+  group: Lexer.SKIPPED,
+});
+const Comment = createToken({ name: "CloudComment", pattern: /%%[^\n]*/, group: Lexer.SKIPPED });
+
+const order: TokenType[] = [
+  WhiteSpace,
+  Comment,
+  NewLine,
+  Semicolon,
+  CloudHeader,
+  Group,
+  Compute,
+  Storage,
+  Database,
+  Queue,
+  Cdn,
+  Dash,
+  Colon,
+  LBrace,
+  RBrace,
+  QuotedString,
+  Identifier,
+];
+
+export const cloudLexer = new Lexer(order);
+
+export const CloudTok = {
+  Identifier,
+  CloudHeader,
+  Group,
+  Compute,
+  Storage,
+  Database,
+  Queue,
+  Cdn,
+  Dash,
+  Colon,
+  LBrace,
+  RBrace,
+  QuotedString,
+  NewLine,
+  Semicolon,
+};
+
+export const cloudAllTokens: TokenType[] = order;

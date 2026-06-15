@@ -41,6 +41,18 @@ const ICONS = new Map<string, string>([
     "host",
     '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"/><rect x="9" y="17" width="6" height="2"/><rect x="7" y="19" width="10" height="2" rx="1"/></svg>',
   ],
+  [
+    "compute",
+    '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/><rect x="9" y="2" width="1.5" height="3"/><rect x="13.5" y="2" width="1.5" height="3"/><rect x="9" y="19" width="1.5" height="3"/><rect x="13.5" y="19" width="1.5" height="3"/><rect x="2" y="9" width="3" height="1.5"/><rect x="2" y="13.5" width="3" height="1.5"/><rect x="19" y="9" width="3" height="1.5"/><rect x="19" y="13.5" width="3" height="1.5"/></svg>',
+  ],
+  [
+    "storage",
+    '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v5c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 13v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5"/></svg>',
+  ],
+  [
+    "cdn",
+    '<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A3.5 3.5 0 0 1 18 18z"/><path d="M12 9l3 4h-6z"/></svg>',
+  ],
 ]);
 
 export const builtinPack: IconPack = {

@@ -1,9 +1,9 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, and network**; `make check` + Playwright green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright green.
 
 - `main.ts`: source `<textarea>` ↔ canvas.
-  - edit text → re-render via `parseDiagram` + `layoutDiagram` (flowchart/sequence/C4/block/network);
+  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
   - double-click rename → patches the source text (flowchart node labels; sequence actor/message
@@ -21,6 +21,6 @@
   how vendor cloud packs (AWS/Azure/GCP) render without being bundled. Failures log loudly.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints.
-- Playwright (`make e2e-ui`): 21 flows — the 16 family/edit flows plus network-icons, dpr,
-  load-pack (valid + malformed), and theme.
-- Not yet: CodeMirror editor; theme persistence; HTML-in-Canvas.
+- Playwright (`make e2e-ui`): 22 flows — adds cloud (nested groups + service glyphs) to the prior
+  21 (family/edit flows, network-icons, dpr, load-pack ×2, theme).
+- Not yet: cloud two-way edit; CodeMirror editor; theme persistence; HTML-in-Canvas.

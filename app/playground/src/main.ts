@@ -192,6 +192,9 @@ const renderFromText = async (text: string): Promise<void> => {
       netSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
+    case "cloud":
+      // Read-only for now; nested groups + service glyphs render, no source spans captured yet.
+      break;
   }
   await ensureIcons(scene);
   paintScene();

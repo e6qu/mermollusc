@@ -3,6 +3,7 @@ export { layoutSequence } from "./sequence.js";
 export { layoutC4 } from "./c4.js";
 export { layoutBlock } from "./block.js";
 export { layoutNetwork } from "./network.js";
+export { layoutCloud } from "./cloud.js";
 export type {
   LayoutConfig,
   LayoutGraph,

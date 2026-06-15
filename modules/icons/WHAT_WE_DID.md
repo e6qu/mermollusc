@@ -7,6 +7,7 @@
   user/queue) + `defaultRegistry`. 3 unit tests.
 - Added four more original AGPL glyphs (router/switch/firewall/host) so the pack covers every
   network node kind 1:1.
+- Added three more (compute/storage/cdn) for the cloud service kinds (database/queue reused).
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
 - Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`

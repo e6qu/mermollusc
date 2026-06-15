@@ -8,4 +8,5 @@ export { parseBlock, parseBlockWithSource } from "./block-parse.js";
 export type { ParsedBlock } from "./block-parse.js";
 export { parseNetwork, parseNetworkWithSource } from "./net-parse.js";
 export type { ParsedNetwork } from "./net-parse.js";
+export { parseCloud } from "./cloud-parse.js";
 export { parseDiagram } from "./diagram.js";

@@ -131,5 +131,36 @@ export interface NetworkAst {
   readonly links: readonly NetworkLink[];
 }
 
-// Grows one variant per family (cloud, ...). The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst | NetworkAst;
+export type CloudNodeKind = "compute" | "storage" | "database" | "queue" | "cdn";
+
+export interface CloudGroup {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly parent: NodeId | null; // enclosing group, or null at the top level
+}
+
+export interface CloudNode {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly kind: CloudNodeKind;
+  readonly parent: NodeId | null;
+}
+
+export interface CloudLink {
+  readonly id: EdgeId;
+  readonly from: NodeId;
+  readonly to: NodeId;
+  readonly label: string | null;
+}
+
+// A cloud-architecture diagram: kind-typed service nodes nested inside provider/region groups,
+// joined by undirected links. Groups carry synthetic ids (`g0`…) since the syntax names only labels.
+export interface CloudAst {
+  readonly kind: "cloud";
+  readonly groups: readonly CloudGroup[];
+  readonly nodes: readonly CloudNode[];
+  readonly links: readonly CloudLink[];
+}
+
+// Grows one variant per family. The `kind` tag discriminates.
+export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst | NetworkAst | CloudAst;
