@@ -1,2 +1,2 @@
-export { parse } from "./parse.js";
-export type { ParseError } from "./parse.js";
+export { parse, parseWithSource } from "./parse.js";
+export type { ParseError, ParsedSource } from "./parse.js";

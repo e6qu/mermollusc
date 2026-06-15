@@ -1,12 +1,16 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, ok, type Result } from "@m/std";
+import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   EdgeKind,
   FlowDirection,
   FlowEdge,
   FlowNode,
   FlowchartAst,
+  NodeId,
   NodeShape,
+  NodeSpans,
+  SourceMap,
+  TextSpan,
 } from "@m/contracts";
 import { flowchartParser } from "./grammar.js";
 import { lexer } from "./tokens.js";
@@ -16,12 +20,23 @@ export interface ParseError {
   readonly errors: readonly string[];
 }
 
+export interface ParsedSource {
+  readonly ast: FlowchartAst;
+  readonly source: SourceMap;
+}
+
 type Children = Record<string, CstElement[] | undefined>;
 
 const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
 const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 const imageOf = (c: Children, name: string): string | null =>
   childTokens(c, name)[0]?.image ?? null;
+const spanOf = (t: IToken): TextSpan => ({
+  start: t.startOffset,
+  end: (t.endOffset ?? t.startOffset) + 1,
+});
+
+const ZERO_SPAN: TextSpan = { start: 0, end: 0 };
 
 const toDirection = (raw: string | null): FlowDirection | null => {
   if (raw === null) return "TB";
@@ -45,19 +60,66 @@ interface Ref {
   readonly label: string;
   readonly shape: NodeShape;
   readonly explicit: boolean;
+  readonly idSpan: TextSpan;
+  readonly labelSpan: TextSpan;
+  readonly bracketed: boolean;
 }
 
 const readNodeRef = (node: CstNode): Ref => {
   const c = node.children;
-  const id = imageOf(c, "Identifier") ?? "";
+  const idToken = childTokens(c, "Identifier")[0];
+  const id = idToken?.image ?? "";
+  const idSpan = idToken === undefined ? ZERO_SPAN : spanOf(idToken);
+
   const shapeNode = childNodes(c, "shape")[0];
-  if (shapeNode === undefined) return { id, label: id, shape: "rect", explicit: false };
+  if (shapeNode === undefined) {
+    return {
+      id,
+      label: id,
+      shape: "rect",
+      explicit: false,
+      idSpan,
+      labelSpan: idSpan,
+      bracketed: false,
+    };
+  }
+
   const sc = shapeNode.children;
-  const square = imageOf(sc, "SquareText");
-  if (square !== null) return { id, label: square.trim(), shape: "rect", explicit: true };
-  const paren = imageOf(sc, "ParenText");
-  if (paren !== null) return { id, label: paren.trim(), shape: "round", explicit: true };
-  return { id, label: (imageOf(sc, "CurlyText") ?? "").trim(), shape: "diamond", explicit: true };
+  const square = childTokens(sc, "SquareText")[0];
+  if (square !== undefined) {
+    return {
+      id,
+      label: square.image.trim(),
+      shape: "rect",
+      explicit: true,
+      idSpan,
+      labelSpan: spanOf(square),
+      bracketed: true,
+    };
+  }
+  const paren = childTokens(sc, "ParenText")[0];
+  if (paren !== undefined) {
+    return {
+      id,
+      label: paren.image.trim(),
+      shape: "round",
+      explicit: true,
+      idSpan,
+      labelSpan: spanOf(paren),
+      bracketed: true,
+    };
+  }
+  const curly = childTokens(sc, "CurlyText")[0];
+  const labelSpan = curly === undefined ? idSpan : spanOf(curly);
+  return {
+    id,
+    label: (curly?.image ?? "").trim(),
+    shape: "diamond",
+    explicit: true,
+    idSpan,
+    labelSpan,
+    bracketed: true,
+  };
 };
 
 const linkKind = (c: Children): EdgeKind => {
@@ -67,7 +129,7 @@ const linkKind = (c: Children): EdgeKind => {
   return "thick";
 };
 
-const buildAst = (cst: CstNode): Result<FlowchartAst, ParseError> => {
+const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const root = cst.children;
   const headerNode = childNodes(root, "header")[0];
   const dirRaw = headerNode === undefined ? null : imageOf(headerNode.children, "Identifier");
@@ -77,6 +139,7 @@ const buildAst = (cst: CstNode): Result<FlowchartAst, ParseError> => {
   }
 
   const nodeMap = new Map<string, FlowNode>();
+  const nodeSpans = new Map<NodeId, NodeSpans>();
   const edges: FlowEdge[] = [];
 
   for (const stmt of childNodes(root, "statement")) {
@@ -86,13 +149,16 @@ const buildAst = (cst: CstNode): Result<FlowchartAst, ParseError> => {
     for (const ref of refs) {
       const existing = nodeMap.get(ref.id);
       if (existing === undefined) {
-        nodeMap.set(ref.id, {
-          id: brand<string, "NodeId">(ref.id),
-          label: ref.label,
-          shape: ref.shape,
-        });
+        const nodeId = brand<string, "NodeId">(ref.id);
+        nodeMap.set(ref.id, { id: nodeId, label: ref.label, shape: ref.shape });
+        nodeSpans.set(nodeId, { id: ref.idSpan, label: ref.labelSpan, bracketed: ref.bracketed });
       } else if (ref.explicit) {
         nodeMap.set(ref.id, { id: existing.id, label: ref.label, shape: ref.shape });
+        nodeSpans.set(existing.id, {
+          id: ref.idSpan,
+          label: ref.labelSpan,
+          bracketed: ref.bracketed,
+        });
       }
     }
 
@@ -114,10 +180,11 @@ const buildAst = (cst: CstNode): Result<FlowchartAst, ParseError> => {
     }
   }
 
-  return ok({ kind: "flowchart", direction, nodes: [...nodeMap.values()], edges });
+  const ast: FlowchartAst = { kind: "flowchart", direction, nodes: [...nodeMap.values()], edges };
+  return ok({ ast, source: { nodes: nodeSpans } });
 };
 
-export const parse = (text: string): Result<FlowchartAst, ParseError> => {
+export const parseWithSource = (text: string): Result<ParsedSource, ParseError> => {
   const lexed = lexer.tokenize(text);
   if (lexed.errors.length > 0) {
     return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
@@ -127,5 +194,8 @@ export const parse = (text: string): Result<FlowchartAst, ParseError> => {
   if (flowchartParser.errors.length > 0) {
     return err({ kind: "parse", errors: flowchartParser.errors.map((e) => e.message) });
   }
-  return buildAst(cst);
+  return buildResult(cst);
 };
+
+export const parse = (text: string): Result<FlowchartAst, ParseError> =>
+  map(parseWithSource(text), (parsed) => parsed.ast);

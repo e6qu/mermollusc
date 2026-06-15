@@ -15,4 +15,7 @@ export type {
   Scene,
   LayoutOverrides,
   NodeOverride,
+  TextSpan,
+  NodeSpans,
+  SourceMap,
 } from "./core/index.js";

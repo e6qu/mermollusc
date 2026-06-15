@@ -1,6 +1,6 @@
 # @m/parser — do next
 
-- Attach source spans (token offsets) to AST so the builder can patch text ranges (two-way sync).
+- Capture edge-label spans too (currently only node id/label spans are in the `SourceMap`).
 - Add property-based round-trip tests (fast-check) over generated flowchart ASTs.
 - Surface error positions (line/col) in `ParseError`, not just messages.
 - Grow the subset: `subgraph`, stadium `([])` / circle `(())` shapes, quoted labels, more link styles.
