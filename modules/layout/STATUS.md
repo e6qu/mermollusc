@@ -17,5 +17,6 @@
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
   service leaves carry a kind glyph; undirected links.
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
-- tests: 22 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
-  cloud nesting + icons; routing; property-based: block/network preserve ids + fit the extent).
+- tests: 23 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
+  cloud nesting + icons; routing; property-based: block/network grids **and the ELK flowchart path**
+  preserve ids + fit every box inside the extent).

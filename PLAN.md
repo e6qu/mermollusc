@@ -72,7 +72,7 @@ end-to-end).
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
 | `@m/parser` | ✅ flowchart · sequence · C4 · block · network · cloud (nested) — all +spans · ✅ routing · property round-trip | 33 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid (+icon refs) · ✅ routing | 22 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid (+icon refs) · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark themes) | 7 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry + resolver + 12-glyph built-in pack · ✅ in-node rendering · ✅ user-loaded packs (`decodePack`/`registerPack`) · ⬜ vendored OSS packs | 7 |
@@ -91,9 +91,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark toggle) + device-pixel-ratio done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-4. **Cross-cutting**: regenerate unpinned-only; extend property tests to the ELK flowchart path;
-   raise coverage ratchets as coverage climbs. *(Property-based tests (incl. the parser
-   print→parse round-trip) + `make cov` per-module coverage thresholds are wired.)*
+4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
+   *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
+   the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*
 
 ## How to resume (fresh session / after compaction)
 
