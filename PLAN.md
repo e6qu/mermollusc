@@ -71,7 +71,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
-| `@m/parser` | ✅ flowchart · sequence · C4 · block · network · cloud (nested) — all +spans; icon override on network+cloud · ✅ routing · property round-trip | 36 |
+| `@m/parser` | ✅ flowchart · sequence · C4 · block · network · cloud — all +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 37 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark + sketch themes) | 8 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
@@ -84,8 +84,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 
 ## Roadmap — the plan ahead
 
-1. **Icons**: per-node `icon "<pack>/<name>"` override is on network + cloud; extend to block (and
-   flowchart/C4 if worth the grammar cost). Optional authored `sketch` glyph pack for hand-drawn mode. *(hand-drawn Sketch mode shipped;
+1. **Icons**: per-node `icon "<pack>/<name>"` override is on network + cloud + block. (Flowchart/C4
+   deferred — their chain / paren-arg grammars make a node-level icon slot awkward and low-value.)
+   Optional authored `sketch` glyph pack for hand-drawn mode. *(hand-drawn Sketch mode shipped;
    original AGPL BPMN pack authored; simple-icons (CC0, 36) + devicon (MIT,
    AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS services) + Kubernetes-community (Apache-2.0,
    resource shapes) bundled with pinned provenance; CNCF landscape archived via git-LFS;

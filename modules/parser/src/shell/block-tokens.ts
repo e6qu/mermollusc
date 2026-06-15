@@ -13,6 +13,8 @@ const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: tr
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
 const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
 const Comment = createToken({ name: "Comment", pattern: /%%[^\n]*/, group: Lexer.SKIPPED });
+const Icon = createToken({ name: "BlockIcon", pattern: /icon/, longer_alt: Identifier });
+const Quoted = createToken({ name: "BlockQuoted", pattern: /"[^"\n]*"/ });
 
 const DottedArrow = createToken({ name: "DottedArrow", pattern: /-\.->/ });
 const ThickArrow = createToken({ name: "ThickArrow", pattern: /={2,}>/ });
@@ -45,6 +47,8 @@ export const blockLexer = new Lexer({
       BlockHeader,
       Columns,
       Num,
+      Icon,
+      Quoted,
       DottedArrow,
       ThickArrow,
       Arrow,
@@ -68,6 +72,8 @@ export const BlockTok = {
   BlockHeader,
   Columns,
   Number: Num,
+  Icon,
+  Quoted,
   NewLine,
   Semicolon,
   DottedArrow,
@@ -96,6 +102,8 @@ export const blockAllTokens: TokenType[] = [
   BlockHeader,
   Columns,
   Num,
+  Icon,
+  Quoted,
   DottedArrow,
   ThickArrow,
   Arrow,

@@ -39,3 +39,5 @@
   quoted string) → `NetworkNode.icon: IconRef | null`; malformed refs parse to null. +2 tests.
 - Cloud: same per-leaf `icon "<pack>/<name>"` override → `CloudNode.icon` (layout prefers it over the
   kind→simple-icons default). +1 test.
+- Block: same per-node `icon "<pack>/<name>"` override → `BlockNode.icon` (added an `Icon` keyword +
+  a `BlockQuoted` token to the block lexer's main mode); layout draws it. +1 test.

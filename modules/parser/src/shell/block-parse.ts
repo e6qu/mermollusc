@@ -7,6 +7,7 @@ import type {
   BlockSource,
   EdgeId,
   EdgeKind,
+  IconRef,
   NodeId,
   NodeShape,
   TextSpan,
@@ -49,13 +50,24 @@ interface Ref {
   readonly shape: NodeShape;
   readonly explicit: boolean;
   readonly labelSpan: TextSpan | null;
+  readonly icon: IconRef | null;
 }
+
+// `"<pack>/<name>"` (a quoted-token image) → an icon ref; null unless it's a two-part reference.
+const parseIconRef = (image: string): IconRef | null => {
+  const slash = image.indexOf("/");
+  if (slash <= 1 || slash >= image.length - 2) return null;
+  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
+};
 
 const readNodeRef = (node: CstNode): Ref => {
   const id = imageOf(node.children, "Identifier") ?? "";
+  // The optional `icon "<pack>/<name>"` is a sibling of the shape, on the nodeRef directly.
+  const iconImage = imageOf(node.children, "BlockQuoted");
+  const icon = iconImage === null ? null : parseIconRef(iconImage);
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return { id, label: id, shape: "rect", explicit: false, labelSpan: null };
+    return { id, label: id, shape: "rect", explicit: false, labelSpan: null, icon };
   }
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
@@ -66,6 +78,7 @@ const readNodeRef = (node: CstNode): Ref => {
       shape: "rect",
       explicit: true,
       labelSpan: labelSpan(square),
+      icon,
     };
   }
   const paren = childTokens(sc, "ParenText")[0];
@@ -76,6 +89,7 @@ const readNodeRef = (node: CstNode): Ref => {
       shape: "round",
       explicit: true,
       labelSpan: labelSpan(paren),
+      icon,
     };
   }
   const curly = childTokens(sc, "CurlyText")[0];
@@ -85,6 +99,7 @@ const readNodeRef = (node: CstNode): Ref => {
     shape: "diamond",
     explicit: true,
     labelSpan: curly === undefined ? null : labelSpan(curly),
+    icon,
   };
 };
 
@@ -120,9 +135,14 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
       const id = brand<string, "NodeId">(ref.id);
       const existing = blockMap.get(ref.id);
       if (existing === undefined) {
-        blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape });
+        blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape, icon: ref.icon });
       } else if (ref.explicit) {
-        blockMap.set(ref.id, { id: existing.id, label: ref.label, shape: ref.shape });
+        blockMap.set(ref.id, {
+          id: existing.id,
+          label: ref.label,
+          shape: ref.shape,
+          icon: ref.icon,
+        });
       }
       if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
     }

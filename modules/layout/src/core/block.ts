@@ -44,7 +44,7 @@ export const layoutBlock = (ast: BlockAst): Scene => {
       label: b.label,
       shape: b.shape,
       parent: null,
-      icon: null,
+      icon: b.icon,
     };
   });
 

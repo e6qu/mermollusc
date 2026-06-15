@@ -13,8 +13,8 @@
   `Boundary(id, "label") { ... }`, `Rel(from, to, "label")`. `parseC4` is the ast-only wrapper.
 - `parseBlock(text)` / `parseBlockWithSource(text)` → `BlockAst` (+ `BlockSource`: label spans for
   explicitly-labelled blocks and pipe-labelled edges): `block-beta` subset — `columns N` directive,
-  block declarations `id` / `id["label"]` / `id(label)` / `id{label}` (quotes stripped), and edge
-  chains reusing the flowchart link syntax. Columns default to a single row when omitted.
+  block declarations `id` / `id["label"]` / `id(label)` / `id{label}` (quotes stripped) with an
+  optional `icon "<pack>/<name>"` override, and edge chains reusing the flowchart link syntax.
 - `parseNetwork(text)` / `parseNetworkWithSource(text)` → `NetworkAst` (+ `NetworkSource`: inner
   label spans for quoted node/link labels): `network` subset — kind-typed node declarations
   (`server`/`database`/`cloud`/`router`/`switch`/`firewall`/`host`) with an optional per-node
@@ -30,6 +30,6 @@
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 36 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
+- tests: 37 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).

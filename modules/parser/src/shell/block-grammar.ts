@@ -50,6 +50,10 @@ class BlockParser extends CstParser {
   private readonly nodeRef = this.RULE("nodeRef", () => {
     this.CONSUME(BlockTok.Identifier);
     this.OPTION(() => this.SUBRULE(this.shape));
+    this.OPTION2(() => {
+      this.CONSUME(BlockTok.Icon);
+      this.CONSUME(BlockTok.Quoted);
+    });
   });
 
   private readonly shape = this.RULE("shape", () =>

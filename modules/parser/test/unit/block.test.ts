@@ -33,6 +33,16 @@ describe("parseBlock", () => {
     expect(r.value.columns).toBe(3);
   });
 
+  it("parses a per-block icon override", () => {
+    const r = parseBlock('block-beta\n  a["Web"] icon "devicon/docker"\n  b\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const byId = new Map(r.value.blocks.map((b) => [b.id, b]));
+    expect(byId.get(nid("a"))?.label).toBe("Web");
+    expect(byId.get(nid("a"))?.icon).toEqual({ pack: "devicon", name: "docker" });
+    expect(byId.get(nid("b"))?.icon).toBeNull();
+  });
+
   it("keeps a dotted-link edge label", () => {
     const r = parseBlock("block-beta\n  a -.->|maybe| b\n");
     expect(isOk(r)).toBe(true);

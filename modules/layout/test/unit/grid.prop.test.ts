@@ -41,7 +41,7 @@ describe("layoutBlock — grid invariants (property-based)", () => {
           const ast: BlockAst = {
             kind: "block",
             columns,
-            blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect" })),
+            blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null })),
             edges: [],
           };
           const scene = layoutBlock(ast);

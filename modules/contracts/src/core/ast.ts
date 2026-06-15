@@ -84,6 +84,8 @@ export interface BlockNode {
   readonly id: NodeId;
   readonly label: string;
   readonly shape: NodeShape;
+  // An explicit `icon "<pack>/<name>"` override; null otherwise.
+  readonly icon: IconRef | null;
 }
 
 export interface BlockEdge {

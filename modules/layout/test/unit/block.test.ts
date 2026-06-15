@@ -10,9 +10,9 @@ const ast: BlockAst = {
   kind: "block",
   columns: 2,
   blocks: [
-    { id: nid("a"), label: "A", shape: "rect" },
-    { id: nid("b"), label: "B", shape: "rect" },
-    { id: nid("c"), label: "C", shape: "rect" },
+    { id: nid("a"), label: "A", shape: "rect", icon: null },
+    { id: nid("b"), label: "B", shape: "rect", icon: null },
+    { id: nid("c"), label: "C", shape: "rect", icon: null },
   ],
   edges: [{ id: eid("e0"), from: nid("a"), to: nid("b"), kind: "arrow", label: null }],
 };
