@@ -74,7 +74,7 @@ C4 (with nested boundaries) is read-path so far.
 | `@m/layout` | ✅ flowchart (ELK) + relax · ✅ sequence lane · ✅ C4 nested-box · ✅ `layoutDiagram` routing | 12 |
 | `@m/renderer` | ✅ Scene → canvas (shapes incl. container, node + edge labels, dashed/arrow polylines) | 4 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel · ⬜ add/connect/delete | 15 |
-| `@m/icons` | ⬜ not started | — |
+| `@m/icons` | ✅ registry + resolver + built-in glyph pack · ⬜ OSS packs / in-node rendering | 3 |
 | `@m/app` | ✅ renders flowchart + sequence + C4; flowchart/sequence two-way; flowchart drag/relax/regenerate/add | 1 node + 9 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
