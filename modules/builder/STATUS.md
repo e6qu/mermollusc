@@ -1,8 +1,8 @@
 # @m/builder — status
 
-**State:** geometric hit-testing implemented; `make check` green.
+**State:** hit-testing + selection model implemented; `make check` green.
 
-- core: `hitTest(scene, point)` → `{kind:"node"|"edge", id}` or `null` (nodes via `rectContains`,
-  edges via point-to-segment distance; nodes preferred over edges).
-- tests: 4 passing (node/edge/empty/precedence).
-- Not yet: selection, drag, sidecar overrides, two-way text patching.
+- core: `hitTest(scene, point)` → node/edge/`null` (bounds + edge proximity; nodes preferred).
+- core: pure `Selection` + `selectOnly` / `toggle` / `isSelected` over hit targets.
+- tests: 8 passing.
+- Not yet: drag, sidecar overrides, two-way text patching.
