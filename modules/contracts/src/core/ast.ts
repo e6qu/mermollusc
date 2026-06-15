@@ -147,6 +147,8 @@ export interface CloudNode {
   readonly label: string;
   readonly kind: CloudNodeKind;
   readonly parent: NodeId | null;
+  // An explicit `icon "<pack>/<name>"` override; null means use the kind's default glyph.
+  readonly icon: IconRef | null;
 }
 
 export interface CloudLink {

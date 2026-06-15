@@ -37,3 +37,5 @@
   for cloud two-way editing; `parseCloud` is now the ast-only wrapper. +1 test.
 - Network: added an optional per-node `icon "<pack>/<name>"` override (an `Icon` keyword + a second
   quoted string) → `NetworkNode.icon: IconRef | null`; malformed refs parse to null. +2 tests.
+- Cloud: same per-leaf `icon "<pack>/<name>"` override → `CloudNode.icon` (layout prefers it over the
+  kind→simple-icons default). +1 test.

@@ -47,6 +47,10 @@ class CloudParser extends CstParser {
     this.SUBRULE(this.kind);
     this.CONSUME(CloudTok.Identifier);
     this.OPTION(() => this.CONSUME(CloudTok.QuotedString));
+    this.OPTION2(() => {
+      this.CONSUME(CloudTok.Icon);
+      this.CONSUME2(CloudTok.QuotedString);
+    });
   });
 
   private readonly kind = this.RULE("kind", () =>

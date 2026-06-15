@@ -14,6 +14,7 @@ const Database = createToken({
 });
 const Queue = createToken({ name: "CloudQueue", pattern: /queue/, longer_alt: Identifier });
 const Cdn = createToken({ name: "Cdn", pattern: /cdn/, longer_alt: Identifier });
+const Icon = createToken({ name: "CloudIcon", pattern: /icon/, longer_alt: Identifier });
 
 const Dash = createToken({ name: "CloudDash", pattern: /--/ });
 const Colon = createToken({ name: "CloudColon", pattern: /:/ });
@@ -41,6 +42,7 @@ const order: TokenType[] = [
   Database,
   Queue,
   Cdn,
+  Icon,
   Dash,
   Colon,
   LBrace,
@@ -60,6 +62,7 @@ export const CloudTok = {
   Database,
   Queue,
   Cdn,
+  Icon,
   Dash,
   Colon,
   LBrace,

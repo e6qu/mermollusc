@@ -40,6 +40,20 @@ describe("parseCloud", () => {
     ]);
   });
 
+  it("parses a per-leaf icon override (with and without a label)", () => {
+    const r = parseCloud(
+      'cloud\n  compute web "Web" icon "devicon/aws"\n  storage s3 icon "gilbarbara/aws-s3"\n  database db "Orders"\n',
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const byId = new Map(r.value.nodes.map((n) => [n.id, n]));
+    expect(byId.get(nid("web"))?.label).toBe("Web");
+    expect(byId.get(nid("web"))?.icon).toEqual({ pack: "devicon", name: "aws" });
+    expect(byId.get(nid("s3"))?.label).toBe("s3");
+    expect(byId.get(nid("s3"))?.icon).toEqual({ pack: "gilbarbara", name: "aws-s3" });
+    expect(byId.get(nid("db"))?.icon).toBeNull();
+  });
+
   it("parses an undirected link with a label", () => {
     const r = parseCloud(SAMPLE);
     expect(isOk(r)).toBe(true);

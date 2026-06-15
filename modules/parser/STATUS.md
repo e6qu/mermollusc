@@ -22,13 +22,14 @@
   Single-mode lexer (labels are always quoted).
 - `parseCloud(text)` / `parseCloudWithSource(text)` → `CloudAst` (+ `CloudSource`: inner-label spans
   for groups, service leaves, and links): `cloud` subset — nestable `group "label" { … }` (synthetic
-  ids `g0`…), kind-typed leaves (`compute`/`storage`/`database`/`queue`/`cdn`), undirected links
-  `a -- b : "label"`. `parseCloud` is the ast-only wrapper.
+  ids `g0`…), kind-typed leaves (`compute`/`storage`/`database`/`queue`/`cdn`) with an optional
+  per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
+  ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
   lines) and routes to the flowchart, sequence, C4, block, network, or cloud parser.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 35 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
+- tests: 36 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).

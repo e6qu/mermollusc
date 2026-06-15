@@ -8,6 +8,7 @@ import type {
   CloudNodeKind,
   CloudSource,
   EdgeId,
+  IconRef,
   NodeId,
   TextSpan,
 } from "@m/contracts";
@@ -32,6 +33,13 @@ const innerSpan = (t: IToken): TextSpan => ({
   start: t.startOffset + 1,
   end: t.startOffset + t.image.length - 1,
 });
+
+// `"<pack>/<name>"` (a quoted-token image) → an icon ref; null unless it's a two-part reference.
+const parseIconRef = (image: string): IconRef | null => {
+  const slash = image.indexOf("/");
+  if (slash <= 1 || slash >= image.length - 2) return null;
+  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
+};
 
 const KIND_TOKEN: ReadonlyMap<string, CloudNodeKind> = new Map([
   ["Compute", "compute"],
@@ -71,15 +79,21 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
     const leaf = childNodes(item.children, "leaf")[0];
     if (leaf !== undefined) {
       const id = brand<string, "NodeId">(imageOf(leaf.children, "CloudIdentifier") ?? "");
-      const label = childTokens(leaf.children, "CloudQuoted")[0];
+      // Grammar order is `[label] [icon "ref"]`: with an `icon`, the ref is the last quoted string
+      // and a label exists only when there are two; without one, the sole quote is the label.
+      const quotes = childTokens(leaf.children, "CloudQuoted");
+      const hasIcon = childTokens(leaf.children, "CloudIcon").length > 0;
+      const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
+      const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
       const kindNode = childNodes(leaf.children, "kind")[0];
       acc.nodes.push({
         id,
-        label: label === undefined ? id : unquote(label.image),
+        label: labelToken === undefined ? id : unquote(labelToken.image),
         kind: kindNode === undefined ? "compute" : kindOf(kindNode.children),
         parent,
+        icon: iconToken === undefined ? null : parseIconRef(iconToken.image),
       });
-      if (label !== undefined) acc.nodeSpans.set(id, innerSpan(label));
+      if (labelToken !== undefined) acc.nodeSpans.set(id, innerSpan(labelToken));
       continue;
     }
     const link = childNodes(item.children, "link")[0];

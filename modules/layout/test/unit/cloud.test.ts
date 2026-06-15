@@ -10,8 +10,8 @@ const ast: CloudAst = {
   kind: "cloud",
   groups: [{ id: nid("g0"), label: "AWS", parent: null }],
   nodes: [
-    { id: nid("web"), label: "Web", kind: "compute", parent: nid("g0") },
-    { id: nid("db"), label: "DB", kind: "database", parent: null },
+    { id: nid("web"), label: "Web", kind: "compute", parent: nid("g0"), icon: null },
+    { id: nid("db"), label: "DB", kind: "database", parent: null, icon: null },
   ],
   links: [{ id: eid("l0"), from: nid("web"), to: nid("db"), label: null }],
 };

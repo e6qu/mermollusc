@@ -51,7 +51,8 @@ export const layoutCloud = (ast: CloudAst): Scene => {
       id: n.id,
       label: n.label,
       parent: n.parent,
-      icon: KIND_ICON[n.kind],
+      // An explicit `icon "<pack>/<name>"` override wins; otherwise the kind's default glyph.
+      icon: n.icon ?? KIND_ICON[n.kind],
       group: false,
     })),
   ];
