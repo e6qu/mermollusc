@@ -7,3 +7,5 @@
 - Added Playwright (`playwright.config.ts` + specs) — one spec per UI flow, auto-starting Vite.
 - Made it interactive: source textarea ↔ canvas, edit-to-re-render, click-to-select (highlight),
   drag-to-move (sidecar override). 3 Playwright flows.
+- Double-click relabel: canvas edit → `relabelNode` → textarea text patched → re-render
+  (canvas → text two-way). +1 Playwright flow (dialog-driven).

@@ -1,10 +1,17 @@
-import { applyOverrides, emptySelection, hitTest, moveNode, selectOnly } from "@m/builder";
+import {
+  applyOverrides,
+  emptySelection,
+  hitTest,
+  moveNode,
+  relabelNode,
+  selectOnly,
+} from "@m/builder";
 import type { Selection } from "@m/builder";
-import type { LayoutOverrides, Scene, SceneNodeId } from "@m/contracts";
+import type { LayoutOverrides, NodeId, Scene, SceneNodeId, SourceMap } from "@m/contracts";
 import { layout } from "@m/layout";
 import { parseWithSource } from "@m/parser";
 import { paint, toDisplayList } from "@m/renderer";
-import { isOk, point } from "@m/std";
+import { brand, isOk, point } from "@m/std";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -22,6 +29,7 @@ const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 
 let scene: Scene | null = null;
+let source: SourceMap | null = null;
 let overrides: LayoutOverrides = new Map();
 let selection: Selection = emptySelection;
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
@@ -59,10 +67,11 @@ const renderFromText = async (text: string): Promise<void> => {
     return;
   }
   scene = laid.value;
+  source = parsed.value.source;
   paintScene();
 };
 
-const scenePoint = (ev: PointerEvent) => {
+const scenePoint = (ev: MouseEvent) => {
   const r = canvas.getBoundingClientRect();
   return point(ev.clientX - r.left - MARGIN, ev.clientY - r.top - MARGIN);
 };
@@ -99,6 +108,25 @@ canvas.addEventListener("pointerup", (ev) => {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;
   }
+});
+
+// Two-way edit: relabel a node on the canvas, write the patch back into the source text.
+canvas.addEventListener("dblclick", (ev) => {
+  if (scene === null || source === null) return;
+  const shown = applyOverrides(scene, overrides);
+  const hit = hitTest(shown, scenePoint(ev));
+  if (hit === null || hit.kind !== "node") return;
+  const current = shown.nodes.find((n) => n.id === hit.id)?.label ?? "";
+  const next = window.prompt("Label:", current);
+  if (next === null) return;
+  const id: NodeId = brand<string, "NodeId">(hit.id);
+  const patched = relabelNode(srcEl.value, source, id, next);
+  if (!isOk(patched)) {
+    console.error("relabel failed:", patched.error.message);
+    return;
+  }
+  srcEl.value = patched.value;
+  void renderFromText(patched.value);
 });
 
 srcEl.value = SAMPLE;
