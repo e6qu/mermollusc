@@ -12,6 +12,7 @@ const NODE_WRAP: Record<NodeShape, readonly [string, string]> = {
   stadium: ["([", "])"],
   diamond: ["{", "}"],
   circle: ["((", "))"],
+  container: ["[", "]"],
 };
 
 const ARROW: Record<EdgeKind, string> = {

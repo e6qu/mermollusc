@@ -38,6 +38,8 @@ const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
       return Math.min(w, h) / 2;
     case "diamond":
       return 0;
+    case "container":
+      return 4;
   }
 };
 
@@ -48,6 +50,20 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
   const label = { kind: "label", x: cx, y: cy, text: node.label } satisfies DrawCmd;
   if (node.shape === "diamond") {
     return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
+  }
+  if (node.shape === "container") {
+    // A C4 boundary: outline with its label near the top so nested children don't overlap it.
+    return [
+      {
+        kind: "box",
+        x: origin.x,
+        y: origin.y,
+        width: size.width,
+        height: size.height,
+        radius: px(4),
+      },
+      { kind: "label", x: cx, y: px(origin.y + 12), text: node.label },
+    ];
   }
   return [
     {

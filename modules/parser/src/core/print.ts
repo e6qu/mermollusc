@@ -12,6 +12,8 @@ const wrapLabel = (shape: NodeShape, id: string, label: string): string => {
       return `${id}{${label}}`;
     case "circle":
       return `${id}((${label}))`;
+    case "container":
+      return `${id}[${label}]`; // C4 boundary; not emitted by the flowchart printer
   }
 };
 

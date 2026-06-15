@@ -9,3 +9,4 @@
 - Honored `SceneEdge.stroke`/`arrow`: dashed line support (`setLineDash`) + filled arrowheads;
   layout maps flowchart `EdgeKind` → stroke/arrow.
 - Draw `SceneEdge.label` at the edge midpoint (sequence message text + flowchart edge labels).
+- Render the `"container"` shape (rounded outline + label near the top) for C4 boundaries.

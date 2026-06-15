@@ -13,3 +13,4 @@
 - Added the `SequenceSource` contract (actor-label + message-text spans) for sequence two-way edits.
 - Added the `C4Ast` variant (`C4Element` with `kind` + `parent` nesting, `C4Rel`); `DiagramAst` is
   now `FlowchartAst | SequenceAst | C4Ast`.
+- Added `NodeShape` `"container"` (C4 boundaries) — rendered as an outline with a top label.
