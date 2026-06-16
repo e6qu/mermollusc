@@ -22,8 +22,8 @@
   `vendor/simpleicons.json` (+ `vendor/README.md` provenance/trademark note). Bundled via
   `src/core/vendored.ts` into `defaultRegistry`. +1 test. (AWS/Azure marks aren't in simple-icons.)
 - Vendored **devicon** (MIT) the same way (license + ≥24h pin + path probes via authed `gh api`):
-  32 colored brand/tool logos including the **AWS/Azure/GCP/Oracle** marks → `vendor/devicon.json`,
-  bundled as `deviconPack`. +1 test.
+  the **AWS/Azure/GCP/Oracle** marks + a tech-stack set (languages/frameworks/build tools) → 61
+  logos in `vendor/devicon.json`, bundled as `deviconPack`. +1 test.
 - Vendored **gilbarbara/logos** (CC0): a curated 30-icon cloud subset — per-*service* AWS marks
   (ec2/s3/lambda/rds/…) + GCP + tools → `vendor/gilbarbara.json`, bundled as `gilbarbaraPack`. +1 test.
 - Vendored **Kubernetes-community** resource icons (Apache-2.0): 25 official unlabeled shapes

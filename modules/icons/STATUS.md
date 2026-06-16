@@ -17,8 +17,9 @@
   bundled.
 - **Bundled OSS packs** (vendored with pinned provenance by `tools/source-icons.mjs`, in `defaultRegistry`):
   - `simpleIconsPack` — 36 cloud-native/devops marks from simple-icons **CC0-1.0**.
-  - `deviconPack` — 32 colored brand/tool logos from devicon **MIT**, including the **AWS / Azure /
-    Google Cloud / Oracle** brand marks (the official *architecture* icon sets stay non-redistributable).
+  - `deviconPack` — 61 colored logos from devicon **MIT**: cloud/devops brand marks (**AWS / Azure /
+    Google Cloud / Oracle**, …) + a tech-stack set (languages, frameworks, build tools). Official
+    *architecture* icon sets stay non-redistributable.
   - `gilbarbaraPack` — 30 per-*service* cloud icons from gilbarbara/logos **CC0** (AWS ec2/s3/lambda/
     rds/dynamodb/eks/…, some GCP, common tools).
   - `k8sPack` — 25 official Kubernetes *resource* shapes from kubernetes/community **Apache-2.0**

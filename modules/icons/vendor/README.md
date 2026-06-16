@@ -20,9 +20,11 @@ Only AGPL-compatible licenses are bundled here; vendor packs whose terms forbid 
 
 - **Source:** https://github.com/devicons/devicon @ `7330accdbc47e2dc0c19789a48533c4a3c50fe58`
 - **License:** MIT (covers the SVG artwork).
-- **Trademarks:** the brands depicted (AWS, Azure, Google Cloud, Oracle, Docker, …) remain their
-  owners' property — depict-only, no endorsement implied. The official cloud-provider *architecture*
-  icon sets are **not** redistributable and are not bundled; these are the (colored) brand logos.
+- **Contents:** 61 colored logos — cloud/devops brand marks (AWS/Azure/GCP/Oracle, Docker, k8s, …)
+  plus a tech-stack set (languages, frameworks, build tools).
+- **Trademarks:** the brands depicted remain their owners' property — depict-only, no endorsement
+  implied. The official cloud-provider *architecture* icon sets are **not** redistributable and are
+  not bundled; these are the (colored) brand logos.
 - **Note:** AliCloud is not in devicon; load it at runtime if needed.
 
 ## gilbarbara.json

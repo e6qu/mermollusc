@@ -48,7 +48,7 @@ describe("icons registry", () => {
   it("bundles the vendored devicon pack (MIT) with the AWS/Azure/GCP brand marks", () => {
     expect(deviconPack.meta.license).toBe("MIT");
     expect(deviconPack.meta.version).toMatch(/^[0-9a-f]{40}$/);
-    for (const name of ["aws", "azure", "googlecloud", "oracle"]) {
+    for (const name of ["aws", "azure", "googlecloud", "oracle", "python", "react", "rust"]) {
       const r = findIcon(defaultRegistry, "devicon", name);
       expect(isOk(r)).toBe(true);
       if (isOk(r)) expect(r.value).toContain("<svg");
