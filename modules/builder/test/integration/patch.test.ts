@@ -1,7 +1,14 @@
 import { brand, isOk } from "@m/std";
 import { parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
-import { addNode, connect, deleteNode, patchSpan, relabelNode } from "../../src/core/patch.js";
+import {
+  addNode,
+  connect,
+  deleteEdge,
+  deleteNode,
+  patchSpan,
+  relabelNode,
+} from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 
@@ -78,5 +85,21 @@ describe("relabelNode", () => {
   it("deleteNode does not match an id that only appears inside a label", () => {
     const text = "flowchart TD\n  A[mentions B]\n  C --> A\n";
     expect(deleteNode(text, nid("B"))).toBe(text);
+  });
+
+  it("deleteEdge removes the standalone edge line, keeping declarations and other edges", () => {
+    const next = deleteEdge("flowchart TD\n  A[x]\n  B[y]\n  A -->|go| B\n  B --> C\n", nid("A"), nid("B"));
+    expect(next).not.toContain("A -->|go| B");
+    expect(next).toContain("A[x]");
+    expect(next).toContain("B --> C");
+    const r = parseWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.edges.map((e) => [e.from, e.to])).toEqual([["B", "C"]]);
+  });
+
+  it("deleteEdge leaves multi-hop chains intact (only matches a 2-id edge line)", () => {
+    const text = "flowchart TD\n  A --> B --> C\n";
+    expect(deleteEdge(text, nid("A"), nid("B"))).toBe(text);
   });
 });

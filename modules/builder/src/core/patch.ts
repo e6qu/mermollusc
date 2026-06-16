@@ -49,6 +49,24 @@ export const deleteNode = (text: string, id: NodeId): string =>
     .filter((line) => !line.replace(LABELS, "").split(NON_IDENT).includes(id))
     .join("\n");
 
+const identTokens = (line: string): string[] =>
+  line
+    .replace(LABELS, "")
+    .split(NON_IDENT)
+    .filter((t) => t.length > 0);
+
+// Removes a standalone edge line (`from <arrow> to`, with labels stripped). Line-based like
+// `deleteNode`: it matches a line whose only identifiers are exactly `[from, to]`, so node
+// declarations and multi-hop chains are left intact (span-accurate removal would need edge spans).
+export const deleteEdge = (text: string, from: NodeId, to: NodeId): string =>
+  text
+    .split("\n")
+    .filter((line) => {
+      const toks = identTokens(line);
+      return !(toks.length === 2 && toks[0] === from && toks[1] === to);
+    })
+    .join("\n");
+
 // Two-way edit: rewrite a node's label in the source text, touching only its span so the rest of
 // the file (formatting, comments, ordering) is preserved. A bare node gets wrapped in brackets.
 export const relabelNode = (

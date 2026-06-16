@@ -2,6 +2,7 @@ import {
   addNode,
   applyOverrides,
   connect,
+  deleteEdge,
   deleteNode,
   emptySelection,
   hitTest,
@@ -426,10 +427,23 @@ connectBtn.addEventListener("click", () => {
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
   if (document.activeElement === srcEl) return;
-  if (ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) return;
+  if (ast === null || ast.kind !== "flowchart") return;
+  if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
   let text = srcEl.value;
   for (const id of selectionOrder) text = deleteNode(text, brand<string, "NodeId">(id));
+  if (scene !== null) {
+    for (const edgeId of selection.edges) {
+      const edge = scene.edges.find((e) => e.id === edgeId);
+      if (edge !== undefined) {
+        text = deleteEdge(
+          text,
+          brand<string, "NodeId">(edge.from),
+          brand<string, "NodeId">(edge.to),
+        );
+      }
+    }
+  }
   selection = emptySelection;
   selectionOrder = [];
   srcEl.value = text;

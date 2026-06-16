@@ -15,3 +15,6 @@
 - Added property-based tests (fast-check): `patchSpan` splices exactly the span and round-trips,
   `moveNode`+`applyOverrides` repositions exactly one node, `addNode`/`deleteNode` text invariants.
   +5 tests.
+- Added `deleteEdge` (line-based, like `deleteNode`): removes a standalone `from <arrow> to` line
+  (ident tokens === `[from, to]`), sparing declarations and multi-hop chains. The app's Delete key
+  now removes a selected edge too. +2 tests.
