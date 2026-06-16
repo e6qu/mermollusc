@@ -1,38 +1,349 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>mermollusc playground</title>
+    <title>mermollusc — text → diagram, both ways</title>
     <style>
-      body { margin: 0; font-family: sans-serif; }
-      main { display: flex; gap: 12px; align-items: flex-start; padding: 12px; }
-      .panel { display: flex; flex-direction: column; gap: 8px; }
-      #src { width: 360px; height: 420px; font: 13px monospace; padding: 8px; }
-      .toolbar { display: flex; gap: 8px; }
-      button { padding: 6px 12px; }
-      #stage { border: 1px solid #cbd5e1; }
+      /* Blueprint drafting-table aesthetic: diagrams are "sheets" laid on a drafting surface.
+         Fonts are deliberately self-contained (no CDN) to honour this repo's pinned-asset rules —
+         characterful system faces (serif display, geometric-humanist UI, a real mono editor). */
+      :root {
+        --font-display: "Hoefler Text", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        --font-ui: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, "Cascadia Code", monospace;
+
+        --bg: #f3efe6;
+        --table: #e7e0d1;
+        --surface: #fffdf8;
+        --ink: #182529;
+        --ink-soft: #5a6a6c;
+        --line: #d8d0bf;
+        --primary: #0f6f74;
+        --primary-strong: #0a4d50;
+        --accent: #d2602c;
+        --accent-soft: #f3e3d6;
+        --grid: rgba(15, 111, 116, 0.09);
+        --grid-strong: rgba(15, 111, 116, 0.16);
+        --ok: #0f6f74;
+        --err: #c0392b;
+        --err-soft: #f6e0dc;
+        --shadow: 0 1px 2px rgba(24, 37, 41, 0.06), 0 8px 24px rgba(24, 37, 41, 0.08);
+        --radius: 10px;
+      }
+      html[data-theme="dark"] {
+        --bg: #0b1418;
+        --table: #07100f;
+        --surface: #0f1c21;
+        --ink: #e6efe9;
+        --ink-soft: #8aa0a0;
+        --line: #1d3239;
+        --primary: #4cc2c4;
+        --primary-strong: #7fe0e0;
+        --accent: #f0894e;
+        --accent-soft: #2a1d15;
+        --grid: rgba(76, 194, 196, 0.08);
+        --grid-strong: rgba(76, 194, 196, 0.15);
+        --ok: #4cc2c4;
+        --err: #ef6f63;
+        --err-soft: #2a1614;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: var(--font-ui);
+        color: var(--ink);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { .app { animation: none; } }
+
+      /* ---- top bar ---- */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 20px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .mark { width: 34px; height: 34px; color: var(--primary); flex: none; }
+      .brand-text h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        line-height: 1;
+      }
+      .brand-text p {
+        margin: 3px 0 0;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+      /* ---- controls ---- */
+      button {
+        font-family: var(--font-ui);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 13px;
+        cursor: pointer;
+        transition: transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+      }
+      button:hover:not(:disabled) { border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow); }
+      button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+      button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+      button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+      /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
+      #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
+      #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
+
+      .select-field, .filebtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px 11px;
+        cursor: pointer;
+      }
+      .select-field span, .filebtn { letter-spacing: 0.01em; }
+      .select-field span { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+      .filebtn:hover, .select-field:hover { border-color: var(--primary); }
+      select#example {
+        font-family: var(--font-ui);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        outline: none;
+      }
+      .filebtn input[type="file"] { display: none; }
+
+      /* ---- workbench ---- */
+      .workbench {
+        display: grid;
+        grid-template-columns: minmax(320px, 30%) 1fr;
+        gap: 16px;
+        padding: 16px 20px;
+        min-height: 0;
+      }
+
+      .editor {
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        min-height: 0;
+      }
+      .editor-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 13px;
+        border-bottom: 1px solid var(--line);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .editor-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+      .editor-head .grow { flex: 1; }
+      .kind-badge {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: none;
+        color: var(--primary-strong);
+        background: var(--accent-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+      #src {
+        flex: 1;
+        width: 100%;
+        resize: none;
+        border: none;
+        outline: none;
+        padding: 14px 16px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        line-height: 1.7;
+        tab-size: 2;
+        color: var(--ink);
+        background: var(--surface);
+      }
+      #src:focus { box-shadow: inset 3px 0 0 var(--primary); }
+      .editor-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 11px 13px;
+        border-top: 1px solid var(--line);
+        background: color-mix(in srgb, var(--surface) 92%, var(--ink) 8%);
+      }
+
+      /* ---- stage: drafting table with the diagram as a sheet ---- */
+      .stage-wrap {
+        position: relative;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        overflow: auto;
+        background-color: var(--table);
+        background-image:
+          linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+          linear-gradient(var(--grid-strong) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+        background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+      }
+      .stage-inner {
+        min-width: 100%;
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 36px;
+      }
+      #stage {
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(24, 37, 41, 0.14), 0 18px 40px rgba(24, 37, 41, 0.16);
+        transition: opacity 0.18s ease, filter 0.18s ease;
+      }
+      /* When the source no longer parses, the sheet shows a stale render — dim it so the canvas
+         can never silently masquerade as matching the text. */
+      .stage-wrap[data-stale="true"] #stage { opacity: 0.4; filter: grayscale(0.6); }
+
+      /* ---- status bar ---- */
+      .statusbar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 9px 20px;
+        background: var(--surface);
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ok); }
+      .status::before { content: "●"; font-size: 9px; }
+      .status[data-level="error"] {
+        color: var(--err);
+        background: var(--err-soft);
+        border-radius: 6px;
+        padding: 3px 10px;
+        animation: nudge 0.3s ease;
+      }
+      @keyframes nudge { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+      .hints { margin-left: auto; color: var(--ink-soft); font-size: 11.5px; }
+      .hints kbd {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
     </style>
   </head>
   <body>
-    <main>
-      <div class="panel">
-        <textarea id="src" spellcheck="false"></textarea>
-        <div class="toolbar">
-          <button id="add-node" type="button">Add node</button>
-          <button id="connect" type="button">Connect</button>
-          <button id="relax" type="button">Relax</button>
-          <button id="regenerate" type="button">Regenerate</button>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path
+              d="M24 4a20 20 0 1 0 4 39.6 16 16 0 1 1-3.2-31.7 12 12 0 1 0 2.4 23.8 8 8 0 1 1-1.6-15.9 4 4 0 1 0 .8 7.9"
+              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="24" cy="24" r="1.8" fill="currentColor" />
+          </svg>
+          <div class="brand-text">
+            <h1>mermollusc</h1>
+            <p>text → diagram, both ways</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <label class="select-field">
+            <span>Example</span>
+            <select id="example" title="Load a starter diagram for each family">
+              <option value="">Examples…</option>
+              <option value="flowchart">Flowchart</option>
+              <option value="sequence">Sequence</option>
+              <option value="c4">C4 context</option>
+              <option value="block">Block</option>
+              <option value="network">Network</option>
+              <option value="cloud">Cloud</option>
+            </select>
+          </label>
           <button id="theme" type="button">Dark</button>
           <button id="sketch" type="button">Sketch</button>
-          <label class="loadpack"
+          <label class="filebtn"
             title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
             <input id="load-pack" type="file" accept="application/json" />
           </label>
         </div>
-      </div>
-      <canvas id="stage" width="400" height="300"></canvas>
-    </main>
+      </header>
+
+      <main class="workbench">
+        <section class="editor">
+          <div class="editor-head">
+            <span class="dot"></span>
+            <span>source</span>
+            <span class="grow"></span>
+            <span id="kind" class="kind-badge">flowchart</span>
+          </div>
+          <textarea id="src" spellcheck="false"></textarea>
+          <div class="editor-tools">
+            <button id="add-node" type="button">Add node</button>
+            <button id="connect" type="button">Connect</button>
+            <button id="relax" type="button">Relax</button>
+            <button id="regenerate" type="button">Regenerate</button>
+          </div>
+        </section>
+
+        <section class="stage-wrap" id="stage-wrap">
+          <div class="stage-inner">
+            <canvas id="stage" width="400" height="300"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status" class="status">ready</span>
+        <span class="hints">
+          <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>⇧-click</kbd> ×2 then Connect · <kbd>Del</kbd> remove
+        </span>
+      </footer>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

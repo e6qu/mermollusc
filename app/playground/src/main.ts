@@ -62,6 +62,10 @@ const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
+const exampleEl = document.querySelector<HTMLSelectElement>("#example");
+const kindEl = document.querySelector<HTMLSpanElement>("#kind");
+const statusEl = document.querySelector<HTMLElement>("#status");
+const stageWrap = document.querySelector<HTMLElement>("#stage-wrap");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -69,7 +73,11 @@ if (
   connectBtn === null ||
   themeBtn === null ||
   sketchBtn === null ||
-  loadPackEl === null
+  loadPackEl === null ||
+  exampleEl === null ||
+  kindEl === null ||
+  statusEl === null ||
+  stageWrap === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -178,18 +186,70 @@ const paintScene = (): void => {
   ctx.restore();
 };
 
+// Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
+// current text failed to parse (it would just keep showing the last good render). On error we also
+// mark the stage stale so the dimmed sheet signals "this no longer matches your text". The shell
+// still logs loudly; this is the human-facing half.
+const setStatus = (level: "ok" | "error", message: string): void => {
+  statusEl.textContent = message;
+  statusEl.setAttribute("data-level", level);
+  stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
+};
+
+// Add/Connect/Relax patch flowchart text specifically and no-op elsewhere; disabling them off-
+// flowchart makes that explicit instead of a silent dead click. Regenerate re-lays any family.
+const flowchartOnly = [addBtn, connectBtn, relaxBtn];
+const applyKind = (kind: DiagramAst["kind"]): void => {
+  kindEl.textContent = kind;
+  const isFlowchart = kind === "flowchart";
+  for (const btn of flowchartOnly) {
+    btn.disabled = !isFlowchart;
+    btn.title = isFlowchart ? "" : "flowchart only";
+  }
+};
+
+const EXAMPLES = new Map<string, string>([
+  ["flowchart", SAMPLE],
+  [
+    "sequence",
+    "sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello\n  B-->>A: Hi there\n",
+  ],
+  [
+    "c4",
+    'C4Context\n  Person(alice, "Alice", "A customer")\n  Boundary(b, "Backend") {\n    Container(api, "API")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n  Rel(api, db, "reads/writes")\n',
+  ],
+  ["block", 'block-beta\n  columns 2\n  a["Web"]\n  b["API"]\n  c["DB"]\n  a --> b\n  b --> c\n'],
+  [
+    "network",
+    'network\n  cloud net "Internet"\n  router r1 "Edge"\n  server web "Web"\n  net -- r1\n  r1 -- web : "eth0"\n',
+  ],
+  [
+    "cloud",
+    'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n    database db "Orders"\n    queue jobs "Jobs"\n    cdn edge "Edge"\n  }\n  web -- db\n',
+  ],
+]);
+
 const renderFromText = async (text: string): Promise<void> => {
   const parsed = parseDiagram(text);
   if (!isOk(parsed)) {
-    console.error("parse failed:", parsed.error.errors.join("; "));
+    const detail = parsed.error.errors.join("; ");
+    console.error("parse failed:", detail);
+    setStatus("error", `parse error — ${detail}`);
     return;
   }
   const diagram = parsed.value;
   const laid = await layoutDiagram(diagram, measureLabel);
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
+    setStatus("error", `layout error — ${laid.error.message}`);
     return;
   }
+  applyKind(diagram.kind);
+  const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  setStatus(
+    "ok",
+    `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`,
+  );
   ast = diagram;
   scene = laid.value;
   // Capture source spans for canvas→text edits — one family is live at a time.
@@ -468,9 +528,11 @@ regenBtn.addEventListener("click", () => {
   void renderFromText(srcEl.value);
 });
 
-// Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only).
+// Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
+// `data-theme` attribute drives the page chrome so it stays cohesive with the canvas surface.
 const syncThemeLabel = (): void => {
   themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
+  document.documentElement.setAttribute("data-theme", theme === darkTheme ? "dark" : "light");
 };
 themeBtn.addEventListener("click", () => {
   theme = theme === defaultTheme ? darkTheme : defaultTheme;
@@ -479,6 +541,17 @@ themeBtn.addEventListener("click", () => {
   paintScene();
 });
 syncThemeLabel();
+
+// Examples menu: drop in a known-good starter for any family so the syntax is discoverable, then
+// reset the select back to its placeholder.
+exampleEl.addEventListener("change", () => {
+  const text = EXAMPLES.get(exampleEl.value);
+  exampleEl.value = "";
+  if (text === undefined) return;
+  overrides = new Map();
+  srcEl.value = text;
+  void renderFromText(text);
+});
 
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Repaints, no re-layout.
 sketchBtn.addEventListener("click", () => {
@@ -496,16 +569,21 @@ const loadPack = async (file: File): Promise<void> => {
   try {
     json = JSON.parse(text);
   } catch (e) {
-    console.error("pack parse failed:", e instanceof Error ? e.message : String(e));
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("pack parse failed:", detail);
+    setStatus("error", `icon pack is not valid JSON — ${detail}`);
     return;
   }
   const decoded = decodePack(json);
   if (!isOk(decoded)) {
-    console.error("pack decode failed:", decoded.error.issues.join("; "));
+    const detail = decoded.error.issues.join("; ");
+    console.error("pack decode failed:", detail);
+    setStatus("error", `icon pack rejected — ${detail}`);
     return;
   }
   registry = registerPack(registry, decoded.value);
   iconImages.clear(); // drop stale glyphs so overridden packs re-rasterise
+  setStatus("ok", `loaded icon pack "${decoded.value.meta.id}"`);
   void renderFromText(srcEl.value);
 };
 

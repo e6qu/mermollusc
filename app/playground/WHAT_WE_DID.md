@@ -55,3 +55,19 @@
   double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.
 - Theme persistence: initial theme reads `localStorage` then falls back to `prefers-color-scheme`;
   the toggle persists the explicit choice. +2 Playwright flows (OS preference, persist-over-reload).
+- UI shots harness: a separate Playwright project (`playwright.shots.config.ts` + `e2e-shots/`)
+  drives the live UI through named flows and screenshots each to `shots/` (git-ignored), wired as
+  `make shots`. Doubles as the design-review instrument and an end-to-end flow exerciser. Captured
+  a baseline before the redesign to compare against.
+- Frontend redesign (drafting-table aesthetic): rewrote `index.html` into a full-viewport app —
+  header/wordmark, framed source editor, graph-paper stage with the diagram as a shadowed sheet,
+  status bar — with a self-contained CSS design-token system (no CDN font), cohesive light/dark via
+  a `data-theme` attribute synced to the theme toggle. Decorated the Dark/Sketch buttons with
+  CSS-only glyphs so their `textContent` (asserted by e2e) is untouched.
+- Flow feedback: a `setStatus(level, message)` surfaces parse/layout/icon-pack failures to the
+  status bar (still logging loudly) and marks the stage `data-stale` so a failed parse dims the now-
+  mismatched canvas to grayscale instead of silently showing the last good render. Success reads
+  `kind · N nodes · M edges` (correctly singularised).
+- Family-aware UI: an **Examples** `<select>` loads a known-good starter per family; `applyKind`
+  updates the kind badge and disables the flowchart-only Add/Connect/Relax off-flowchart (Regenerate
+  stays enabled). All 29 gating Playwright flows stay green (IDs + button text preserved).
