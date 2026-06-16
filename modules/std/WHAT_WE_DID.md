@@ -11,3 +11,5 @@
 - Added shell tests (`consoleLogger` warn/error→stderr + info/debug→stdout as JSON; `decode` ok/err
   paths; `px`/`point`/`size`/`rect` shapes) and a `mapErr` property, lifting coverage ~64%→**100%**
   and raising the ratchet to 100. +7 tests.
+- Added `stamp(level, module, event)` shell helper — fills a `LogRecord`'s `ts` (ISO-8601) so callers
+  don't hand-roll it. +1 test.

@@ -4,7 +4,7 @@ import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
 import { brand, point, px, rect, size } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
-import { consoleLogger } from "../../src/shell/logger.js";
+import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
 const record = (level: LogRecord["level"]): LogRecord => ({
   ts: "2026-06-15T00:00:00.000Z",
@@ -33,6 +33,13 @@ describe("consoleLogger", () => {
     consoleLogger.log(record("debug"));
     expect(logSpy).toHaveBeenCalledTimes(2);
     expect(errSpy).not.toHaveBeenCalled();
+  });
+
+  it("stamp fills a LogRecord with an ISO timestamp + the given fields", () => {
+    const r = stamp("warn", "layout", "relax-failed");
+    expect(r).toMatchObject({ level: "warn", module: "layout", event: "relax-failed" });
+    expect(r.ts).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    expect(Number.isNaN(Date.parse(r.ts))).toBe(false);
   });
 });
 

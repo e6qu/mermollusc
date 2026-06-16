@@ -1,3 +1,4 @@
 # @m/std — do next
 
-- Provide a structured timestamp helper for the shell logger (callers currently stamp `ts`).
+- (done) `stamp(level, module, event)` fills `ts` for callers; consider a `Clock` injection if
+  deterministic timestamps are ever needed in tests.

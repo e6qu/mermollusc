@@ -8,3 +8,11 @@ export const consoleLogger: Logger = {
     else console.log(line);
   },
 };
+
+// Stamps a `LogRecord` with the current time (ISO-8601), so callers don't hand-roll `ts`. Shell-only
+// (the wall clock is impure); the core never logs. `TEvent` keeps the event a closed union per module.
+export const stamp = <TEvent extends string>(
+  level: LogLevel,
+  module: string,
+  event: TEvent,
+): LogRecord<TEvent> => ({ ts: new Date().toISOString(), level, module, event });

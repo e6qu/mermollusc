@@ -22,5 +22,5 @@ export type {
   LogRecord,
   Logger,
 } from "./core/index.js";
-export { brand, px, point, size, rect, decode, consoleLogger } from "./shell/index.js";
+export { brand, px, point, size, rect, decode, consoleLogger, stamp } from "./shell/index.js";
 export type { DecodeError } from "./shell/index.js";
