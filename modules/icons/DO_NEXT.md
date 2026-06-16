@@ -1,5 +1,7 @@
 # @m/icons — do next
 
+- Subdivide vendored brand packs into finer categories (devicon → language/framework/tool/cloud
+  rather than one `brands`); add an "area"/region category + an icon-picker UI that groups by category.
 - Author an original AGPL `sketch` glyph pack (stickman/wobbly shapes) to pair with the renderer's
   hand-drawn "Sketch" mode.
 - AWS/Azure/GCP/Oracle/AliCloud official sets + any non-redistributable pack: user-load via

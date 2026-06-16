@@ -2,8 +2,12 @@
 
 **State:** registry + resolver + a built-in glyph pack; `make check` green.
 
-- core: `IconPack` (provenance meta: id/license/source/version + name→SVG map), `IconRegistry`,
-  `findIcon(registry, packId, name)` → `Result<svg, IconError>`, `packNames`.
+- core: `IconPack` (provenance meta + name→SVG map + **`categories`** name-groups), `IconRegistry`,
+  `findIcon(registry, packId, name)` → `Result<svg, IconError>`, `packNames`, `categoryNames`,
+  `iconsInCategory`, `singleCategory`.
+- **Categories**: every pack groups its icons (authored packs: arch → compute/data/network/messaging/
+  people, bpmn → event/activity/gateway/data; vendored brand packs → `brands`; k8s → `resources`;
+  user packs default to `all` or honour a `categories` field).
 - `builtinPack` ("arch"): 12 original AGPL glyphs — server, database, cloud, user, queue, router,
   switch, firewall, host (network kinds) + compute, storage, cdn (cloud kinds); `defaultRegistry`.
 - `bpmnPack` ("bpmn"): 12 original AGPL BPMN-notation glyphs — start/end/intermediate/message/timer
@@ -28,8 +32,8 @@
 - **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/cncf.json` — the full CNCF landscape
   (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
   wanted. Kept out of the bundle so it can't affect app/test performance.
-- tests: 12 passing (registry/resolver, `registerPack`, `decodePack` valid/invalid + register→find,
-  BPMN pack, simple-icons + devicon + gilbarbara + k8s vendored-pack provenance + resolution).
+- tests: 14 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
+  valid/invalid + default/explicit categories + register→find, BPMN pack, vendored-pack provenance).
 - The **cloud** family renders these marks (kind→slug map); the **network** family accepts a
   per-node `icon "<pack>/<name>"` override that resolves against any registered pack.
 - Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); the per-node override on

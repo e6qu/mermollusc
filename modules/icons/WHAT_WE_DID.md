@@ -13,6 +13,9 @@
 - Added `tools/pack-dir.mjs`: converts a local SVG folder → a loadable pack JSON, so users can bring
   in non-redistributable sets (AWS/Azure/GCP/Oracle/AliCloud official icons) via "Load icons".
   Verified the output decodes (matches the `decodePack` shape).
+- Added per-icon **categories** to `IconPack` (`categories` map + `categoryNames`/`iconsInCategory`/
+  `singleCategory`): authored packs get meaningful groups, brand-logo packs a `brands` category,
+  k8s `resources`; `decodePack` defaults to `all` or honours a `categories` field. +2 tests.
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
 - Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`

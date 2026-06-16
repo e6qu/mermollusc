@@ -62,4 +62,10 @@ export const bpmnPack: IconPack = {
     version: "0.0.0",
   },
   icons: ICONS,
+  categories: new Map<string, readonly string[]>([
+    ["event", ["start-event", "end-event", "intermediate-event", "message-event", "timer-event"]],
+    ["activity", ["task", "subprocess"]],
+    ["gateway", ["exclusive-gateway", "parallel-gateway", "inclusive-gateway"]],
+    ["data", ["data-object", "data-store"]],
+  ]),
 };

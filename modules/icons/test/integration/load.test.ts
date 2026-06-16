@@ -18,6 +18,16 @@ describe("decodePack", () => {
     expect(r.value.icons.size).toBe(2);
   });
 
+  it("defaults icons to an 'all' category when none is given, and honours a provided one", () => {
+    const auto = decodePack(validJson);
+    expect(isOk(auto)).toBe(true);
+    if (isOk(auto)) expect([...auto.value.categories.keys()]).toEqual(["all"]);
+
+    const withCats = decodePack({ ...validJson, categories: { brands: ["lambda", "s3"] } });
+    expect(isOk(withCats)).toBe(true);
+    if (isOk(withCats)) expect(withCats.value.categories.get("brands")).toEqual(["lambda", "s3"]);
+  });
+
   it("fails loudly when provenance fields are missing or mistyped", () => {
     expect(isErr(decodePack({ icons: { a: "<svg/>" } }))).toBe(true);
     expect(isErr(decodePack({ meta: { id: "x" }, icons: {} }))).toBe(true);

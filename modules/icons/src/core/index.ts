@@ -1,4 +1,11 @@
-export { findIcon, packNames, registerPack } from "./registry.js";
+export {
+  findIcon,
+  packNames,
+  registerPack,
+  categoryNames,
+  iconsInCategory,
+  singleCategory,
+} from "./registry.js";
 export type { IconPackMeta, IconPack, IconRegistry, IconError } from "./registry.js";
 export { builtinPack, defaultRegistry } from "./builtin.js";
 export { bpmnPack } from "./bpmn.js";

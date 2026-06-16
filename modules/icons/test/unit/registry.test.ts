@@ -12,6 +12,8 @@ import {
   k8sPack,
   registerPack,
   simpleIconsPack,
+  categoryNames,
+  iconsInCategory,
 } from "../../src/core/index.js";
 
 describe("icons registry", () => {
@@ -87,11 +89,31 @@ describe("icons registry", () => {
     const pack: IconPack = {
       meta: { id: "extra", license: "MIT", source: "test", version: "1" },
       icons: new Map([["widget", "<svg/>"]]),
+      categories: new Map([["all", ["widget"]]]),
     };
     const next = registerPack(defaultRegistry, pack);
     expect(isOk(findIcon(next, "extra", "widget"))).toBe(true);
     expect(isOk(findIcon(next, "arch", "server"))).toBe(true);
     // original registry is untouched
     expect(defaultRegistry.packs.has("extra")).toBe(false);
+  });
+
+  it("exposes per-icon categories, with brand packs under a 'brands' category", () => {
+    // Authored packs carry meaningful categories.
+    expect(categoryNames(builtinPack)).toEqual(
+      expect.arrayContaining(["compute", "data", "network"]),
+    );
+    expect(iconsInCategory(builtinPack, "network")).toContain("router");
+    expect(categoryNames(bpmnPack)).toContain("gateway");
+    // Vendored brand-logo packs are all "brands"; k8s is "resources".
+    expect(categoryNames(simpleIconsPack)).toEqual(["brands"]);
+    expect(iconsInCategory(deviconPack, "brands")).toContain("aws");
+    expect(categoryNames(k8sPack)).toEqual(["resources"]);
+    // Every categorised name is a real icon in the pack.
+    for (const name of iconsInCategory(builtinPack, "compute")) {
+      expect(builtinPack.icons.has(name)).toBe(true);
+    }
+    // An unknown category yields no icons.
+    expect(iconsInCategory(builtinPack, "nope")).toEqual([]);
   });
 });

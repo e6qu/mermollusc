@@ -65,6 +65,13 @@ export const builtinPack: IconPack = {
     version: "0.0.0",
   },
   icons: ICONS,
+  categories: new Map<string, readonly string[]>([
+    ["compute", ["server", "compute", "host"]],
+    ["data", ["database", "storage"]],
+    ["network", ["router", "switch", "firewall", "cloud", "cdn"]],
+    ["messaging", ["queue"]],
+    ["people", ["user"]],
+  ]),
 };
 
 // The built-in glyph packs (arch + BPMN) plus the bundled, provenance-pinned OSS packs.

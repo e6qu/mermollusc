@@ -12,6 +12,9 @@ export interface IconPackMeta {
 export interface IconPack {
   readonly meta: IconPackMeta;
   readonly icons: ReadonlyMap<string, string>;
+  // Groups icon names by category (e.g. "brands", "compute", "network"). Every icon appears in at
+  // least one category; a "brands" category holds vendor/brand logos.
+  readonly categories: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface IconRegistry {
@@ -36,6 +39,18 @@ export const findIcon = (
 };
 
 export const packNames = (pack: IconPack): readonly string[] => [...pack.icons.keys()];
+
+export const categoryNames = (pack: IconPack): readonly string[] => [...pack.categories.keys()];
+
+export const iconsInCategory = (pack: IconPack, category: string): readonly string[] =>
+  pack.categories.get(category) ?? [];
+
+// Builds a single-category map (all icon names under `category`) — for packs that are uniform
+// (e.g. a brand-logo pack is all "brands").
+export const singleCategory = (
+  category: string,
+  icons: ReadonlyMap<string, string>,
+): ReadonlyMap<string, readonly string[]> => new Map([[category, [...icons.keys()]]]);
 
 // Pure registry merge: returns a new registry with `pack` added (or replacing one of the same id).
 export const registerPack = (registry: IconRegistry, pack: IconPack): IconRegistry => {

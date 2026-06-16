@@ -4,7 +4,7 @@
 
 import { decode, type DecodeError, map, type Result } from "@m/std";
 import { z } from "zod";
-import type { IconPack } from "../core/index.js";
+import { type IconPack, singleCategory } from "../core/index.js";
 
 const IconPackJson = z.object({
   meta: z.object({
@@ -15,11 +15,17 @@ const IconPackJson = z.object({
   }),
   // name → SVG markup; a JSON object at the boundary, converted to the core's Map below.
   icons: z.record(z.string(), z.string()),
+  // Optional category → icon-names grouping; when absent, all icons fall under "all".
+  categories: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 // Decode an untyped pack payload (e.g. `await (await fetch(url)).json()`) into an `IconPack`.
 export const decodePack = (input: unknown): Result<IconPack, DecodeError> =>
-  map(decode(IconPackJson, input), (json) => ({
-    meta: json.meta,
-    icons: new Map(Object.entries(json.icons)),
-  }));
+  map(decode(IconPackJson, input), (json) => {
+    const icons = new Map(Object.entries(json.icons));
+    const categories =
+      json.categories === undefined
+        ? singleCategory("all", icons)
+        : new Map(Object.entries(json.categories));
+    return { meta: json.meta, icons, categories };
+  });
