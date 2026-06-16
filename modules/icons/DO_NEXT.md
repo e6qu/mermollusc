@@ -1,8 +1,10 @@
 # @m/icons — do next
 
 - Author an original AGPL `sketch` glyph pack (stickman/wobbly shapes) to pair with the renderer's
-  planned hand-drawn "Sketch" mode (see `@m/renderer` DO_NEXT — rough.js + Patrick Hand, studied).
-  (BPMN glyphs authored; simple-icons/devicon/gilbarbara/k8s bundled; CNCF archived via git-LFS.)
+  hand-drawn "Sketch" mode.
+- AWS/Azure/GCP/Oracle/AliCloud official sets + any non-redistributable pack: user-load via
+  `tools/pack-dir.mjs` (local SVG dir → pack JSON) + the app's "Load icons" — see `vendor/README.md`.
+  (BPMN authored; simple-icons/devicon(61)/gilbarbara/k8s bundled; CNCF archived via git-LFS.)
 - Extend the curated simple-icons / gilbarbara slug lists as needed.
 - BPMN: author original AGPL glyphs (bpmn-io/bpmn-font has no license — can't vendor). AliCloud and
   the official AWS/Azure/GCP/Oracle architecture sets are user-loaded (not redistributable).

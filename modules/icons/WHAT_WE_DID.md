@@ -10,6 +10,9 @@
 - Added three more (compute/storage/cdn) for the cloud service kinds (database/queue reused).
 - Authored an original AGPL **BPMN** glyph pack (`bpmnPack`, 12 outlined glyphs: events, task,
   subprocess, exclusive/parallel/inclusive gateways, data-object/store) in `defaultRegistry`. +1 test.
+- Added `tools/pack-dir.mjs`: converts a local SVG folder → a loadable pack JSON, so users can bring
+  in non-redistributable sets (AWS/Azure/GCP/Oracle/AliCloud official icons) via "Load icons".
+  Verified the output decodes (matches the `decodePack` shape).
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
 - Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`

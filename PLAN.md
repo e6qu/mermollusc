@@ -90,8 +90,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    original AGPL BPMN pack authored; simple-icons (CC0, 36) + devicon (MIT,
    AWS/Azure/GCP/Oracle marks) + gilbarbara (CC0, AWS services) + Kubernetes-community (Apache-2.0,
    resource shapes) bundled with pinned provenance; CNCF landscape archived via git-LFS;
-   official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable. Full
-   CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
+   official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable:
+   `tools/pack-dir.mjs` converts a downloaded SVG folder → loadable pack JSON for the "Load icons"
+   button. Full CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
 2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
    (light/dark + sketch) + device-pixel-ratio + real text measurement done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.

@@ -3,8 +3,19 @@
 Third-party icon packs fetched by `tools/source-icons.mjs` at a pinned commit. Each pack's JSON
 carries its provenance in `meta` (`source` = repo URL @ commit, `version` = commit SHA, `license`).
 Only AGPL-compatible licenses are bundled here; vendor packs whose terms forbid redistribution
-(e.g. AWS / Azure / GCP official asset sets) are **not** committed — load those at runtime via
-`decodePack` instead.
+(e.g. AWS / Azure / GCP / Oracle / AliCloud official asset sets) are **not** committed — load those
+at runtime via `decodePack` instead.
+
+## Using icon sets we can't bundle (AWS / Azure / GCP / Oracle / AliCloud official, …)
+
+Their terms forbid redistribution, so they're never committed here. To use them locally:
+
+1. Download the official SVG set from the vendor (accepting their terms).
+2. Convert the folder to a loadable pack: `node tools/pack-dir.mjs <dir> <packId> "<license>" out.json`.
+3. In the app, click **Load icons** and pick `out.json` — it registers via `decodePack`/`registerPack`.
+4. Reference glyphs in a diagram with `icon "<packId>/<name>"` (network/cloud/block).
+
+Nothing is fetched or bundled by this flow; the assets stay on your machine.
 
 ## simpleicons.json
 
