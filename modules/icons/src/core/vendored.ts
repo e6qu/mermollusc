@@ -1,8 +1,8 @@
 import { type IconPack, singleCategory } from "./registry.js";
-import devicon from "../../vendor/devicon.json";
-import gilbarbara from "../../vendor/gilbarbara.json";
-import k8s from "../../vendor/k8s.json";
-import simpleIcons from "../../vendor/simpleicons.json";
+import devicon from "../../vendor/open/devicon.json";
+import gilbarbara from "../../vendor/open/gilbarbara.json";
+import k8s from "../../vendor/open/k8s.json";
+import simpleIcons from "../../vendor/open/simpleicons.json";
 
 // Bundled AGPL-compatible OSS packs, sourced with pinned provenance by tools/source-icons.mjs.
 // Each JSON's `icons` object becomes the core's name→SVG Map at module load. simple-icons/devicon/

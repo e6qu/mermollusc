@@ -9,3 +9,7 @@ playwright-report/
 *.pid
 .run/
 .DS_Store
+
+# Non-redistributable icon packs — populate locally; never committed (see vendor/restricted/README.md).
+modules/icons/vendor/restricted/*
+!modules/icons/vendor/restricted/README.md

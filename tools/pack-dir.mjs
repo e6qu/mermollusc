@@ -6,7 +6,8 @@
 // load the result locally. Nothing is fetched or bundled; the SVGs never enter this repo.
 //
 // usage: node tools/pack-dir.mjs <dir> <packId> <license> [out.json]
-//   e.g. node tools/pack-dir.mjs ~/Downloads/aws-icons aws "AWS asset terms (local use)" aws.pack.json
+//   e.g. node tools/pack-dir.mjs ~/Downloads/aws-icons aws "AWS asset terms (local use)" \
+//          modules/icons/vendor/restricted/aws.json   (that dir is git-ignored — never committed)
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";

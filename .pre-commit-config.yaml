@@ -6,7 +6,7 @@ default_stages: [pre-commit]
 
 # Archival LFS asset (64 MB CNCF landscape logo dump) — exempt from the file hygiene / size / json
 # hooks. It's referenced by no source code; the gate's lint/typecheck/test never touch it.
-exclude: ^modules/icons/vendor/cncf\.json$
+exclude: ^modules/icons/vendor/open/cncf\.json$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

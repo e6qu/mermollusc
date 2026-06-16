@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT_DIR = join(ROOT, "modules/icons/vendor");
+const OUT_DIR = join(ROOT, "modules/icons/vendor/open");
 
 // Each entry's repo/ref/license/paths were verified against the live repo before committing
 // (license via the GitHub API, commit ≥24h old, every path probed for HTTP 200). Add more the same

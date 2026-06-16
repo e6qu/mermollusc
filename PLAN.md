@@ -111,6 +111,7 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).
-4. The repo uses **git-LFS** for one archival asset (`modules/icons/vendor/cncf.json`, ~64 MB).
-   `git lfs install` to materialise it on clone; nothing in the build references it, so a non-LFS
-   checkout (pointer file) still builds and tests green.
+4. Vendored icons split by license: `modules/icons/vendor/open/` (bundleable CC0/MIT/Apache, committed;
+   `cncf.json` is ~64 MB via **git-LFS** — `git lfs install` to materialise, nothing references it so a
+   non-LFS checkout still builds) and `vendor/restricted/` (non-redistributable sets — **git-ignored**,
+   populated locally via `tools/pack-dir.mjs`; see `vendor/restricted/README.md`).
