@@ -70,13 +70,13 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
-| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps | (types) |
-| `@m/parser` | ✅ flowchart · sequence · C4 · block · network · cloud — all +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 37 |
+| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps (incl. flowchart edge spans) | (types) |
+| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 38 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark + sketch themes) | 8 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete (+ property-based) | 25 |
 | `@m/icons` | ✅ registry/resolver · built-in arch + BPMN packs · in-node rendering · user-loaded packs · vendored simple-icons/devicon/gilbarbara/k8s · CNCF archived (LFS) | 12 |
-| `@m/app` | ✅ renders + two-way edits all six families; in-node icons (+ override) + load-pack; HiDPI; persisted dark/light + sketch themes; flowchart drag/relax/regen/add/connect/delete | 1 node + 27 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels); in-node icons (+override) + load-pack; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete | 1 node + 28 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces

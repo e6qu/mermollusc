@@ -303,7 +303,17 @@ canvas.addEventListener("dblclick", (ev) => {
   if (hit === null) return;
 
   if (ast.kind === "flowchart") {
-    if (source === null || hit.kind !== "node") return;
+    if (source === null) return;
+    // An edge with a `|label|` patches that span directly; a node relabels via the source map.
+    if (hit.kind === "edge") {
+      const span = source.edges.get(brand<string, "EdgeId">(hit.id));
+      if (span === undefined) return;
+      const next = window.prompt("Edge label:", srcEl.value.slice(span.start, span.end));
+      if (next === null) return;
+      srcEl.value = patchSpan(srcEl.value, span, next);
+      void renderFromText(srcEl.value);
+      return;
+    }
     const current = shown.nodes.find((n) => n.id === hit.id)?.label ?? "";
     const next = window.prompt("Label:", current);
     if (next === null) return;

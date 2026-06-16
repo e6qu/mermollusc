@@ -41,3 +41,5 @@
   kind→simple-icons default). +1 test.
 - Block: same per-node `icon "<pack>/<name>"` override → `BlockNode.icon` (added an `Icon` keyword +
   a `BlockQuoted` token to the block lexer's main mode); layout draws it. +1 test.
+- Flowchart: `SourceMap` now carries per-edge `|label|` spans (trimmed) so edge labels are two-way
+  editable; `parseWithSource` captures them from the link's `PipeText` token. +1 test.

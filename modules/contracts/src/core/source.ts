@@ -16,6 +16,8 @@ export interface NodeSpans {
 
 export interface SourceMap {
   readonly nodes: ReadonlyMap<NodeId, NodeSpans>;
+  // Inner `|label|` span for each edge that carries one (for two-way edge-label editing).
+  readonly edges: ReadonlyMap<EdgeId, TextSpan>;
 }
 
 // Editable text spans for a sequence diagram: each actor's label and each message's text.

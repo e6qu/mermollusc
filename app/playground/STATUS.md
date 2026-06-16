@@ -6,9 +6,9 @@
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
-  - double-click rename → patches the source text (flowchart nodes; sequence actor/message text;
-    C4 element/relation; block block/edge; network node/link; cloud group/leaf/link labels) —
-    **canvas → text two-way for all six families**;
+  - double-click rename → patches the source text (flowchart nodes **and edge labels**; sequence
+    actor/message text; C4 element/relation; block block/edge; network node/link; cloud
+    group/leaf/link labels) — **canvas → text two-way for all six families**;
   - flowchart-only: **Add node** / **Connect** (two selected nodes → edge) buttons; **Delete** key
     removes selected nodes; **Relax** / **Regenerate** buttons.
 - node e2e composition test (text → pixels) passing.
@@ -23,6 +23,6 @@
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
 - Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the
   hand-drawn look; repaints (no re-layout).
-- Playwright (`make e2e-ui`): 27 flows — adds the sketch toggle to the prior 26 (family/edit flows,
-  cloud render/relabel, theme toggle + persistence, network-icons + override, dpr, load-pack ×2).
+- Playwright (`make e2e-ui`): 28 flows — adds flowchart edge-label relabel to the prior 27 (family/edit
+  flows, sketch + theme toggles + persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

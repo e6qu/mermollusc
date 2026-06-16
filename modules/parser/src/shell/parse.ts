@@ -1,6 +1,7 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
+  EdgeId,
   EdgeKind,
   FlowDirection,
   FlowEdge,
@@ -35,6 +36,13 @@ const spanOf = (t: IToken): TextSpan => ({
   start: t.startOffset,
   end: (t.endOffset ?? t.startOffset) + 1,
 });
+
+// Span of a token's trimmed text — `|label|` pipe text may carry padding spaces around the label.
+const trimmedSpan = (t: IToken): TextSpan => {
+  const lead = t.image.length - t.image.trimStart().length;
+  const start = t.startOffset + lead;
+  return { start, end: start + t.image.trim().length };
+};
 
 const ZERO_SPAN: TextSpan = { start: 0, end: 0 };
 
@@ -140,6 +148,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
 
   const nodeMap = new Map<string, FlowNode>();
   const nodeSpans = new Map<NodeId, NodeSpans>();
+  const edgeSpans = new Map<EdgeId, TextSpan>();
   const edges: FlowEdge[] = [];
 
   for (const stmt of childNodes(root, "statement")) {
@@ -169,19 +178,21 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       if (link === undefined || from === undefined || to === undefined) {
         return err({ kind: "parse", errors: ["internal: malformed edge chain"] });
       }
-      const label = imageOf(link.children, "PipeText");
+      const pipe = childTokens(link.children, "PipeText")[0];
+      const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
       edges.push({
-        id: brand<string, "EdgeId">(`e${edges.length}`),
+        id: edgeId,
         from: brand<string, "NodeId">(from.id),
         to: brand<string, "NodeId">(to.id),
         kind: linkKind(link.children),
-        label: label === null ? null : label.trim(),
+        label: pipe === undefined ? null : pipe.image.trim(),
       });
+      if (pipe !== undefined) edgeSpans.set(edgeId, trimmedSpan(pipe));
     }
   }
 
   const ast: FlowchartAst = { kind: "flowchart", direction, nodes: [...nodeMap.values()], edges };
-  return ok({ ast, source: { nodes: nodeSpans } });
+  return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans } });
 };
 
 export const parseWithSource = (text: string): Result<ParsedSource, ParseError> => {

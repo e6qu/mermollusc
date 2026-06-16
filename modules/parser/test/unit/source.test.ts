@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseWithSource } from "../../src/shell/parse.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
+const eid = (s: string) => brand<string, "EdgeId">(s);
 
 describe("parseWithSource", () => {
   it("captures the label span of shaped nodes", () => {
@@ -33,5 +34,18 @@ describe("parseWithSource", () => {
     if (a === undefined) return;
     expect(text.slice(a.label.start, a.label.end)).toBe("A");
     expect(a.bracketed).toBe(false);
+  });
+
+  it("captures the trimmed `|label|` span of an edge (and none for a bare link)", () => {
+    const text = "flowchart TD\n  A -->| yes | B\n  B --> C\n";
+    const r = parseWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+
+    const e0 = r.value.source.edges.get(eid("e0"));
+    expect(e0).toBeDefined();
+    if (e0 !== undefined) expect(text.slice(e0.start, e0.end)).toBe("yes");
+    // The unlabelled second edge has no span.
+    expect(r.value.source.edges.get(eid("e1"))).toBeUndefined();
   });
 });

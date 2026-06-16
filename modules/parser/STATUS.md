@@ -4,7 +4,8 @@
 
 - `parse(text)` → `Result<FlowchartAst, ParseError>` (shell): Chevrotain lexer+grammar → CST → AST.
 - `parseWithSource(text)` → `Result<{ ast, source: SourceMap }, ParseError>`: also returns per-node
-  id/label text spans (for the builder's two-way patching). `parse` is the ast-only wrapper.
+  id/label text spans **and per-edge `|label|` spans** (for the builder's two-way patching). `parse`
+  is the ast-only wrapper.
 - `parseSequence(text)` / `parseSequenceWithSource(text)` → `SequenceAst` (+ `SequenceSource`:
   message-text and actor-label spans): `sequenceDiagram` subset — `participant [as Label]`,
   messages with the four arrow kinds (`->>`/`-->>`/`->`/`-->`), actors inferred from endpoints.
@@ -30,6 +31,6 @@
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 37 passing (printer; flowchart parse/spans; sequence parse + spans; C4 parse with nesting
+- tests: 38 passing (printer; flowchart parse/node+edge spans; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).
