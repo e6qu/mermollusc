@@ -19,3 +19,5 @@
 - Added a `Theme.sketch` hand-drawn mode: boxes/diamonds/solid edges drawn as wobbly double-stroked
   outlines via a seeded LCG jitter (deterministic, structural-`Canvas2D`-only — evaluated rough.js but
   a self-rolled sketch keeps the mock tests + no dep). Dashed edges/arrowheads stay crisp. +1 test.
+- Added `htmlInCanvasSupported()` — feature-detection for the experimental "HTML in Canvas" API
+  (false everywhere stable; detection-only scaffolding, no backend, no dependency). +1 test.

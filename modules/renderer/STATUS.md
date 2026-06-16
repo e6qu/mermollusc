@@ -14,4 +14,7 @@
 - **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges become wobbly, double-stroked
   hand-drawn outlines via a seeded LCG jitter — deterministic, no fill, using only the structural
   `Canvas2D` (no rough.js dep, so the mock-based tests still hold). Dashed edges/arrowheads stay crisp.
-- tests: 8 passing (display-list unit incl. icon; paint against a recording mock — drawImage, theme, sketch).
+- `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
+  only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
+  only, the default `paint` path is always used.
+- tests: 9 passing (display-list unit incl. icon; paint mock — drawImage/theme/sketch; html-in-canvas detect).

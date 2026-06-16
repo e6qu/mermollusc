@@ -73,7 +73,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps (incl. flowchart edge spans) | (types) |
 | `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 38 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer · ✅ routing · property tests | 24 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark + sketch themes) | 8 |
+| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes); html-in-canvas detect | 9 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based) | 27 |
 | `@m/icons` | ✅ registry/resolver · built-in arch + BPMN · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61, +tech-stack)/gilbarbara/k8s · CNCF archived (LFS) | 12 |
 | `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels); in-node icons (+override) + load-pack; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge | 1 node + 29 Playwright |
@@ -93,8 +93,10 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable:
    `tools/pack-dir.mjs` converts a downloaded SVG folder → loadable pack JSON for the "Load icons"
    button. Full CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
-2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
-   (light/dark + sketch) + device-pixel-ratio + real text measurement done.)*
+2. **Renderer polish**: build the HTML-in-Canvas rich-label backend once the API ships in stable
+   Chromium (detection — `htmlInCanvasSupported()` — is wired; the API is flag-only today, so a
+   backend can't be verified here). *(Light/dark + sketch themes + device-pixel-ratio + real text
+   measurement done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
    *(Theme persistence done.)*
 4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
