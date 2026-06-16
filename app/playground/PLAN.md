@@ -5,8 +5,11 @@ canvas, and hosts the e2e / golden tests.
 
 ## Responsibility
 
-- Mount the builder onto a canvas; provide the text editor and the diagram surface.
-- Own end-to-end tests: text → pixels snapshots, and text → edit → text round-trips.
+- Mount the builder onto a canvas; provide the text editor and the diagram surface, with a
+  cohesive designed shell (drafting-table chrome, status/error surface, family-aware controls).
+- Own end-to-end tests: text → pixels snapshots, and text → edit → text round-trips. The `make
+  shots` harness (a separate Playwright project) additionally drives the live UI through named
+  flows and writes PNGs for design review.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
 
 ## Public API (stable surface)

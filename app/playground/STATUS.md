@@ -2,6 +2,21 @@
 
 **State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright green.
 
+- **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
+  (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
+  a status bar. Self-contained type system (serif display / geometric-humanist UI / mono editor —
+  no CDN, per the repo's pinned-asset rules); cohesive light + dark, driven by a `data-theme` attr
+  synced to the theme toggle.
+- **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
+  the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
+  silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`.
+- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the six
+  families; the kind badge shows the active family; Add/Connect/Relax disable off-flowchart
+  (they patch flowchart text specifically) while Regenerate stays live for all.
+- **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
+  + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
+  (git-ignored) — for visual review / design iteration, not a gate.
+
 - `main.ts`: source `<textarea>` ↔ canvas.
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node

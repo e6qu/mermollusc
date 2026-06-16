@@ -9,3 +9,8 @@ include ../../module.mk
 
 test-e2e-ui:
 	pnpm exec playwright test
+
+# Drive the live UI through named flows and write PNGs to shots/ (generated, git-ignored). Separate
+# from the gating e2e suite — for visual review and design iteration, not a pass/fail gate.
+shots:
+	pnpm exec playwright test -c playwright.shots.config.ts

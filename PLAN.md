@@ -76,7 +76,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes); html-in-canvas detect | 9 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based) | 27 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels); in-node icons (+override) + load-pack; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge | 1 node + 29 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels); in-node icons (+override) + load-pack; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface, examples menu, family-aware controls) + `make shots` UI harness | 1 node + 29 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
