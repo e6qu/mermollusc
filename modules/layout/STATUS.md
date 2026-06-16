@@ -17,7 +17,10 @@
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
   each service leaf's kind maps to a vendored simple-icons glyph (`docker`/`postgresql`/`apachekafka`/
   `cloudflare`/`googlecloudstorage`); undirected links.
+- All layouts take an optional `MeasureText` (label → px); the default is the char-width heuristic,
+  the app injects a real canvas `measureText`. `layoutDiagram(ast, measure?)` / `layout(ast, seed,
+  measure?)` thread it through.
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
-- tests: 23 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
-  cloud nesting + icons; routing; property-based: block/network grids **and the ELK flowchart path**
-  preserve ids + fit every box inside the extent).
+- tests: 24 passing (toElkGraph/toScene; clean layout; relax; sequence; C4; block/network grid;
+  cloud nesting + icons; injected-measurer sizing; routing; property-based: block/network grids
+  **and the ELK flowchart path** preserve ids + fit every box inside the extent).

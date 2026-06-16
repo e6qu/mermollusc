@@ -25,6 +25,8 @@
   boxes wrapping children, service leaves get a kind `icon` ref, undirected links. +3 tests.
 - Added a property-based test (fast-check, async) over the ELK flowchart path: generated ASTs lay
   out with all node ids preserved and every box inside the reported extent. +1 test.
+- Added an injectable `MeasureText` (default = the char-width heuristic) threaded through every
+  layout + `layoutDiagram`/`layout`, so the app can size nodes with real canvas `measureText`. +1 test.
 - Mapped cloud service kinds to representative vendored simple-icons glyphs (compute→docker,
   storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
 - `layoutNetwork` now honours a `NetworkNode.icon` override (falls back to the kind's arch glyph).

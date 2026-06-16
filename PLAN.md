@@ -72,7 +72,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/std` | ✅ Result, Brand, geometry, generic Logger, `brand()`/`decode()` (+ property-based laws, shell tests; 100% cov) | 21 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps (incl. flowchart edge spans) | (types) |
 | `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 38 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box (cloud→simple-icons) · block/network grid · ✅ routing · property tests | 23 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer · ✅ routing · property tests | 24 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, in-node icon glyphs, light/dark + sketch themes) | 8 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based) | 27 |
 | `@m/icons` | ✅ registry/resolver · built-in arch + BPMN packs · in-node rendering · user-loaded packs · vendored simple-icons/devicon/gilbarbara/k8s · CNCF archived (LFS) | 12 |
@@ -92,8 +92,8 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    resource shapes) bundled with pinned provenance; CNCF landscape archived via git-LFS;
    official cloud-provider architecture sets + AliCloud are user-loaded — not redistributable. Full
    CNCF landscape (2423 logos) archived via git-LFS at `vendor/cncf.json`, not bundled.)*
-2. **Renderer polish**: HTML-in-Canvas backend behind feature detection; real text measurement →
-   node sizes. *(Themeable palette (light/dark + hand-drawn sketch mode) + device-pixel-ratio done.)*
+2. **Renderer polish**: HTML-in-Canvas backend behind feature detection. *(Themeable palette
+   (light/dark + sketch) + device-pixel-ratio + real text measurement done.)*
 3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
    *(Theme persistence done.)*
 4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.

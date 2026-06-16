@@ -8,18 +8,18 @@ import type {
   SceneNode,
   SequenceAst,
 } from "@m/contracts";
+import { heuristicMeasure, type MeasureText } from "./graph.js";
 
 const ACTOR_HEIGHT = 40;
 const ACTOR_GAP = 60;
-const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const MIN_ACTOR_WIDTH = 60;
 const HEADER_GAP = 40;
 const MESSAGE_GAP = 40;
 const BOTTOM_PADDING = 30;
 
-const actorWidth = (label: string): number =>
-  Math.max(MIN_ACTOR_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
+const actorWidth = (label: string, measure: MeasureText): number =>
+  Math.max(MIN_ACTOR_WIDTH, measure(label) + LABEL_PADDING);
 
 const MESSAGE_STYLE: Record<
   MessageKind,
@@ -34,12 +34,15 @@ const MESSAGE_STYLE: Record<
 // Deterministic lane layout — no ELK. Actors sit in a row; each has a vertical lifeline; messages
 // are horizontal arrows stacked top-to-bottom in source order. Lifelines reuse SceneEdge (a
 // self-edge from the actor to itself) so the renderer needs no new concept.
-export const layoutSequence = (ast: SequenceAst): Scene => {
+export const layoutSequence = (
+  ast: SequenceAst,
+  measure: MeasureText = heuristicMeasure,
+): Scene => {
   const centerX = new Map<string, number>();
   const nodes: SceneNode[] = [];
   let cursor = 0;
   for (const actor of ast.actors) {
-    const width = actorWidth(actor.label);
+    const width = actorWidth(actor.label, measure);
     nodes.push({
       id: brand<string, "SceneNodeId">(actor.id),
       bounds: rect(cursor, 0, width, ACTOR_HEIGHT),

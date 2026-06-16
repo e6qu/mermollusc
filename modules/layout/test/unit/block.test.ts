@@ -48,4 +48,12 @@ describe("layoutBlock", () => {
     expect(scene.extent.size.width).toBeGreaterThan(0);
     expect(scene.extent.size.height).toBeGreaterThan(0);
   });
+
+  it("honours an injected text measurer for node sizing", () => {
+    const wide = layoutBlock(ast, (label) => label.length * 60);
+    const a = wide.nodes.find((n) => n.id === "a")?.bounds.size.width;
+    // 1-char label: heuristic cell = max(48, 8+24)=48; measured = max(48, 60+24)=84.
+    expect(a).toBe(84);
+    expect(scene.nodes.find((n) => n.id === "a")?.bounds.size.width).toBe(48);
+  });
 });

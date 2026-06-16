@@ -11,7 +11,13 @@ import {
   toElkGraph,
   toScene,
 } from "../core/index.js";
-import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "../core/index.js";
+import type {
+  LayoutConfig,
+  LayoutError,
+  LayoutGraph,
+  MeasureText,
+  PositionedGraph,
+} from "../core/index.js";
 
 const elk = new ELK();
 
@@ -88,9 +94,10 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => ({
 export const layout = async (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point> = new Map(),
+  measure?: MeasureText,
 ): Promise<Result<Scene, LayoutError>> => {
   try {
-    const raw = await elk.layout(toElkInput(toElkGraph(ast, seed)));
+    const raw = await elk.layout(toElkInput(toElkGraph(ast, seed, measure)));
     const decoded = decode(ResultZ, raw);
     if (!decoded.ok) {
       return err({
@@ -104,20 +111,24 @@ export const layout = async (
   }
 };
 
-// Routes by family: flowchart through ELK (async); sequence/C4/block through pure layouts.
-export const layoutDiagram = async (ast: DiagramAst): Promise<Result<Scene, LayoutError>> => {
+// Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` (when
+// supplied) sizes labels with real text metrics; otherwise each layout uses the char-width heuristic.
+export const layoutDiagram = async (
+  ast: DiagramAst,
+  measure?: MeasureText,
+): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":
-      return layout(ast);
+      return layout(ast, new Map(), measure);
     case "sequence":
-      return ok(layoutSequence(ast));
+      return ok(layoutSequence(ast, measure));
     case "c4":
-      return ok(layoutC4(ast));
+      return ok(layoutC4(ast, measure));
     case "block":
-      return ok(layoutBlock(ast));
+      return ok(layoutBlock(ast, measure));
     case "network":
-      return ok(layoutNetwork(ast));
+      return ok(layoutNetwork(ast, measure));
     case "cloud":
-      return ok(layoutCloud(ast));
+      return ok(layoutCloud(ast, measure));
   }
 };

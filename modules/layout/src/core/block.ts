@@ -8,8 +8,8 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
+import { heuristicMeasure, type MeasureText } from "./graph.js";
 
-const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
 const MIN_CELL_WIDTH = 48;
@@ -22,13 +22,16 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow
   thick: { stroke: "solid", arrow: "filled" },
 };
 
-const labelWidth = (label: string): number =>
-  Math.max(MIN_CELL_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
+const labelWidth = (label: string, measure: MeasureText): number =>
+  Math.max(MIN_CELL_WIDTH, measure(label) + LABEL_PADDING);
 
 // Pure grid layout: blocks fill a `columns`-wide grid row-major in a uniform cell (sized to the
 // widest label so the grid stays aligned); edges are straight centre-to-centre lines.
-export const layoutBlock = (ast: BlockAst): Scene => {
-  const cellWidth = ast.blocks.reduce((w, b) => Math.max(w, labelWidth(b.label)), MIN_CELL_WIDTH);
+export const layoutBlock = (ast: BlockAst, measure: MeasureText = heuristicMeasure): Scene => {
+  const cellWidth = ast.blocks.reduce(
+    (w, b) => Math.max(w, labelWidth(b.label, measure)),
+    MIN_CELL_WIDTH,
+  );
   const columns = Math.max(1, ast.columns);
 
   const centers = new Map<string, { readonly x: number; readonly y: number }>();

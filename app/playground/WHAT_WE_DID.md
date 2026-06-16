@@ -49,6 +49,8 @@
 - Flowchart edge labels are now two-way: double-clicking a labelled edge patches its `|label|` span
   (via the `SourceMap.edges` map). +1 Playwright flow.
 - The Delete key now also removes a selected edge (`deleteEdge` on the scene edge's from/to). +1 flow.
+- Layout now sizes nodes with real text metrics: an offscreen-canvas `measureText` measurer is passed
+  to `layoutDiagram`/`layout` (replacing the char-width guess; short labels still hit the min-width floors).
 - Cloud two-way: the source-capture switch keeps a `CloudSource` (via `parseCloudWithSource`);
   double-click a group, service leaf, or labelled link → `patchSpan` rewrites its label span. +1 flow.
 - Theme persistence: initial theme reads `localStorage` then falls back to `prefers-color-scheme`;

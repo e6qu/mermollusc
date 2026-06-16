@@ -8,12 +8,12 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
+import { heuristicMeasure, type MeasureText } from "./graph.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
 const GAP = 24;
 const LEAF_HEIGHT = 56;
-const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
 
@@ -24,15 +24,15 @@ interface Box {
   readonly h: number;
 }
 
-const leafWidth = (label: string): number =>
-  Math.max(MIN_LEAF_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
+const leafWidth = (label: string, measure: MeasureText): number =>
+  Math.max(MIN_LEAF_WIDTH, measure(label) + LABEL_PADDING);
 
 const shapeOf = (kind: C4ElementKind): NodeShape =>
   kind === "boundary" ? "container" : kind === "person" ? "round" : "rect";
 
 // Pure recursive nested-box layout: boundaries wrap their children (sized to fit), siblings sit
 // in a row, relations are straight centre-to-centre edges. No ELK — coordinates are absolute.
-export const layoutC4 = (ast: C4Ast): Scene => {
+export const layoutC4 = (ast: C4Ast, measure: MeasureText = heuristicMeasure): Scene => {
   const childrenOf = new Map<string, C4Element[]>();
   const roots: C4Element[] = [];
   for (const el of ast.elements) {
@@ -49,7 +49,7 @@ export const layoutC4 = (ast: C4Ast): Scene => {
   const place = (el: C4Element, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     if (kids.length === 0) {
-      const box: Box = { x, y, w: leafWidth(el.label), h: LEAF_HEIGHT };
+      const box: Box = { x, y, w: leafWidth(el.label, measure), h: LEAF_HEIGHT };
       boxes.set(el.id, box);
       return box;
     }

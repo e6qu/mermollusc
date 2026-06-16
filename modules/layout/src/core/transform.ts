@@ -19,7 +19,14 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow
   dotted: { stroke: "dashed", arrow: "filled" },
   thick: { stroke: "solid", arrow: "filled" },
 };
-import type { LayoutConfig, LayoutError, LayoutGraph, PositionedGraph } from "./graph.js";
+import {
+  heuristicMeasure,
+  type LayoutConfig,
+  type LayoutError,
+  type LayoutGraph,
+  type MeasureText,
+  type PositionedGraph,
+} from "./graph.js";
 
 const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
   TB: "DOWN",
@@ -28,21 +35,21 @@ const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
   RL: "LEFT",
 };
 
-// Node sizing is a coarse heuristic until the renderer can measure text.
-const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
 const MIN_NODE_WIDTH = 48;
 const NODE_SPACING = 40;
 
-const nodeWidth = (label: string): number =>
-  Math.max(MIN_NODE_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
+const nodeWidth = (label: string, measure: MeasureText): number =>
+  Math.max(MIN_NODE_WIDTH, measure(label) + LABEL_PADDING);
 
 // A non-empty `seed` (node → current position) switches ELK into semi-interactive layered
 // layout: it relaxes the graph around the given coordinates instead of laying out from scratch.
+// `measure` sizes node labels (defaults to the char-width heuristic).
 export const toElkGraph = (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point> = new Map(),
+  measure: MeasureText = heuristicMeasure,
 ): LayoutGraph => ({
   id: "root",
   config: {
@@ -55,7 +62,7 @@ export const toElkGraph = (
     const at = seed.get(n.id);
     return {
       id: n.id,
-      width: nodeWidth(n.label),
+      width: nodeWidth(n.label, measure),
       height: NODE_HEIGHT,
       position: at === undefined ? null : { x: at.x, y: at.y },
     };

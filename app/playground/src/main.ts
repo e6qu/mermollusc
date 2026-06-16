@@ -89,6 +89,15 @@ let selectionOrder: SceneNodeId[] = [];
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
   null;
 
+// Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
+// rather than a char-width guess; matches the base render font. Falls back to the heuristic.
+const measureCtx = document.createElement("canvas").getContext("2d");
+const measureLabel = (label: string): number => {
+  if (measureCtx === null) return label.length * 8;
+  measureCtx.font = "14px sans-serif";
+  return measureCtx.measureText(label).width;
+};
+
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
 // The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
@@ -176,7 +185,7 @@ const renderFromText = async (text: string): Promise<void> => {
     return;
   }
   const diagram = parsed.value;
-  const laid = await layoutDiagram(diagram);
+  const laid = await layoutDiagram(diagram, measureLabel);
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
     return;
@@ -233,7 +242,7 @@ const relax = async (): Promise<void> => {
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
-  const laid = await layout(ast, seed);
+  const laid = await layout(ast, seed, measureLabel);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
     return;

@@ -1,5 +1,6 @@
 import { brand, point, rect } from "@m/std";
 import type { CloudAst, CloudNodeKind, IconRef, Scene, SceneEdge, SceneNode } from "@m/contracts";
+import { heuristicMeasure, type MeasureText } from "./graph.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
@@ -14,7 +15,6 @@ const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
 const GAP = 24;
 const LEAF_HEIGHT = 56;
-const CHAR_WIDTH = 8;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
 
@@ -33,12 +33,12 @@ interface Elem {
   readonly group: boolean;
 }
 
-const leafWidth = (label: string): number =>
-  Math.max(MIN_LEAF_WIDTH, label.length * CHAR_WIDTH + LABEL_PADDING);
+const leafWidth = (label: string, measure: MeasureText): number =>
+  Math.max(MIN_LEAF_WIDTH, measure(label) + LABEL_PADDING);
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.
-export const layoutCloud = (ast: CloudAst): Scene => {
+export const layoutCloud = (ast: CloudAst, measure: MeasureText = heuristicMeasure): Scene => {
   const elements: Elem[] = [
     ...ast.groups.map((g) => ({
       id: g.id,
@@ -73,7 +73,7 @@ export const layoutCloud = (ast: CloudAst): Scene => {
   const place = (el: Elem, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     if (kids.length === 0) {
-      const box: Box = { x, y, w: leafWidth(el.label), h: LEAF_HEIGHT };
+      const box: Box = { x, y, w: leafWidth(el.label, measure), h: LEAF_HEIGHT };
       boxes.set(el.id, box);
       return box;
     }

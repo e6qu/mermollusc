@@ -45,3 +45,11 @@ export interface LayoutError {
   readonly kind: "layout";
   readonly message: string;
 }
+
+// Measures a label's rendered text width in px. Injected so the shell can use a real canvas
+// `measureText`; the default reproduces the long-standing char-width heuristic, keeping pure
+// layouts deterministic (and their tests stable) when no measurer is supplied.
+export type MeasureText = (label: string) => number;
+
+const CHAR_WIDTH = 8;
+export const heuristicMeasure: MeasureText = (label) => label.length * CHAR_WIDTH;
