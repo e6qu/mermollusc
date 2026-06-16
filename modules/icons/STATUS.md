@@ -12,6 +12,8 @@
   switch, firewall, host (network kinds) + compute, storage, cdn (cloud kinds); `defaultRegistry`.
 - `bpmnPack` ("bpmn"): 12 original AGPL BPMN-notation glyphs — start/end/intermediate/message/timer
   events, task, subprocess, exclusive/parallel/inclusive gateways, data-object, data-store.
+- `sketchPack` ("sketch"): 6 original AGPL hand-drawn/xkcd-style outline glyphs (person/server/
+  database/cloud/note/box) to pair with the renderer's Sketch mode.
 - **In-node rendering is wired**: layout sets a `SceneNode.icon` (`IconRef`); the renderer emits an
   `icon` draw command; the app resolves the ref via `findIcon`, rasterises the SVG, and hands the
   image map to `paint`. Driven today by network node kinds.
@@ -32,8 +34,8 @@
 - **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/cncf.json` — the full CNCF landscape
   (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
   wanted. Kept out of the bundle so it can't affect app/test performance.
-- tests: 14 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
-  valid/invalid + default/explicit categories + register→find, BPMN pack, vendored-pack provenance).
+- tests: 15 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
+  valid/invalid + default/explicit categories, BPMN + sketch packs, vendored-pack provenance).
 - The **cloud** family renders these marks (kind→slug map); the **network** family accepts a
   per-node `icon "<pack>/<name>"` override that resolves against any registered pack.
 - Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); the per-node override on

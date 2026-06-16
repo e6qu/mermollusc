@@ -16,6 +16,8 @@
 - Added per-icon **categories** to `IconPack` (`categories` map + `categoryNames`/`iconsInCategory`/
   `singleCategory`): authored packs get meaningful groups, brand-logo packs a `brands` category,
   k8s `resources`; `decodePack` defaults to `all` or honours a `categories` field. +2 tests.
+- Authored an original AGPL **`sketch`** pack (6 hand-drawn/xkcd-style outline glyphs) for the
+  renderer's Sketch mode; in `defaultRegistry`. +1 test.
 - Wired in-node rendering across the pipeline: `SceneNode.icon` (`IconRef` in contracts), the
   renderer's `icon` draw command + `paint` image map, and the app's resolve-and-rasterise step.
 - Added a user-loaded pack path: `decodePack` (shell, `decode()`/Zod — validates `{ meta, icons }`

@@ -1,5 +1,6 @@
 import { bpmnPack } from "./bpmn.js";
 import type { IconPack, IconRegistry } from "./registry.js";
+import { sketchPack } from "./sketch.js";
 import { vendoredPacks } from "./vendored.js";
 
 // Original 24×24 architecture glyphs authored here under the repo's AGPL license — not vendored,
@@ -74,7 +75,9 @@ export const builtinPack: IconPack = {
   ]),
 };
 
-// The built-in glyph packs (arch + BPMN) plus the bundled, provenance-pinned OSS packs.
+// The built-in glyph packs (arch + BPMN + sketch) plus the bundled, provenance-pinned OSS packs.
 export const defaultRegistry: IconRegistry = {
-  packs: new Map([builtinPack, bpmnPack, ...vendoredPacks].map((pack) => [pack.meta.id, pack])),
+  packs: new Map(
+    [builtinPack, bpmnPack, sketchPack, ...vendoredPacks].map((pack) => [pack.meta.id, pack]),
+  ),
 };

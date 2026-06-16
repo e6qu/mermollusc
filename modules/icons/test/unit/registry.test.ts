@@ -75,6 +75,13 @@ describe("icons registry", () => {
     }
   });
 
+  it("bundles the original AGPL sketch glyph pack (hand-drawn person/infra/doc)", () => {
+    const sketch = findIcon(defaultRegistry, "sketch", "person");
+    expect(isOk(sketch)).toBe(true);
+    if (isOk(sketch)) expect(sketch.value).toContain("<svg");
+    expect(isOk(findIcon(defaultRegistry, "sketch", "database"))).toBe(true);
+  });
+
   it("bundles the original AGPL BPMN glyph pack (events / tasks / gateways)", () => {
     expect(bpmnPack.meta.license).toBe("AGPL-3.0-or-later");
     for (const name of ["start-event", "end-event", "task", "exclusive-gateway", "data-store"]) {

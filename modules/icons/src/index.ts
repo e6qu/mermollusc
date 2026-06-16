@@ -9,6 +9,7 @@ export {
 export type { IconPackMeta, IconPack, IconRegistry, IconError } from "./core/index.js";
 export { builtinPack, defaultRegistry } from "./core/index.js";
 export { bpmnPack } from "./core/index.js";
+export { sketchPack } from "./core/index.js";
 export {
   simpleIconsPack,
   deviconPack,
