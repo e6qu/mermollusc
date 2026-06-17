@@ -176,6 +176,32 @@ const FLOWS: readonly Flow[] = [
       await expect(page.locator("#zoom-reset")).toHaveText("156%");
     },
   },
+  {
+    name: "16-minimap",
+    about: "overview minimap: simplified node blocks + a bright 'you are here' viewport over a dimmed rest",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "flowchart TD\n  A-->B\n  A-->C\n  B-->D\n  C-->D\n  D-->E\n  D-->F\n  E-->G\n  F-->G\n  G-->H\n  G-->I\n",
+      );
+      // Zoom in so the (2-D) sheet overflows the stage and the minimap's viewport rect covers part of it.
+      for (let i = 0; i < 4; i++) await page.locator("#zoom-in").click();
+      await expect(page.locator("#minimap")).toBeVisible();
+    },
+  },
+  {
+    name: "17-minimap-dark",
+    about: "minimap in dark theme",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "flowchart TD\n  A-->B\n  A-->C\n  B-->D\n  C-->D\n  D-->E\n  D-->F\n  E-->G\n  F-->G\n  G-->H\n  G-->I\n",
+      );
+      await page.locator("#theme").click();
+      for (let i = 0; i < 4; i++) await page.locator("#zoom-in").click();
+      await expect(page.locator("#minimap")).toBeVisible();
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

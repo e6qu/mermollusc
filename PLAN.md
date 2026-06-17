@@ -76,7 +76,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based incl. relabel/connect) | 29 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit (− / % / + / Fit + ⌘-wheel) | 7 vitest + 42 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit/pan + overview minimap | 7 vitest + 47 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -112,10 +112,6 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
   per-tenant history). Implies an account/workspace boundary and a server side the app doesn't have
   yet. Note: this conflicts with the current purely-client, no-backend architecture — a deliberate
   expansion to decide on later.
-- **Minimap.** An overview thumbnail of the whole diagram with a draggable viewport rectangle, to
-  navigate large diagrams alongside the zoom/pan. Needs careful design — keep it in sync with the
-  zoom/scroll state, scale the scene cheaply (reuse the display list, not a re-layout), and don't let
-  it fight the existing pointer interactions. Worth doing well, not quickly.
 
 ## How to resume (fresh session / after compaction)
 

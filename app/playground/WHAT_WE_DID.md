@@ -124,3 +124,11 @@
   re-render and nudge stage scroll to cancel drift — no centred/padded-container math), and dragging
   the empty canvas pans the stage (grab cursor; scrolls via `stage-wrap`). +1 e2e (pan), verified the
   pan visually with a stage-viewport element screenshot.
+- Overview **minimap** (designed with the frontend-design skill, verified via close-up screenshots
+  in light + dark). Pinned bottom-right of the stage (in a new `.stage-col` wrapper so it doesn't
+  scroll with the sheet), shown only when the diagram overflows. It renders a *simplified* view from
+  the cached scene — solid node blocks + faint edges, not a shrunk copy of the canvas (labels/icons
+  would be noise at ~180px) — and marks the visible region by dimming everything outside it with a
+  scrim and framing it in the drafting-table accent ("you are here"). Click or drag to recentre the
+  stage; redraws cheaply on scroll/pan/zoom/resize from the cached display data. +4 e2e (hidden when
+  fitting, appears/hides on overflow, click- and drag-to-navigate) and +2 shot captures.
