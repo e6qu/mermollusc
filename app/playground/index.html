@@ -119,6 +119,7 @@
       /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
       #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
       #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
+      #export-png::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
 
       .select-field, .filebtn {
         display: inline-flex;
@@ -382,6 +383,8 @@
           <button id="sketch" type="button">Sketch</button>
           <button id="icons-toggle" type="button" aria-expanded="false"
             title="Browse icon packs and insert an icon &quot;pack/name&quot; override at the cursor">Icons</button>
+          <button id="export-png" type="button"
+            title="Download the current diagram as a PNG (at the screen's pixel density)">Export</button>
           <label class="filebtn"
             title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
             <input id="load-pack" type="file" accept="application/json" />
