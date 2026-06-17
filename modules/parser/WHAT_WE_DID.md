@@ -52,3 +52,11 @@
   (lexed before `LParen`, with their own lexer modes + closing tokens), two `shape` grammar ALTs, and
   `readNodeRef` cases → `shape: "stadium" | "circle"`. The printer + renderer already supported them,
   so they now round-trip; extended the round-trip property to all five shapes. +1 parse test.
+- Flowchart `subgraph id [title] … end` grouping (nestable): added `Subgraph`/`End` keywords
+  (`longer_alt: Identifier`), a `subgraphBlock` grammar rule, and `FlowchartAst.subgraphs`
+  (`FlowSubgraph { id, label, parent, nodes }` in `@m/contracts`). Enabled `nodeLocationTracking`
+  so `buildResult` processes statements + nested blocks in source order — a node is claimed by the
+  subgraph it's declared in even if a later top-level edge references it — then emits a canonical
+  node order (top-level first, subgraphs depth-first) that the printer mirrors so print→parse is a
+  fixed point. Printer emits `subgraph` blocks. Layout/renderer don't consume subgraphs yet (next
+  stage), so they currently lay out flat. +4 tests (membership, nesting+title, round-trip, print).

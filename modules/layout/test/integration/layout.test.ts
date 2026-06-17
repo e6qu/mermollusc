@@ -16,6 +16,7 @@ const A_THEN_B: FlowchartAst = {
     { id: nid("B"), label: "B", shape: "rect" },
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
+  subgraphs: [],
 };
 
 const yOf = (scene: { nodes: ReadonlyArray<{ id: string; bounds: { origin: { y: number } } }> }, id: string) =>
@@ -31,6 +32,7 @@ describe("layout", () => {
         { id: nid("B"), label: "End", shape: "round" },
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
+      subgraphs: [],
     };
 
     const r = await layout(ast);

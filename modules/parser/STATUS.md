@@ -34,7 +34,11 @@
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]` (rect) / `()` (round) / `([])` (stadium) /
   `(())` (circle) / `{}` (diamond), links `-->`/`---`/`-.->`/`==>`, edge labels `|...|`, `%%`
-  comments, `;`/newline separators. (The two-char openers `([`/`((` are lexed before `(`.)
-- tests: 40 passing (printer; flowchart parse/node+edge spans incl. stadium/circle; sequence parse + spans; C4 parse with nesting
+  comments, `;`/newline separators, and `subgraph id [title] … end` grouping (nestable) →
+  `FlowchartAst.subgraphs` with source-order membership. (The two-char openers `([`/`((` are lexed
+  before `(`; `subgraph`/`end` are keywords with `longer_alt: Identifier`. Offset tracking is on so
+  the builder claims a node for the subgraph it's declared in, then emits a canonical node order
+  that the printer mirrors for round-trip.)
+- tests: 44 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).

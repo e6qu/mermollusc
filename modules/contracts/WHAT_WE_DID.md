@@ -14,3 +14,6 @@
 - Added the `C4Ast` variant (`C4Element` with `kind` + `parent` nesting, `C4Rel`); `DiagramAst` is
   now `FlowchartAst | SequenceAst | C4Ast`.
 - Added `NodeShape` `"container"` (C4 boundaries) — rendered as an outline with a top label.
+- Added `FlowSubgraph { id, label, parent, nodes }` and `FlowchartAst.subgraphs` for flowchart
+  `subgraph … end` grouping (membership on the subgraph, nesting via `parent`, so `FlowNode` is
+  unchanged).

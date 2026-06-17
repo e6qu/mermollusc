@@ -6,6 +6,7 @@ import type {
   FlowDirection,
   FlowEdge,
   FlowNode,
+  FlowSubgraph,
   FlowchartAst,
   NodeId,
   NodeShape,
@@ -160,6 +161,20 @@ const linkKind = (c: Children): EdgeKind => {
   return "thick";
 };
 
+// A subgraph's title is its optional `[label]` (any shape bracket), else its id.
+const subgraphLabel = (blockChildren: Children, fallback: string): string => {
+  const shapeNode = childNodes(blockChildren, "shape")[0];
+  if (shapeNode === undefined) return fallback;
+  const sc = shapeNode.children;
+  const tok =
+    childTokens(sc, "SquareText")[0] ??
+    childTokens(sc, "ParenText")[0] ??
+    childTokens(sc, "CurlyText")[0] ??
+    childTokens(sc, "StadiumText")[0] ??
+    childTokens(sc, "CircleText")[0];
+  return tok === undefined ? fallback : tok.image.trim();
+};
+
 const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const root = cst.children;
   const headerNode = childNodes(root, "header")[0];
@@ -173,11 +188,14 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const nodeSpans = new Map<NodeId, NodeSpans>();
   const edgeSpans = new Map<EdgeId, TextSpan>();
   const edges: FlowEdge[] = [];
+  const subgraphs: FlowSubgraph[] = [];
+  const claimed = new Set<string>();
+  let malformed = false;
 
-  for (const stmt of childNodes(root, "statement")) {
+  // Records the refs' nodes/spans and the chain's edges; returns the statement's node ids in order.
+  const processStatement = (stmt: CstNode): readonly string[] => {
     const refs = childNodes(stmt.children, "nodeRef").map(readNodeRef);
     const links = childNodes(stmt.children, "link");
-
     for (const ref of refs) {
       const existing = nodeMap.get(ref.id);
       if (existing === undefined) {
@@ -193,13 +211,13 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
         });
       }
     }
-
     for (let i = 0; i < links.length; i++) {
       const link = links[i];
       const from = refs[i];
       const to = refs[i + 1];
       if (link === undefined || from === undefined || to === undefined) {
-        return err(parseError(["internal: malformed edge chain"]));
+        malformed = true;
+        break;
       }
       const pipe = childTokens(link.children, "PipeText")[0];
       const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
@@ -212,9 +230,73 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       });
       if (pipe !== undefined) edgeSpans.set(edgeId, trimmedSpan(pipe));
     }
-  }
+    return refs.map((r) => r.id);
+  };
 
-  const ast: FlowchartAst = { kind: "flowchart", direction, nodes: [...nodeMap.values()], edges };
+  const offsetOf = (node: CstNode): number => node.location?.startOffset ?? 0;
+
+  // Processes a container's statements and nested subgraphs **in source order** (so a node declared
+  // inside a subgraph is claimed by it even if a later top-level edge mentions it). Returns the node
+  // ids first claimed directly in this container.
+  const processContainer = (children: Children, parentId: NodeId | null): readonly NodeId[] => {
+    const members: NodeId[] = [];
+    const ordered = [
+      ...childNodes(children, "statement").map((n) => ({
+        off: offsetOf(n),
+        kind: "stmt",
+        node: n,
+      })),
+      ...childNodes(children, "subgraphBlock").map((n) => ({
+        off: offsetOf(n),
+        kind: "sub",
+        node: n,
+      })),
+    ].sort((a, b) => a.off - b.off);
+
+    for (const item of ordered) {
+      if (item.kind === "stmt") {
+        for (const rid of processStatement(item.node)) {
+          if (!claimed.has(rid)) {
+            claimed.add(rid);
+            members.push(brand<string, "NodeId">(rid));
+          }
+        }
+      } else {
+        const bc = item.node.children;
+        const idImage = childTokens(bc, "Identifier")[0]?.image ?? "";
+        const sgId = brand<string, "NodeId">(idImage);
+        const inner = processContainer(bc, sgId);
+        subgraphs.push({
+          id: sgId,
+          label: subgraphLabel(bc, idImage),
+          parent: parentId,
+          nodes: inner,
+        });
+      }
+    }
+    return members;
+  };
+
+  const topLevel = processContainer(root, null);
+  if (malformed) return err(parseError(["internal: malformed edge chain"]));
+
+  // Canonical node order = top-level nodes, then each subgraph's nodes depth-first — exactly how the
+  // printer emits them, so print→parse is a fixed point regardless of the original source order.
+  const orderedIds: NodeId[] = [...topLevel];
+  const walk = (parentId: NodeId | null): void => {
+    for (const s of subgraphs) {
+      if (s.parent === parentId) {
+        orderedIds.push(...s.nodes);
+        walk(s.id);
+      }
+    }
+  };
+  walk(null);
+  const nodes = orderedIds
+    .map((id) => nodeMap.get(id))
+    .filter((n): n is FlowNode => n !== undefined);
+
+  const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs };
   return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans } });
 };
 

@@ -41,6 +41,7 @@ const astArb: fc.Arbitrary<FlowchartAst> = fc.integer({ min: 1, max: 5 }).chain(
           kind: e.kind,
           label: null,
         })),
+        subgraphs: [],
       }),
     ),
 );

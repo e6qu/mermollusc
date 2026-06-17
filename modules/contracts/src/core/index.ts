@@ -6,6 +6,7 @@ export type {
   FlowDirection,
   FlowNode,
   FlowEdge,
+  FlowSubgraph,
   FlowchartAst,
   ActorId,
   MessageId,
