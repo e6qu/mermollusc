@@ -45,4 +45,10 @@
 - `connectC4` (appends `Rel(from, to, "")`) and `connectMessage` (appends `from->>to: message`)
   complete edge-creation for the last two families (C4 relations, sequence messages); both insert a
   default label the user can rename. +2 integration tests (each appended edge parses back to a rel /
-  message). Per-family *deletion* for C4 (boundary blocks) and sequence is still pending.
+  message).
+- Added C4 and sequence delete patchers: `deleteC4` removes a leaf element or a whole boundary block
+  plus any relations touching removed/nested elements; `deleteC4Rel` removes a matching relation;
+  `deleteActor` removes a participant declaration and messages touching it; `deleteMessage` removes
+  the first matching actor-to-actor message. +5 parser-backed integration tests.
+- Added group labels to the sidecar group model via `setGroupLabel`; overlay serialization/decoding
+  persists the required label field with every group. +2 unit cases.

@@ -15,7 +15,12 @@ const PointZ = z.object({ x: z.number(), y: z.number() });
 const SizeZ = z.object({ width: z.number(), height: z.number() });
 const OverrideZ = z.object({ position: PointZ, size: SizeZ.nullable(), pinned: z.boolean() });
 const MemberZ = z.object({ kind: z.enum(["node", "group"]), id: z.string() });
-const GroupZ = z.object({ id: z.string(), members: z.array(MemberZ), locked: z.boolean() });
+const GroupZ = z.object({
+  id: z.string(),
+  label: z.string(),
+  members: z.array(MemberZ),
+  locked: z.boolean(),
+});
 const OverlayZ = z.object({
   overrides: z.array(z.tuple([z.string(), OverrideZ])),
   groups: z.array(z.tuple([z.string(), GroupZ])),
@@ -34,7 +39,12 @@ export const serializeOverlay = (overrides: LayoutOverrides, groups: Groups): st
     ]),
     groups: [...groups].map(([id, g]) => [
       id,
-      { id: g.id, members: g.members.map((m) => ({ kind: m.kind, id: m.id })), locked: g.locked },
+      {
+        id: g.id,
+        label: g.label,
+        members: g.members.map((m) => ({ kind: m.kind, id: m.id })),
+        locked: g.locked,
+      },
     ]),
   });
 
@@ -56,6 +66,7 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
         brand<string, "GroupId">(id),
         {
           id: brand<string, "GroupId">(g.id),
+          label: g.label,
           members: g.members.map(
             (m): GroupMember =>
               m.kind === "node"

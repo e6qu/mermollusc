@@ -7,6 +7,7 @@ Hit-testing, selection, drag, and text↔diagram two-way sync.
 - Hit-test the rendered Scene (geometric, via `@m/std` `rectContains` and edge proximity).
 - Selection + drag interactions on the canvas.
 - Two-way sync between Mermaid text and the diagram.
+- Family-specific structural patching for node/edge creation and deletion.
 
 ## Sync model
 
@@ -23,4 +24,7 @@ Hit-testing, selection, drag, and text↔diagram two-way sync.
 
 ## Public API (stable surface)
 
-TODO — define once the flowchart vertical slice lands.
+- `patchSpan`, `relabelNode`, `addNode`, `connect`, `connectUndirected`, `connectC4`,
+  `connectMessage`.
+- `deleteNode`, `deleteEdge`, `deleteC4`, `deleteC4Rel`, `deleteActor`, `deleteMessage`.
+- `group`, `ungroup`, `setLocked`, `setGroupLabel`, and group queries over the sidecar group model.

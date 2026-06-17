@@ -14,6 +14,7 @@ export type GroupMember =
 
 export interface Group {
   readonly id: GroupId;
+  readonly label: string;
   readonly members: readonly GroupMember[];
   // A locked group cannot be dragged (move-only lock); its members can still be edited/deleted.
   readonly locked: boolean;

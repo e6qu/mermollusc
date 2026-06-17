@@ -12,6 +12,7 @@
 ## Public API (stable surface)
 
 - `toDisplayList(scene: Scene): DrawCmd[]` (pure).
+- `edgeLabelAnchor(points: readonly Point[]): { x, y }` (pure routed-polyline label placement).
 - `paint(ctx: Canvas2D, cmds: readonly DrawCmd[]): void`.
 - `Canvas2D` — structural subset of `CanvasRenderingContext2D`; a real context is assignable.
 

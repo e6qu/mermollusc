@@ -33,3 +33,5 @@
 - Adopted the `Coordinate`/`Length` geometry split in the `DrawCmd` display list: positions
   (`x`/`y`/`cx`/`cy`) are `Coordinate`, extents (`width`/`height`/`radius`/`size`) are `Length`;
   `px()` call sites became `coordinate()`/`length()`.
+- Exported `edgeLabelAnchor` so hosts can align overlays (like the playground's inline edge-label
+  editor) with the renderer's routed-polyline label placement. +1 unit test.

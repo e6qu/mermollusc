@@ -6,7 +6,11 @@ import {
   connectMessage,
   connectUndirected,
   decodeOverlay,
+  deleteActor,
+  deleteC4,
+  deleteC4Rel,
   deleteEdge,
+  deleteMessage,
   deleteNode,
   emptySelection,
   group,
@@ -18,6 +22,7 @@ import {
   relabelNode,
   selectOnly,
   serializeOverlay,
+  setGroupLabel,
   setLocked,
   toggle,
   topGroupOfNode,
@@ -52,7 +57,7 @@ import {
   parseSequenceWithSource,
   parseWithSource,
 } from "@m/parser";
-import { darkTheme, defaultTheme, paint, toDisplayList, toSvg } from "@m/renderer";
+import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
@@ -299,12 +304,19 @@ const paintScene = (): void => {
 };
 
 const GROUP_PAD = 10;
-// Draw each group as a rounded outline around its members' bounding box (drawn behind the nodes).
-// Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
-const drawGroupOutlines = (shown: Scene): void => {
-  if (groups.size === 0) return;
+const GROUP_HIT_TOLERANCE = 6;
+const GROUP_TITLE_HEIGHT = 24;
+interface GroupBox {
+  readonly id: GroupId;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+const groupBoxes = (shown: Scene): readonly GroupBox[] => {
   const boundsById = new Map(shown.nodes.map((node) => [node.id, node.bounds]));
-  const dark = theme === darkTheme;
+  const boxes: GroupBox[] = [];
   for (const g of groups.values()) {
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
@@ -319,12 +331,89 @@ const drawGroupOutlines = (shown: Scene): void => {
       maxY = Math.max(maxY, b.origin.y + b.size.height);
     }
     if (minX === Number.POSITIVE_INFINITY) continue;
-    const x = minX - GROUP_PAD;
-    const y = minY - GROUP_PAD;
+    boxes.push({
+      id: g.id,
+      x: minX - GROUP_PAD,
+      y: minY - GROUP_PAD,
+      w: maxX - minX + GROUP_PAD * 2,
+      h: maxY - minY + GROUP_PAD * 2,
+    });
+  }
+  return boxes;
+};
+
+const groupOutlineAt = (shown: Scene, at: Point): GroupId | null => {
+  const boxes = groupBoxes(shown);
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i];
+    if (box === undefined) continue;
+    const inside = at.x >= box.x && at.x <= box.x + box.w && at.y >= box.y && at.y <= box.y + box.h;
+    if (!inside) continue;
+    const dx = Math.min(Math.abs(at.x - box.x), Math.abs(at.x - (box.x + box.w)));
+    const dy = Math.min(Math.abs(at.y - box.y), Math.abs(at.y - (box.y + box.h)));
+    if (Math.min(dx, dy) <= GROUP_HIT_TOLERANCE) return box.id;
+  }
+  return null;
+};
+
+const groupTitleAt = (shown: Scene, at: Point): GroupId | null => {
+  const boxes = groupBoxes(shown);
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i];
+    if (box === undefined) continue;
+    const inside =
+      at.x >= box.x && at.x <= box.x + box.w && at.y >= box.y && at.y <= box.y + GROUP_TITLE_HEIGHT;
+    if (inside) return box.id;
+  }
+  return null;
+};
+
+const groupAt = (shown: Scene, at: Point): GroupId | null => {
+  const boxes = groupBoxes(shown);
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i];
+    if (box === undefined) continue;
+    const inside = at.x >= box.x && at.x <= box.x + box.w && at.y >= box.y && at.y <= box.y + box.h;
+    if (inside) return box.id;
+  }
+  return null;
+};
+
+const selectGroup = (id: GroupId): void => {
+  const leaves = leafNodes(groups, id);
+  selection = { nodes: new Set(leaves), edges: new Set() };
+  selectionOrder = [...leaves];
+};
+
+const toggleGroupSelection = (id: GroupId): void => {
+  const leaves = leafNodes(groups, id);
+  const nodes = new Set(selection.nodes);
+  const allSelected = leaves.every((leaf) => nodes.has(leaf));
+  if (allSelected) {
+    for (const leaf of leaves) nodes.delete(leaf);
+    selectionOrder = selectionOrder.filter((leaf) => !leaves.includes(leaf));
+  } else {
+    for (const leaf of leaves) nodes.add(leaf);
+    selectionOrder = [
+      ...selectionOrder,
+      ...leaves.filter((leaf) => !selectionOrder.includes(leaf)),
+    ];
+  }
+  selection = { nodes, edges: selection.edges };
+};
+
+// Draw each group as a rounded outline around its members' bounding box (drawn behind the nodes).
+// Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
+const drawGroupOutlines = (shown: Scene): void => {
+  if (groups.size === 0) return;
+  const dark = theme === darkTheme;
+  for (const box of groupBoxes(shown)) {
+    const g = groups.get(box.id);
+    if (g === undefined) continue;
     const accent = g.locked ? (dark ? "#f0894e" : "#d2602c") : dark ? "#4cc2c4" : "#0f6f74";
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(x, y, maxX - minX + GROUP_PAD * 2, maxY - minY + GROUP_PAD * 2, 8);
+    ctx.roundRect(box.x, box.y, box.w, box.h, 8);
     ctx.fillStyle = g.locked ? "rgba(210,96,44,0.07)" : "rgba(15,111,116,0.05)";
     ctx.fill();
     ctx.lineWidth = 1.5;
@@ -335,7 +424,20 @@ const drawGroupOutlines = (shown: Scene): void => {
     if (g.locked) {
       ctx.fillStyle = accent;
       ctx.font = "12px sans-serif";
-      ctx.fillText("🔒", x + 5, y + 15);
+      ctx.fillText("🔒", box.x + 5, box.y + 15);
+    }
+    if (g.label.length > 0) {
+      // A fieldset-style legend: the label sits on the top border, with a background-colored notch
+      // behind it so the outline doesn't strike through the text.
+      ctx.font = activeTheme().font;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const cx = box.x + box.w / 2;
+      const half = ctx.measureText(g.label).width / 2 + 4;
+      ctx.fillStyle = activeTheme().background;
+      ctx.fillRect(cx - half, box.y - 8, half * 2, 16);
+      ctx.fillStyle = accent;
+      ctx.fillText(g.label, cx, box.y);
     }
     ctx.restore();
   }
@@ -622,11 +724,9 @@ statusEl.addEventListener("click", () => {
   srcEl.setSelectionRange(errorRange.offset, errorRange.offset + errorRange.length);
 });
 
-// Add-node and Relax patch/seed flowchart specifically. Connect now works for every family (each
-// emits its own edge syntax). Delete is wired for families with a two-token edge line (the generic
-// token-based remover); sequence/C4 deletion needs bespoke patchers and isn't wired yet. Disabling a
-// control off its families makes that explicit rather than a silent dead click.
-const DELETE_FAMILIES = new Set<DiagramAst["kind"]>(["flowchart", "block", "network", "cloud"]);
+// Add-node and Relax patch/seed flowchart specifically. Connect and Delete now work for every family
+// (each dispatches to its own edge/element syntax). Disabling Add/Relax off flowchart makes that
+// explicit rather than a silent dead click.
 const flowchartOnly = [addBtn, relaxBtn];
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
@@ -763,6 +863,10 @@ canvas.addEventListener("pointerdown", (ev) => {
   const shown = applyOverrides(scene, overrides);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
+  const groupHit =
+    hit === null
+      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
+      : null;
   const additive = ev.shiftKey || ev.metaKey;
 
   if (additive) {
@@ -773,7 +877,16 @@ canvas.addEventListener("pointerdown", (ev) => {
           ? [...selectionOrder.filter((id) => id !== hit.id), hit.id]
           : selectionOrder.filter((id) => id !== hit.id);
       }
+    } else if (groupHit !== null) {
+      toggleGroupSelection(groupHit);
     }
+    paintScene();
+    updateGroupButtons();
+    return;
+  }
+
+  if (groupHit !== null) {
+    selectGroup(groupHit);
     paintScene();
     updateGroupButtons();
     return;
@@ -884,8 +997,8 @@ const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) 
   inlineEl.onblur = () => closeEditor?.(true);
 };
 
-// The screen-space box of the hit element, so the editor sits over it. Edges have no box, so we
-// anchor a fixed-width slot at the straight midpoint of their endpoints.
+// The screen-space box of the hit element, so the editor sits over it. Edges have no box, so use
+// the same routed-polyline label anchor as the renderer.
 const anchorFor = (
   shown: Scene,
   hit: { readonly kind: "node" | "edge"; readonly id: string },
@@ -897,19 +1010,21 @@ const anchorFor = (
     return { x: origin.x, y: origin.y, w: size.width, h: size.height };
   }
   const e = shown.edges.find((ee) => ee.id === hit.id);
-  if (e === undefined || e.waypoints.length === 0) return null;
-  const first = e.waypoints[0];
-  const last = e.waypoints[e.waypoints.length - 1];
-  if (first === undefined || last === undefined) return null;
-  return { x: (first.x + last.x) / 2 - 30, y: (first.y + last.y) / 2 - 12, w: 80, h: 24 };
+  if (e === undefined || e.waypoints.length < 2) return null;
+  const anchor = edgeLabelAnchor(e.waypoints);
+  return { x: anchor.x - 40, y: anchor.y - 12, w: 80, h: 24 };
 };
 
 // Two-way edit: rename what was double-clicked and write the patch back into the source text.
 canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null) return;
   const shown = applyOverrides(scene, overrides);
-  const hit = hitTest(shown, scenePoint(ev));
-  if (hit === null) return;
+  const at = scenePoint(ev);
+  const hit = hitTest(shown, at);
+  const groupHit =
+    hit === null
+      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
+      : null;
 
   // Most families edit a `TextSpan` via `patchSpan`; flowchart nodes relabel through the source map.
   const patchAt = (
@@ -923,8 +1038,23 @@ canvas.addEventListener("dblclick", (ev) => {
   });
 
   let pending: { readonly text: string; readonly commit: (n: string) => void } | null = null;
+  let anchor: Anchor | null = null;
 
-  if (ast.kind === "flowchart" && source !== null) {
+  if (groupHit !== null) {
+    const box = groupBoxes(shown).find((g) => g.id === groupHit);
+    const g = groups.get(groupHit);
+    if (box !== undefined && g !== undefined) {
+      anchor = { x: box.x + 16, y: box.y, w: Math.max(96, box.w - 32), h: 24 };
+      pending = {
+        text: g.label,
+        commit: (next) => {
+          groups = setGroupLabel(groups, groupHit, next);
+          persistOverlay();
+          paintScene();
+        },
+      };
+    }
+  } else if (hit !== null && ast.kind === "flowchart" && source !== null) {
     const src = source;
     if (hit.kind === "edge") {
       const span = src.edges.get(brand<string, "EdgeId">(hit.id));
@@ -944,32 +1074,32 @@ canvas.addEventListener("dblclick", (ev) => {
         },
       };
     }
-  } else if (ast.kind === "c4" && c4Source !== null) {
+  } else if (hit !== null && ast.kind === "c4" && c4Source !== null) {
     const span =
       hit.kind === "node"
         ? c4Source.elements.get(brand<string, "C4ElementId">(hit.id))
         : c4Source.rels.get(brand<string, "C4RelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
-  } else if (ast.kind === "block" && blockSource !== null) {
+  } else if (hit !== null && ast.kind === "block" && blockSource !== null) {
     const span =
       hit.kind === "node"
         ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
         : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
-  } else if (ast.kind === "network" && netSource !== null) {
+  } else if (hit !== null && ast.kind === "network" && netSource !== null) {
     const span =
       hit.kind === "node"
         ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
         : netSource.links.get(brand<string, "EdgeId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
-  } else if (ast.kind === "cloud" && cloudSource !== null) {
+  } else if (hit !== null && ast.kind === "cloud" && cloudSource !== null) {
     const id = brand<string, "NodeId">(hit.id);
     const span =
       hit.kind === "node"
         ? (cloudSource.nodes.get(id) ?? cloudSource.groups.get(id))
         : cloudSource.links.get(brand<string, "EdgeId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
-  } else if (ast.kind === "sequence" && seqSource !== null) {
+  } else if (hit !== null && ast.kind === "sequence" && seqSource !== null) {
     const span =
       hit.kind === "node"
         ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
@@ -978,7 +1108,7 @@ canvas.addEventListener("dblclick", (ev) => {
   }
 
   if (pending === null) return;
-  const anchor = anchorFor(shown, hit);
+  anchor = anchor ?? (hit === null ? null : anchorFor(shown, hit));
   if (anchor === null) return;
   openInlineEditor(anchor, pending.text, pending.commit);
 });
@@ -1040,27 +1170,49 @@ const appendEdge = (
   }
 };
 
-// Delete key removes the selected nodes (and their edges) from the text, for any family with a
-// two-token edge syntax. Guarded on the textarea not being focused so it never hijacks a Backspace
-// while editing the source.
+// Remove a node/element/actor in the family's own syntax.
+const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): string => {
+  switch (kind) {
+    case "c4":
+      return deleteC4(text, brand<string, "C4ElementId">(id));
+    case "sequence":
+      return deleteActor(text, brand<string, "ActorId">(id));
+    default:
+      return deleteNode(text, brand<string, "NodeId">(id));
+  }
+};
+
+// Remove an edge in the family's own syntax.
+const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: string): string => {
+  switch (kind) {
+    case "c4":
+      return deleteC4Rel(
+        text,
+        brand<string, "C4ElementId">(from),
+        brand<string, "C4ElementId">(to),
+      );
+    case "sequence":
+      return deleteMessage(text, brand<string, "ActorId">(from), brand<string, "ActorId">(to));
+    default:
+      return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));
+  }
+};
+
+// Delete key removes the selected nodes (and their edges) from the text, in the active family's
+// syntax. Guarded on the textarea not being focused so it never hijacks a Backspace while editing.
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
   if (document.activeElement === srcEl) return;
-  if (ast === null || !DELETE_FAMILIES.has(ast.kind)) return;
+  if (ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
+  const kind = ast.kind;
   let text = srcEl.value;
-  for (const id of selectionOrder) text = deleteNode(text, brand<string, "NodeId">(id));
+  for (const id of selectionOrder) text = removeNode(kind, text, id);
   if (scene !== null) {
     for (const edgeId of selection.edges) {
       const edge = scene.edges.find((e) => e.id === edgeId);
-      if (edge !== undefined) {
-        text = deleteEdge(
-          text,
-          brand<string, "NodeId">(edge.from),
-          brand<string, "NodeId">(edge.to),
-        );
-      }
+      if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
     }
   }
   selection = emptySelection;

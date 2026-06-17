@@ -5,3 +5,4 @@
   (writes) and layout (reads as ELK seeds/fixed positions).
 - Add type-level tests (e.g. `expect-type`) pinning the discriminated unions.
 - Keep AST and SceneGraph IR stable — downstream modules depend on these shapes.
+- *(done)* Sidecar groups include a required label for editor-owned group titles.

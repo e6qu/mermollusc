@@ -72,3 +72,50 @@ test("a locked group can't be dragged; unlocking restores the move", async ({ pa
 
   expect(errors).toEqual([]);
 });
+
+test("clicking a group outline selects the whole group", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+
+  await selectPair(page, box);
+  await page.locator("#group").click();
+  await page.mouse.click(box.x + box.width - 8, box.y + box.height - 8);
+  await expect(page.locator("#ungroup")).toBeDisabled();
+
+  await page.mouse.click(box.x + 88, box.y + 30);
+  await expect(page.locator("#ungroup")).toBeEnabled();
+  await expect(page.locator("#lock")).toBeEnabled();
+  await expect(page.locator("#group")).toBeDisabled();
+
+  expect(errors).toEqual([]);
+});
+
+test("double-clicking a group outline edits its label", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+
+  await selectPair(page, box);
+  await page.locator("#group").click();
+  await page.mouse.dblclick(box.x + 88, box.y + 34);
+  const editor = page.locator("#inline-edit");
+  await expect(editor).toBeVisible();
+  await editor.fill("Core flow");
+  await page.keyboard.press("Enter");
+
+  const overlay = await page.evaluate(() => localStorage.getItem("mermollusc-overlay"));
+  expect(overlay).not.toBeNull();
+  expect(overlay).toContain("Core flow");
+  expect(errors).toEqual([]);
+});

@@ -17,3 +17,4 @@
 - Added `FlowSubgraph { id, label, parent, nodes }` and `FlowchartAst.subgraphs` for flowchart
   `subgraph … end` grouping (membership on the subgraph, nesting via `parent`, so `FlowNode` is
   unchanged).
+- Added required sidecar `Group.label` for editor-owned group titles.

@@ -3,7 +3,6 @@ import { expect, test, type Page } from "@playwright/test";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
-// Connect/Delete now work beyond flowchart. Network is the representative undirected family (`a -- b`).
 test("Connect links two network nodes with an undirected `a -- b`", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
@@ -81,4 +80,51 @@ test("Connect adds a sequence message between two actors", async ({ page }) => {
 
   await page.locator("#connect").click();
   await expect(page.locator("#src")).toHaveValue(/A->>B: message/);
+});
+
+test("Delete removes a C4 boundary block and relations to nested elements", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#src").fill(
+    'C4Context\n  Person(u, "U")\n  Boundary(bk, "Backend") {\n    Container(api, "API")\n  }\n  Rel(u, api, "x")\n',
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  await page.mouse.click(box.x + box.width - 48, box.y + 34);
+  await page.keyboard.press("Delete");
+
+  await expect(page.locator("#src")).not.toHaveValue(/Boundary\(bk/);
+  await expect(page.locator("#src")).not.toHaveValue(/Container\(api/);
+  await expect(page.locator("#src")).not.toHaveValue(/Rel\(u, api/);
+  await expect(page.locator("#src")).toHaveValue(/Person\(u, "U"\)/);
+  expect(errors).toEqual([]);
+});
+
+test("Delete removes a sequence actor and messages touching it", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#src").fill(
+    "sequenceDiagram\n  participant A\n  participant B\n  participant C\n  A->>B: hi\n  B->>C: yo\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  await page.mouse.click(box.x + 54, box.y + 42);
+  await page.keyboard.press("Delete");
+
+  await expect(page.locator("#src")).not.toHaveValue(/participant A/);
+  await expect(page.locator("#src")).not.toHaveValue(/A->>B/);
+  await expect(page.locator("#src")).toHaveValue(/B->>C: yo/);
+  expect(errors).toEqual([]);
 });

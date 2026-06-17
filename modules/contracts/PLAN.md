@@ -4,8 +4,13 @@ AST and SceneGraph IR type definitions — the two seams of the pipeline.
 
 ## Responsibility
 
-TODO — what this module owns and what it explicitly does not.
+- Own the pure TypeScript contracts that cross module boundaries: AST variants, SceneGraph IR,
+  source spans, manual layout overrides, and sidecar groups.
+- Stay type-only; parsing, layout, rendering, and editor behavior live downstream.
 
 ## Public API (stable surface)
 
-TODO.
+- Branded AST ids and `DiagramAst`.
+- `Scene`, `SceneNode`, `SceneEdge`.
+- `LayoutOverrides`, `Groups`, `Group`.
+- Source span maps for two-way text patches.

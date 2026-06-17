@@ -17,6 +17,7 @@ describe("overlay codec", () => {
         gid("g1"),
         {
           id: gid("g1"),
+          label: "Backend",
           members: [
             { kind: "node", id: snid("A") },
             { kind: "group", id: gid("g0") },

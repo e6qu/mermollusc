@@ -109,7 +109,7 @@ const LABEL_GAP = 11;
 // edge bends around one (e.g. a flowchart branch that routes down the side); the on-path midpoint
 // stays in the routing channel ELK keeps clear, and the perpendicular nudge keeps the stroke from
 // running through the text.
-const edgeLabelAnchor = (
+export const edgeLabelAnchor = (
   points: readonly Point[],
 ): { readonly x: Coordinate; readonly y: Coordinate } => {
   let total = 0;
