@@ -110,3 +110,8 @@
   Node icons are embedded as `<image>` data-URL hrefs resolved here (the renderer can't depend on
   `@m/icons`) via `findIcon` + `svgDataUrl`. Verified the output renders correctly in a browser.
   +1 Playwright flow (download filename + real file). 36 e2e green.
+- Shareable links (`#share-link`): `shareUrl()` encodes the editor text into a `#src=<encoded>` URL
+  hash; the Share button reflects it in the address bar (`history.replaceState`) and best-effort
+  copies it to the clipboard (outcome surfaced to the status bar, never silently dropped). On load,
+  a `#src=` hash takes precedence over the persisted source (`hashSource()` → `?? localStorage ??
+  SAMPLE`). +2 Playwright flows (link reproduces the diagram; Share encodes the source). 39 e2e green.

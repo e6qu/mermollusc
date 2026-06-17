@@ -120,6 +120,7 @@
       #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
       #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
       #export-png::before, #export-pdf::before, #export-svg::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
+      #share-link::before { content: "↗"; margin-right: 7px; color: var(--accent); }
 
       .select-field, .filebtn {
         display: inline-flex;
@@ -389,6 +390,8 @@
             title="Download the current diagram as a one-page PDF">PDF</button>
           <button id="export-svg" type="button"
             title="Download the current diagram as a vector SVG">SVG</button>
+          <button id="share-link" type="button"
+            title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
           <label class="filebtn"
             title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
             <input id="load-pack" type="file" accept="application/json" />
