@@ -76,6 +76,7 @@ const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
 const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
+const shareBtn = document.querySelector<HTMLButtonElement>("#share-link");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -96,7 +97,8 @@ if (
   iconGrid === null ||
   exportBtn === null ||
   exportPdfBtn === null ||
-  exportSvgBtn === null
+  exportSvgBtn === null ||
+  shareBtn === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -919,7 +921,39 @@ exportSvgBtn.addEventListener("click", () => {
   setStatus("ok", "exported mermollusc.svg");
 });
 
-const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+// Share: encode the current source in the URL hash (so the link reproduces the diagram) and copy it
+// to the clipboard. The hash is reflected in the address bar either way; clipboard is best-effort
+// (it can be denied) and its outcome is surfaced to the status bar, never silently dropped.
+const shareUrl = (): string =>
+  `${location.origin}${location.pathname}#src=${encodeURIComponent(srcEl.value)}`;
+
+shareBtn.addEventListener("click", () => {
+  const url = shareUrl();
+  history.replaceState(null, "", url);
+  const clip = navigator.clipboard;
+  if (clip === undefined) {
+    setStatus("ok", "shareable link is in the address bar");
+    return;
+  }
+  void clip.writeText(url).then(
+    () => setStatus("ok", "shareable link copied to clipboard"),
+    () => setStatus("ok", "shareable link is in the address bar"),
+  );
+});
+
+// A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
+const hashSource = (): string | null => {
+  const prefix = "#src=";
+  if (!location.hash.startsWith(prefix)) return null;
+  try {
+    return decodeURIComponent(location.hash.slice(prefix.length));
+  } catch (e) {
+    console.error("ignoring malformed #src in URL:", e instanceof Error ? e.message : String(e));
+    return null;
+  }
+};
+
+const initialSource = hashSource() ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
 srcEl.value = initialSource;
 srcEl.addEventListener("input", () => {
   overrides = new Map();
