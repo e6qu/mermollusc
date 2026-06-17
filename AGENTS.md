@@ -30,10 +30,12 @@ Read it before touching any module. These rules **override** convenience.
    `DO_NEXT.md`, `BUGS.md` in the *same* change that touches its code — never as a follow-up.
 7. **No phase numbers or BUGS IDs in source or comments.** They rot. The "why" goes in the
    commit message, not the code.
-8. **No wildcard imports or exports.** No `import * as` and no `export *`. Every symbol that
+8. **No wildcard or inline imports.** No `import * as` and no `export *`. Every symbol that
    crosses a module boundary is named explicitly (`export { a, b } from`, `export type { … }`).
-   Barrels are allowed only as explicit named re-export lists. Keeps the public surface,
-   tree-shaking, and the dependency graph legible.
+   Barrels are allowed only as explicit named re-export lists. **No inline `import("…")` type
+   expressions, and imports live only at the top of the file — no mid-file imports, not even to
+   break a circular dependency (rearrange the files instead).** Enforced by `tools/guard-types.mjs`
+   across `src`. Keeps the public surface, tree-shaking, and the dependency graph legible.
 9. **No noise comments.** No separator/banner comments and no comments that restate the code
    or these rules. Keep only comments that explain something the code cannot: a boundary, an
    invariant, a non-obvious "why". Never cite rule/section numbers in code — they rot.

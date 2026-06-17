@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-const canvasWidth = (page: import("@playwright/test").Page) =>
+const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 // Dragging a node beyond the original layout bounds grows the sheet (so it isn't clipped) — an

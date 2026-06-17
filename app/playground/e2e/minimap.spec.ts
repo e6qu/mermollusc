@@ -1,15 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-const canvasWidth = (page: import("@playwright/test").Page) =>
+const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
-const scrollTopOf = (page: import("@playwright/test").Page) =>
+const scrollTopOf = (page: Page) =>
   page.locator("#stage-wrap").evaluate((el) => el.scrollTop);
 
 // A 2-D DAG that overflows the stage once zoomed in.
 const DIAMOND =
   "flowchart TD\n  A-->B\n  A-->C\n  B-->D\n  C-->D\n  D-->E\n  D-->F\n  E-->G\n  F-->G\n  G-->H\n  G-->I\n";
 
-const zoomIn = async (page: import("@playwright/test").Page, times: number) => {
+const zoomIn = async (page: Page, times: number) => {
   for (let i = 0; i < times; i++) await page.locator("#zoom-in").click();
 };
 

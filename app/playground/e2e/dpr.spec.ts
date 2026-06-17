@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test.use({ deviceScaleFactor: 2 });
 
-const canvasWidth = (page: import("@playwright/test").Page) =>
+const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("backs the canvas at device resolution while keeping the CSS box size", async ({ page }) => {
