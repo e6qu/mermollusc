@@ -45,6 +45,10 @@
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
 - Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the
   hand-drawn look; repaints (no re-layout).
-- Playwright (`make e2e-ui`): 29 flows — adds edge-label relabel + edge delete to the prior 27 (family/edit
-  flows, sketch + theme toggles + persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
+- Source persistence: the editor text is saved to `localStorage` (via `renderFromText`, which every
+  text change funnels through) so a reload restores the in-progress diagram; a fresh context starts
+  on the sample.
+- Playwright (`make e2e-ui`): 31 flows — adds source-persistence (reload + fresh-context) to the
+  prior 29 (family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud
+  render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

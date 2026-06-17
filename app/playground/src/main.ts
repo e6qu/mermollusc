@@ -114,6 +114,11 @@ const iconImages = new Map<string, CanvasImageSource>();
 // The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
 let registry = defaultRegistry;
 
+// The source text is persisted so a reload keeps the diagram you were working on (even mid-edit /
+// not-yet-parsing) rather than resetting to the sample. Written through `renderFromText`, which
+// every text change funnels through.
+const SOURCE_KEY = "mermollusc-source";
+
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
 const THEME_KEY = "mermollusc-theme";
 const prefersDark = (): boolean =>
@@ -268,6 +273,7 @@ const EXAMPLES = new Map<string, string>([
 ]);
 
 const renderFromText = async (text: string): Promise<void> => {
+  localStorage.setItem(SOURCE_KEY, text);
   const parsed = parseDiagram(text);
   if (!isOk(parsed)) {
     const detail = parsed.error.errors.join("; ");
@@ -670,9 +676,10 @@ loadPackEl.addEventListener("change", () => {
   void loadPack(file);
 });
 
-srcEl.value = SAMPLE;
+const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+srcEl.value = initialSource;
 srcEl.addEventListener("input", () => {
   overrides = new Map();
   void renderFromText(srcEl.value);
 });
-void renderFromText(SAMPLE);
+void renderFromText(initialSource);
