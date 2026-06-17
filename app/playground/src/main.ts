@@ -110,15 +110,6 @@ let selectionOrder: SceneNodeId[] = [];
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
   null;
 
-// Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
-// rather than a char-width guess; matches the base render font. Falls back to the heuristic.
-const measureCtx = document.createElement("canvas").getContext("2d");
-const measureLabel = (label: string): number => {
-  if (measureCtx === null) return label.length * 8;
-  measureCtx.font = "14px sans-serif";
-  return measureCtx.measureText(label).width;
-};
-
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
 // The active icon registry; "Load icons" merges a user pack into it (overriding same-id packs).
@@ -140,6 +131,17 @@ let theme: Theme =
 let sketch = false;
 const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
 const activeTheme = (): Theme => (sketch ? { ...theme, sketch: true, font: SKETCH_FONT } : theme);
+
+// Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
+// rather than a char-width guess. Measures with the *active* theme font — the sketch font is wider
+// than the base, so sizing with it keeps labels inside their boxes in Sketch mode. Falls back to
+// the heuristic when no 2D context is available.
+const measureCtx = document.createElement("canvas").getContext("2d");
+const measureLabel = (label: string): number => {
+  if (measureCtx === null) return label.length * 8;
+  measureCtx.font = activeTheme().font;
+  return measureCtx.measureText(label).width;
+};
 
 // An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
 // only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
@@ -650,11 +652,12 @@ exampleEl.addEventListener("change", () => {
   void renderFromText(text);
 });
 
-// Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Repaints, no re-layout.
+// Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
+// handwriting font is wider than the base — nodes must resize to keep labels inside their boxes.
 sketchBtn.addEventListener("click", () => {
   sketch = !sketch;
   sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
-  paintScene();
+  void renderFromText(srcEl.value);
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the

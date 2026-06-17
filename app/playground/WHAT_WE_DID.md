@@ -93,3 +93,7 @@
   Extracted `svgDataUrl` (shared with `rasterizeIcon`) so previews are `<img>` elements built via
   `createElement` (no `innerHTML`); the grid rebuilds on each open so loaded packs show. +2 Playwright
   flows (filter+insert, empty-filter) and a `12-icon-picker` shot. 33 e2e green.
+- Sketch-aware layout: `measureLabel` now measures with the active theme font (`activeTheme().font`)
+  instead of a fixed `14px sans-serif`, and the Sketch toggle re-lays out (`renderFromText`) instead
+  of only repainting — so nodes resize to the wider handwriting font and labels stay inside their
+  boxes. No-op outside Sketch (both base themes are `14px sans-serif`).

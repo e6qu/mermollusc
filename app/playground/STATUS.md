@@ -48,7 +48,8 @@
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
 - Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the
-  hand-drawn look; repaints (no re-layout).
+  hand-drawn look; **re-lays out** (the measurer reads the active theme font, so boxes resize to the
+  wider sketch font and labels stay inside their shapes).
 - Source persistence: the editor text is saved to `localStorage` (via `renderFromText`, which every
   text change funnels through) so a reload restores the in-progress diagram; a fresh context starts
   on the sample.
