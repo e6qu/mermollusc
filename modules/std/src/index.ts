@@ -7,6 +7,9 @@ export {
   mapErr,
   flatMap,
   unwrapOr,
+  match,
+  all,
+  tap,
   rectContains,
 } from "./core/index.js";
 export type {

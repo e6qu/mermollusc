@@ -69,7 +69,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
-| `@m/std` | ✅ Result, Brand, geometry, Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 22 |
+| `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, geometry, Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 25 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
 | `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 44 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 26 |
