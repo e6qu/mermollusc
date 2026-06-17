@@ -22,3 +22,9 @@
   target node's label (re-parsing confirms the new label and every other node unchanged), and
   `connect` appends exactly one edge with the requested from/to/kind while preserving the nodes.
   +2 property tests (29 total).
+- `applyOverrides` now keeps connectors attached when nodes move (no re-layout): an edge whose
+  endpoints both shift by the same delta (a group dragged as one) has its route translated so its
+  shape is preserved; an edge crossing the moved set is re-anchored to a straight line between the
+  boxes' borders (`borderPoint`). It also grows the scene extent to include moved nodes so a node
+  dragged past the original bounds isn't clipped by the stage. +2 unit tests (boundary re-anchor,
+  group translate).

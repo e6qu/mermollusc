@@ -142,8 +142,14 @@ const MINIMAP_MAX = 180;
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
 let selectionOrder: SceneNodeId[] = [];
-let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
-  null;
+// A drag moves every node in `ids` (the whole selection) by the pointer delta from where the drag
+// began, using each node's start position in `origin` — so a multi-selection moves as one.
+let drag: {
+  readonly ids: readonly SceneNodeId[];
+  readonly origin: ReadonlyMap<SceneNodeId, Point>;
+  readonly pointerX: number;
+  readonly pointerY: number;
+} | null = null;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
 let pan: {
@@ -614,31 +620,38 @@ canvas.addEventListener("pointerdown", (ev) => {
   const hit = hitTest(shown, at);
   const additive = ev.shiftKey || ev.metaKey;
 
-  if (additive && hit !== null) {
-    selection = toggle(selection, hit);
-    if (hit.kind === "node") {
-      selectionOrder = selection.nodes.has(hit.id)
-        ? [...selectionOrder.filter((id) => id !== hit.id), hit.id]
-        : selectionOrder.filter((id) => id !== hit.id);
+  if (additive) {
+    if (hit !== null) {
+      selection = toggle(selection, hit);
+      if (hit.kind === "node") {
+        selectionOrder = selection.nodes.has(hit.id)
+          ? [...selectionOrder.filter((id) => id !== hit.id), hit.id]
+          : selectionOrder.filter((id) => id !== hit.id);
+      }
     }
-  } else {
+    paintScene();
+    return;
+  }
+
+  // Plain click on a node that's already part of a multi-selection keeps that selection (so the
+  // whole group can be dragged); otherwise the click selects just what's under it.
+  const keepMulti =
+    hit !== null && hit.kind === "node" && selection.nodes.has(hit.id) && selection.nodes.size > 1;
+  if (!keepMulti) {
     selection = selectOnly(hit);
     selectionOrder = hit !== null && hit.kind === "node" ? [hit.id] : [];
   }
 
-  // A plain click on a node starts a drag; on empty canvas it starts a pan; an additive click only
-  // edits the selection.
-  if (!additive && hit !== null && hit.kind === "node") {
-    const node = shown.nodes.find((n) => n.id === hit.id);
-    if (node !== undefined) {
-      drag = {
-        id: hit.id,
-        offsetX: at.x - node.bounds.origin.x,
-        offsetY: at.y - node.bounds.origin.y,
-      };
-      canvas.setPointerCapture(ev.pointerId);
+  // A plain click on a node starts a drag of the whole selection; on empty canvas it starts a pan.
+  if (hit !== null && hit.kind === "node") {
+    const origin = new Map<SceneNodeId, Point>();
+    for (const node of shown.nodes) {
+      if (selection.nodes.has(node.id))
+        origin.set(node.id, point(node.bounds.origin.x, node.bounds.origin.y));
     }
-  } else if (!additive && hit === null) {
+    drag = { ids: [...origin.keys()], origin, pointerX: at.x, pointerY: at.y };
+    canvas.setPointerCapture(ev.pointerId);
+  } else if (hit === null) {
     pan = {
       startX: ev.clientX,
       startY: ev.clientY,
@@ -659,7 +672,12 @@ canvas.addEventListener("pointermove", (ev) => {
   }
   if (drag === null) return;
   const at = scenePoint(ev);
-  overrides = moveNode(overrides, drag.id, point(at.x - drag.offsetX, at.y - drag.offsetY));
+  const dx = at.x - drag.pointerX;
+  const dy = at.y - drag.pointerY;
+  for (const id of drag.ids) {
+    const o = drag.origin.get(id);
+    if (o !== undefined) overrides = moveNode(overrides, id, point(o.x + dx, o.y + dy));
+  }
   paintScene();
 });
 

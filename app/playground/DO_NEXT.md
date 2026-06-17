@@ -14,3 +14,9 @@
   now does) if it proves awkward.
 - *(done)* Ctrl/⌘-wheel zoom is cursor-anchored (the point under the pointer stays put) and dragging
   the empty canvas pans the stage.
+- Element grouping (decided: sidecar overlay, family-agnostic). Build a `groups` model alongside the
+  position overrides — `{ id, members: (nodeId | groupId)[], locked, order }`, arbitrarily nestable,
+  with order-preserving unbundle. Bundle/ungroup selected; dragging any member moves the whole group
+  (move-together + connector re-anchor already land via `applyOverrides`); a **locked** group ignores
+  drags (move-only lock — members can still be relabelled/deleted); draw a group outline. Persist
+  with the overrides; never touches the diagram text.

@@ -202,6 +202,38 @@ const FLOWS: readonly Flow[] = [
       await expect(page.locator("#minimap")).toBeVisible();
     },
   },
+  {
+    name: "18-drag-reanchor",
+    about: "a dragged node stays where dropped and its connector re-anchors to the new position",
+    drive: async (page) => {
+      await setSource(page, "flowchart TD\n  A[Start]-->B{Choice}\n  B-->C(Done)\n");
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      // Drag the top "Start" node to the right; it stays there and the edge follows (no re-layout).
+      await page.mouse.move(box.x + 88, box.y + 56);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 260, box.y + 90, { steps: 8 });
+      await page.mouse.up();
+    },
+  },
+  {
+    name: "19-multidrag",
+    about: "two shift-selected nodes drag together as one; their connectors re-anchor",
+    drive: async (page) => {
+      await setSource(page, "flowchart TD\n  A[Start]-->B{Choice}\n  B-->C(Done)\n");
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      // Select Start, shift-add Choice, then drag the pair down-right — both move as one.
+      await page.mouse.click(box.x + 88, box.y + 56);
+      await page.keyboard.down("Shift");
+      await page.mouse.click(box.x + 88, box.y + 150);
+      await page.keyboard.up("Shift");
+      await page.mouse.move(box.x + 88, box.y + 56);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 240, box.y + 140, { steps: 8 });
+      await page.mouse.up();
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

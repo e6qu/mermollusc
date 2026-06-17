@@ -132,3 +132,7 @@
   scrim and framing it in the drafting-table accent ("you are here"). Click or drag to recentre the
   stage; redraws cheaply on scroll/pan/zoom/resize from the cached display data. +4 e2e (hidden when
   fitting, appears/hides on overflow, click- and drag-to-navigate) and +2 shot captures.
+- Multi-node drag: a plain click on an already-multi-selected node now drags the *whole* selection
+  together (one pointer delta applied to every member from its start position); plus connector
+  re-anchoring + extent growth via `applyOverrides`. Foundation for grouped-element moves. +2 e2e
+  (sheet grows on drag-out; shift-selected pair moves together, source untouched).
