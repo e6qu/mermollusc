@@ -12,6 +12,5 @@
 - The inline label editor anchors edges at the straight midpoint of their endpoints; for a bent
   edge that could sit off the visible line — anchor it on the routed path (as the renderer's label
   now does) if it proves awkward.
-- Zoom polish: anchor Ctrl/⌘-wheel zoom on the cursor (adjust stage scroll so the point under the
-  pointer stays put), and add background-drag panning. Today zoom is about the sheet origin and pan
-  is via the stage scrollbars.
+- *(done)* Ctrl/⌘-wheel zoom is cursor-anchored (the point under the pointer stays put) and dragging
+  the empty canvas pans the stage.

@@ -130,6 +130,14 @@ let selection: Selection = emptySelection;
 let selectionOrder: SceneNodeId[] = [];
 let drag: { readonly id: SceneNodeId; readonly offsetX: number; readonly offsetY: number } | null =
   null;
+// Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
+// moment the empty canvas was grabbed.
+let pan: {
+  readonly startX: number;
+  readonly startY: number;
+  readonly scrollLeft: number;
+  readonly scrollTop: number;
+} | null = null;
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
@@ -266,14 +274,23 @@ zoomOutBtn.addEventListener("click", () => setScale(viewScale / 1.25));
 zoomResetBtn.addEventListener("click", () => setScale(1));
 zoomFitBtn.addEventListener("click", fitView);
 
-// Ctrl/⌘-wheel zooms (plain wheel still scrolls the stage). Anchoring zoom on the cursor would need
-// scroll-offset math; for now we zoom about the sheet origin and leave the stage scrollable.
+// Ctrl/⌘-wheel zooms (plain wheel still scrolls the stage), anchored on the cursor: the scene point
+// under the pointer stays put. We measure the canvas rect before and after the re-render and nudge
+// the stage scroll to cancel the drift — which avoids reasoning about the centred/padded container.
 canvas.addEventListener(
   "wheel",
   (ev) => {
     if (!ev.ctrlKey && !ev.metaKey) return;
     ev.preventDefault();
-    setScale(viewScale * (ev.deltaY < 0 ? 1.1 : 1 / 1.1));
+    const s0 = viewScale;
+    const before = canvas.getBoundingClientRect();
+    const logicalX = (ev.clientX - before.left) / s0;
+    const logicalY = (ev.clientY - before.top) / s0;
+    setScale(s0 * (ev.deltaY < 0 ? 1.1 : 1 / 1.1));
+    if (viewScale === s0) return;
+    const after = canvas.getBoundingClientRect();
+    stageWrap.scrollLeft += after.left + logicalX * viewScale - ev.clientX;
+    stageWrap.scrollTop += after.top + logicalY * viewScale - ev.clientY;
   },
   { passive: false },
 );
@@ -474,7 +491,8 @@ canvas.addEventListener("pointerdown", (ev) => {
     selectionOrder = hit !== null && hit.kind === "node" ? [hit.id] : [];
   }
 
-  // A plain click on a node starts a drag; an additive click only edits the selection.
+  // A plain click on a node starts a drag; on empty canvas it starts a pan; an additive click only
+  // edits the selection.
   if (!additive && hit !== null && hit.kind === "node") {
     const node = shown.nodes.find((n) => n.id === hit.id);
     if (node !== undefined) {
@@ -485,11 +503,25 @@ canvas.addEventListener("pointerdown", (ev) => {
       };
       canvas.setPointerCapture(ev.pointerId);
     }
+  } else if (!additive && hit === null) {
+    pan = {
+      startX: ev.clientX,
+      startY: ev.clientY,
+      scrollLeft: stageWrap.scrollLeft,
+      scrollTop: stageWrap.scrollTop,
+    };
+    canvas.setPointerCapture(ev.pointerId);
+    canvas.style.cursor = "grabbing";
   }
   paintScene();
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (pan !== null) {
+    stageWrap.scrollLeft = pan.scrollLeft - (ev.clientX - pan.startX);
+    stageWrap.scrollTop = pan.scrollTop - (ev.clientY - pan.startY);
+    return;
+  }
   if (drag === null) return;
   const at = scenePoint(ev);
   overrides = moveNode(overrides, drag.id, point(at.x - drag.offsetX, at.y - drag.offsetY));
@@ -497,6 +529,11 @@ canvas.addEventListener("pointermove", (ev) => {
 });
 
 canvas.addEventListener("pointerup", (ev) => {
+  if (pan !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    pan = null;
+    canvas.style.cursor = "";
+  }
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;

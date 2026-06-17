@@ -120,3 +120,7 @@
   re-renders at the new scale (crisp, not a bitmap scale) by folding a `viewScale` into the canvas
   sizing + ctx transform, and `scenePoint` divides by it. Default stays 1 (identity), so the existing
   hit-test/e2e pixel math is unchanged. +2 e2e specs (42 Playwright) and +2 `make shots` captures.
+- Zoom/pan polish: Ctrl/⌘-wheel zoom is now cursor-anchored (measure the canvas rect before/after the
+  re-render and nudge stage scroll to cancel drift — no centred/padded-container math), and dragging
+  the empty canvas pans the stage (grab cursor; scrolls via `stage-wrap`). +1 e2e (pan), verified the
+  pan visually with a stage-viewport element screenshot.
