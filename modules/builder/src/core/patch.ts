@@ -37,6 +37,11 @@ export const addNode = (text: string, id: NodeId, label: string, shape: NodeShap
 export const connect = (text: string, from: NodeId, to: NodeId, kind: EdgeKind): string =>
   `${withTrailingNewline(text)}  ${from} ${ARROW[kind]} ${to}\n`;
 
+// Undirected link (`from -- to`) for the network and cloud families. `deleteEdge` removes it the
+// same way (it keys on the two ident tokens, regardless of the operator between them).
+export const connectUndirected = (text: string, from: NodeId, to: NodeId): string =>
+  `${withTrailingNewline(text)}  ${from} -- ${to}\n`;
+
 const LABELS = /\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|\|[^|]*\|/g;
 const NON_IDENT = /[^A-Za-z0-9_]+/;
 

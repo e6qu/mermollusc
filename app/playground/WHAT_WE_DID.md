@@ -149,3 +149,8 @@
   `@m/builder`'s `serializeOverlay`/`decodeOverlay`. Restored on load only for the persisted source
   (a share-link source is a different diagram); a corrupt/invalid overlay is logged loudly and
   ignored. +2 e2e (a dragged position and a group both survive a reload). 53 Playwright.
+- Connect + Delete now work beyond flowchart: enabled for every family with a two-token edge syntax
+  (flowchart/block draw `-->`, network/cloud `--`). The Connect button is family-gated and dispatches
+  directed vs undirected; the Delete key removes selected nodes (+ their edges) / selected edges for
+  those families. Sequence (messages) and C4 (`Rel(...)`) have distinct syntax — not wired yet.
+  +2 e2e (network Connect appends `a -- b`; Delete removes a node and its links).

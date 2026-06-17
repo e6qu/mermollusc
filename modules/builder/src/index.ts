@@ -13,7 +13,15 @@ export {
   pathLocked,
   topGroups,
 } from "./core/index.js";
-export { relabelNode, patchSpan, addNode, connect, deleteNode, deleteEdge } from "./core/index.js";
+export {
+  relabelNode,
+  patchSpan,
+  addNode,
+  connect,
+  connectUndirected,
+  deleteNode,
+  deleteEdge,
+} from "./core/index.js";
 export type { PatchError } from "./core/index.js";
 export { serializeOverlay, decodeOverlay } from "./shell/index.js";
 export type { Overlay } from "./shell/index.js";

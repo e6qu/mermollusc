@@ -13,5 +13,13 @@ export {
   pathLocked,
   topGroups,
 } from "./groups.js";
-export { relabelNode, patchSpan, addNode, connect, deleteNode, deleteEdge } from "./patch.js";
+export {
+  relabelNode,
+  patchSpan,
+  addNode,
+  connect,
+  connectUndirected,
+  deleteNode,
+  deleteEdge,
+} from "./patch.js";
 export type { PatchError } from "./patch.js";
