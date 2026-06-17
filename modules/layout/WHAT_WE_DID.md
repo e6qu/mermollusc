@@ -30,3 +30,6 @@
 - Mapped cloud service kinds to representative vendored simple-icons glyphs (compute→docker,
   storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
 - `layoutNetwork` now honours a `NetworkNode.icon` override (falls back to the kind's arch glyph).
+- `toElkGraph` now sizes `circle` flowchart nodes square (side = max(label width, node height)) so
+  the renderer's `min(w,h)/2` corner-rounding yields an actual circle; other shapes stay wide boxes.
+  +1 transform test.
