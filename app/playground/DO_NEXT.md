@@ -4,8 +4,9 @@
   span-aware edits). The status bar now names the parse error *and its line:col* and offers
   click-to-locate (selecting the range in the textarea); CodeMirror would mark it inline instead.
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
-- Add a pixel/golden snapshot once flows stabilize (the `make shots` harness already drives the
-  flows + writes PNGs; a golden diff could assert on a curated subset).
+- Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
+  Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
+  geometry without font/AA flakiness.
 - Make the flowchart edge-label / node prompts inline (the `window.prompt` dialogs are the last bit
   of un-designed UI).
 - Drag-to-move + Connect for non-flowchart families (today they're flowchart-only and disabled
