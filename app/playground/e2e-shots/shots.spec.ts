@@ -121,6 +121,19 @@ const FLOWS: readonly Flow[] = [
       await page.waitForTimeout(150);
     },
   },
+  {
+    name: "11-inline-edit",
+    about: "the inline label editor open over a double-clicked node",
+    drive: async (page) => {
+      await settled(page);
+      const box = await page.locator("#stage").boundingBox();
+      expect(box).not.toBeNull();
+      if (box === null) return;
+      // The default flowchart's "Start" node sits at the top; double-click it to open the editor.
+      await page.mouse.dblclick(box.x + 88, box.y + 56);
+      await expect(page.locator("#inline-edit")).toBeVisible();
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

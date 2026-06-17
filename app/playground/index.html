@@ -275,6 +275,24 @@
         border-radius: 4px;
         padding: 1px 5px;
       }
+
+      /* Inline label editor: a small overlay positioned over the double-clicked element, so a
+         rename happens in place rather than through a modal prompt. */
+      #inline-edit {
+        position: fixed;
+        z-index: 50;
+        margin: 0;
+        padding: 2px 7px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--ink);
+        background: var(--surface);
+        border: 2px solid var(--primary);
+        border-radius: 6px;
+        box-shadow: var(--shadow);
+        outline: none;
+      }
+      #inline-edit[hidden] { display: none; }
     </style>
   </head>
   <body>
@@ -344,6 +362,7 @@
           <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>⇧-click</kbd> ×2 then Connect · <kbd>Del</kbd> remove
         </span>
       </footer>
+      <input id="inline-edit" type="text" spellcheck="false" hidden />
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

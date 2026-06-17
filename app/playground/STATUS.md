@@ -26,9 +26,10 @@
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
-  - double-click rename → patches the source text (flowchart nodes **and edge labels**; sequence
-    actor/message text; C4 element/relation; block block/edge; network node/link; cloud
-    group/leaf/link labels) — **canvas → text two-way for all six families**;
+  - double-click rename → an **inline editor overlay** (positioned over the element; Enter/blur
+    commit, Escape cancel — no modal prompt) patches the source text (flowchart nodes **and edge
+    labels**; sequence actor/message text; C4 element/relation; block block/edge; network node/link;
+    cloud group/leaf/link labels) — **canvas → text two-way for all six families**;
   - flowchart-only: **Add node** / **Connect** (two selected nodes → edge) buttons; **Delete** key
     removes selected nodes (`deleteNode`) or a selected edge (`deleteEdge`); **Relax** / **Regenerate**.
 - node e2e composition test (text → pixels) passing.
