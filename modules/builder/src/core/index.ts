@@ -7,6 +7,7 @@ export {
   group,
   ungroup,
   setLocked,
+  setGroupLabel,
   parentOf,
   leafNodes,
   topGroupOfNode,
@@ -23,5 +24,9 @@ export {
   connectMessage,
   deleteNode,
   deleteEdge,
+  deleteC4,
+  deleteC4Rel,
+  deleteActor,
+  deleteMessage,
 } from "./patch.js";
 export type { PatchError } from "./patch.js";

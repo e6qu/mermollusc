@@ -7,16 +7,14 @@
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.
-- Drag-to-move + Connect for non-flowchart families (today they're flowchart-only and disabled
-  elsewhere; the status badge reflects that).
-- The inline label editor anchors edges at the straight midpoint of their endpoints; for a bent
-  edge that could sit off the visible line — anchor it on the routed path (as the renderer's label
-  now does) if it proves awkward.
+- Drag-to-move for non-flowchart families still needs explicit product decisions around persistence
+  and whether sidecar overrides should span every family.
+- *(done)* The inline label editor uses the renderer's routed-polyline edge-label anchor, so editing
+  a bent edge opens on the visible label location.
 - *(done)* Ctrl/⌘-wheel zoom is cursor-anchored (the point under the pointer stays put) and dragging
   the empty canvas pans the stage.
 - *(done)* Element grouping: sidecar model + Group/Ungroup/Lock UI, drag-the-whole-group,
   group outlines. Follow-ups: *(done — overlay persists positions + groups to localStorage)*;
-  click a group outline to select the whole group; an editable group label/title.
-- *(Connect done for all six families.)* Still to do: **delete** for sequence and C4 — bespoke
-  removers (a C4 boundary owns a `{ … }` block; a sequence actor owns its messages) that the generic
-  two-token `deleteEdge`/`deleteNode` can't handle.
+  *(done — click a group outline to select the whole group)*; *(done — editable group label/title)*.
+- *(done)* Connect and Delete dispatch across all six families, including C4 boundary blocks and
+  sequence actors/messages.

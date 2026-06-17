@@ -156,5 +156,15 @@
   +2 e2e (network Connect appends `a -- b`; Delete removes a node and its links).
 - Connect now works for *all six* families: the handler dispatches by kind to the right edge syntax
   (`-->` flowchart/block, `--` network/cloud, `Rel(a,b,"")` C4, `A->>B: message` sequence). The
-  button is enabled for every family; Delete remains wired for the two-token four. +2 e2e (C4 Rel,
-  sequence message); verified sequence Connect visually. 57 Playwright.
+  button is enabled for every family. +2 e2e (C4 Rel, sequence message); verified sequence Connect
+  visually. 57 Playwright.
+- Delete now works for *all six* families: the key handler dispatches selected node/edge removal to
+  the right builder patcher (`deleteNode`/`deleteEdge`, C4 element/relation, sequence actor/message).
+  C4 boundary deletion removes the whole block and relations to nested elements. +2 e2e (C4 boundary
+  delete, sequence actor delete). 59 Playwright.
+- Inline edge-label editing now reuses `@m/renderer`'s routed-polyline label anchor instead of the
+  straight endpoint midpoint, so a bent-edge editor opens over the visible label position.
+- Group outlines are now selectable: the app reuses the padded outline bounds for hit-testing and
+  selects all leaf nodes under the clicked group, so Ungroup/Lock work from an outline click. +1 e2e.
+- Group labels are editable sidecar metadata: double-clicking a group outline opens the inline
+  editor, `setGroupLabel` updates the group, and overlay persistence stores the title. +1 e2e.

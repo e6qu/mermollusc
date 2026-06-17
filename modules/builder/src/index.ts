@@ -7,6 +7,7 @@ export {
   group,
   ungroup,
   setLocked,
+  setGroupLabel,
   parentOf,
   leafNodes,
   topGroupOfNode,
@@ -23,6 +24,10 @@ export {
   connectMessage,
   deleteNode,
   deleteEdge,
+  deleteC4,
+  deleteC4Rel,
+  deleteActor,
+  deleteMessage,
 } from "./core/index.js";
 export type { PatchError } from "./core/index.js";
 export { serializeOverlay, decodeOverlay } from "./shell/index.js";

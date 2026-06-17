@@ -4,9 +4,14 @@ const sameMember = (a: GroupMember, b: GroupMember): boolean => a.kind === b.kin
 
 // Bundle `members` (scene nodes and/or existing groups) into a new group `id`, unlocked. The caller
 // supplies a fresh id — id minting (a side effect) stays out of this pure core.
-export const group = (groups: Groups, id: GroupId, members: readonly GroupMember[]): Groups => {
+export const group = (
+  groups: Groups,
+  id: GroupId,
+  members: readonly GroupMember[],
+  label = "",
+): Groups => {
   const next = new Map(groups);
-  next.set(id, { id, members, locked: false });
+  next.set(id, { id, label, members, locked: false });
   return next;
 };
 
@@ -42,6 +47,12 @@ export const setLocked = (groups: Groups, id: GroupId, locked: boolean): Groups 
   const g = groups.get(id);
   if (g === undefined || g.locked === locked) return groups;
   return new Map(groups).set(id, { ...g, locked });
+};
+
+export const setGroupLabel = (groups: Groups, id: GroupId, label: string): Groups => {
+  const g = groups.get(id);
+  if (g === undefined || g.label === label) return groups;
+  return new Map(groups).set(id, { ...g, label });
 };
 
 // Every leaf scene node under `id`, recursively, in member order.

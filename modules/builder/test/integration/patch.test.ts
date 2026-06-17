@@ -12,7 +12,11 @@ import {
   connectC4,
   connectMessage,
   connectUndirected,
+  deleteActor,
+  deleteC4,
+  deleteC4Rel,
   deleteEdge,
+  deleteMessage,
   deleteNode,
   patchSpan,
   relabelNode,
@@ -138,5 +142,62 @@ describe("relabelNode", () => {
   it("deleteEdge leaves multi-hop chains intact (only matches a 2-id edge line)", () => {
     const text = "flowchart TD\n  A --> B --> C\n";
     expect(deleteEdge(text, nid("A"), nid("B"))).toBe(text);
+  });
+
+  it("deleteC4 removes a leaf element and its relations", () => {
+    const text = 'C4Context\n  Person(a, "A")\n  System(b, "B")\n  Rel(a, b, "uses")\n';
+    const next = deleteC4(text, cid("a"));
+    expect(next).not.toContain("Person(a");
+    expect(next).not.toContain("Rel(a, b");
+    expect(next).toContain("System(b");
+    const r = parseC4WithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.elements.map((e) => e.id)).toEqual(["b"]);
+  });
+
+  it("deleteC4 removes a boundary's whole { … } block and its nested elements", () => {
+    const text =
+      'C4Context\n  Person(u, "U")\n  Boundary(bk, "Backend") {\n    Container(api, "API")\n  }\n  Rel(u, api, "x")\n';
+    const next = deleteC4(text, cid("bk"));
+    expect(next).not.toContain("Boundary(bk");
+    expect(next).not.toContain("Container(api"); // nested element went with the block
+    expect(next).not.toContain("Rel(u, api");
+    expect(next).toContain('Person(u, "U")');
+    const r = parseC4WithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.elements.map((e) => e.id)).toEqual(["u"]);
+    expect(r.value.ast.rels).toHaveLength(0);
+  });
+
+  it("deleteC4Rel removes a specific relation, keeping the elements", () => {
+    const text = 'C4Context\n  Person(a, "A")\n  System(b, "B")\n  Rel(a, b, "uses")\n';
+    const next = deleteC4Rel(text, cid("a"), cid("b"));
+    expect(next).not.toContain("Rel(a, b");
+    const r = parseC4WithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.rels).toHaveLength(0);
+    expect(r.value.ast.elements).toHaveLength(2);
+  });
+
+  it("deleteActor removes a participant and every message touching it", () => {
+    const text = "sequenceDiagram\n  participant A\n  A->>B: hi\n  B->>C: yo\n";
+    const next = deleteActor(text, aid("A"));
+    expect(next).not.toContain("participant A");
+    expect(next).not.toContain("A->>B");
+    expect(next).toContain("B->>C: yo");
+    const r = parseSequenceWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.messages.map((m) => [m.from, m.to])).toEqual([["B", "C"]]);
+  });
+
+  it("deleteMessage removes the first message between two actors", () => {
+    const text = "sequenceDiagram\n  A->>B: one\n  A->>B: two\n";
+    const next = deleteMessage(text, aid("A"), aid("B"));
+    expect(next).not.toContain("one");
+    expect(next).toContain("two");
   });
 });

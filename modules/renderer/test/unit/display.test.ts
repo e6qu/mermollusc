@@ -1,7 +1,7 @@
 import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { toDisplayList } from "../../src/core/display.js";
+import { edgeLabelAnchor, toDisplayList } from "../../src/core/display.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
@@ -62,5 +62,11 @@ describe("toDisplayList", () => {
     expect(icons).toHaveLength(1);
     const icon = icons[0];
     expect(icon?.kind === "icon" ? icon.ref : null).toEqual({ pack: "arch", name: "server" });
+  });
+
+  it("anchors edge labels halfway along a routed polyline", () => {
+    const anchor = edgeLabelAnchor([point(0, 0), point(100, 0), point(100, 100)]);
+    expect(anchor.x).toBe(100);
+    expect(anchor.y).toBe(11);
   });
 });

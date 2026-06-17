@@ -8,3 +8,5 @@
 - HTML-in-Canvas: `htmlInCanvasSupported()` detection is in; build the actual rich-label backend
   once the API ships in stable Chromium (it's flag-only today, so unverifiable here).
 - Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
+- *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label
+  placement.

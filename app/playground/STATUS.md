@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (61 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -13,8 +13,8 @@
   error names its **line:col** (derived from `ParseError.positions`) and is **click-to-locate** —
   clicking the status selects the offending range in the textarea (never auto-moves the caret mid-type).
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the six
-  families; the kind badge shows the active family; Add/Connect/Relax disable off-flowchart
-  (they patch flowchart text specifically) while Regenerate stays live for all.
+  families; the kind badge shows the active family; Connect/Delete dispatch per family, Add/Relax
+  disable off-flowchart, and Regenerate stays live for all.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) — for visual review / design iteration, not a gate.
@@ -30,8 +30,16 @@
     commit, Escape cancel — no modal prompt) patches the source text (flowchart nodes **and edge
     labels**; sequence actor/message text; C4 element/relation; block block/edge; network node/link;
     cloud group/leaf/link labels) — **canvas → text two-way for all six families**;
-  - flowchart-only: **Add node** / **Connect** (two selected nodes → edge) buttons; **Delete** key
-    removes selected nodes (`deleteNode`) or a selected edge (`deleteEdge`); **Relax** / **Regenerate**.
+  - structural edits: **Connect** (two selected nodes → family-specific edge/relation/message) and
+    **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
+    all six families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
+  - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors
+    open at the visible label location.
+  - group outlines are selectable: clicking an outline selects all leaf nodes in that group, enabling
+    the existing Ungroup/Lock controls.
+  - group labels are sidecar metadata: double-click a group outline to edit its title; the label
+    renders as a fieldset-style legend on the top border (a background notch breaks the outline so
+    the text reads cleanly); overlay persistence keeps it across reloads.
 - node e2e composition test (text → pixels) passing.
 - Icons in nodes: network node kinds resolve to built-in glyphs (`findIcon` → SVG → rasterised
   image, cached), handed to `paint` and drawn above each node's label.
@@ -63,8 +71,9 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 40 flows — adds subgraph render (no-crash) + share-link (load + encode)
+- Playwright (`make e2e-ui`): 61 flows — adds subgraph render (no-crash) + share-link (load + encode)
   + stadium/circle shapes + PNG + PDF + SVG export + icon-picker (insert + empty-filter) to the prior
   set (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles +
-  persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
+  persistence, cloud render/relabel, network-icons + override, structural edit coverage for every
+  family, group outline selection + label editing, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

@@ -6,6 +6,7 @@ import {
   leafNodes,
   parentOf,
   pathLocked,
+  setGroupLabel,
   setLocked,
   topGroupOfNode,
   topGroups,
@@ -21,7 +22,15 @@ describe("groups", () => {
   it("bundles nodes into a new unlocked group, preserving member order", () => {
     const g = group(new Map(), gid("g1"), [node("a"), node("b"), node("c")]);
     expect(g.get(gid("g1"))?.locked).toBe(false);
+    expect(g.get(gid("g1"))?.label).toBe("");
     expect(leafNodes(g, gid("g1"))).toEqual([n("a"), n("b"), n("c")]);
+  });
+
+  it("sets a group label without changing its members", () => {
+    const g = group(new Map(), gid("g1"), [node("a"), node("b")]);
+    const labelled = setGroupLabel(g, gid("g1"), "Backend");
+    expect(labelled.get(gid("g1"))?.label).toBe("Backend");
+    expect(labelled.get(gid("g1"))?.members).toEqual([node("a"), node("b")]);
   });
 
   it("nests groups and flattens leaves depth-first in order", () => {
@@ -86,5 +95,6 @@ describe("groups", () => {
     const g = group(new Map(), gid("g1"), [node("a")]);
     expect(ungroup(g, gid("nope"))).toBe(g);
     expect(setLocked(g, gid("nope"), true)).toBe(g);
+    expect(setGroupLabel(g, gid("nope"), "x")).toBe(g);
   });
 });

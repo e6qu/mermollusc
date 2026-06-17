@@ -60,6 +60,110 @@ export const connectC4 = (text: string, from: C4ElementId, to: C4ElementId): str
 export const connectMessage = (text: string, from: ActorId, to: ActorId): string =>
   `${withTrailingNewline(text)}  ${from}->>${to}: message\n`;
 
+const occurrences = (s: string, ch: string): number => s.split(ch).length - 1;
+
+// The endpoint ids of a C4 `Rel(a, b, …)` line (bare identifiers inside the parens), or null.
+const C4_REL = /^\s*Rel\s*\(([^)]*)\)/;
+const c4RelIds = (line: string): readonly [string, string] | null => {
+  const m = C4_REL.exec(line);
+  if (m === null) return null;
+  const [, body = ""] = m;
+  const ids = body
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => /^[A-Za-z0-9_]+$/.test(s));
+  const first = ids[0] ?? null;
+  const second = ids[1] ?? null;
+  return first === null || second === null ? null : [first, second];
+};
+
+const C4_DECL = /^\s*(?:Person|System|Container|Boundary)\s*\(\s*([A-Za-z0-9_]+)/;
+const c4DeclId = (line: string): string | null => {
+  const m = C4_DECL.exec(line);
+  if (m === null) return null;
+  const [, declared = ""] = m;
+  return declared;
+};
+
+// Remove a C4 element and the relations that reference it. A boundary owns a `{ … }` block, so its
+// whole block (and the elements nested in it) is removed by brace-matching from its declaration line.
+export const deleteC4 = (text: string, id: C4ElementId): string => {
+  const lines = text.split("\n");
+  const removedLines = new Set<number>();
+  const removedIds = new Set<string>([id]);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (c4DeclId(line) !== id) continue;
+    if (!line.includes("{")) {
+      removedLines.add(i);
+      continue;
+    }
+    let depth = 0;
+    let j = i;
+    do {
+      const blockLine = lines[j] ?? "";
+      removedLines.add(j);
+      const nestedId = c4DeclId(blockLine);
+      if (nestedId !== null) removedIds.add(nestedId);
+      depth += occurrences(blockLine, "{") - occurrences(blockLine, "}");
+      j++;
+    } while (j < lines.length && depth > 0);
+    break;
+  }
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (removedLines.has(i)) continue;
+    const rel = c4RelIds(line);
+    if (rel !== null && (removedIds.has(rel[0]) || removedIds.has(rel[1]))) continue;
+    out.push(line);
+  }
+  return out.join("\n");
+};
+
+export const deleteC4Rel = (text: string, from: C4ElementId, to: C4ElementId): string =>
+  text
+    .split("\n")
+    .filter((line) => {
+      const rel = c4RelIds(line);
+      return !(rel !== null && rel[0] === from && rel[1] === to);
+    })
+    .join("\n");
+
+const SEQ_PARTICIPANT = /^\s*participant\s+([A-Za-z0-9_]+)/;
+// The (from, to) actor ids of a sequence message line (`from <arrow> to : text`), or null.
+const SEQ_MESSAGE = /^\s*([A-Za-z0-9_]+)\s*(?:-->>|-->|->>|->)\s*([A-Za-z0-9_]+)\s*:/;
+const seqMessageIds = (line: string): readonly [string, string] | null => {
+  const m = SEQ_MESSAGE.exec(line);
+  if (m === null) return null;
+  const [, from = "", to = ""] = m;
+  return from.length === 0 || to.length === 0 ? null : [from, to];
+};
+
+// Remove a sequence actor: its `participant` declaration (if any) and every message referencing it.
+export const deleteActor = (text: string, id: ActorId): string =>
+  text
+    .split("\n")
+    .filter((line) => {
+      const p = SEQ_PARTICIPANT.exec(line);
+      if (p !== null && p[1] === id) return false;
+      const msg = seqMessageIds(line);
+      return !(msg !== null && (msg[0] === id || msg[1] === id));
+    })
+    .join("\n");
+
+// Remove the first message line between two actors (duplicates can't be told apart by endpoints).
+export const deleteMessage = (text: string, from: ActorId, to: ActorId): string => {
+  const lines = text.split("\n");
+  const idx = lines.findIndex((line) => {
+    const msg = seqMessageIds(line);
+    return msg !== null && msg[0] === from && msg[1] === to;
+  });
+  if (idx === -1) return text;
+  lines.splice(idx, 1);
+  return lines.join("\n");
+};
+
 const LABELS = /\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|\|[^|]*\|/g;
 const NON_IDENT = /[^A-Za-z0-9_]+/;
 
