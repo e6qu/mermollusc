@@ -70,13 +70,13 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 22 |
-| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps (incl. flowchart edge spans) | (types) |
-| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · stadium/circle shapes · ✅ routing · property round-trip · `ParseError.positions` (offset/length) for host highlighting | 40 |
+| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
+| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 44 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes · ✅ routing · property tests | 25 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based incl. relabel/connect) | 29 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links | 7 vitest + 39 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links | 7 vitest + 40 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces

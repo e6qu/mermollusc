@@ -4,7 +4,9 @@ import { allTokens, Tok } from "./tokens.js";
 // A statement is a chain `nodeRef (link nodeRef)*`; a lone nodeRef is a node declaration.
 class FlowchartParser extends CstParser {
   constructor() {
-    super(allTokens);
+    // Offset tracking lets the AST builder process statements and subgraph blocks in source order,
+    // so a node declared inside a subgraph is claimed by it even if a later top-level edge mentions it.
+    super(allTokens, { nodeLocationTracking: "onlyOffset" });
     this.performSelfAnalysis();
   }
 
@@ -14,9 +16,26 @@ class FlowchartParser extends CstParser {
     this.MANY2(() =>
       this.OR([
         { ALT: () => this.SUBRULE2(this.sep) },
+        { ALT: () => this.SUBRULE(this.subgraphBlock) },
         { ALT: () => this.SUBRULE(this.statement) },
       ]),
     );
+  });
+
+  // `subgraph Id [title]` … statements/nested subgraphs … `end`. Distinct first tokens (Subgraph /
+  // Identifier / separator) keep the body's OR LL(1).
+  private readonly subgraphBlock = this.RULE("subgraphBlock", () => {
+    this.CONSUME(Tok.Subgraph);
+    this.CONSUME(Tok.Identifier);
+    this.OPTION(() => this.SUBRULE(this.shape));
+    this.MANY(() =>
+      this.OR([
+        { ALT: () => this.SUBRULE(this.sep) },
+        { ALT: () => this.SUBRULE(this.subgraphBlock) },
+        { ALT: () => this.SUBRULE(this.statement) },
+      ]),
+    );
+    this.CONSUME(Tok.End);
   });
 
   private readonly header = this.RULE("header", () => {

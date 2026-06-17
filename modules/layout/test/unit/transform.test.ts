@@ -15,6 +15,7 @@ const ast: FlowchartAst = {
     { id: nid("B"), label: "B", shape: "rect" },
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
+  subgraphs: [],
 };
 
 describe("toElkGraph", () => {
@@ -35,6 +36,7 @@ describe("toElkGraph", () => {
         { id: nid("R"), label: "Wide label here", shape: "rect" },
       ],
       edges: [],
+      subgraphs: [],
     });
     const circle = g.children.find((c) => c.id === "C");
     const recct = g.children.find((c) => c.id === "R");

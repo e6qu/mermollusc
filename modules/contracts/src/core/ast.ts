@@ -24,11 +24,22 @@ export interface FlowEdge {
   readonly label: string | null;
 }
 
+// A `subgraph id [label] … end` grouping. Membership lives here (`nodes`) rather than on `FlowNode`
+// so the node type stays unchanged; nesting is via `parent` (the enclosing subgraph, or null at top
+// level). Subgraph ids share the `NodeId` space — an edge may target a subgraph.
+export interface FlowSubgraph {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly parent: NodeId | null;
+  readonly nodes: readonly NodeId[];
+}
+
 export interface FlowchartAst {
   readonly kind: "flowchart";
   readonly direction: FlowDirection;
   readonly nodes: readonly FlowNode[];
   readonly edges: readonly FlowEdge[];
+  readonly subgraphs: readonly FlowSubgraph[];
 }
 
 export type ActorId = Brand<string, "ActorId">;

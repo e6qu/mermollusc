@@ -3,6 +3,9 @@ import { createToken, Lexer, type TokenType } from "chevrotain";
 // Label/edge-text is captured by per-bracket lexer modes so it may contain spaces.
 const Identifier = createToken({ name: "Identifier", pattern: /[A-Za-z0-9_]+/ });
 const Graph = createToken({ name: "Graph", pattern: /flowchart|graph/, longer_alt: Identifier });
+// `subgraph … end` grouping keywords. `longer_alt: Identifier` so `subgraphs`/`endpoint` stay ids.
+const Subgraph = createToken({ name: "Subgraph", pattern: /subgraph/, longer_alt: Identifier });
+const End = createToken({ name: "End", pattern: /end/, longer_alt: Identifier });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
 const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
@@ -48,6 +51,8 @@ export const lexer = new Lexer({
       NewLine,
       Semicolon,
       Graph,
+      Subgraph,
+      End,
       DottedArrow,
       ThickArrow,
       Arrow,
@@ -75,6 +80,8 @@ export const Tok = {
   Graph,
   NewLine,
   Semicolon,
+  Subgraph,
+  End,
   DottedArrow,
   ThickArrow,
   Arrow,
@@ -105,6 +112,8 @@ export const allTokens: TokenType[] = [
   NewLine,
   Semicolon,
   Graph,
+  Subgraph,
+  End,
   DottedArrow,
   ThickArrow,
   Arrow,

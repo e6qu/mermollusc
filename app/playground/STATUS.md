@@ -63,8 +63,8 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 39 flows — adds share-link (load + encode) + stadium/circle shapes +
-  PNG + PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
-  family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
-  network-icons + override, dpr, load-pack ×2).
+- Playwright (`make e2e-ui`): 40 flows — adds subgraph render (no-crash) + share-link (load + encode)
+  + stadium/circle shapes + PNG + PDF + SVG export + icon-picker (insert + empty-filter) to the prior
+  set (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles +
+  persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

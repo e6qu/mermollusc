@@ -1,4 +1,4 @@
-import type { EdgeKind, FlowchartAst, NodeShape } from "@m/contracts";
+import type { EdgeKind, FlowNode, FlowchartAst, NodeId, NodeShape } from "@m/contracts";
 
 const wrapLabel = (shape: NodeShape, id: string, label: string): string => {
   switch (shape) {
@@ -32,9 +32,28 @@ const arrowOf = (kind: EdgeKind): string => {
 
 export const print = (ast: FlowchartAst): string => {
   const lines = [`flowchart ${ast.direction}`];
-  for (const node of ast.nodes) {
-    lines.push(`  ${wrapLabel(node.shape, node.id, node.label)}`);
-  }
+  const nodeById = new Map<NodeId, FlowNode>(ast.nodes.map((n) => [n.id, n]));
+  // A subgraph member is printed inside its block; everything else is a top-level node.
+  const inSubgraph = new Set<NodeId>(ast.subgraphs.flatMap((s) => [...s.nodes]));
+  const childrenOf = (parent: NodeId | null) => ast.subgraphs.filter((s) => s.parent === parent);
+
+  const emitNode = (id: NodeId, indent: string): void => {
+    const node = nodeById.get(id);
+    if (node !== undefined) lines.push(`${indent}${wrapLabel(node.shape, node.id, node.label)}`);
+  };
+  // `subgraph id` when the title is just the id, else `subgraph id[title]`; members then nested
+  // subgraphs, matching the parser's statements-then-subgraphs order so print→parse round-trips.
+  const emitSubgraph = (id: NodeId, label: string, indent: string): void => {
+    lines.push(label === id ? `${indent}subgraph ${id}` : `${indent}subgraph ${id}[${label}]`);
+    for (const member of ast.subgraphs.find((s) => s.id === id)?.nodes ?? []) {
+      emitNode(member, `${indent}  `);
+    }
+    for (const child of childrenOf(id)) emitSubgraph(child.id, child.label, `${indent}  `);
+    lines.push(`${indent}end`);
+  };
+
+  for (const node of ast.nodes) if (!inSubgraph.has(node.id)) emitNode(node.id, "  ");
+  for (const sub of childrenOf(null)) emitSubgraph(sub.id, sub.label, "  ");
   for (const edge of ast.edges) {
     const label = edge.label === null ? "" : `|${edge.label}|`;
     lines.push(`  ${edge.from} ${arrowOf(edge.kind)}${label} ${edge.to}`);
