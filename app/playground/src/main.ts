@@ -2,6 +2,7 @@ import {
   addNode,
   applyOverrides,
   connect,
+  decodeOverlay,
   deleteEdge,
   deleteNode,
   emptySelection,
@@ -13,6 +14,7 @@ import {
   pathLocked,
   relabelNode,
   selectOnly,
+  serializeOverlay,
   setLocked,
   toggle,
   topGroupOfNode,
@@ -186,6 +188,13 @@ let registry = defaultRegistry;
 // not-yet-parsing) rather than resetting to the sample. Written through `renderFromText`, which
 // every text change funnels through.
 const SOURCE_KEY = "mermollusc-source";
+
+// The sidecar overlay (manual node positions + element groups) persists alongside the source, keyed
+// by scene-node id — a reload re-parses the same source to the same ids, so the overlay re-applies.
+const OVERLAY_KEY = "mermollusc-overlay";
+const persistOverlay = (): void => {
+  localStorage.setItem(OVERLAY_KEY, serializeOverlay(overrides, groups));
+};
 
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
 const THEME_KEY = "mermollusc-theme";
@@ -368,6 +377,7 @@ const groupSelection = (): void => {
   if (units.length < 2) return;
   groups = group(groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
   updateGroupButtons();
+  persistOverlay();
   paintScene();
 };
 
@@ -376,6 +386,7 @@ const ungroupSelection = (): void => {
   if (top === null) return;
   groups = ungroup(groups, top);
   updateGroupButtons();
+  persistOverlay();
   paintScene();
 };
 
@@ -385,6 +396,7 @@ const toggleLockSelection = (): void => {
   if (top === null || g === undefined) return;
   groups = setLocked(groups, top, !g.locked);
   updateGroupButtons();
+  persistOverlay();
   paintScene();
 };
 
@@ -727,6 +739,7 @@ const relax = async (): Promise<void> => {
   }
   scene = laid.value;
   overrides = new Map();
+  persistOverlay();
   paintScene();
 };
 
@@ -825,6 +838,7 @@ canvas.addEventListener("pointerup", (ev) => {
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;
+    persistOverlay();
   }
 });
 
@@ -1021,6 +1035,7 @@ relaxBtn.addEventListener("click", () => {
 // Regenerate: drop manual positions and lay out cleanly from the text.
 regenBtn.addEventListener("click", () => {
   overrides = new Map();
+  persistOverlay();
   void renderFromText(srcEl.value);
 });
 
@@ -1045,6 +1060,7 @@ exampleEl.addEventListener("change", () => {
   exampleEl.value = "";
   if (text === undefined) return;
   overrides = new Map();
+  persistOverlay();
   srcEl.value = text;
   void renderFromText(text);
 });
@@ -1100,6 +1116,7 @@ const insertIconRef = (packId: string, name: string): void => {
   const caret = at + ref.length;
   srcEl.setSelectionRange(caret, caret);
   overrides = new Map();
+  persistOverlay();
   void renderFromText(srcEl.value);
 };
 
@@ -1342,10 +1359,30 @@ const hashSource = (): string | null => {
   }
 };
 
-const initialSource = hashSource() ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+const fromHash = hashSource();
+const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
 srcEl.value = initialSource;
+// Restore the persisted overlay only for the persisted source — a share-link source is a different
+// diagram whose node ids wouldn't match. A corrupt/invalid overlay is logged loudly and ignored.
+if (fromHash === null) {
+  const rawOverlay = localStorage.getItem(OVERLAY_KEY);
+  if (rawOverlay !== null) {
+    try {
+      const decoded = decodeOverlay(JSON.parse(rawOverlay));
+      if (isOk(decoded)) {
+        overrides = decoded.value.overrides;
+        groups = decoded.value.groups;
+      } else {
+        console.error("ignoring invalid overlay:", decoded.error.issues.join("; "));
+      }
+    } catch (e) {
+      console.error("ignoring corrupt overlay:", e instanceof Error ? e.message : String(e));
+    }
+  }
+}
 srcEl.addEventListener("input", () => {
   overrides = new Map();
+  persistOverlay();
   void renderFromText(srcEl.value);
 });
 void renderFromText(initialSource);

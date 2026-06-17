@@ -120,6 +120,9 @@ importers:
       '@m/std':
         specifier: workspace:*
         version: link:../std
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
 
   modules/contracts:
     dependencies:

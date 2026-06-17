@@ -18,6 +18,7 @@
     "@m/parser": "workspace:*",
     "@m/layout": "workspace:*",
     "@m/renderer": "workspace:*",
-    "@m/icons": "workspace:*"
+    "@m/icons": "workspace:*",
+    "zod": "catalog:"
   }
 }

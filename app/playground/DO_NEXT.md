@@ -15,5 +15,5 @@
 - *(done)* Ctrl/⌘-wheel zoom is cursor-anchored (the point under the pointer stays put) and dragging
   the empty canvas pans the stage.
 - *(done)* Element grouping: sidecar model + Group/Ungroup/Lock UI, drag-the-whole-group,
-  group outlines. Follow-ups: persist groups with the overrides (currently reset on reload);
+  group outlines. Follow-ups: *(done — overlay persists positions + groups to localStorage)*;
   click a group outline to select the whole group; an editable group label/title.
