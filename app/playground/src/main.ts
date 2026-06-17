@@ -77,7 +77,15 @@ const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
 const shareBtn = document.querySelector<HTMLButtonElement>("#share-link");
+const zoomInBtn = document.querySelector<HTMLButtonElement>("#zoom-in");
+const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
+const zoomResetBtn = document.querySelector<HTMLButtonElement>("#zoom-reset");
+const zoomFitBtn = document.querySelector<HTMLButtonElement>("#zoom-fit");
 if (
+  zoomInBtn === null ||
+  zoomOutBtn === null ||
+  zoomResetBtn === null ||
+  zoomFitBtn === null ||
   relaxBtn === null ||
   regenBtn === null ||
   addBtn === null ||
@@ -112,6 +120,11 @@ let blockSource: BlockSource | null = null;
 let netSource: NetworkSource | null = null;
 let cloudSource: CloudSource | null = null;
 let overrides: LayoutOverrides = new Map();
+// On-screen zoom of the diagram sheet. 1 = the canvas is drawn at scene scale (the identity the
+// hit-test math and e2e specs assume); only the zoom controls / ctrl-wheel change it.
+let viewScale = 1;
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 4;
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
 let selectionOrder: SceneNodeId[] = [];
@@ -191,19 +204,23 @@ const ensureIcons = async (s: Scene): Promise<void> => {
 const paintScene = (): void => {
   if (scene === null) return;
   const shown = applyOverrides(scene, overrides);
-  const cssWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
-  const cssHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
+  // Logical sheet size in scene px (+ margin); the on-screen box is this scaled by the zoom.
+  const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
+  const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
+  const cssWidth = logicalWidth * viewScale;
+  const cssHeight = logicalHeight * viewScale;
   // Back the canvas at device resolution but draw in CSS pixels, so it stays crisp on HiDPI
-  // displays. The CSS size pins the on-screen box; the dpr scale fills the larger backing store.
+  // displays. The CSS size pins the on-screen box; the dpr·zoom scale fills the larger backing store
+  // and keeps the diagram crisp at any zoom (we re-render, not bitmap-scale).
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(cssWidth * dpr);
-  canvas.height = Math.round(cssHeight * dpr);
+  canvas.width = Math.round(logicalWidth * dpr * viewScale);
+  canvas.height = Math.round(logicalHeight * dpr * viewScale);
   canvas.style.width = `${cssWidth}px`;
   canvas.style.height = `${cssHeight}px`;
   const active = activeTheme();
   canvas.style.backgroundColor = active.background;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssWidth, cssHeight);
+  ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
+  ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
   paint(ctx, toDisplayList(shown), iconImages, active);
@@ -217,6 +234,49 @@ const paintScene = (): void => {
   }
   ctx.restore();
 };
+
+const updateZoomLabel = (): void => {
+  zoomResetBtn.textContent = `${Math.round(viewScale * 100)}%`;
+};
+
+const setScale = (s: number): void => {
+  viewScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+  updateZoomLabel();
+  paintScene();
+};
+
+// Fit the whole sheet inside the visible stage, never upscaling past 100%.
+const fitView = (): void => {
+  if (scene === null) return;
+  const shown = applyOverrides(scene, overrides);
+  const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
+  const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
+  const pad = 24;
+  setScale(
+    Math.min(
+      1,
+      (stageWrap.clientWidth - pad) / logicalWidth,
+      (stageWrap.clientHeight - pad) / logicalHeight,
+    ),
+  );
+};
+
+zoomInBtn.addEventListener("click", () => setScale(viewScale * 1.25));
+zoomOutBtn.addEventListener("click", () => setScale(viewScale / 1.25));
+zoomResetBtn.addEventListener("click", () => setScale(1));
+zoomFitBtn.addEventListener("click", fitView);
+
+// Ctrl/⌘-wheel zooms (plain wheel still scrolls the stage). Anchoring zoom on the cursor would need
+// scroll-offset math; for now we zoom about the sheet origin and leave the stage scrollable.
+canvas.addEventListener(
+  "wheel",
+  (ev) => {
+    if (!ev.ctrlKey && !ev.metaKey) return;
+    ev.preventDefault();
+    setScale(viewScale * (ev.deltaY < 0 ? 1.1 : 1 / 1.1));
+  },
+  { passive: false },
+);
 
 // Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
 // current text failed to parse (it would just keep showing the last good render). On error we also
@@ -388,7 +448,11 @@ const relax = async (): Promise<void> => {
 
 const scenePoint = (ev: MouseEvent) => {
   const r = canvas.getBoundingClientRect();
-  return point(ev.clientX - r.left - MARGIN, ev.clientY - r.top - MARGIN);
+  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates.
+  return point(
+    (ev.clientX - r.left) / viewScale - MARGIN,
+    (ev.clientY - r.top) / viewScale - MARGIN,
+  );
 };
 
 canvas.addEventListener("pointerdown", (ev) => {

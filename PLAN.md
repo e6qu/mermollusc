@@ -76,7 +76,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based incl. relabel/connect) | 29 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links | 7 vitest + 40 Playwright |
+| `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit (− / % / + / Fit + ⌘-wheel) | 7 vitest + 42 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -102,6 +102,16 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
    *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
    the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*
+
+### Future bets (not yet scoped)
+
+- **Comprehensive, searchable audit trail.** Record edits/actions (text patches, drags, layout
+  regenerates, exports) as a queryable, searchable history — beyond the in-memory undo. Likely a new
+  module + a persistence/back-end seam; today everything is client-only and ephemeral.
+- **Multi-tenancy.** Per-tenant isolation of diagrams/registries/settings (and, with the audit trail,
+  per-tenant history). Implies an account/workspace boundary and a server side the app doesn't have
+  yet. Note: this conflicts with the current purely-client, no-backend architecture — a deliberate
+  expansion to decide on later.
 
 ## How to resume (fresh session / after compaction)
 
