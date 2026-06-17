@@ -2,6 +2,7 @@ import {
   addNode,
   applyOverrides,
   connect,
+  connectUndirected,
   decodeOverlay,
   deleteEdge,
   deleteNode,
@@ -619,9 +620,12 @@ statusEl.addEventListener("click", () => {
   srcEl.setSelectionRange(errorRange.offset, errorRange.offset + errorRange.length);
 });
 
-// Add/Connect/Relax patch flowchart text specifically and no-op elsewhere; disabling them off-
-// flowchart makes that explicit instead of a silent dead click. Regenerate re-lays any family.
-const flowchartOnly = [addBtn, connectBtn, relaxBtn];
+// Add-node and Relax patch/seed flowchart specifically; Connect + Delete now work for every family
+// with a two-token edge syntax (flowchart/block use `-->`, network/cloud use `--`). Sequence/C4 have
+// distinct edge syntax (messages / `Rel(...)`) and aren't wired yet. Disabling a control off its
+// families makes that explicit rather than a silent dead click.
+const STRUCTURAL_FAMILIES = new Set<DiagramAst["kind"]>(["flowchart", "block", "network", "cloud"]);
+const flowchartOnly = [addBtn, relaxBtn];
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
   const isFlowchart = kind === "flowchart";
@@ -629,6 +633,8 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
     btn.disabled = !isFlowchart;
     btn.title = isFlowchart ? "" : "flowchart only";
   }
+  connectBtn.disabled = !STRUCTURAL_FAMILIES.has(kind);
+  connectBtn.title = STRUCTURAL_FAMILIES.has(kind) ? "" : "not available for this family";
 };
 
 const EXAMPLES = new Map<string, string>([
@@ -987,26 +993,28 @@ addBtn.addEventListener("click", () => {
   void renderFromText(srcEl.value);
 });
 
-// Connect: draw an edge between the first two shift-selected nodes (in click order).
+// Connect: link the first two shift-selected nodes (in click order). Flowchart/block draw a
+// directed `-->`; network/cloud an undirected `--`.
 connectBtn.addEventListener("click", () => {
-  if (ast === null || ast.kind !== "flowchart" || selectionOrder.length < 2) return;
-  const [from, to] = selectionOrder;
-  if (from === undefined || to === undefined) return;
-  srcEl.value = connect(
-    srcEl.value,
-    brand<string, "NodeId">(from),
-    brand<string, "NodeId">(to),
-    "arrow",
-  );
+  if (ast === null || !STRUCTURAL_FAMILIES.has(ast.kind) || selectionOrder.length < 2) return;
+  const [first, second] = selectionOrder;
+  if (first === undefined || second === undefined) return;
+  const from = brand<string, "NodeId">(first);
+  const to = brand<string, "NodeId">(second);
+  const undirected = ast.kind === "network" || ast.kind === "cloud";
+  srcEl.value = undirected
+    ? connectUndirected(srcEl.value, from, to)
+    : connect(srcEl.value, from, to, "arrow");
   void renderFromText(srcEl.value);
 });
 
-// Delete key removes the selected nodes (and their edges) from the flowchart text. Guarded on the
-// textarea not being focused so it never hijacks a Backspace while editing the source.
+// Delete key removes the selected nodes (and their edges) from the text, for any family with a
+// two-token edge syntax. Guarded on the textarea not being focused so it never hijacks a Backspace
+// while editing the source.
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
   if (document.activeElement === srcEl) return;
-  if (ast === null || ast.kind !== "flowchart") return;
+  if (ast === null || !STRUCTURAL_FAMILIES.has(ast.kind)) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
   let text = srcEl.value;

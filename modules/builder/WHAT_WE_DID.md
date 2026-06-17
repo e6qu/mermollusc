@@ -39,3 +39,6 @@
   (`LayoutOverrides` + `Groups`) through JSON, decoding untyped storage input via Zod and re-branding
   ids/points at the boundary (the `decodePack` pattern). Adds `zod` to builder deps. +2 unit tests
   (round-trip incl. nested locked group; fails loud on malformed input).
+- `connectUndirected(text, from, to)` appends an undirected link (`from -- to`) for the network/cloud
+  families; `deleteEdge`/`deleteNode` already work for them (token-based, operator-agnostic). +1
+  integration test (the appended link parses as a network link).

@@ -263,6 +263,22 @@ const FLOWS: readonly Flow[] = [
       await page.locator("#lock").click();
     },
   },
+  {
+    name: "23-connect-network",
+    about: "Connect works beyond flowchart — joining two network nodes with an undirected link",
+    drive: async (page) => {
+      await setSource(page, 'network\n  server a "Web"\n  database b "DB"\n');
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      const cy = box.y + box.height / 2;
+      await page.keyboard.down("Shift");
+      await page.mouse.click(box.x + 44, cy);
+      await page.mouse.click(box.x + box.width - 44, cy);
+      await page.keyboard.up("Shift");
+      await page.locator("#connect").click();
+      await settled(page);
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

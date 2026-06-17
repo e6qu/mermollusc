@@ -1,9 +1,10 @@
 import { brand, isOk } from "@m/std";
-import { parseWithSource } from "@m/parser";
+import { parseNetworkWithSource, parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
 import {
   addNode,
   connect,
+  connectUndirected,
   deleteEdge,
   deleteNode,
   patchSpan,
@@ -70,6 +71,15 @@ describe("relabelNode", () => {
     expect(
       r.value.ast.edges.some((e) => e.from === "A" && e.to === "B" && e.kind === "dotted"),
     ).toBe(true);
+  });
+
+  it("connectUndirected appends a link the network parser accepts", () => {
+    const next = connectUndirected('network\n  server a "A"\n  server b "B"\n', nid("a"), nid("b"));
+    expect(next).toContain("a -- b");
+    const r = parseNetworkWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.links.some((l) => l.from === "a" && l.to === "b")).toBe(true);
   });
 
   it("deleteNode removes the node's declaration and its edges", () => {
