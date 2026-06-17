@@ -8,7 +8,7 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
-import { heuristicMeasure, type MeasureText } from "./graph.js";
+import type { MeasureText } from "./graph.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
@@ -32,7 +32,7 @@ const shapeOf = (kind: C4ElementKind): NodeShape =>
 
 // Pure recursive nested-box layout: boundaries wrap their children (sized to fit), siblings sit
 // in a row, relations are straight centre-to-centre edges. No ELK — coordinates are absolute.
-export const layoutC4 = (ast: C4Ast, measure: MeasureText = heuristicMeasure): Scene => {
+export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
   const childrenOf = new Map<string, C4Element[]>();
   const roots: C4Element[] = [];
   for (const el of ast.elements) {

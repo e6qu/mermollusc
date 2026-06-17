@@ -21,7 +21,6 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow
   thick: { stroke: "solid", arrow: "filled" },
 };
 import {
-  heuristicMeasure,
   type ContainerNode,
   type LayoutConfig,
   type LayoutError,
@@ -46,13 +45,14 @@ const NODE_SPACING = 40;
 const nodeWidth = (label: string, measure: MeasureText): number =>
   Math.max(MIN_NODE_WIDTH, measure(label) + LABEL_PADDING);
 
-// A non-empty `seed` (node → current position) switches ELK into semi-interactive layered
-// layout: it relaxes the graph around the given coordinates instead of laying out from scratch.
-// `measure` sizes node labels (defaults to the char-width heuristic).
+// A non-empty `seed` (node → current position) switches ELK into semi-interactive layered layout:
+// it relaxes the graph around the given coordinates instead of laying out from scratch (an empty
+// map means a clean layout). `measure` sizes node labels. Both are explicit — no defaults — so the
+// caller always states its intent (clean vs relax, which measurer).
 export const toElkGraph = (
   ast: FlowchartAst,
-  seed: ReadonlyMap<NodeId, Point> = new Map(),
-  measure: MeasureText = heuristicMeasure,
+  seed: ReadonlyMap<NodeId, Point>,
+  measure: MeasureText,
 ): LayoutGraph => {
   const nodeById = new Map<NodeId, FlowNode>(ast.nodes.map((n) => [n.id, n]));
 

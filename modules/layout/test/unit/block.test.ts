@@ -2,6 +2,7 @@ import { brand } from "@m/std";
 import type { BlockAst, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { layoutBlock } from "../../src/core/block.js";
+import { heuristicMeasure } from "../../src/core/graph.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 const eid = (s: string) => brand<string, "EdgeId">(s);
@@ -18,7 +19,7 @@ const ast: BlockAst = {
 };
 
 describe("layoutBlock", () => {
-  const scene = layoutBlock(ast);
+  const scene = layoutBlock(ast, heuristicMeasure);
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
 
   it("lays blocks out row-major across the given column count", () => {

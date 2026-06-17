@@ -1,6 +1,7 @@
 import { brand, isOk, point } from "@m/std";
 import type { FlowchartAst, NodeId, SequenceAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout, layoutDiagram } from "../../src/shell/elk.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -35,7 +36,7 @@ describe("layout", () => {
       subgraphs: [],
     };
 
-    const r = await layout(ast);
+    const r = await layout(ast, new Map(), heuristicMeasure);
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
 
@@ -66,7 +67,7 @@ describe("layout", () => {
         { id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api"), nid("db")] },
       ],
     };
-    const r = await layout(ast);
+    const r = await layout(ast, new Map(), heuristicMeasure);
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
 
@@ -89,7 +90,7 @@ describe("layout", () => {
   });
 
   it("relaxes around a seed: flipped seed order flips the layout", async () => {
-    const clean = await layout(A_THEN_B);
+    const clean = await layout(A_THEN_B, new Map(), heuristicMeasure);
     expect(isOk(clean)).toBe(true);
     if (!isOk(clean)) return;
     // clean top-down: A above B
@@ -99,7 +100,7 @@ describe("layout", () => {
       [nid("A"), point(0, 300)],
       [nid("B"), point(0, 0)],
     ]);
-    const relaxed = await layout(A_THEN_B, seed);
+    const relaxed = await layout(A_THEN_B, seed, heuristicMeasure);
     expect(isOk(relaxed)).toBe(true);
     if (!isOk(relaxed)) return;
     // seeded with A below B → relaxed layout keeps A below B
@@ -107,7 +108,7 @@ describe("layout", () => {
   });
 
   it("layoutDiagram routes both families to a Scene", async () => {
-    const flow = await layoutDiagram(A_THEN_B);
+    const flow = await layoutDiagram(A_THEN_B, heuristicMeasure);
     expect(isOk(flow)).toBe(true);
 
     const seq: SequenceAst = {
@@ -118,7 +119,7 @@ describe("layout", () => {
       ],
       messages: [{ id: mid("m0"), from: aid("X"), to: aid("Y"), text: "hi", kind: "solid" }],
     };
-    const sequence = await layoutDiagram(seq);
+    const sequence = await layoutDiagram(seq, heuristicMeasure);
     expect(isOk(sequence)).toBe(true);
     if (!isOk(sequence)) return;
     expect(sequence.value.nodes).toHaveLength(2);

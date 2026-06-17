@@ -1,6 +1,7 @@
 import { brand } from "@m/std";
 import type { NetworkAst, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutNetwork } from "../../src/core/network.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -17,7 +18,7 @@ const ast: NetworkAst = {
 };
 
 describe("layoutNetwork", () => {
-  const scene = layoutNetwork(ast);
+  const scene = layoutNetwork(ast, heuristicMeasure);
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
 
   it("places nodes in a squarish grid (3 nodes → 2 columns)", () => {

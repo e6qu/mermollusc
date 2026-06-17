@@ -148,8 +148,8 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
 
 export const layout = async (
   ast: FlowchartAst,
-  seed: ReadonlyMap<NodeId, Point> = new Map(),
-  measure?: MeasureText,
+  seed: ReadonlyMap<NodeId, Point>,
+  measure: MeasureText,
 ): Promise<Result<Scene, LayoutError>> => {
   try {
     const raw = await elk.layout(toElkInput(toElkGraph(ast, seed, measure)));
@@ -166,11 +166,11 @@ export const layout = async (
   }
 };
 
-// Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` (when
-// supplied) sizes labels with real text metrics; otherwise each layout uses the char-width heuristic.
+// Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
+// labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
 export const layoutDiagram = async (
   ast: DiagramAst,
-  measure?: MeasureText,
+  measure: MeasureText,
 ): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":

@@ -1,6 +1,7 @@
 import { brand } from "@m/std";
 import type { C4Ast, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutC4 } from "../../src/core/c4.js";
 
 const cid = (s: string) => brand<string, "C4ElementId">(s);
@@ -18,7 +19,7 @@ const ast: C4Ast = {
 };
 
 describe("layoutC4", () => {
-  const scene = layoutC4(ast);
+  const scene = layoutC4(ast, heuristicMeasure);
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
 
   it("nests children fully inside the boundary box", () => {

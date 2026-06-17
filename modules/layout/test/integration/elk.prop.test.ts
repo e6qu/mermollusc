@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { brand, isOk } from "@m/std";
 import type { EdgeKind, FlowDirection, FlowchartAst, NodeShape } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout } from "../../src/shell/elk.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -50,7 +51,7 @@ describe("ELK flowchart layout — invariants (property-based)", () => {
   it("preserves node identity and fits every box inside the reported extent", async () => {
     await fc.assert(
       fc.asyncProperty(astArb, async (ast) => {
-        const r = await layout(ast);
+        const r = await layout(ast, new Map(), heuristicMeasure);
         expect(isOk(r)).toBe(true);
         if (!isOk(r)) return;
         const scene = r.value;

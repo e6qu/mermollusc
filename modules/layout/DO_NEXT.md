@@ -7,4 +7,8 @@
   re-lays out when the Sketch toggle flips, so labels stay inside their boxes in both modes.
 - Extend property tests: no node-box overlap, edges terminate near nodes (ids-preserved + boxes-
   within-extent are covered for block/network grids and the ELK flowchart path).
-- Support nested containers (subgraph / C4) via ELK hierarchy once those AST variants exist.
+- *(done)* Flowchart `subgraph` nesting lays out via ELK hierarchy (compound nodes + absolute-coord
+  flattening). C4/cloud use their own pure nested-box layout.
+- Make the pure layouts (`sequence`/`cloud`/`c4`) total-by-`Result` (or restructure so the lookups
+  can't miss) to drop the remaining `?? default` fallbacks that currently defend against an
+  inconsistent hand-built AST. Today they return a `Scene` directly, so they can't fail loudly.
