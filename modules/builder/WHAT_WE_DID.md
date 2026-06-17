@@ -35,3 +35,7 @@
   Move-only lock (`pathLocked` reports a lock anywhere up a node's chain). +9 unit tests
   (nesting, order-preserving ungroup, lock propagation, node/group id disambiguation). Pure core,
   no UI yet — the app wiring (group/ungroup/lock affordances, move-whole-group, outline) is next.
+- Overlay codec (shell): `serializeOverlay` / `decodeOverlay` round-trip the editor's sidecar
+  (`LayoutOverrides` + `Groups`) through JSON, decoding untyped storage input via Zod and re-branding
+  ids/points at the boundary (the `decodePack` pattern). Adds `zod` to builder deps. +2 unit tests
+  (round-trip incl. nested locked group; fails loud on malformed input).

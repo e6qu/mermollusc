@@ -145,3 +145,7 @@
   nodes — dashed accent when unlocked, solid + padlock when locked, nested groups nesting visually.
   Verified in light + dark via shots; +2 e2e (controls toggle + Ungroup reverses; locked-can't-drag,
   unlock-restores). 51 Playwright.
+- Persist the sidecar overlay (manual positions + groups) to localStorage alongside the source, via
+  `@m/builder`'s `serializeOverlay`/`decodeOverlay`. Restored on load only for the persisted source
+  (a share-link source is a different diagram); a corrupt/invalid overlay is logged loudly and
+  ignored. +2 e2e (a dragged position and a group both survive a reload). 53 Playwright.
