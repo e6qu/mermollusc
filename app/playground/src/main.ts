@@ -587,10 +587,23 @@ const drawMinimap = (): void => {
   miniCtx.fillRect(0, top, left, bottom - top);
   miniCtx.fillRect(right, top, logicalWidth - right, bottom - top);
 
+  // A faint accent tint inside the viewport so the "here" region reads as a lit lens, not just an
+  // un-dimmed gap — the scrim outside and the tint inside push the contrast from both sides.
   const accent = dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
+  miniCtx.fillStyle = dark ? "rgba(240,137,78,0.12)" : "rgba(210,96,44,0.10)";
+  miniCtx.fillRect(left, top, right - left, bottom - top);
+
+  // Inset the stroke by half its width and clamp it inside the sheet, so the rectangle is never
+  // half-clipped by the minimap edge when the viewport butts against the sheet boundary.
+  const lineW = 2 / miniScale;
+  const half = lineW / 2;
+  const rx = Math.min(Math.max(left, half), logicalWidth - half);
+  const ry = Math.min(Math.max(top, half), logicalHeight - half);
+  const rr = Math.min(Math.max(right, half), logicalWidth - half);
+  const rb = Math.min(Math.max(bottom, half), logicalHeight - half);
   miniCtx.strokeStyle = accent;
-  miniCtx.lineWidth = 2 / miniScale;
-  miniCtx.strokeRect(left, top, right - left, bottom - top);
+  miniCtx.lineWidth = lineW;
+  miniCtx.strokeRect(rx, ry, rr - rx, rb - ry);
 };
 
 const updateZoomLabel = (): void => {
