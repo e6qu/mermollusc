@@ -25,3 +25,8 @@
   nudged perpendicular to the local segment, replacing the average-of-endpoints anchor that could
   land a label inside a node when an orthogonal edge bends around one (e.g. a flowchart branch
   routing down the side). Pure `edgeLabelAnchor` helper in `display.ts`.
+- Added `toSvg(cmds, opts)` (shell): a vector SVG backend over the same `DrawCmd[]` display list the
+  canvas painter uses — box→`<rect>`, diamond→`<polygon>`, polyline→`<polyline>` (+ a reusable
+  `<marker>` arrowhead), label→`<text>` (escaped), icon→`<image href>` from a `pack/name`→href map.
+  Pure string output, crisp shapes only (sketch jitter is a screen affordance). Backs the app's SVG
+  export. +4 unit tests.

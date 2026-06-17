@@ -106,3 +106,7 @@
   (the composited canvas as JPEG) placed to fill a MediaBox sized in CSS px (so the device-res JPEG
   renders high-DPI), tracking byte offsets for the xref. Verified the output renders. +1 Playwright
   flow (download filename + real file). 35 e2e green.
+- Export SVG (`#export-svg`): true vector, via the renderer's `toSvg` over `toDisplayList(shown)`.
+  Node icons are embedded as `<image>` data-URL hrefs resolved here (the renderer can't depend on
+  `@m/icons`) via `findIcon` + `svgDataUrl`. Verified the output renders correctly in a browser.
+  +1 Playwright flow (download filename + real file). 36 e2e green.
