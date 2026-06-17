@@ -84,3 +84,7 @@
   dblclick handler now computes a `{ text, commit }` per family (span patch, or `relabelNode` for a
   flowchart node) plus a screen anchor, then opens the editor. Rewrote the 7 edit specs to drive
   `#inline-edit` instead of `page.on("dialog")`, and added an `11-inline-edit` shot. 29 e2e green.
+- Source persistence: `renderFromText` writes the current text to `localStorage` under
+  `mermollusc-source` (the single chokepoint every text change funnels through), and initial load
+  reads it (`?? SAMPLE`). A reload restores the in-progress diagram — even mid-edit / not-yet-parsing.
+  +2 Playwright flows (persists-across-reload, fresh-context-shows-sample). 31 e2e green.
