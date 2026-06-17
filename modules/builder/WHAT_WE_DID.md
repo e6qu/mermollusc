@@ -18,3 +18,7 @@
 - Added `deleteEdge` (line-based, like `deleteNode`): removes a standalone `from <arrow> to` line
   (ident tokens === `[from, to]`), sparing declarations and multi-hop chains. The app's Delete key
   now removes a selected edge too. +2 tests.
+- Added parser-backed property coverage for the two-way patches: `relabelNode` rewrites exactly the
+  target node's label (re-parsing confirms the new label and every other node unchanged), and
+  `connect` appends exactly one edge with the requested from/to/kind while preserving the nodes.
+  +2 property tests (29 total).
