@@ -79,3 +79,8 @@
   (default heuristic measurer — no canvas/fonts) → `toDisplayList`, normalised to rounded-integer
   strings and snapshotted. Deterministic; catches geometry regressions (e.g. an edge label drifting
   onto a node) that pixels would catch but unit tests miss, without font/AA flakiness. +6 snapshots.
+- Inline label editor: replaced the `window.prompt` dialogs with an overlay `<input>` (`#inline-edit`)
+  positioned over the double-clicked element — Enter/blur commit, Escape cancels, one at a time. The
+  dblclick handler now computes a `{ text, commit }` per family (span patch, or `relabelNode` for a
+  flowchart node) plus a screen anchor, then opens the editor. Rewrote the 7 edit specs to drive
+  `#inline-edit` instead of `page.on("dialog")`, and added an `11-inline-edit` shot. 29 e2e green.

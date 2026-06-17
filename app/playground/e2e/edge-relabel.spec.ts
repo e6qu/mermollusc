@@ -4,8 +4,6 @@ const canvasWidth = (page: import("@playwright/test").Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("double-click a flowchart edge relabels its |label| in the source text", async ({ page }) => {
-  page.on("dialog", (d) => d.accept("maybe"));
-
   await page.goto("/");
   const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -16,8 +14,14 @@ test("double-click a flowchart edge relabels its |label| in the source text", as
 
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
+  if (box === null) return;
   // Mid-height, centre-x: on the edge between the two nodes.
-  if (box !== null) await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+
+  const editor = page.locator("#inline-edit");
+  await expect(editor).toBeVisible();
+  await editor.fill("maybe");
+  await editor.press("Enter");
 
   await expect(page.locator("#src")).toHaveValue(/-->\|maybe\|/);
 });

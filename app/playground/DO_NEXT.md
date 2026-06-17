@@ -7,7 +7,8 @@
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.
-- Make the flowchart edge-label / node prompts inline (the `window.prompt` dialogs are the last bit
-  of un-designed UI).
 - Drag-to-move + Connect for non-flowchart families (today they're flowchart-only and disabled
   elsewhere; the status badge reflects that).
+- The inline label editor anchors edges at the straight midpoint of their endpoints; for a bent
+  edge that could sit off the visible line — anchor it on the routed path (as the renderer's label
+  now does) if it proves awkward.

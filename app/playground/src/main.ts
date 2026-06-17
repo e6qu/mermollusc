@@ -25,6 +25,7 @@ import type {
   SceneNodeId,
   SequenceSource,
   SourceMap,
+  TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
@@ -66,6 +67,7 @@ const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
 const statusEl = document.querySelector<HTMLElement>("#status");
 const stageWrap = document.querySelector<HTMLElement>("#stage-wrap");
+const inlineEl = document.querySelector<HTMLInputElement>("#inline-edit");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -77,7 +79,8 @@ if (
   exampleEl === null ||
   kindEl === null ||
   statusEl === null ||
-  stageWrap === null
+  stageWrap === null ||
+  inlineEl === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -406,6 +409,62 @@ canvas.addEventListener("pointerup", (ev) => {
   }
 });
 
+// Inline label editor: a small overlay <input> over the double-clicked element, committing on
+// Enter/blur and cancelling on Escape — an in-place rename instead of a modal `window.prompt`.
+// One editor at a time; `closeEditor` tears down the current one before another opens.
+type Anchor = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+let closeEditor: ((apply: boolean) => void) | null = null;
+
+const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) => void): void => {
+  closeEditor?.(false);
+  const cr = canvas.getBoundingClientRect();
+  inlineEl.value = value;
+  inlineEl.style.left = `${cr.left + MARGIN + anchor.x}px`;
+  inlineEl.style.top = `${cr.top + MARGIN + anchor.y}px`;
+  inlineEl.style.width = `${Math.max(64, anchor.w)}px`;
+  inlineEl.style.height = `${Math.max(24, anchor.h)}px`;
+  inlineEl.hidden = false;
+  inlineEl.focus();
+  inlineEl.select();
+  closeEditor = (apply) => {
+    closeEditor = null;
+    inlineEl.hidden = true;
+    inlineEl.onkeydown = null;
+    inlineEl.onblur = null;
+    if (apply) commit(inlineEl.value);
+  };
+  inlineEl.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      closeEditor?.(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeEditor?.(false);
+    }
+  };
+  inlineEl.onblur = () => closeEditor?.(true);
+};
+
+// The screen-space box of the hit element, so the editor sits over it. Edges have no box, so we
+// anchor a fixed-width slot at the straight midpoint of their endpoints.
+const anchorFor = (
+  shown: Scene,
+  hit: { readonly kind: "node" | "edge"; readonly id: string },
+): Anchor | null => {
+  if (hit.kind === "node") {
+    const n = shown.nodes.find((nn) => nn.id === hit.id);
+    if (n === undefined) return null;
+    const { origin, size } = n.bounds;
+    return { x: origin.x, y: origin.y, w: size.width, h: size.height };
+  }
+  const e = shown.edges.find((ee) => ee.id === hit.id);
+  if (e === undefined || e.waypoints.length === 0) return null;
+  const first = e.waypoints[0];
+  const last = e.waypoints[e.waypoints.length - 1];
+  if (first === undefined || last === undefined) return null;
+  return { x: (first.x + last.x) / 2 - 30, y: (first.y + last.y) / 2 - 12, w: 80, h: 24 };
+};
+
 // Two-way edit: rename what was double-clicked and write the patch back into the source text.
 canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null) return;
@@ -413,99 +472,76 @@ canvas.addEventListener("dblclick", (ev) => {
   const hit = hitTest(shown, scenePoint(ev));
   if (hit === null) return;
 
-  if (ast.kind === "flowchart") {
-    if (source === null) return;
-    // An edge with a `|label|` patches that span directly; a node relabels via the source map.
-    if (hit.kind === "edge") {
-      const span = source.edges.get(brand<string, "EdgeId">(hit.id));
-      if (span === undefined) return;
-      const next = window.prompt("Edge label:", srcEl.value.slice(span.start, span.end));
-      if (next === null) return;
+  // Most families edit a `TextSpan` via `patchSpan`; flowchart nodes relabel through the source map.
+  const patchAt = (
+    span: TextSpan,
+  ): { readonly text: string; readonly commit: (n: string) => void } => ({
+    text: srcEl.value.slice(span.start, span.end),
+    commit: (next) => {
       srcEl.value = patchSpan(srcEl.value, span, next);
       void renderFromText(srcEl.value);
-      return;
-    }
-    const current = shown.nodes.find((n) => n.id === hit.id)?.label ?? "";
-    const next = window.prompt("Label:", current);
-    if (next === null) return;
-    const patched = relabelNode(srcEl.value, source, brand<string, "NodeId">(hit.id), next);
-    if (!isOk(patched)) {
-      console.error("relabel failed:", patched.error.message);
-      return;
-    }
-    srcEl.value = patched.value;
-    void renderFromText(patched.value);
-    return;
-  }
+    },
+  });
 
-  if (ast.kind === "c4") {
-    if (c4Source === null) return;
+  let pending: { readonly text: string; readonly commit: (n: string) => void } | null = null;
+
+  if (ast.kind === "flowchart" && source !== null) {
+    const src = source;
+    if (hit.kind === "edge") {
+      const span = src.edges.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const nodeId = brand<string, "NodeId">(hit.id);
+      pending = {
+        text: shown.nodes.find((n) => n.id === hit.id)?.label ?? "",
+        commit: (next) => {
+          const patched = relabelNode(srcEl.value, src, nodeId, next);
+          if (!isOk(patched)) {
+            console.error("relabel failed:", patched.error.message);
+            return;
+          }
+          srcEl.value = patched.value;
+          void renderFromText(patched.value);
+        },
+      };
+    }
+  } else if (ast.kind === "c4" && c4Source !== null) {
     const span =
       hit.kind === "node"
         ? c4Source.elements.get(brand<string, "C4ElementId">(hit.id))
         : c4Source.rels.get(brand<string, "C4RelId">(hit.id));
-    if (span === undefined) return;
-    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
-    if (next === null) return;
-    srcEl.value = patchSpan(srcEl.value, span, next);
-    void renderFromText(srcEl.value);
-    return;
-  }
-
-  if (ast.kind === "block") {
-    if (blockSource === null) return;
+    if (span !== undefined) pending = patchAt(span);
+  } else if (ast.kind === "block" && blockSource !== null) {
     const span =
       hit.kind === "node"
         ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
         : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
-    if (span === undefined) return;
-    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
-    if (next === null) return;
-    srcEl.value = patchSpan(srcEl.value, span, next);
-    void renderFromText(srcEl.value);
-    return;
-  }
-
-  if (ast.kind === "network") {
-    if (netSource === null) return;
+    if (span !== undefined) pending = patchAt(span);
+  } else if (ast.kind === "network" && netSource !== null) {
     const span =
       hit.kind === "node"
         ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
         : netSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span === undefined) return;
-    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
-    if (next === null) return;
-    srcEl.value = patchSpan(srcEl.value, span, next);
-    void renderFromText(srcEl.value);
-    return;
-  }
-
-  if (ast.kind === "cloud") {
-    if (cloudSource === null) return;
+    if (span !== undefined) pending = patchAt(span);
+  } else if (ast.kind === "cloud" && cloudSource !== null) {
     const id = brand<string, "NodeId">(hit.id);
     const span =
       hit.kind === "node"
         ? (cloudSource.nodes.get(id) ?? cloudSource.groups.get(id))
         : cloudSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span === undefined) return;
-    const next = window.prompt("Label:", srcEl.value.slice(span.start, span.end));
-    if (next === null) return;
-    srcEl.value = patchSpan(srcEl.value, span, next);
-    void renderFromText(srcEl.value);
-    return;
+    if (span !== undefined) pending = patchAt(span);
+  } else if (ast.kind === "sequence" && seqSource !== null) {
+    const span =
+      hit.kind === "node"
+        ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
+        : seqSource.messages.get(brand<string, "MessageId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
   }
 
-  // sequence: rename an actor (its label span) or a message (its text span).
-  if (ast.kind !== "sequence" || seqSource === null) return;
-  const span =
-    hit.kind === "node"
-      ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
-      : seqSource.messages.get(brand<string, "MessageId">(hit.id));
-  if (span === undefined) return;
-  const next = window.prompt("Text:", srcEl.value.slice(span.start, span.end));
-  if (next === null) return;
-  srcEl.value = patchSpan(srcEl.value, span, next);
-  void renderFromText(srcEl.value);
+  if (pending === null) return;
+  const anchor = anchorFor(shown, hit);
+  if (anchor === null) return;
+  openInlineEditor(anchor, pending.text, pending.commit);
 });
 
 // Add node: append a fresh rect node to the flowchart text (flowchart only for now).

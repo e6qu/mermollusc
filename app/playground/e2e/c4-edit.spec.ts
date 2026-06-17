@@ -4,8 +4,6 @@ const canvasWidth = (page: import("@playwright/test").Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("double-click relabels a C4 element and writes back to the source text", async ({ page }) => {
-  page.on("dialog", (d) => d.accept("Renamed"));
-
   await page.goto("/");
   const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -16,7 +14,13 @@ test("double-click relabels a C4 element and writes back to the source text", as
 
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
-  if (box !== null) await page.mouse.dblclick(box.x + 60, box.y + 50);
+  if (box === null) return;
+  await page.mouse.dblclick(box.x + 60, box.y + 50);
+
+  const editor = page.locator("#inline-edit");
+  await expect(editor).toBeVisible();
+  await editor.fill("Renamed");
+  await editor.press("Enter");
 
   await expect(page.locator("#src")).toHaveValue(/Person\(user, "Renamed"\)/);
 });
