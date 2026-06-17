@@ -45,3 +45,28 @@ test("Fit scales a tall diagram down so all of it fits the stage", async ({ page
 
   expect(errors).toEqual([]);
 });
+
+test("dragging the empty canvas pans the (overflowing) stage", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await page.locator("#src").fill("flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const wrap = page.locator("#stage-wrap");
+  const scrollTopOf = () => wrap.evaluate((el) => el.scrollTop);
+  expect(await scrollTopOf()).toBe(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  // Grab the left margin (empty — the node column is centred) and drag up to scroll the sheet down.
+  await page.mouse.move(box.x + 8, box.y + 80);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 8, box.y - 160);
+  await page.mouse.up();
+
+  expect(await scrollTopOf()).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});

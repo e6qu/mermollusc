@@ -112,6 +112,10 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
   per-tenant history). Implies an account/workspace boundary and a server side the app doesn't have
   yet. Note: this conflicts with the current purely-client, no-backend architecture — a deliberate
   expansion to decide on later.
+- **Minimap.** An overview thumbnail of the whole diagram with a draggable viewport rectangle, to
+  navigate large diagrams alongside the zoom/pan. Needs careful design — keep it in sync with the
+  zoom/scroll state, scale the scene cheaply (reuse the display list, not a re-layout), and don't let
+  it fight the existing pointer interactions. Worth doing well, not quickly.
 
 ## How to resume (fresh session / after compaction)
 
