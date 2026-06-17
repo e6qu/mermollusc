@@ -293,6 +293,61 @@
         outline: none;
       }
       #inline-edit[hidden] { display: none; }
+
+      /* Icon picker: a right-side drawer that browses the registry (pack → category → glyphs) and
+         inserts an `icon "<pack>/<name>"` override at the editor caret. */
+      #icon-picker {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 320px;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        background: var(--surface);
+        border-left: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+      #icon-picker[hidden] { display: none; }
+      .picker-head { display: flex; align-items: center; justify-content: space-between; }
+      .picker-head strong { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+      #icons-close { padding: 2px 9px; }
+      #icon-filter {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        padding: 8px 11px;
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        outline: none;
+      }
+      #icon-filter:focus { border-color: var(--primary); }
+      #icon-grid { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+      .picker-group-title {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 6px;
+      }
+      .picker-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+      .picker-icon {
+        display: grid;
+        place-items: center;
+        aspect-ratio: 1;
+        padding: 7px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .picker-icon:hover { border-color: var(--primary); background: var(--accent-soft); }
+      .picker-icon img { width: 24px; height: 24px; pointer-events: none; }
+      .picker-empty { color: var(--ink-soft); font-size: 13px; }
     </style>
   </head>
   <body>
@@ -325,6 +380,8 @@
           </label>
           <button id="theme" type="button">Dark</button>
           <button id="sketch" type="button">Sketch</button>
+          <button id="icons-toggle" type="button" aria-expanded="false"
+            title="Browse icon packs and insert an icon &quot;pack/name&quot; override at the cursor">Icons</button>
           <label class="filebtn"
             title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
             <input id="load-pack" type="file" accept="application/json" />
@@ -363,6 +420,14 @@
         </span>
       </footer>
       <input id="inline-edit" type="text" spellcheck="false" hidden />
+      <aside id="icon-picker" aria-label="Icon picker" hidden>
+        <div class="picker-head">
+          <strong>Insert icon</strong>
+          <button id="icons-close" type="button" aria-label="Close icon picker">✕</button>
+        </div>
+        <input id="icon-filter" type="text" spellcheck="false" placeholder="Filter by name…" />
+        <div id="icon-grid"></div>
+      </aside>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

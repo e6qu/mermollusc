@@ -134,6 +134,16 @@ const FLOWS: readonly Flow[] = [
       await expect(page.locator("#inline-edit")).toBeVisible();
     },
   },
+  {
+    name: "12-icon-picker",
+    about: "the icon picker drawer browsing the registry",
+    drive: async (page) => {
+      await settled(page);
+      await page.locator("#icons-toggle").click();
+      await expect(page.locator("#icon-picker")).toBeVisible();
+      await expect(page.locator("#icon-grid .picker-icon").first()).toBeVisible();
+    },
+  },
 ];
 
 for (const flow of FLOWS) {
