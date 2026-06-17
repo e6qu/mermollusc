@@ -10,7 +10,8 @@ import type {
   C4Source,
   TextSpan,
 } from "@m/contracts";
-import type { ParseError } from "./parse.js";
+import { lexingError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 import { c4Parser } from "./c4-grammar.js";
 import { c4Lexer } from "./c4-tokens.js";
 
@@ -114,12 +115,12 @@ const buildResult = (cst: CstNode): Result<ParsedC4, ParseError> => {
 export const parseC4WithSource = (text: string): Result<ParsedC4, ParseError> => {
   const lexed = c4Lexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   c4Parser.input = lexed.tokens;
   const cst = c4Parser.c4();
   if (c4Parser.errors.length > 0) {
-    return err({ kind: "parse", errors: c4Parser.errors.map((e) => e.message) });
+    return err(recognitionError(c4Parser.errors));
   }
   return buildResult(cst);
 };

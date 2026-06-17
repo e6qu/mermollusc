@@ -11,7 +11,8 @@ import type {
   NodeId,
   TextSpan,
 } from "@m/contracts";
-import type { ParseError } from "./parse.js";
+import { lexingError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 import { networkParser } from "./net-grammar.js";
 import { netLexer } from "./net-tokens.js";
 
@@ -111,12 +112,12 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
 export const parseNetworkWithSource = (text: string): Result<ParsedNetwork, ParseError> => {
   const lexed = netLexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   networkParser.input = lexed.tokens;
   const cst = networkParser.network();
   if (networkParser.errors.length > 0) {
-    return err({ kind: "parse", errors: networkParser.errors.map((e) => e.message) });
+    return err(recognitionError(networkParser.errors));
   }
   return buildResult(cst);
 };

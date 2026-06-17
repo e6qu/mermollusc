@@ -1,5 +1,6 @@
 export { parse, parseWithSource } from "./parse.js";
 export type { ParseError, ParsedSource } from "./parse.js";
+export type { ErrorPosition } from "./parse-error.js";
 export { parseSequence, parseSequenceWithSource } from "./seq-parse.js";
 export type { ParsedSequence } from "./seq-parse.js";
 export { parseC4, parseC4WithSource } from "./c4-parse.js";

@@ -14,7 +14,8 @@ import type {
 } from "@m/contracts";
 import { cloudParser } from "./cloud-grammar.js";
 import { cloudLexer } from "./cloud-tokens.js";
-import type { ParseError } from "./parse.js";
+import { lexingError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 
 export interface ParsedCloud {
   readonly ast: CloudAst;
@@ -114,12 +115,12 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
 export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseError> => {
   const lexed = cloudLexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   cloudParser.input = lexed.tokens;
   const cst = cloudParser.cloud();
   if (cloudParser.errors.length > 0) {
-    return err({ kind: "parse", errors: cloudParser.errors.map((e) => e.message) });
+    return err(recognitionError(cloudParser.errors));
   }
   const acc: Acc = {
     groups: [],

@@ -14,12 +14,11 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { flowchartParser } from "./grammar.js";
+import { lexingError, parseError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 import { lexer } from "./tokens.js";
 
-export interface ParseError {
-  readonly kind: "parse";
-  readonly errors: readonly string[];
-}
+export type { ParseError } from "./parse-error.js";
 
 export interface ParsedSource {
   readonly ast: FlowchartAst;
@@ -143,7 +142,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const dirRaw = headerNode === undefined ? null : imageOf(headerNode.children, "Identifier");
   const direction = toDirection(dirRaw);
   if (direction === null) {
-    return err({ kind: "parse", errors: [`invalid flowchart direction: ${dirRaw ?? ""}`] });
+    return err(parseError([`invalid flowchart direction: ${dirRaw ?? ""}`]));
   }
 
   const nodeMap = new Map<string, FlowNode>();
@@ -176,7 +175,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       const from = refs[i];
       const to = refs[i + 1];
       if (link === undefined || from === undefined || to === undefined) {
-        return err({ kind: "parse", errors: ["internal: malformed edge chain"] });
+        return err(parseError(["internal: malformed edge chain"]));
       }
       const pipe = childTokens(link.children, "PipeText")[0];
       const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
@@ -198,12 +197,12 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
 export const parseWithSource = (text: string): Result<ParsedSource, ParseError> => {
   const lexed = lexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   flowchartParser.input = lexed.tokens;
   const cst = flowchartParser.flowchart();
   if (flowchartParser.errors.length > 0) {
-    return err({ kind: "parse", errors: flowchartParser.errors.map((e) => e.message) });
+    return err(recognitionError(flowchartParser.errors));
   }
   return buildResult(cst);
 };

@@ -9,7 +9,9 @@
   synced to the theme toggle.
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
-  silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`.
+  silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`. A parse
+  error names its **line:col** (derived from `ParseError.positions`) and is **click-to-locate** —
+  clicking the status selects the offending range in the textarea (never auto-moves the caret mid-type).
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the six
   families; the kind badge shows the active family; Add/Connect/Relax disable off-flowchart
   (they patch flowchart text specifically) while Regenerate stays live for all.
