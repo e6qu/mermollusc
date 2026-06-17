@@ -60,10 +60,14 @@ export const toElkGraph = (
   },
   children: ast.nodes.map((n) => {
     const at = seed.get(n.id);
+    const width = nodeWidth(n.label, measure);
+    // A circle must be square to actually render as a circle (the renderer rounds corners by
+    // min(w,h)/2); size it to the larger of the label width and the standard node height.
+    const side = Math.max(width, NODE_HEIGHT);
     return {
       id: n.id,
-      width: nodeWidth(n.label, measure),
-      height: NODE_HEIGHT,
+      width: n.shape === "circle" ? side : width,
+      height: n.shape === "circle" ? side : NODE_HEIGHT,
       position: at === undefined ? null : { x: at.x, y: at.y },
     };
   }),

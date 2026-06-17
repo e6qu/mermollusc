@@ -25,6 +25,22 @@ describe("toElkGraph", () => {
     expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"] }]);
     expect(g.children[0]?.width ?? 0).toBeGreaterThan(0);
   });
+
+  it("sizes circle nodes square (so they render as circles), leaving others as wide boxes", () => {
+    const g = toElkGraph({
+      kind: "flowchart",
+      direction: "TB",
+      nodes: [
+        { id: nid("C"), label: "Hub", shape: "circle" },
+        { id: nid("R"), label: "Wide label here", shape: "rect" },
+      ],
+      edges: [],
+    });
+    const circle = g.children.find((c) => c.id === "C");
+    const recct = g.children.find((c) => c.id === "R");
+    expect(circle?.width).toBe(circle?.height);
+    expect((recct?.width ?? 0) > (recct?.height ?? 0)).toBe(true);
+  });
 });
 
 describe("toScene", () => {
