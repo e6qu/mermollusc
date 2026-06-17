@@ -18,8 +18,30 @@ const ast: CloudAst = {
 };
 
 describe("layoutCloud", () => {
-  const scene = layoutCloud(ast, heuristicMeasure);
+  const result = layoutCloud(ast, heuristicMeasure);
+  if (!result.ok) throw new Error(result.error.message);
+  const scene = result.value;
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+
+  it("fails loudly when a node's parent group is missing", () => {
+    const bad: CloudAst = {
+      kind: "cloud",
+      groups: [],
+      nodes: [{ id: nid("web"), label: "Web", kind: "compute", parent: nid("ghost"), icon: null }],
+      links: [],
+    };
+    expect(layoutCloud(bad, heuristicMeasure).ok).toBe(false);
+  });
+
+  it("fails loudly when a link references an unknown node", () => {
+    const bad: CloudAst = {
+      kind: "cloud",
+      groups: [],
+      nodes: [{ id: nid("web"), label: "Web", kind: "compute", parent: null, icon: null }],
+      links: [{ id: eid("l0"), from: nid("web"), to: nid("ghost"), label: null }],
+    };
+    expect(layoutCloud(bad, heuristicMeasure).ok).toBe(false);
+  });
 
   it("renders groups as containers and nests their children fully inside", () => {
     const g0 = byId.get("g0");

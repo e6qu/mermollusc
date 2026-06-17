@@ -1,4 +1,4 @@
-import { brand, decode, err, ok, type Point, type Result } from "@m/std";
+import { brand, decode, err, type Point, type Result } from "@m/std";
 import type { DiagramAst, FlowchartAst, NodeId, Scene } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
@@ -177,14 +177,14 @@ export const layoutDiagram = async (
     case "flowchart":
       return layout(ast, new Map(), measure);
     case "sequence":
-      return ok(layoutSequence(ast, measure));
+      return layoutSequence(ast, measure);
     case "c4":
-      return ok(layoutC4(ast, measure));
+      return layoutC4(ast, measure);
     case "block":
-      return ok(layoutBlock(ast, measure));
+      return layoutBlock(ast, measure);
     case "network":
-      return ok(layoutNetwork(ast, measure));
+      return layoutNetwork(ast, measure);
     case "cloud":
-      return ok(layoutCloud(ast, measure));
+      return layoutCloud(ast, measure);
   }
 };

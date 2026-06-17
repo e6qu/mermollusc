@@ -2,6 +2,8 @@
 
 _None known._
 
+Checked while making the pure layouts total-by-Result (no silent positional fallbacks).
+
 ## Resolved
 
 - ~~elkjs ships no type definitions~~ — false: `elkjs@0.11.1` ships `lib/elk-api.d.ts`

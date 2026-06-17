@@ -18,8 +18,19 @@ const ast: NetworkAst = {
 };
 
 describe("layoutNetwork", () => {
-  const scene = layoutNetwork(ast, heuristicMeasure);
+  const result = layoutNetwork(ast, heuristicMeasure);
+  if (!result.ok) throw new Error(result.error.message);
+  const scene = result.value;
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+
+  it("fails loudly when a link references an unknown node", () => {
+    const bad: NetworkAst = {
+      kind: "network",
+      nodes: [{ id: nid("a"), label: "A", kind: "server", icon: null }],
+      links: [{ id: eid("l0"), from: nid("a"), to: nid("ghost"), label: null }],
+    };
+    expect(layoutNetwork(bad, heuristicMeasure).ok).toBe(false);
+  });
 
   it("places nodes in a squarish grid (3 nodes → 2 columns)", () => {
     const a = byId.get("a")?.bounds;

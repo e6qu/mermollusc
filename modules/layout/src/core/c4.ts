@@ -1,4 +1,4 @@
-import { brand, point, rect } from "@m/std";
+import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   C4Ast,
   C4Element,
@@ -9,7 +9,7 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
-import type { MeasureText } from "./graph.js";
+import type { LayoutError, MeasureText } from "./graph.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
@@ -33,7 +33,7 @@ const shapeOf = (kind: C4ElementKind): NodeShape =>
 
 // Pure recursive nested-box layout: boundaries wrap their children (sized to fit), siblings sit
 // in a row, relations are straight centre-to-centre edges. No ELK — coordinates are absolute.
-export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
+export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, LayoutError> => {
   const childrenOf = new Map<C4ElementId, C4Element[]>();
   const roots: C4Element[] = [];
   for (const el of ast.elements) {
@@ -72,23 +72,35 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
     cursor += place(root, cursor, 0).w + GAP;
   }
 
-  const nodes: SceneNode[] = ast.elements.map((el) => {
-    const b = boxes.get(el.id) ?? { x: 0, y: 0, w: MIN_LEAF_WIDTH, h: LEAF_HEIGHT };
-    return {
+  // Every element is reached from a root through `place`; an unplaced one means its `parent` points
+  // outside the element set (a dangling or cyclic reference), so fail loudly instead of stacking it
+  // at the origin.
+  const nodes: SceneNode[] = [];
+  for (const el of ast.elements) {
+    const b = boxes.get(el.id);
+    if (b === undefined) {
+      return err({ kind: "layout", message: `c4: element ${el.id} has no box (dangling parent?)` });
+    }
+    nodes.push({
       id: brand<string, "SceneNodeId">(el.id),
       bounds: rect(b.x, b.y, b.w, b.h),
       label: el.label,
       shape: shapeOf(el.kind),
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: null,
-    };
-  });
+    });
+  }
 
   const edges: SceneEdge[] = [];
   for (const rel of ast.rels) {
     const from = boxes.get(rel.from);
     const to = boxes.get(rel.to);
-    if (from === undefined || to === undefined) continue;
+    if (from === undefined || to === undefined) {
+      return err({
+        kind: "layout",
+        message: `c4: relation ${rel.id} references an unknown element`,
+      });
+    }
     edges.push({
       id: brand<string, "SceneEdgeId">(rel.id),
       from: brand<string, "SceneNodeId">(rel.from),
@@ -109,5 +121,5 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return { nodes, edges, extent: rect(0, 0, width, height) };
+  return ok({ nodes, edges, extent: rect(0, 0, width, height) });
 };

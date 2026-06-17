@@ -59,3 +59,11 @@
   magic pack-id literals (`"arch"`, `"simpleicons"`) with named constants in a new `icon-packs.ts`
   (icon *names* stay as data; the literals must match @m/icons, a sibling we can't import — the icon
   ref is the shared contract).
+- Made the five pure layouts total-by-`Result`: `layoutSequence`/`layoutC4`/`layoutCloud`/
+  `layoutBlock`/`layoutNetwork` now return `Result<Scene, LayoutError>` and fail loudly when the AST
+  is internally inconsistent — an edge/relation/message/link endpoint that isn't a known node, or
+  (c4/cloud) an element whose `parent` is dangling or cyclic so it was never placed. This removes the
+  silent `?? 0` (phantom x=0 arrow), `?? {default box}` (orphan stacked at the origin), and
+  dropped-edge `continue` fallbacks. The idiomatic `?? []` multimap accumulation stays — an empty
+  child list is a valid state, not a masked error. The shell dispatcher returns each `Result`
+  directly (no more `ok()` wrapping). +7 fail-loudly unit cases.

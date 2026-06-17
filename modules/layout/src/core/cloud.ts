@@ -1,4 +1,4 @@
-import { brand, point, rect } from "@m/std";
+import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   CloudAst,
   CloudNodeKind,
@@ -9,7 +9,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import { SIMPLE_ICONS_PACK } from "./icon-packs.js";
-import type { MeasureText } from "./graph.js";
+import type { LayoutError, MeasureText } from "./graph.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
@@ -47,7 +47,7 @@ const leafWidth = (label: string, measure: MeasureText): number =>
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.
-export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
+export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, LayoutError> => {
   const elements: Elem[] = [
     ...ast.groups.map((g) => ({
       id: g.id,
@@ -104,23 +104,35 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
     cursor += place(root, cursor, 0).w + GAP;
   }
 
-  const nodes: SceneNode[] = elements.map((el) => {
-    const b = boxes.get(el.id) ?? { x: 0, y: 0, w: MIN_LEAF_WIDTH, h: LEAF_HEIGHT };
-    return {
+  // Every element is reached from a root through `place`; an unplaced one means its `parent` points
+  // outside the element set (a dangling or cyclic reference), so fail loudly instead of stacking it
+  // at the origin.
+  const nodes: SceneNode[] = [];
+  for (const el of elements) {
+    const b = boxes.get(el.id);
+    if (b === undefined) {
+      return err({
+        kind: "layout",
+        message: `cloud: element ${el.id} has no box (dangling parent?)`,
+      });
+    }
+    nodes.push({
       id: brand<string, "SceneNodeId">(el.id),
       bounds: rect(b.x, b.y, b.w, b.h),
       label: el.label,
       shape: el.group ? "container" : "rect",
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: el.icon,
-    };
-  });
+    });
+  }
 
   const edges: SceneEdge[] = [];
   for (const link of ast.links) {
     const from = boxes.get(link.from);
     const to = boxes.get(link.to);
-    if (from === undefined || to === undefined) continue;
+    if (from === undefined || to === undefined) {
+      return err({ kind: "layout", message: `cloud: link ${link.id} references an unknown node` });
+    }
     edges.push({
       id: brand<string, "SceneEdgeId">(link.id),
       from: brand<string, "SceneNodeId">(link.from),
@@ -141,5 +153,5 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return { nodes, edges, extent: rect(0, 0, width, height) };
+  return ok({ nodes, edges, extent: rect(0, 0, width, height) });
 };
