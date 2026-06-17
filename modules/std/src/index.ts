@@ -17,7 +17,8 @@ export type {
   Ok,
   Err,
   Brand,
-  Px,
+  Coordinate,
+  Length,
   Point,
   Size,
   Rect,
@@ -25,5 +26,15 @@ export type {
   LogRecord,
   Logger,
 } from "./core/index.js";
-export { brand, px, point, size, rect, decode, consoleLogger, stamp } from "./shell/index.js";
+export {
+  brand,
+  coordinate,
+  length,
+  point,
+  size,
+  rect,
+  decode,
+  consoleLogger,
+  stamp,
+} from "./shell/index.js";
 export type { DecodeError } from "./shell/index.js";

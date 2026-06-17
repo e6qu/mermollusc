@@ -2,7 +2,7 @@ import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
-import { brand, point, px, rect, size } from "../../src/shell/brand.js";
+import { brand, coordinate, length, point, rect, size } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
 import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
@@ -64,16 +64,22 @@ describe("decode", () => {
 
 describe("branded geometry constructors", () => {
   it("brand is an identity at runtime", () => {
-    expect(brand<number, "Px">(7)).toBe(7);
+    expect(brand<number, "Coordinate">(7)).toBe(7);
   });
 
-  it("px/point/size/rect build the expected numeric shapes", () => {
-    expect(px(3)).toBe(3);
+  it("coordinate/length/point/size/rect build the expected numeric shapes", () => {
+    expect(coordinate(-3)).toBe(-3);
+    expect(length(3)).toBe(3);
     expect(point(1, 2)).toEqual({ x: 1, y: 2 });
     expect(size(4, 5)).toEqual({ width: 4, height: 5 });
     expect(rect(1, 2, 3, 4)).toEqual({
       origin: { x: 1, y: 2 },
       size: { width: 3, height: 4 },
     });
+  });
+
+  it("length rejects a negative extent (fails loud)", () => {
+    expect(() => length(-1)).toThrow(RangeError);
+    expect(length(0)).toBe(0);
   });
 });
