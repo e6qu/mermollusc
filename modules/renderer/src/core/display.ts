@@ -97,6 +97,42 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
   ];
 };
 
+const LABEL_GAP = 11;
+
+// Anchor an edge label at the midpoint *along the routed polyline*, nudged perpendicular to the
+// local segment. The straight average of the endpoints can land inside a node when an orthogonal
+// edge bends around one (e.g. a flowchart branch that routes down the side); the on-path midpoint
+// stays in the routing channel ELK keeps clear, and the perpendicular nudge keeps the stroke from
+// running through the text.
+const edgeLabelAnchor = (points: readonly Point[]): { readonly x: Px; readonly y: Px } => {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a !== undefined && b !== undefined) total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  let remaining = total / 2;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a === undefined || b === undefined) continue;
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segLen === 0) continue;
+    if (remaining <= segLen) {
+      const t = remaining / segLen;
+      const nx = -(b.y - a.y) / segLen;
+      const ny = (b.x - a.x) / segLen;
+      return {
+        x: px(a.x + (b.x - a.x) * t + nx * LABEL_GAP),
+        y: px(a.y + (b.y - a.y) * t + ny * LABEL_GAP),
+      };
+    }
+    remaining -= segLen;
+  }
+  const first = points[0];
+  return first === undefined ? { x: px(0), y: px(0) } : { x: px(first.x), y: px(first.y) };
+};
+
 export const toDisplayList = (scene: Scene): DrawCmd[] => {
   const cmds: DrawCmd[] = [];
   for (const node of scene.nodes) cmds.push(...nodeCmds(node));
@@ -108,15 +144,9 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       dashed: edge.stroke === "dashed",
       arrow: edge.arrow === "filled",
     });
-    const first = edge.waypoints[0];
-    const last = edge.waypoints[edge.waypoints.length - 1];
-    if (edge.label !== null && first !== undefined && last !== undefined) {
-      cmds.push({
-        kind: "label",
-        x: px((first.x + last.x) / 2),
-        y: px((first.y + last.y) / 2 - 8),
-        text: edge.label,
-      });
+    if (edge.label !== null) {
+      const anchor = edgeLabelAnchor(edge.waypoints);
+      cmds.push({ kind: "label", x: anchor.x, y: anchor.y, text: edge.label });
     }
   }
   return cmds;
