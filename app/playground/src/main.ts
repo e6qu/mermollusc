@@ -81,11 +81,13 @@ const zoomInBtn = document.querySelector<HTMLButtonElement>("#zoom-in");
 const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
 const zoomResetBtn = document.querySelector<HTMLButtonElement>("#zoom-reset");
 const zoomFitBtn = document.querySelector<HTMLButtonElement>("#zoom-fit");
+const minimap = document.querySelector<HTMLCanvasElement>("#minimap");
 if (
   zoomInBtn === null ||
   zoomOutBtn === null ||
   zoomResetBtn === null ||
   zoomFitBtn === null ||
+  minimap === null ||
   relaxBtn === null ||
   regenBtn === null ||
   addBtn === null ||
@@ -110,6 +112,8 @@ if (
 ) {
   throw new Error("playground: missing toolbar controls");
 }
+const miniCtx = minimap.getContext("2d");
+if (miniCtx === null) throw new Error("playground: minimap 2d context unavailable");
 
 let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
@@ -125,6 +129,16 @@ let overrides: LayoutOverrides = new Map();
 let viewScale = 1;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 4;
+// The last laid-out scene + logical sheet size, cached so the minimap can redraw on scroll without
+// re-running the main paint. The minimap renders a *simplified* view from the scene (node blocks,
+// faint edges) rather than the full display list — shrunk labels/icons would just be noise.
+let lastRender: {
+  readonly scene: Scene;
+  readonly logicalWidth: number;
+  readonly logicalHeight: number;
+} | null = null;
+// The minimap thumbnail fits inside this box (px), preserving the diagram's aspect.
+const MINIMAP_MAX = 180;
 let selection: Selection = emptySelection;
 // Set membership is unordered, but `connect` needs a direction, so we track click order.
 let selectionOrder: SceneNodeId[] = [];
@@ -227,11 +241,13 @@ const paintScene = (): void => {
   canvas.style.height = `${cssHeight}px`;
   const active = activeTheme();
   canvas.style.backgroundColor = active.background;
+  // Build the display list once and reuse it for both the main canvas and the minimap overview.
+  const cmds = toDisplayList(shown);
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
-  paint(ctx, toDisplayList(shown), iconImages, active);
+  paint(ctx, cmds, iconImages, active);
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 2;
   for (const node of shown.nodes) {
@@ -241,6 +257,91 @@ const paintScene = (): void => {
     }
   }
   ctx.restore();
+  lastRender = { scene: shown, logicalWidth, logicalHeight };
+  drawMinimap();
+};
+
+// A purpose-built small-scale view (not a shrunk copy of the canvas): nodes become solid blocks and
+// edges thin guides, so the *structure* reads at ~180px where labels/icons would be noise. The
+// visible region is left bright while everything outside it is dimmed by a scrim — a clear
+// "you are here" — and framed in the drafting-table accent. Shown only when the sheet overflows.
+const MINIMAP_ACCENT_LIGHT = "#d2602c";
+const MINIMAP_ACCENT_DARK = "#f0894e";
+
+const drawMinimap = (): void => {
+  if (lastRender === null) return;
+  const { scene, logicalWidth, logicalHeight } = lastRender;
+  const overflowing =
+    logicalWidth * viewScale > stageWrap.clientWidth + 1 ||
+    logicalHeight * viewScale > stageWrap.clientHeight + 1;
+  if (!overflowing) {
+    minimap.hidden = true;
+    return;
+  }
+  minimap.hidden = false;
+
+  const miniScale = Math.min(MINIMAP_MAX / logicalWidth, MINIMAP_MAX / logicalHeight);
+  const miniW = logicalWidth * miniScale;
+  const miniH = logicalHeight * miniScale;
+  const dpr = window.devicePixelRatio || 1;
+  minimap.width = Math.round(miniW * dpr);
+  minimap.height = Math.round(miniH * dpr);
+  minimap.style.width = `${miniW}px`;
+  minimap.style.height = `${miniH}px`;
+
+  const active = activeTheme();
+  // Work in logical coordinates (origin at the sheet's content, matching the canvas's MARGIN inset).
+  miniCtx.setTransform(dpr * miniScale, 0, 0, dpr * miniScale, 0, 0);
+  miniCtx.clearRect(0, 0, logicalWidth, logicalHeight);
+  miniCtx.fillStyle = active.background;
+  miniCtx.fillRect(0, 0, logicalWidth, logicalHeight);
+  miniCtx.save();
+  miniCtx.translate(MARGIN, MARGIN);
+  // Faint edges first, then node blocks on top.
+  miniCtx.strokeStyle = active.stroke;
+  miniCtx.globalAlpha = 0.35;
+  miniCtx.lineWidth = 1 / miniScale;
+  for (const edge of scene.edges) {
+    const [head, ...tail] = edge.waypoints;
+    if (head === undefined) continue;
+    miniCtx.beginPath();
+    miniCtx.moveTo(head.x, head.y);
+    for (const p of tail) miniCtx.lineTo(p.x, p.y);
+    miniCtx.stroke();
+  }
+  miniCtx.globalAlpha = 1;
+  miniCtx.fillStyle = active.nodeFill;
+  miniCtx.strokeStyle = active.stroke;
+  miniCtx.lineWidth = 1 / miniScale;
+  for (const node of scene.nodes) {
+    const { origin, size } = node.bounds;
+    miniCtx.fillRect(origin.x, origin.y, size.width, size.height);
+    miniCtx.strokeRect(origin.x, origin.y, size.width, size.height);
+  }
+  miniCtx.restore();
+
+  // The visible logical region, derived from the live canvas/stage rects so the centred/padded
+  // scroll container needs no special-casing. Coordinates are logical px from the canvas origin.
+  const canvasRect = canvas.getBoundingClientRect();
+  const wrapRect = stageWrap.getBoundingClientRect();
+  const left = Math.max(0, (wrapRect.left - canvasRect.left) / viewScale);
+  const top = Math.max(0, (wrapRect.top - canvasRect.top) / viewScale);
+  const right = Math.min(logicalWidth, left + stageWrap.clientWidth / viewScale);
+  const bottom = Math.min(logicalHeight, top + stageWrap.clientHeight / viewScale);
+
+  // Dim everything *outside* the viewport with a scrim (four bands), leaving the visible region
+  // bright — the strongest "you are here" cue at this size.
+  const dark = theme === darkTheme;
+  miniCtx.fillStyle = dark ? "rgba(7,16,15,0.5)" : "rgba(24,37,41,0.34)";
+  miniCtx.fillRect(0, 0, logicalWidth, top);
+  miniCtx.fillRect(0, bottom, logicalWidth, logicalHeight - bottom);
+  miniCtx.fillRect(0, top, left, bottom - top);
+  miniCtx.fillRect(right, top, logicalWidth - right, bottom - top);
+
+  const accent = dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
+  miniCtx.strokeStyle = accent;
+  miniCtx.lineWidth = 2 / miniScale;
+  miniCtx.strokeRect(left, top, right - left, bottom - top);
 };
 
 const updateZoomLabel = (): void => {
@@ -294,6 +395,40 @@ canvas.addEventListener(
   },
   { passive: false },
 );
+
+// Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
+// cheap, since it reuses the cached display list rather than re-running the main paint.
+stageWrap.addEventListener("scroll", drawMinimap);
+window.addEventListener("resize", drawMinimap);
+
+// Click or drag in the minimap to centre the stage viewport on that point. Maps minimap px →
+// logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
+let minimapDragging = false;
+const minimapNavigate = (ev: PointerEvent): void => {
+  if (lastRender === null || minimap.hidden) return;
+  const rect = minimap.getBoundingClientRect();
+  const miniScale = rect.width / lastRender.logicalWidth;
+  const logicalX = (ev.clientX - rect.left) / miniScale;
+  const logicalY = (ev.clientY - rect.top) / miniScale;
+  const canvasRect = canvas.getBoundingClientRect();
+  const wrapRect = stageWrap.getBoundingClientRect();
+  const canvasContentLeft = stageWrap.scrollLeft + (canvasRect.left - wrapRect.left);
+  const canvasContentTop = stageWrap.scrollTop + (canvasRect.top - wrapRect.top);
+  stageWrap.scrollLeft = canvasContentLeft + logicalX * viewScale - stageWrap.clientWidth / 2;
+  stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
+};
+minimap.addEventListener("pointerdown", (ev) => {
+  minimapDragging = true;
+  minimap.setPointerCapture(ev.pointerId);
+  minimapNavigate(ev);
+});
+minimap.addEventListener("pointermove", (ev) => {
+  if (minimapDragging) minimapNavigate(ev);
+});
+minimap.addEventListener("pointerup", (ev) => {
+  minimapDragging = false;
+  minimap.releasePointerCapture(ev.pointerId);
+});
 
 // Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
 // current text failed to parse (it would just keep showing the last good render). On error we also

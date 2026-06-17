@@ -221,8 +221,12 @@
       }
 
       /* ---- stage: drafting table with the diagram as a sheet ---- */
+      /* The column holds the scrolling stage plus a corner-pinned minimap overlay (which must sit
+         outside the scroll container so it stays put while the sheet scrolls). */
+      .stage-col { position: relative; min-height: 0; display: flex; }
       .stage-wrap {
         position: relative;
+        flex: 1;
         border-radius: var(--radius);
         border: 1px solid var(--line);
         overflow: auto;
@@ -249,6 +253,23 @@
       /* When the source no longer parses, the sheet shows a stale render — dim it so the canvas
          can never silently masquerade as matching the text. */
       .stage-wrap[data-stale="true"] #stage { opacity: 0.4; filter: grayscale(0.6); }
+
+      /* Overview minimap, pinned bottom-right of the stage column; shown only when the sheet
+         overflows the stage. Sized in JS to the diagram's aspect. */
+      .minimap {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        opacity: 0.9;
+        transition: opacity 0.12s ease, border-color 0.12s ease;
+      }
+      .minimap:hover { opacity: 1; border-color: var(--primary); }
+      .minimap[hidden] { display: none; }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -425,10 +446,18 @@
           </div>
         </section>
 
-        <section class="stage-wrap" id="stage-wrap">
-          <div class="stage-inner">
-            <canvas id="stage" width="400" height="300"></canvas>
+        <section class="stage-col">
+          <div class="stage-wrap" id="stage-wrap">
+            <div class="stage-inner">
+              <canvas id="stage" width="400" height="300"></canvas>
+            </div>
           </div>
+          <canvas
+            id="minimap"
+            class="minimap"
+            title="Overview — click or drag to navigate"
+            hidden
+          ></canvas>
         </section>
       </main>
 
