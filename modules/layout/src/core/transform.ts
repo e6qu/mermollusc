@@ -6,6 +6,7 @@ import type {
   FlowDirection,
   FlowEdge,
   FlowNode,
+  FlowSubgraph,
   FlowchartAst,
   NodeId,
   Scene,
@@ -21,9 +22,11 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow
 };
 import {
   heuristicMeasure,
+  type ContainerNode,
   type LayoutConfig,
   type LayoutError,
   type LayoutGraph,
+  type LeafNode,
   type MeasureText,
   type PositionedGraph,
 } from "./graph.js";
@@ -50,29 +53,54 @@ export const toElkGraph = (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point> = new Map(),
   measure: MeasureText = heuristicMeasure,
-): LayoutGraph => ({
-  id: "root",
-  config: {
-    direction: ELK_DIRECTION[ast.direction],
-    interactive: seed.size > 0,
-    nodeSpacing: NODE_SPACING,
-    layerSpacing: NODE_SPACING,
-  },
-  children: ast.nodes.map((n) => {
+): LayoutGraph => {
+  const nodeById = new Map<NodeId, FlowNode>(ast.nodes.map((n) => [n.id, n]));
+
+  const leaf = (n: FlowNode): LeafNode => {
     const at = seed.get(n.id);
     const width = nodeWidth(n.label, measure);
     // A circle must be square to actually render as a circle (the renderer rounds corners by
     // min(w,h)/2); size it to the larger of the label width and the standard node height.
     const side = Math.max(width, NODE_HEIGHT);
     return {
+      kind: "leaf",
       id: n.id,
       width: n.shape === "circle" ? side : width,
       height: n.shape === "circle" ? side : NODE_HEIGHT,
       position: at === undefined ? null : { x: at.x, y: at.y },
     };
-  }),
-  edges: ast.edges.map((e) => ({ id: e.id, sources: [e.from], targets: [e.to] })),
-});
+  };
+
+  // A subgraph becomes a container whose children are its member leaves plus nested subgraph
+  // containers; ELK sizes it to fit them.
+  const container = (sg: FlowSubgraph): ContainerNode => ({
+    kind: "container",
+    id: sg.id,
+    children: [
+      ...sg.nodes.flatMap((id) => {
+        const n = nodeById.get(id);
+        return n === undefined ? [] : [leaf(n)];
+      }),
+      ...ast.subgraphs.filter((s) => s.parent === sg.id).map(container),
+    ],
+  });
+
+  const memberIds = new Set<NodeId>(ast.subgraphs.flatMap((s) => [...s.nodes]));
+  return {
+    id: "root",
+    config: {
+      direction: ELK_DIRECTION[ast.direction],
+      interactive: seed.size > 0,
+      nodeSpacing: NODE_SPACING,
+      layerSpacing: NODE_SPACING,
+    },
+    children: [
+      ...ast.nodes.filter((n) => !memberIds.has(n.id)).map(leaf),
+      ...ast.subgraphs.filter((s) => s.parent === null).map(container),
+    ],
+    edges: ast.edges.map((e) => ({ id: e.id, sources: [e.from], targets: [e.to] })),
+  };
+};
 
 export const toScene = (
   positioned: PositionedGraph,
@@ -80,9 +108,24 @@ export const toScene = (
 ): Result<Scene, LayoutError> => {
   const nodeById = new Map<string, FlowNode>(ast.nodes.map((n) => [n.id, n]));
   const edgeById = new Map<string, FlowEdge>(ast.edges.map((e) => [e.id, e]));
+  const subgraphById = new Map<NodeId, FlowSubgraph>(ast.subgraphs.map((s) => [s.id, s]));
 
   const nodes: SceneNode[] = [];
   for (const pn of positioned.nodes) {
+    const parent = pn.parent === null ? null : brand<string, "SceneNodeId">(pn.parent);
+    const sub = subgraphById.get(brand<string, "NodeId">(pn.id));
+    if (sub !== undefined) {
+      // A subgraph container: drawn as an outlined box with its title near the top.
+      nodes.push({
+        id: brand<string, "SceneNodeId">(pn.id),
+        bounds: rect(pn.x, pn.y, pn.width, pn.height),
+        label: sub.label,
+        shape: "container",
+        parent,
+        icon: null,
+      });
+      continue;
+    }
     const fn = nodeById.get(pn.id);
     if (fn === undefined) return err({ kind: "layout", message: `node ${pn.id} missing from AST` });
     nodes.push({
@@ -90,7 +133,7 @@ export const toScene = (
       bounds: rect(pn.x, pn.y, pn.width, pn.height),
       label: fn.label,
       shape: fn.shape,
-      parent: null,
+      parent,
       icon: null,
     });
   }

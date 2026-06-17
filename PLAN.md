@@ -72,7 +72,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/std` | ✅ Result, Brand, geometry, Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 22 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
 | `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 44 |
-| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes · ✅ routing · property tests | 25 |
+| `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 26 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based incl. relabel/connect) | 29 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |

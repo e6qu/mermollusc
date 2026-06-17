@@ -7,7 +7,14 @@
   manual positions; an empty seed (the default) is a clean layout (regenerate).
 - core uses a typed `LayoutConfig`; the string-keyed ELK option bag is built only in the shell.
 - core (pure): `toElkGraph(ast, seed)` (sizes `circle` nodes square so they render round; other
-  shapes are label-width boxes) and `toScene(positioned, ast)`.
+  shapes are label-width boxes) and `toScene(positioned, ast)`. `LayoutNode` is a `Leaf | Container`
+  discriminated union — a leaf carries its size, a container only its children (ELK sizes it), so a
+  "leaf with children" / "sized container" is unrepresentable.
+- **Subgraphs:** `toElkGraph` nests `FlowchartAst.subgraphs` as ELK compound nodes (members + nested
+  subgraphs as children, title padding); the shell lays out with `hierarchyHandling: INCLUDE_CHILDREN`
+  and flattens ELK's parent-relative child coordinates to absolutes (`PositionedNode.parent` tags the
+  container). `toScene` emits a `container`-shape SceneNode per subgraph with members parented to it —
+  which the renderer's existing C4-boundary `container` rendering draws, so no renderer change.
 - `layoutSequence(ast)` (pure): actors row, vertical dashed lifelines, stacked message arrows.
 - `layoutC4(ast)` (pure): nested-box layout — boundaries wrap their children; relations are
   straight centre-to-centre edges.
@@ -22,6 +29,6 @@
   the app injects a real canvas `measureText`. `layoutDiagram(ast, measure?)` / `layout(ast, seed,
   measure?)` thread it through.
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
-- tests: 25 passing (toElkGraph/toScene incl. square circle nodes; clean layout; relax; sequence; C4;
+- tests: 26 passing (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy (container + absolute member coords); clean layout; relax; sequence; C4;
   block/network grid; cloud nesting + icons; injected-measurer sizing; routing; property-based:
   block/network grids **and the ELK flowchart path** preserve ids + fit every box inside the extent).

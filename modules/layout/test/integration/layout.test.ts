@@ -49,6 +49,45 @@ describe("layout", () => {
     expect(r.value.extent.size.width).toBeGreaterThan(0);
   });
 
+  it("nests subgraph members inside a sized container, with absolute coordinates", async () => {
+    const ast: FlowchartAst = {
+      kind: "flowchart",
+      direction: "TB",
+      nodes: [
+        { id: nid("api"), label: "API", shape: "rect" },
+        { id: nid("db"), label: "DB", shape: "rect" },
+        { id: nid("user"), label: "User", shape: "rect" },
+      ],
+      edges: [
+        { id: eid("e0"), from: nid("api"), to: nid("db"), kind: "arrow", label: null },
+        { id: eid("e1"), from: nid("user"), to: nid("api"), kind: "arrow", label: null },
+      ],
+      subgraphs: [
+        { id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api"), nid("db")] },
+      ],
+    };
+    const r = await layout(ast);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+
+    const snid = (s: string) => brand<string, "SceneNodeId">(s);
+    const byId = new Map(r.value.nodes.map((n) => [n.id, n]));
+    const backend = byId.get(snid("Backend"));
+    const api = byId.get(snid("api"));
+    const user = byId.get(snid("user"));
+    expect(backend?.shape).toBe("container");
+    expect(api?.parent).toBe("Backend");
+    expect(user?.parent).toBe(null);
+    if (backend === undefined || api === undefined) throw new Error("missing nodes");
+    // Member coordinates are absolute and fall within the container's box.
+    const b = backend.bounds;
+    const a = api.bounds;
+    expect(a.origin.x).toBeGreaterThanOrEqual(b.origin.x);
+    expect(a.origin.y).toBeGreaterThanOrEqual(b.origin.y);
+    expect(a.origin.x + a.size.width).toBeLessThanOrEqual(b.origin.x + b.size.width);
+    expect(a.origin.y + a.size.height).toBeLessThanOrEqual(b.origin.y + b.size.height);
+  });
+
   it("relaxes around a seed: flipped seed order flips the layout", async () => {
     const clean = await layout(A_THEN_B);
     expect(isOk(clean)).toBe(true);
