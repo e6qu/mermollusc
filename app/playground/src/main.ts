@@ -74,6 +74,7 @@ const iconPicker = document.querySelector<HTMLElement>("#icon-picker");
 const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
 const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
 const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
+const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -92,7 +93,8 @@ if (
   iconPicker === null ||
   iconFilter === null ||
   iconGrid === null ||
-  exportBtn === null
+  exportBtn === null ||
+  exportPdfBtn === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -764,36 +766,126 @@ iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
 iconsClose.addEventListener("click", () => setPickerOpen(false));
 iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
 
-// Export the current diagram as a PNG at the canvas's device resolution. The themed surface colour
-// lives only in CSS (the canvas pixels are transparent where nothing is drawn), so composite onto a
-// background-filled offscreen canvas first — otherwise the download would have a transparent ground.
-exportBtn.addEventListener("click", () => {
+// The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
+// drawn), so an export composites onto a background-filled offscreen canvas at device resolution —
+// otherwise the output would have a transparent ground.
+const compositeCanvas = (): HTMLCanvasElement | null => {
   const out = document.createElement("canvas");
   out.width = canvas.width;
   out.height = canvas.height;
   const octx = out.getContext("2d");
-  if (octx === null) {
+  if (octx === null) return null;
+  octx.fillStyle = activeTheme().background;
+  octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(canvas, 0, 0);
+  return out;
+};
+
+const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+exportBtn.addEventListener("click", () => {
+  const out = compositeCanvas();
+  if (out === null) {
     console.error("export failed: 2d context unavailable");
     setStatus("error", "PNG export failed — no 2D context");
     return;
   }
-  octx.fillStyle = activeTheme().background;
-  octx.fillRect(0, 0, out.width, out.height);
-  octx.drawImage(canvas, 0, 0);
   out.toBlob((blob) => {
     if (blob === null) {
       console.error("export failed: toBlob returned null");
       setStatus("error", "PNG export failed");
       return;
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mermollusc.png";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "mermollusc.png");
     setStatus("ok", "exported mermollusc.png");
   }, "image/png");
+});
+
+// PDF export, dependency-free: wrap the composited canvas (as a JPEG) in a minimal one-page PDF —
+// a DCTDecode image XObject placed to fill a MediaBox sized in CSS px (so the embedded device-res
+// JPEG renders at high DPI). Byte offsets are tracked as the body is assembled, for the xref table.
+const bytesOf = (binary: string): Uint8Array => {
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+};
+
+const buildImagePdf = (
+  jpeg: Uint8Array,
+  pxWidth: number,
+  pxHeight: number,
+  ptWidth: number,
+  ptHeight: number,
+): Blob => {
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  const offsets: number[] = [];
+  let len = 0;
+  const pushBytes = (bytes: Uint8Array): void => {
+    parts.push(bytes);
+    len += bytes.length;
+  };
+  const pushText = (text: string): void => pushBytes(enc.encode(text));
+  const startObject = (header: string): void => {
+    offsets.push(len);
+    pushText(header);
+  };
+
+  pushText("%PDF-1.4\n");
+  startObject("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  startObject("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  startObject(
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ptWidth} ${ptHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+  );
+  startObject(
+    `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pxWidth} /Height ${pxHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
+  );
+  pushBytes(jpeg);
+  pushText("\nendstream\nendobj\n");
+  const content = `q ${ptWidth} 0 0 ${ptHeight} 0 0 cm /Im0 Do Q`;
+  startObject(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+
+  const xrefAt = len;
+  let xref = `xref\n0 6\n0000000000 65535 f \n`;
+  for (const off of offsets) xref += `${String(off).padStart(10, "0")} 00000 n \n`;
+  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+  pushText(xref);
+
+  const pdf = new Uint8Array(len);
+  let at = 0;
+  for (const part of parts) {
+    pdf.set(part, at);
+    at += part.length;
+  }
+  return new Blob([pdf], { type: "application/pdf" });
+};
+
+exportPdfBtn.addEventListener("click", () => {
+  const out = compositeCanvas();
+  if (out === null) {
+    console.error("export failed: 2d context unavailable");
+    setStatus("error", "PDF export failed — no 2D context");
+    return;
+  }
+  const dataUrl = out.toDataURL("image/jpeg", 0.92);
+  const jpeg = bytesOf(atob(dataUrl.slice(dataUrl.indexOf(",") + 1)));
+  const dpr = window.devicePixelRatio || 1;
+  const pdf = buildImagePdf(
+    jpeg,
+    out.width,
+    out.height,
+    Math.round(out.width / dpr),
+    Math.round(out.height / dpr),
+  );
+  downloadBlob(pdf, "mermollusc.pdf");
+  setStatus("ok", "exported mermollusc.pdf");
 });
 
 const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
