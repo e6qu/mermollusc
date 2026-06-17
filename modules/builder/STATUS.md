@@ -8,9 +8,11 @@
 - two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line) — both line-based, bracket-aware.
-- tests: 31 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: 39 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases, and
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept)).
+- groups (sidecar, in `@m/contracts`): `group`/`ungroup`/`setLocked` + `parentOf`/`leafNodes`/
+  `topGroupOfNode`/`pathLocked`/`topGroups` — nestable, member-ordered, move-only lock; never in text.
 - The app wires these into affordances: shift-click multi-select → **Connect**; **Delete** key →
   `deleteNode` for selected nodes and `deleteEdge` for a selected edge.
 - Not yet: span-accurate delete (line-based heuristic for now); change-direction.

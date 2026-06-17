@@ -45,6 +45,7 @@ export type {
   Scene,
 } from "./scene.js";
 export type { LayoutOverrides, NodeOverride } from "./overrides.js";
+export type { GroupId, GroupMember, Group, Groups } from "./groups.js";
 export type {
   TextSpan,
   NodeSpans,

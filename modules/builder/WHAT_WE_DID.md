@@ -28,3 +28,10 @@
   boxes' borders (`borderPoint`). It also grows the scene extent to include moved nodes so a node
   dragged past the original bounds isn't clipped by the stage. +2 unit tests (boundary re-anchor,
   group translate).
+- Sidecar element-group model (`@m/contracts` `Group`/`Groups` + builder ops): `group`/`ungroup`/
+  `setLocked` and queries `parentOf`/`leafNodes`/`topGroupOfNode`/`pathLocked`/`topGroups`. Groups are
+  family-agnostic, arbitrarily nestable, and member-ordered; `ungroup` splices a dissolved group's
+  members back into its parent in place ("unbundled in the same order"), or frees them at top level.
+  Move-only lock (`pathLocked` reports a lock anywhere up a node's chain). +9 unit tests
+  (nesting, order-preserving ungroup, lock propagation, node/group id disambiguation). Pure core,
+  no UI yet — the app wiring (group/ungroup/lock affordances, move-whole-group, outline) is next.

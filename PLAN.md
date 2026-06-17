@@ -24,7 +24,7 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
 | module | owns |
 |--------|------|
 | `@m/std` | branded-type kit, `Result`, generic `Logger` contract, `Coordinate`/`Length` geometry, `brand()`/`decode()` |
-| `@m/contracts` | AST (flowchart, sequence, C4, block, network) + SceneGraph IR + overrides + source-map types |
+| `@m/contracts` | AST (flowchart, sequence, C4, block, network) + SceneGraph IR + overrides + sidecar groups + source-map types |
 | `@m/parser` | text → AST (+ source spans), AST → text (printer) |
 | `@m/layout` | AST → positioned Scene (ELK), relax via semi-interactive seeds |
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
@@ -74,7 +74,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 44 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 26 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
-| `@m/builder` | ✅ hit-test, selection, overrides (move + connector re-anchor + extent growth), two-way relabel/add/connect/delete-node/delete-edge (+ property-based incl. relabel/connect) | 31 |
+| `@m/builder` | ✅ hit-test, selection, overrides (move + connector re-anchor + extent growth), two-way relabel/add/connect/delete-node/delete-edge · sidecar group model (nestable, move-only lock) (+ property-based) | 39 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
 | `@m/app` | ✅ renders + two-way edits all six families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) | 7 vitest + 49 Playwright |
 
