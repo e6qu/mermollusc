@@ -38,7 +38,7 @@ import {
   parseSequenceWithSource,
   parseWithSource,
 } from "@m/parser";
-import { darkTheme, defaultTheme, paint, toDisplayList } from "@m/renderer";
+import { darkTheme, defaultTheme, paint, toDisplayList, toSvg } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
 
@@ -75,6 +75,7 @@ const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
 const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
 const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
+const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -94,7 +95,8 @@ if (
   iconFilter === null ||
   iconGrid === null ||
   exportBtn === null ||
-  exportPdfBtn === null
+  exportPdfBtn === null ||
+  exportSvgBtn === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -886,6 +888,35 @@ exportPdfBtn.addEventListener("click", () => {
   );
   downloadBlob(pdf, "mermollusc.pdf");
   setStatus("ok", "exported mermollusc.pdf");
+});
+
+// SVG export, true vector: serialise the same display list the canvas paints, via the renderer's
+// `toSvg` backend. Icon glyphs are embedded as `<image>` hrefs (the icon SVG as a data URL),
+// resolved here because the renderer can't depend on `@m/icons`.
+exportSvgBtn.addEventListener("click", () => {
+  if (scene === null) {
+    setStatus("error", "nothing to export yet");
+    return;
+  }
+  const shown = applyOverrides(scene, overrides);
+  const icons = new Map<string, string>();
+  for (const node of shown.nodes) {
+    if (node.icon === null) continue;
+    const key = `${node.icon.pack}/${node.icon.name}`;
+    if (icons.has(key)) continue;
+    const resolved = findIcon(registry, node.icon.pack, node.icon.name);
+    if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value));
+    else console.error("icon resolve failed:", resolved.error.message);
+  }
+  const svg = toSvg(toDisplayList(shown), {
+    width: Math.ceil(shown.extent.size.width) + MARGIN * 2,
+    height: Math.ceil(shown.extent.size.height) + MARGIN * 2,
+    margin: MARGIN,
+    theme: activeTheme(),
+    icons,
+  });
+  downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "mermollusc.svg");
+  setStatus("ok", "exported mermollusc.svg");
 });
 
 const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;

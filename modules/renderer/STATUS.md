@@ -12,6 +12,10 @@
   maps `${pack}/${name}` → a pre-rasterised `CanvasImageSource` (missing → glyph skipped); `theme`
   (`Theme` — `defaultTheme` light / `darkTheme`, each with a `sketch` flag) supplies the surface +
   node/stroke/text colours + font.
+- shell: `toSvg(cmds, opts)` — a **vector SVG backend** over the same `DrawCmd[]` display list (box
+  → `<rect>`, diamond → `<polygon>`, polyline → `<polyline>` + an `<marker>` arrowhead, label →
+  `<text>`, icon → `<image href>` from a supplied `pack/name`→href map). Pure string output; renders
+  the crisp shapes (no sketch jitter). Backs the app's "SVG" export.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
 - **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges become wobbly, double-stroked
   hand-drawn outlines via a seeded LCG jitter — deterministic, no fill, using only the structural
@@ -19,4 +23,5 @@
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
   only, the default `paint` path is always used.
-- tests: 9 passing (display-list unit incl. icon; paint mock — drawImage/theme/sketch; html-in-canvas detect).
+- tests: 13 passing (display-list unit incl. icon; paint mock — drawImage/theme/sketch; html-in-canvas
+  detect; `toSvg` — shapes/escaping/icon `<image>`).

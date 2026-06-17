@@ -119,7 +119,7 @@
       /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
       #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
       #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
-      #export-png::before, #export-pdf::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
+      #export-png::before, #export-pdf::before, #export-svg::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
 
       .select-field, .filebtn {
         display: inline-flex;
@@ -387,6 +387,8 @@
             title="Download the current diagram as a PNG (at the screen's pixel density)">PNG</button>
           <button id="export-pdf" type="button"
             title="Download the current diagram as a one-page PDF">PDF</button>
+          <button id="export-svg" type="button"
+            title="Download the current diagram as a vector SVG">SVG</button>
           <label class="filebtn"
             title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
             <input id="load-pack" type="file" accept="application/json" />

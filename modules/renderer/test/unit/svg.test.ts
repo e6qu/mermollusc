@@ -1,0 +1,84 @@
+import { brand, point, rect } from "@m/std";
+import type { Scene } from "@m/contracts";
+import { describe, expect, it } from "vitest";
+import { toDisplayList } from "../../src/core/display.js";
+import { defaultTheme } from "../../src/shell/paint.js";
+import { toSvg } from "../../src/shell/svg.js";
+
+const snid = (s: string) => brand<string, "SceneNodeId">(s);
+const seid = (s: string) => brand<string, "SceneEdgeId">(s);
+
+const scene: Scene = {
+  nodes: [
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null },
+  ],
+  edges: [
+    {
+      id: seid("e0"),
+      from: snid("A"),
+      to: snid("B"),
+      waypoints: [point(30, 40), point(30, 80)],
+      label: "go",
+      stroke: "solid",
+      arrow: "filled",
+    },
+  ],
+  extent: rect(0, 0, 60, 120),
+};
+
+describe("toSvg", () => {
+  const svg = toSvg(toDisplayList(scene), {
+    width: 108,
+    height: 168,
+    margin: 24,
+    theme: defaultTheme,
+    icons: new Map(),
+  });
+
+  it("produces a well-formed SVG document with the theme background", () => {
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg.trimEnd().endsWith("</svg>")).toBe(true);
+    expect(svg).toContain(`fill="${defaultTheme.background}"`);
+    expect(svg).toContain('viewBox="0 0 108 168"');
+  });
+
+  it("maps each shape kind to its SVG element", () => {
+    expect(svg).toContain("<rect"); // the rect node (+ background)
+    expect(svg).toContain("<polygon"); // the diamond node
+    expect(svg).toContain("<polyline"); // the edge
+    expect(svg).toContain('marker-end="url(#arrow)"'); // the filled arrow
+    expect(svg).toContain("<text"); // labels
+  });
+
+  it("escapes label text", () => {
+    expect(svg).toContain("A &lt; B");
+    expect(svg).not.toContain("A < B");
+  });
+
+  it("emits an <image> for a node icon when an href is supplied", () => {
+    const iconScene: Scene = {
+      nodes: [
+        {
+          id: snid("S"),
+          bounds: rect(0, 0, 60, 40),
+          label: "S",
+          shape: "rect",
+          parent: null,
+          icon: { pack: "p", name: "n" },
+        },
+      ],
+      edges: [],
+      extent: rect(0, 0, 60, 40),
+    };
+    const withIcon = toSvg(toDisplayList(iconScene), {
+      width: 108,
+      height: 88,
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map([["p/n", "data:image/svg+xml,<svg/>"]]),
+    });
+    expect(withIcon).toContain("<image");
+    expect(withIcon).toContain("p/n".length > 0 ? "href=" : "");
+  });
+});
