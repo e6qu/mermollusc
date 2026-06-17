@@ -3,11 +3,12 @@
 **State:** hit-testing, selection, overrides, and two-way text patching; `make check` green.
 
 - core: `hitTest`; `Selection` (`selectOnly`/`toggle`/`isSelected`); overrides
-  (`moveNode`/`clearOverride`/`applyOverrides`).
+  (`moveNode`/`clearOverride`/`applyOverrides` — moving nodes re-anchors their connectors and grows
+  the extent so dragged-out nodes aren't clipped; a uniformly-moved group keeps its edge routes).
 - two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line) — both line-based, bracket-aware.
-- tests: 29 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: 31 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases, and
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept)).
 - The app wires these into affordances: shift-click multi-select → **Connect**; **Delete** key →

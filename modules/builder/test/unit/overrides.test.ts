@@ -44,6 +44,21 @@ describe("overrides", () => {
     expect(applyOverrides(scene, new Map())).toBe(scene);
   });
 
+  it("re-anchors a boundary edge to the moved node's new border", () => {
+    // Move only A → the A→B edge must re-anchor; its A end lands on A's new (left) border toward B.
+    const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(200, 50)));
+    // A' = rect(200,50,60,40) centre (230,70); B centre (30,120) → border point on A' toward B.
+    expect(moved.edges[0]?.waypoints).toEqual([point(200, 77.5), point(60, 112.5)]);
+  });
+
+  it("translates an edge whose endpoints both move by the same delta (group move)", () => {
+    let o: LayoutOverrides = moveNode(new Map(), snid("A"), point(100, 10));
+    o = moveNode(o, snid("B"), point(100, 110)); // both shifted by (+100, +10)
+    const moved = applyOverrides(scene, o);
+    // The route is preserved, just translated — not re-anchored to borders.
+    expect(moved.edges[0]?.waypoints).toEqual([point(130, 50), point(130, 110)]);
+  });
+
   it("clearOverride removes a node's override", () => {
     const o = moveNode(new Map(), snid("A"), point(200, 50));
     expect(clearOverride(o, snid("A")).has(snid("A"))).toBe(false);
