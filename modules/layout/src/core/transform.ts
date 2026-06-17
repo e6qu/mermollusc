@@ -14,6 +14,15 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
+import type {
+  ContainerNode,
+  LayoutConfig,
+  LayoutError,
+  LayoutGraph,
+  LeafNode,
+  MeasureText,
+  PositionedGraph,
+} from "./graph.js";
 
 const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow: EdgeArrow }> = {
   arrow: { stroke: "solid", arrow: "filled" },
@@ -21,15 +30,6 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow
   dotted: { stroke: "dashed", arrow: "filled" },
   thick: { stroke: "solid", arrow: "filled" },
 };
-import {
-  type ContainerNode,
-  type LayoutConfig,
-  type LayoutError,
-  type LayoutGraph,
-  type LeafNode,
-  type MeasureText,
-  type PositionedGraph,
-} from "./graph.js";
 
 const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
   TB: "DOWN",

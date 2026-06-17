@@ -82,8 +82,27 @@ for (const file of tsFiles(srcDir)) {
       if (node.moduleSpecifier !== undefined && clause === undefined) return "wildcard `export *`";
       if (clause !== undefined && ts.isNamespaceExport(clause)) return "wildcard `export * as`";
     }
+    // Inline `import("…")` type expressions are banned — use a named top-level import instead.
+    if (ts.isImportTypeNode(node)) return "inline `import(...)` type (use a top-level import)";
     return null;
   });
+}
+
+// Whole src: imports must sit at the top of the file. Mid-file imports are banned even to break a
+// circular dependency — rearrange the files instead.
+for (const file of tsFiles(srcDir)) {
+  const sf = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+  let seenNonImport = false;
+  for (const stmt of sf.statements) {
+    if (ts.isImportDeclaration(stmt) || ts.isImportEqualsDeclaration(stmt)) {
+      if (seenNonImport) {
+        const { line, character } = sf.getLineAndCharacterOfPosition(stmt.getStart(sf));
+        violations.push(`${file}:${line + 1}:${character + 1}  mid-file import (move to the top; rearrange files instead of inlining)`);
+      }
+    } else {
+      seenNonImport = true;
+    }
+  }
 }
 
 // Whole src: no type/lint suppression directives.
