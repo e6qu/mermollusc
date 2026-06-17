@@ -8,7 +8,7 @@
 - two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line) — both line-based, bracket-aware.
-- tests: 42 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: 44 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases, and
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept)).
 - groups (sidecar, in `@m/contracts`): `group`/`ungroup`/`setLocked` + `parentOf`/`leafNodes`/

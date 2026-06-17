@@ -1,9 +1,16 @@
 import { brand, isOk } from "@m/std";
-import { parseNetworkWithSource, parseWithSource } from "@m/parser";
+import {
+  parseC4WithSource,
+  parseNetworkWithSource,
+  parseSequenceWithSource,
+  parseWithSource,
+} from "@m/parser";
 import { describe, expect, it } from "vitest";
 import {
   addNode,
   connect,
+  connectC4,
+  connectMessage,
   connectUndirected,
   deleteEdge,
   deleteNode,
@@ -12,6 +19,8 @@ import {
 } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
+const cid = (s: string) => brand<string, "C4ElementId">(s);
+const aid = (s: string) => brand<string, "ActorId">(s);
 
 const sourceOf = (text: string) => {
   const r = parseWithSource(text);
@@ -80,6 +89,24 @@ describe("relabelNode", () => {
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.value.ast.links.some((l) => l.from === "a" && l.to === "b")).toBe(true);
+  });
+
+  it("connectC4 appends a Rel the C4 parser accepts", () => {
+    const next = connectC4('C4Context\n  Person(a, "A")\n  System(b, "B")\n', cid("a"), cid("b"));
+    expect(next).toContain('Rel(a, b, "")');
+    const r = parseC4WithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.rels.some((rel) => rel.from === "a" && rel.to === "b")).toBe(true);
+  });
+
+  it("connectMessage appends a message the sequence parser accepts", () => {
+    const next = connectMessage("sequenceDiagram\n  A->>B: hi\n", aid("A"), aid("B"));
+    expect(next).toContain("A->>B: message");
+    const r = parseSequenceWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.messages.filter((m) => m.from === "A" && m.to === "B")).toHaveLength(2);
   });
 
   it("deleteNode removes the node's declaration and its edges", () => {

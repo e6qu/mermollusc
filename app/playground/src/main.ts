@@ -2,6 +2,8 @@ import {
   addNode,
   applyOverrides,
   connect,
+  connectC4,
+  connectMessage,
   connectUndirected,
   decodeOverlay,
   deleteEdge,
@@ -620,11 +622,11 @@ statusEl.addEventListener("click", () => {
   srcEl.setSelectionRange(errorRange.offset, errorRange.offset + errorRange.length);
 });
 
-// Add-node and Relax patch/seed flowchart specifically; Connect + Delete now work for every family
-// with a two-token edge syntax (flowchart/block use `-->`, network/cloud use `--`). Sequence/C4 have
-// distinct edge syntax (messages / `Rel(...)`) and aren't wired yet. Disabling a control off its
-// families makes that explicit rather than a silent dead click.
-const STRUCTURAL_FAMILIES = new Set<DiagramAst["kind"]>(["flowchart", "block", "network", "cloud"]);
+// Add-node and Relax patch/seed flowchart specifically. Connect now works for every family (each
+// emits its own edge syntax). Delete is wired for families with a two-token edge line (the generic
+// token-based remover); sequence/C4 deletion needs bespoke patchers and isn't wired yet. Disabling a
+// control off its families makes that explicit rather than a silent dead click.
+const DELETE_FAMILIES = new Set<DiagramAst["kind"]>(["flowchart", "block", "network", "cloud"]);
 const flowchartOnly = [addBtn, relaxBtn];
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
@@ -633,8 +635,6 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
     btn.disabled = !isFlowchart;
     btn.title = isFlowchart ? "" : "flowchart only";
   }
-  connectBtn.disabled = !STRUCTURAL_FAMILIES.has(kind);
-  connectBtn.title = STRUCTURAL_FAMILIES.has(kind) ? "" : "not available for this family";
 };
 
 const EXAMPLES = new Map<string, string>([
@@ -993,20 +993,52 @@ addBtn.addEventListener("click", () => {
   void renderFromText(srcEl.value);
 });
 
-// Connect: link the first two shift-selected nodes (in click order). Flowchart/block draw a
-// directed `-->`; network/cloud an undirected `--`.
+// Connect: link the first two shift-selected nodes (in click order), in each family's own edge
+// syntax — directed `-->` (flowchart/block), undirected `--` (network/cloud), `Rel(a,b,"")` (C4),
+// or a `A->>B: message` (sequence).
 connectBtn.addEventListener("click", () => {
-  if (ast === null || !STRUCTURAL_FAMILIES.has(ast.kind) || selectionOrder.length < 2) return;
+  if (ast === null || selectionOrder.length < 2) return;
   const [first, second] = selectionOrder;
   if (first === undefined || second === undefined) return;
-  const from = brand<string, "NodeId">(first);
-  const to = brand<string, "NodeId">(second);
-  const undirected = ast.kind === "network" || ast.kind === "cloud";
-  srcEl.value = undirected
-    ? connectUndirected(srcEl.value, from, to)
-    : connect(srcEl.value, from, to, "arrow");
+  srcEl.value = appendEdge(ast.kind, srcEl.value, first, second);
   void renderFromText(srcEl.value);
 });
+
+const appendEdge = (
+  kind: DiagramAst["kind"],
+  text: string,
+  first: SceneNodeId,
+  second: SceneNodeId,
+): string => {
+  switch (kind) {
+    case "network":
+    case "cloud":
+      return connectUndirected(
+        text,
+        brand<string, "NodeId">(first),
+        brand<string, "NodeId">(second),
+      );
+    case "c4":
+      return connectC4(
+        text,
+        brand<string, "C4ElementId">(first),
+        brand<string, "C4ElementId">(second),
+      );
+    case "sequence":
+      return connectMessage(
+        text,
+        brand<string, "ActorId">(first),
+        brand<string, "ActorId">(second),
+      );
+    default:
+      return connect(
+        text,
+        brand<string, "NodeId">(first),
+        brand<string, "NodeId">(second),
+        "arrow",
+      );
+  }
+};
 
 // Delete key removes the selected nodes (and their edges) from the text, for any family with a
 // two-token edge syntax. Guarded on the textarea not being focused so it never hijacks a Backspace
@@ -1014,7 +1046,7 @@ connectBtn.addEventListener("click", () => {
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
   if (document.activeElement === srcEl) return;
-  if (ast === null || !STRUCTURAL_FAMILIES.has(ast.kind)) return;
+  if (ast === null || !DELETE_FAMILIES.has(ast.kind)) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
   let text = srcEl.value;

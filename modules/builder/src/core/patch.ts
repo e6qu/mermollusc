@@ -1,5 +1,13 @@
 import { err, ok, type Result } from "@m/std";
-import type { EdgeKind, NodeId, NodeShape, SourceMap, TextSpan } from "@m/contracts";
+import type {
+  ActorId,
+  C4ElementId,
+  EdgeKind,
+  NodeId,
+  NodeShape,
+  SourceMap,
+  TextSpan,
+} from "@m/contracts";
 
 export interface PatchError {
   readonly kind: "patch";
@@ -41,6 +49,16 @@ export const connect = (text: string, from: NodeId, to: NodeId, kind: EdgeKind):
 // same way (it keys on the two ident tokens, regardless of the operator between them).
 export const connectUndirected = (text: string, from: NodeId, to: NodeId): string =>
   `${withTrailingNewline(text)}  ${from} -- ${to}\n`;
+
+// A C4 relation (`Rel(from, to, "")`) — an empty label, which the grammar accepts and the user can
+// then rename via the inline editor.
+export const connectC4 = (text: string, from: C4ElementId, to: C4ElementId): string =>
+  `${withTrailingNewline(text)}  Rel(${from}, ${to}, "")\n`;
+
+// A sequence message (`from->>to: message`). The grammar requires message text, so a default label
+// is inserted for the user to rename.
+export const connectMessage = (text: string, from: ActorId, to: ActorId): string =>
+  `${withTrailingNewline(text)}  ${from}->>${to}: message\n`;
 
 const LABELS = /\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|\|[^|]*\|/g;
 const NON_IDENT = /[^A-Za-z0-9_]+/;

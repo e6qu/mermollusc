@@ -17,6 +17,6 @@
 - *(done)* Element grouping: sidecar model + Group/Ungroup/Lock UI, drag-the-whole-group,
   group outlines. Follow-ups: *(done — overlay persists positions + groups to localStorage)*;
   click a group outline to select the whole group; an editable group label/title.
-- Connect/Delete for sequence and C4: their edge syntax is distinct (sequence messages `A->>B: ...`;
-  C4 `Rel(a, b, "...")`), so each needs its own append/remove patcher in @m/builder + app dispatch
-  (the generic two-token deleteEdge doesn't match them).
+- *(Connect done for all six families.)* Still to do: **delete** for sequence and C4 — bespoke
+  removers (a C4 boundary owns a `{ … }` block; a sequence actor owns its messages) that the generic
+  two-token `deleteEdge`/`deleteNode` can't handle.

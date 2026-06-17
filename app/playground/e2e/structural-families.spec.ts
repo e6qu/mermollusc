@@ -44,3 +44,41 @@ test("Delete removes a network node and its links from the source", async ({ pag
   await expect(page.locator("#src")).not.toHaveValue(/a -- b/);
   expect(errors).toEqual([]);
 });
+
+test("Connect adds a C4 Rel between two elements", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#src").fill('C4Context\n  Person(a, "A")\n  System(b, "B")\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  const cy = box.y + box.height / 2;
+  await page.keyboard.down("Shift");
+  await page.mouse.click(box.x + 50, cy);
+  await page.mouse.click(box.x + box.width - 50, cy);
+  await page.keyboard.up("Shift");
+
+  await page.locator("#connect").click();
+  await expect(page.locator("#src")).toHaveValue(/Rel\(a, b, ""\)/);
+});
+
+test("Connect adds a sequence message between two actors", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#src").fill("sequenceDiagram\n  A->>B: hi\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  // Actor boxes sit on the top row (a margin inset + half the actor height down).
+  await page.keyboard.down("Shift");
+  await page.mouse.click(box.x + 40, box.y + 40);
+  await page.mouse.click(box.x + box.width - 40, box.y + 40);
+  await page.keyboard.up("Shift");
+
+  await page.locator("#connect").click();
+  await expect(page.locator("#src")).toHaveValue(/A->>B: message/);
+});
