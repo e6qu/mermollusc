@@ -73,6 +73,7 @@ const iconsClose = document.querySelector<HTMLButtonElement>("#icons-close");
 const iconPicker = document.querySelector<HTMLElement>("#icon-picker");
 const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
 const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
+const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -90,7 +91,8 @@ if (
   iconsClose === null ||
   iconPicker === null ||
   iconFilter === null ||
-  iconGrid === null
+  iconGrid === null ||
+  exportBtn === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -761,6 +763,38 @@ const setPickerOpen = (open: boolean): void => {
 iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
 iconsClose.addEventListener("click", () => setPickerOpen(false));
 iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
+
+// Export the current diagram as a PNG at the canvas's device resolution. The themed surface colour
+// lives only in CSS (the canvas pixels are transparent where nothing is drawn), so composite onto a
+// background-filled offscreen canvas first — otherwise the download would have a transparent ground.
+exportBtn.addEventListener("click", () => {
+  const out = document.createElement("canvas");
+  out.width = canvas.width;
+  out.height = canvas.height;
+  const octx = out.getContext("2d");
+  if (octx === null) {
+    console.error("export failed: 2d context unavailable");
+    setStatus("error", "PNG export failed — no 2D context");
+    return;
+  }
+  octx.fillStyle = activeTheme().background;
+  octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(canvas, 0, 0);
+  out.toBlob((blob) => {
+    if (blob === null) {
+      console.error("export failed: toBlob returned null");
+      setStatus("error", "PNG export failed");
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "mermollusc.png";
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus("ok", "exported mermollusc.png");
+  }, "image/png");
+});
 
 const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
 srcEl.value = initialSource;

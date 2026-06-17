@@ -97,3 +97,7 @@
   instead of a fixed `14px sans-serif`, and the Sketch toggle re-lays out (`renderFromText`) instead
   of only repainting — so nodes resize to the wider handwriting font and labels stay inside their
   boxes. No-op outside Sketch (both base themes are `14px sans-serif`).
+- Export PNG (`#export-png`): composites the active theme background under the canvas onto an
+  offscreen canvas at device resolution (the canvas pixels are transparent — the surface colour is
+  CSS-only), then downloads `mermollusc.png` via a blob URL + `<a download>`. +1 Playwright flow
+  (asserts the download filename + that it resolves to a real file).
