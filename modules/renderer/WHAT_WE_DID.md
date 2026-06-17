@@ -21,3 +21,7 @@
   a self-rolled sketch keeps the mock tests + no dep). Dashed edges/arrowheads stay crisp. +1 test.
 - Added `htmlInCanvasSupported()` — feature-detection for the experimental "HTML in Canvas" API
   (false everywhere stable; detection-only scaffolding, no backend, no dependency). +1 test.
+- Fixed edge-label placement: anchor at the midpoint *along the routed polyline* (half arc-length)
+  nudged perpendicular to the local segment, replacing the average-of-endpoints anchor that could
+  land a label inside a node when an orthogonal edge bends around one (e.g. a flowchart branch
+  routing down the side). Pure `edgeLabelAnchor` helper in `display.ts`.
