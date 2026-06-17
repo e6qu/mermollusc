@@ -75,3 +75,7 @@
   bar shows `parse error (line L:C) — … · click to locate` and clicking it focuses the textarea and
   selects the range (`lineColOf` derives line/col). The caret is never moved automatically — the parse
   runs on every keystroke, so seizing the selection would fight the typist.
+- Pipeline goldens (`test/integration/golden.test.ts`): for one sample per family, parse → layout
+  (default heuristic measurer — no canvas/fonts) → `toDisplayList`, normalised to rounded-integer
+  strings and snapshotted. Deterministic; catches geometry regressions (e.g. an edge label drifting
+  onto a node) that pixels would catch but unit tests miss, without font/AA flakiness. +6 snapshots.

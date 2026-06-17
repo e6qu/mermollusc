@@ -18,6 +18,9 @@
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) — for visual review / design iteration, not a gate.
+- **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
+  parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
+  part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
 - `main.ts`: source `<textarea>` ↔ canvas.
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
