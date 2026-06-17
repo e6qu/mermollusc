@@ -97,6 +97,9 @@
         color: var(--ink-soft);
       }
       .topbar-actions { display: flex; align-items: center; gap: 10px; }
+      .zoom { display: inline-flex; align-items: center; gap: 2px; }
+      .zoom button { padding: 7px 9px; }
+      .zoom #zoom-reset { min-width: 52px; font-variant-numeric: tabular-nums; }
 
       /* ---- controls ---- */
       button {
@@ -380,6 +383,12 @@
               <option value="cloud">Cloud</option>
             </select>
           </label>
+          <div class="zoom" role="group" aria-label="Zoom">
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <button id="zoom-reset" type="button" title="Reset zoom to 100%">100%</button>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button id="zoom-fit" type="button" title="Fit the whole diagram in view">Fit</button>
+          </div>
           <button id="theme" type="button">Dark</button>
           <button id="sketch" type="button">Sketch</button>
           <button id="icons-toggle" type="button" aria-expanded="false"

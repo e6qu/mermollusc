@@ -154,6 +154,28 @@ const FLOWS: readonly Flow[] = [
       );
     },
   },
+  {
+    name: "14-zoom-fit",
+    about: "Fit scales a tall diagram down so all of it is visible at once",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n",
+      );
+      await page.locator("#zoom-fit").click();
+      await expect(page.locator("#zoom-reset")).not.toHaveText("100%");
+    },
+  },
+  {
+    name: "15-zoom-in",
+    about: "Zoom in enlarges the sheet (crisp re-render, not a bitmap scale)",
+    drive: async (page) => {
+      await setSource(page, "flowchart TD\n  A[Start]-->B{Choice}\n  B-->C(End)\n");
+      await page.locator("#zoom-in").click();
+      await page.locator("#zoom-in").click();
+      await expect(page.locator("#zoom-reset")).toHaveText("156%");
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

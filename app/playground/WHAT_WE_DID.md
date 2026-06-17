@@ -115,3 +115,8 @@
   copies it to the clipboard (outcome surfaced to the status bar, never silently dropped). On load,
   a `#src=` hash takes precedence over the persisted source (`hashSource()` → `?? localStorage ??
   SAMPLE`). +2 Playwright flows (link reproduces the diagram; Share encodes the source). 39 e2e green.
+- Canvas zoom/navigation: a topbar control (− / %level / + / Fit) plus Ctrl/⌘-wheel. `Fit` scales the
+  sheet so a diagram taller/wider than the stage is fully visible (never upscaling past 100%); zoom
+  re-renders at the new scale (crisp, not a bitmap scale) by folding a `viewScale` into the canvas
+  sizing + ctx transform, and `scenePoint` divides by it. Default stays 1 (identity), so the existing
+  hit-test/e2e pixel math is unchanged. +2 e2e specs (42 Playwright) and +2 `make shots` captures.
