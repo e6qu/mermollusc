@@ -2,14 +2,17 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { rectContains } from "../../src/core/geometry.js";
 import {
+  all,
   err,
   flatMap,
   isErr,
   isOk,
   map,
   mapErr,
+  match,
   ok,
   type Result,
+  tap,
   unwrapOr,
 } from "../../src/core/result.js";
 import { point, rect } from "../../src/shell/brand.js";
@@ -84,6 +87,43 @@ describe("Result — algebraic laws (property-based)", () => {
         const e = err<string>(msg);
         expect(map(e, (n: number) => n + 1)).toEqual(e);
         expect(flatMap(e, (n: number) => ok(n + 1))).toEqual(e);
+      }),
+    );
+  });
+
+  it("match collapses both branches and dispatches on the tag", () => {
+    fc.assert(
+      fc.property(anyResult, (r) => {
+        expect(match(r, () => "ok", () => "err")).toBe(isOk(r) ? "ok" : "err");
+        // round-trips: rebuild the same Result from its branches
+        expect(match<number, string, Result<number, string>>(r, ok, err)).toEqual(r);
+      }),
+    );
+  });
+
+  it("all collects every value, or returns the first err", () => {
+    fc.assert(
+      fc.property(fc.array(anyResult), (rs) => {
+        const out = all(rs);
+        const firstErr = rs.find(isErr);
+        if (firstErr === undefined) {
+          expect(out).toEqual(ok(rs.map((r) => match(r, (v) => v, () => 0))));
+        } else {
+          expect(out).toEqual(firstErr);
+        }
+      }),
+    );
+  });
+
+  it("tap runs the effect only on ok and returns the Result unchanged", () => {
+    fc.assert(
+      fc.property(anyResult, (r) => {
+        let seen: number | null = null;
+        const out = tap(r, (v) => {
+          seen = v;
+        });
+        expect(out).toEqual(r);
+        expect(seen).toBe(isOk(r) ? r.value : null);
       }),
     );
   });

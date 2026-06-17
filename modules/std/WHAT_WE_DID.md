@@ -13,3 +13,7 @@
   and raising the ratchet to 100. +7 tests.
 - Added `stamp(level, module, event)` shell helper — fills a `LogRecord`'s `ts` (ISO-8601) so callers
   don't hand-roll it. +1 test.
+- Completed the `Result` monad with `match` (total fold of both branches), `all`
+  (`Result[]` → first-err-or-all-values), and `tap` (run an effect on ok, pass through). Property
+  tests: match round-trips via `match(r, ok, err)`, all short-circuits on first err, tap fires only
+  on ok. +3 tests (25 total).

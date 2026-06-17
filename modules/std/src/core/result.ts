@@ -25,3 +25,26 @@ export const flatMap = <T, E, U>(r: Result<T, E>, f: (value: T) => Result<U, E>)
 
 // Explicit caller-chosen default. Not a silent fallback — the caller opts in by name.
 export const unwrapOr = <T, E>(r: Result<T, E>, whenErr: T): T => (r.ok ? r.value : whenErr);
+
+// Collapse both branches to one type — total, so the caller must handle the error case.
+export const match = <T, E, A>(
+  r: Result<T, E>,
+  onOk: (value: T) => A,
+  onErr: (error: E) => A,
+): A => (r.ok ? onOk(r.value) : onErr(r.error));
+
+// Combine many Results into one: the first error short-circuits, else all values in order.
+export const all = <T, E>(results: readonly Result<T, E>[]): Result<readonly T[], E> => {
+  const values: T[] = [];
+  for (const r of results) {
+    if (!r.ok) return r;
+    values.push(r.value);
+  }
+  return ok(values);
+};
+
+// Run a side effect on the ok value (e.g. logging at the shell) and pass the Result through unchanged.
+export const tap = <T, E>(r: Result<T, E>, f: (value: T) => void): Result<T, E> => {
+  if (r.ok) f(r.value);
+  return r;
+};
