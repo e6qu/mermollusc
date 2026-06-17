@@ -154,3 +154,7 @@
   directed vs undirected; the Delete key removes selected nodes (+ their edges) / selected edges for
   those families. Sequence (messages) and C4 (`Rel(...)`) have distinct syntax — not wired yet.
   +2 e2e (network Connect appends `a -- b`; Delete removes a node and its links).
+- Connect now works for *all six* families: the handler dispatches by kind to the right edge syntax
+  (`-->` flowchart/block, `--` network/cloud, `Rel(a,b,"")` C4, `A->>B: message` sequence). The
+  button is enabled for every family; Delete remains wired for the two-token four. +2 e2e (C4 Rel,
+  sequence message); verified sequence Connect visually. 57 Playwright.

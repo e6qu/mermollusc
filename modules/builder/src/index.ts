@@ -19,6 +19,8 @@ export {
   addNode,
   connect,
   connectUndirected,
+  connectC4,
+  connectMessage,
   deleteNode,
   deleteEdge,
 } from "./core/index.js";

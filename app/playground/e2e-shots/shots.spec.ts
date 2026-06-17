@@ -279,6 +279,21 @@ const FLOWS: readonly Flow[] = [
       await settled(page);
     },
   },
+  {
+    name: "24-connect-sequence",
+    about: "Connect adds a sequence message between two actors",
+    drive: async (page) => {
+      await setSource(page, "sequenceDiagram\n  A->>B: Hello\n");
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      await page.keyboard.down("Shift");
+      await page.mouse.click(box.x + 40, box.y + 40);
+      await page.mouse.click(box.x + box.width - 40, box.y + 40);
+      await page.keyboard.up("Shift");
+      await page.locator("#connect").click();
+      await settled(page);
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

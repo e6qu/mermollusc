@@ -42,3 +42,7 @@
 - `connectUndirected(text, from, to)` appends an undirected link (`from -- to`) for the network/cloud
   families; `deleteEdge`/`deleteNode` already work for them (token-based, operator-agnostic). +1
   integration test (the appended link parses as a network link).
+- `connectC4` (appends `Rel(from, to, "")`) and `connectMessage` (appends `from->>to: message`)
+  complete edge-creation for the last two families (C4 relations, sequence messages); both insert a
+  default label the user can rename. +2 integration tests (each appended edge parses back to a rel /
+  message). Per-family *deletion* for C4 (boundary blocks) and sequence is still pending.
