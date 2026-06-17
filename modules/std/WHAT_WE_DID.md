@@ -17,3 +17,8 @@
   (`Result[]` → first-err-or-all-values), and `tap` (run an effect on ok, pass through). Property
   tests: match round-trips via `match(r, ok, err)`, all short-circuits on first err, tap fires only
   on ok. +3 tests (25 total).
+- Split geometry by role (refinement typing): `Px` → `Coordinate` (signed position) and `Length`
+  (non-negative extent). `length()` validates `n >= 0` and fails loud (`RangeError`) on a negative,
+  so an inverted box surfaces at its source; `coordinate()` is unrestricted. `Point` uses
+  `Coordinate`, `Size` uses `Length`. A negative-size value is now unconstructible. +1 test (length
+  rejects negatives); shell `px` test reworked to coordinate/length (26 total).

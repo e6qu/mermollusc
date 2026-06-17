@@ -1,5 +1,5 @@
-import { px } from "@m/std";
-import type { Point, Px } from "@m/std";
+import { coordinate, length } from "@m/std";
+import type { Coordinate, Length, Point } from "@m/std";
 import type { IconRef, NodeShape, Scene, SceneNode } from "@m/contracts";
 
 const ICON_SIZE = 20;
@@ -7,18 +7,18 @@ const ICON_SIZE = 20;
 export type DrawCmd =
   | {
       readonly kind: "box";
-      readonly x: Px;
-      readonly y: Px;
-      readonly width: Px;
-      readonly height: Px;
-      readonly radius: Px;
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly width: Length;
+      readonly height: Length;
+      readonly radius: Length;
     }
   | {
       readonly kind: "diamond";
-      readonly cx: Px;
-      readonly cy: Px;
-      readonly width: Px;
-      readonly height: Px;
+      readonly cx: Coordinate;
+      readonly cy: Coordinate;
+      readonly width: Length;
+      readonly height: Length;
     }
   | {
       readonly kind: "polyline";
@@ -29,11 +29,16 @@ export type DrawCmd =
   | {
       readonly kind: "icon";
       readonly ref: IconRef;
-      readonly x: Px;
-      readonly y: Px;
-      readonly size: Px;
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly size: Length;
     }
-  | { readonly kind: "label"; readonly x: Px; readonly y: Px; readonly text: string };
+  | {
+      readonly kind: "label";
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly text: string;
+    };
 
 const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
   switch (shape) {
@@ -54,8 +59,8 @@ const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
 
 const nodeCmds = (node: SceneNode): DrawCmd[] => {
   const { origin, size } = node.bounds;
-  const cx = px(origin.x + size.width / 2);
-  const cy = px(origin.y + size.height / 2);
+  const cx = coordinate(origin.x + size.width / 2);
+  const cy = coordinate(origin.y + size.height / 2);
   const label = { kind: "label", x: cx, y: cy, text: node.label } satisfies DrawCmd;
   if (node.shape === "diamond") {
     return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
@@ -69,9 +74,9 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: origin.y,
         width: size.width,
         height: size.height,
-        radius: px(4),
+        radius: length(4),
       },
-      { kind: "label", x: cx, y: px(origin.y + 12), text: node.label },
+      { kind: "label", x: cx, y: coordinate(origin.y + 12), text: node.label },
     ];
   }
   const box = {
@@ -80,7 +85,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     y: origin.y,
     width: size.width,
     height: size.height,
-    radius: px(cornerRadius(node.shape, size.width, size.height)),
+    radius: length(cornerRadius(node.shape, size.width, size.height)),
   } satisfies DrawCmd;
   if (node.icon === null) return [box, label];
   // With an icon, stack the glyph above the label rather than centring the text on the box.
@@ -89,11 +94,11 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     {
       kind: "icon",
       ref: node.icon,
-      x: px(origin.x + size.width / 2 - ICON_SIZE / 2),
-      y: px(origin.y + 6),
-      size: px(ICON_SIZE),
+      x: coordinate(origin.x + size.width / 2 - ICON_SIZE / 2),
+      y: coordinate(origin.y + 6),
+      size: length(ICON_SIZE),
     },
-    { kind: "label", x: cx, y: px(origin.y + 6 + ICON_SIZE + 6), text: node.label },
+    { kind: "label", x: cx, y: coordinate(origin.y + 6 + ICON_SIZE + 6), text: node.label },
   ];
 };
 
@@ -104,7 +109,9 @@ const LABEL_GAP = 11;
 // edge bends around one (e.g. a flowchart branch that routes down the side); the on-path midpoint
 // stays in the routing channel ELK keeps clear, and the perpendicular nudge keeps the stroke from
 // running through the text.
-const edgeLabelAnchor = (points: readonly Point[]): { readonly x: Px; readonly y: Px } => {
+const edgeLabelAnchor = (
+  points: readonly Point[],
+): { readonly x: Coordinate; readonly y: Coordinate } => {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1];
@@ -123,14 +130,16 @@ const edgeLabelAnchor = (points: readonly Point[]): { readonly x: Px; readonly y
       const nx = -(b.y - a.y) / segLen;
       const ny = (b.x - a.x) / segLen;
       return {
-        x: px(a.x + (b.x - a.x) * t + nx * LABEL_GAP),
-        y: px(a.y + (b.y - a.y) * t + ny * LABEL_GAP),
+        x: coordinate(a.x + (b.x - a.x) * t + nx * LABEL_GAP),
+        y: coordinate(a.y + (b.y - a.y) * t + ny * LABEL_GAP),
       };
     }
     remaining -= segLen;
   }
   const first = points[0];
-  return first === undefined ? { x: px(0), y: px(0) } : { x: px(first.x), y: px(first.y) };
+  return first === undefined
+    ? { x: coordinate(0), y: coordinate(0) }
+    : { x: coordinate(first.x), y: coordinate(first.y) };
 };
 
 export const toDisplayList = (scene: Scene): DrawCmd[] => {

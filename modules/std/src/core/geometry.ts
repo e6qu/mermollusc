@@ -1,16 +1,19 @@
-// Lengths and coordinates are branded `Px`; constructors live in the shell.
+// Pixel scalars split by role: a `Coordinate` is a signed position; a `Length` is a non-negative
+// extent. Keeping them distinct means a length can never be silently negative, and a position can't
+// be mistaken for a size. Constructors (and `Length`'s ≥0 validation) live in the shell.
 
 import type { Brand } from "./brand.js";
 
-export type Px = Brand<number, "Px">;
+export type Coordinate = Brand<number, "Coordinate">;
+export type Length = Brand<number, "Length">;
 
 export interface Point {
-  readonly x: Px;
-  readonly y: Px;
+  readonly x: Coordinate;
+  readonly y: Coordinate;
 }
 export interface Size {
-  readonly width: Px;
-  readonly height: Px;
+  readonly width: Length;
+  readonly height: Length;
 }
 export interface Rect {
   readonly origin: Point;

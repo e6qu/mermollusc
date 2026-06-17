@@ -30,3 +30,6 @@
   `<marker>` arrowhead), label→`<text>` (escaped), icon→`<image href>` from a `pack/name`→href map.
   Pure string output, crisp shapes only (sketch jitter is a screen affordance). Backs the app's SVG
   export. +4 unit tests.
+- Adopted the `Coordinate`/`Length` geometry split in the `DrawCmd` display list: positions
+  (`x`/`y`/`cx`/`cy`) are `Coordinate`, extents (`width`/`height`/`radius`/`size`) are `Length`;
+  `px()` call sites became `coordinate()`/`length()`.
