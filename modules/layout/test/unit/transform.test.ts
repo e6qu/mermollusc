@@ -24,7 +24,8 @@ describe("toElkGraph", () => {
     expect(g.config.direction).toBe("RIGHT");
     expect(g.children.map((c) => c.id)).toEqual(["A", "B"]);
     expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"] }]);
-    expect(g.children[0]?.width ?? 0).toBeGreaterThan(0);
+    const a = g.children[0];
+    expect(a?.kind === "leaf" ? a.width : 0).toBeGreaterThan(0);
   });
 
   it("sizes circle nodes square (so they render as circles), leaving others as wide boxes", () => {
@@ -39,9 +40,12 @@ describe("toElkGraph", () => {
       subgraphs: [],
     });
     const circle = g.children.find((c) => c.id === "C");
-    const recct = g.children.find((c) => c.id === "R");
-    expect(circle?.width).toBe(circle?.height);
-    expect((recct?.width ?? 0) > (recct?.height ?? 0)).toBe(true);
+    const rectNode = g.children.find((c) => c.id === "R");
+    expect(circle?.kind).toBe("leaf");
+    expect(rectNode?.kind).toBe("leaf");
+    if (circle?.kind !== "leaf" || rectNode?.kind !== "leaf") return;
+    expect(circle.width).toBe(circle.height);
+    expect(rectNode.width > rectNode.height).toBe(true);
   });
 });
 
@@ -50,8 +54,8 @@ describe("toScene", () => {
     width: 200,
     height: 100,
     nodes: [
-      { id: "A", x: 0, y: 0, width: 60, height: 40 },
-      { id: "B", x: 100, y: 0, width: 40, height: 40 },
+      { id: "A", x: 0, y: 0, width: 60, height: 40, parent: null },
+      { id: "B", x: 100, y: 0, width: 40, height: 40, parent: null },
     ],
     edges: [{ id: "e0", points: [{ x: 60, y: 20 }, { x: 100, y: 20 }] }],
   };
@@ -69,7 +73,12 @@ describe("toScene", () => {
 
   it("fails loudly when a positioned node is not in the AST", () => {
     const r = toScene(
-      { width: 1, height: 1, nodes: [{ id: "X", x: 0, y: 0, width: 1, height: 1 }], edges: [] },
+      {
+        width: 1,
+        height: 1,
+        nodes: [{ id: "X", x: 0, y: 0, width: 1, height: 1, parent: null }],
+        edges: [],
+      },
       ast,
     );
     expect(r.ok).toBe(false);

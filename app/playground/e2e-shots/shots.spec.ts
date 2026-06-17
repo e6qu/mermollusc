@@ -144,6 +144,16 @@ const FLOWS: readonly Flow[] = [
       await expect(page.locator("#icon-grid .picker-icon").first()).toBeVisible();
     },
   },
+  {
+    name: "13-subgraph",
+    about: "a flowchart subgraph laid out as a nested container",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "flowchart TD\n  subgraph Backend\n    api[API] --> db[DB]\n  end\n  user[User] --> api\n",
+      );
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

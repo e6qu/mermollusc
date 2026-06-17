@@ -15,8 +15,10 @@ import type {
   LayoutConfig,
   LayoutError,
   LayoutGraph,
+  LayoutNode,
   MeasureText,
   PositionedGraph,
+  PositionedNode,
 } from "../core/index.js";
 
 const elk = new ELK();
@@ -27,13 +29,26 @@ const SectionZ = z.object({
   endPoint: PointZ,
   bendPoints: z.array(PointZ).optional(),
 });
-const NodeZ = z.object({
-  id: z.string(),
-  x: z.number(),
-  y: z.number(),
-  width: z.number(),
-  height: z.number(),
-});
+// ELK returns child nodes nested under their parent, with coordinates relative to the parent — so
+// the schema is recursive and the flattener below resolves absolute positions.
+interface ElkNode {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly children?: readonly ElkNode[] | undefined;
+}
+const NodeZ: z.ZodType<ElkNode> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    children: z.array(NodeZ).optional(),
+  }),
+);
 const EdgeZ = z.object({ id: z.string(), sections: z.array(SectionZ).optional() });
 const ResultZ = z.object({
   width: z.number(),
@@ -60,36 +75,76 @@ const elkLayoutOptions = (c: LayoutConfig): Record<string, string> => {
   };
 };
 
+// Title space at the top of a subgraph container, plus breathing room around its members.
+const CONTAINER_PADDING = "[top=28.0,left=12.0,bottom=12.0,right=12.0]";
+
+// Mirrors the subset of elkjs's mutable `ElkNode` input we build (not `readonly`, to stay
+// assignable). Leaves carry a size; containers omit it (ELK sizes them) — matching ELK's own API.
+interface ElkInputNode {
+  id: string;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+  layoutOptions?: Record<string, string>;
+  children?: ElkInputNode[];
+}
+
+const toElkNode = (c: LayoutNode): ElkInputNode => {
+  if (c.kind === "container") {
+    // No size — ELK computes it from the children + padding.
+    return {
+      id: c.id,
+      layoutOptions: { "elk.padding": CONTAINER_PADDING },
+      children: c.children.map(toElkNode),
+    };
+  }
+  return c.position === null
+    ? { id: c.id, width: c.width, height: c.height }
+    : { id: c.id, width: c.width, height: c.height, x: c.position.x, y: c.position.y };
+};
+
 const toElkInput = (g: LayoutGraph) => ({
   id: g.id,
-  layoutOptions: elkLayoutOptions(g.config),
-  children: g.children.map((c) =>
-    c.position === null
-      ? { id: c.id, width: c.width, height: c.height }
-      : { id: c.id, width: c.width, height: c.height, x: c.position.x, y: c.position.y },
-  ),
+  // INCLUDE_CHILDREN lays the whole hierarchy out together and routes cross-subgraph edges; edges
+  // stay declared on the root, so their returned coordinates are already in root (absolute) space.
+  layoutOptions: { ...elkLayoutOptions(g.config), "elk.hierarchyHandling": "INCLUDE_CHILDREN" },
+  children: g.children.map(toElkNode),
   edges: g.edges.map((e) => ({ id: e.id, sources: [...e.sources], targets: [...e.targets] })),
 });
 
-const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => ({
-  width: r.width,
-  height: r.height,
-  nodes: (r.children ?? []).map((c) => ({
-    id: c.id,
-    x: c.x,
-    y: c.y,
-    width: c.width,
-    height: c.height,
-  })),
-  edges: (r.edges ?? []).map((e) => {
-    const section = e.sections?.[0];
-    const points =
-      section === undefined
-        ? []
-        : [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
-    return { id: e.id, points };
-  }),
-});
+const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
+  // Child coordinates are relative to their parent; accumulate ancestor offsets into absolutes and
+  // tag each node with its container so the renderer can nest them.
+  const nodes: PositionedNode[] = [];
+  const flatten = (
+    children: readonly ElkNode[] | undefined,
+    parent: string | null,
+    ox: number,
+    oy: number,
+  ): void => {
+    for (const c of children ?? []) {
+      const x = ox + c.x;
+      const y = oy + c.y;
+      nodes.push({ id: c.id, x, y, width: c.width, height: c.height, parent });
+      flatten(c.children, c.id, x, y);
+    }
+  };
+  flatten(r.children, null, 0, 0);
+  return {
+    width: r.width,
+    height: r.height,
+    nodes,
+    edges: (r.edges ?? []).map((e) => {
+      const section = e.sections?.[0];
+      const points =
+        section === undefined
+          ? []
+          : [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
+      return { id: e.id, points };
+    }),
+  };
+};
 
 export const layout = async (
   ast: FlowchartAst,

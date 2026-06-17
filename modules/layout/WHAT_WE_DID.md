@@ -33,3 +33,13 @@
 - `toElkGraph` now sizes `circle` flowchart nodes square (side = max(label width, node height)) so
   the renderer's `min(w,h)/2` corner-rounding yields an actual circle; other shapes stay wide boxes.
   +1 transform test.
+- Subgraph hierarchy: `toElkGraph` nests `FlowchartAst.subgraphs` as ELK compound nodes (members +
+  nested subgraphs as children, with title padding); the shell sets `hierarchyHandling:
+  INCLUDE_CHILDREN`, decodes ELK's recursive result, and flattens parent-relative child coordinates
+  to absolutes (`PositionedNode.parent`). `toScene` synthesises a `container`-shape SceneNode per
+  subgraph with members parented to it — the renderer's existing C4 `container` draws it, so no
+  renderer change was needed. Modelled `LayoutNode` as a `Leaf | Container` discriminated union so
+  illegal states (leaf-with-children, sized-container) can't be built. +1 integration test
+  (container synthesis + absolute containment).
+- Fixed `make build` repo-wide: tsup's .d.ts step injects a `baseUrl` (to resolve `paths`) that TS
+  6.0 deprecates (TS5101); added `"ignoreDeprecations": "6.0"` to `tsconfig.base.json`.
