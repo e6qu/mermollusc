@@ -1,3 +1,5 @@
+import type { EdgeId, NodeId } from "@m/contracts";
+
 export interface LayoutConfig {
   readonly direction: "DOWN" | "UP" | "RIGHT" | "LEFT";
   readonly interactive: boolean;
@@ -15,21 +17,21 @@ export interface XY {
 // sized container" unrepresentable, so the layout code needn't guard against them.
 export interface LeafNode {
   readonly kind: "leaf";
-  readonly id: string;
+  readonly id: NodeId;
   readonly width: number;
   readonly height: number;
   readonly position: XY | null;
 }
 export interface ContainerNode {
   readonly kind: "container";
-  readonly id: string;
+  readonly id: NodeId;
   readonly children: readonly LayoutNode[];
 }
 export type LayoutNode = LeafNode | ContainerNode;
 export interface LayoutEdge {
-  readonly id: string;
-  readonly sources: readonly string[];
-  readonly targets: readonly string[];
+  readonly id: EdgeId;
+  readonly sources: readonly NodeId[];
+  readonly targets: readonly NodeId[];
 }
 export interface LayoutGraph {
   readonly id: string;
@@ -39,16 +41,16 @@ export interface LayoutGraph {
 }
 
 export interface PositionedNode {
-  readonly id: string;
+  readonly id: NodeId;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
   // The enclosing subgraph container id, or null at the top level. Coordinates are absolute.
-  readonly parent: string | null;
+  readonly parent: NodeId | null;
 }
 export interface PositionedEdge {
-  readonly id: string;
+  readonly id: EdgeId;
   readonly points: readonly { readonly x: number; readonly y: number }[];
 }
 export interface PositionedGraph {

@@ -4,6 +4,7 @@ import type {
   EdgeArrow,
   EdgeKind,
   EdgeStroke,
+  NodeId,
   Scene,
   SceneEdge,
   SceneNode,
@@ -34,7 +35,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Scene => {
   );
   const columns = Math.max(1, ast.columns);
 
-  const centers = new Map<string, { readonly x: number; readonly y: number }>();
+  const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
   const nodes: SceneNode[] = ast.blocks.map((b, i) => {
     const col = i % columns;
     const row = Math.floor(i / columns);

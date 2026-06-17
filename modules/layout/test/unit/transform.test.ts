@@ -54,10 +54,10 @@ describe("toScene", () => {
     width: 200,
     height: 100,
     nodes: [
-      { id: "A", x: 0, y: 0, width: 60, height: 40, parent: null },
-      { id: "B", x: 100, y: 0, width: 40, height: 40, parent: null },
+      { id: nid("A"), x: 0, y: 0, width: 60, height: 40, parent: null },
+      { id: nid("B"), x: 100, y: 0, width: 40, height: 40, parent: null },
     ],
-    edges: [{ id: "e0", points: [{ x: 60, y: 20 }, { x: 100, y: 20 }] }],
+    edges: [{ id: eid("e0"), points: [{ x: 60, y: 20 }, { x: 100, y: 20 }] }],
   };
 
   it("maps a positioned graph to a branded scene", () => {
@@ -76,7 +76,7 @@ describe("toScene", () => {
       {
         width: 1,
         height: 1,
-        nodes: [{ id: "X", x: 0, y: 0, width: 1, height: 1, parent: null }],
+        nodes: [{ id: nid("X"), x: 0, y: 0, width: 1, height: 1, parent: null }],
         edges: [],
       },
       ast,

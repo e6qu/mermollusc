@@ -1,5 +1,6 @@
 import { brand, point, rect } from "@m/std";
 import type {
+  ActorId,
   EdgeArrow,
   EdgeStroke,
   MessageKind,
@@ -36,7 +37,7 @@ const MESSAGE_STYLE: Record<
 // self-edge from the actor to itself) so the renderer needs no new concept.
 export const layoutSequence = (ast: SequenceAst, measure: MeasureText): Scene => {
   const bottomY = ACTOR_HEIGHT + HEADER_GAP + ast.messages.length * MESSAGE_GAP + BOTTOM_PADDING;
-  const centerX = new Map<string, number>();
+  const centerX = new Map<ActorId, number>();
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
   let cursor = 0;
