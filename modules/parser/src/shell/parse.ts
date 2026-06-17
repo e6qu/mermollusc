@@ -104,6 +104,30 @@ const readNodeRef = (node: CstNode): Ref => {
       bracketed: true,
     };
   }
+  const stadium = childTokens(sc, "StadiumText")[0];
+  if (stadium !== undefined) {
+    return {
+      id,
+      label: stadium.image.trim(),
+      shape: "stadium",
+      explicit: true,
+      idSpan,
+      labelSpan: spanOf(stadium),
+      bracketed: true,
+    };
+  }
+  const circle = childTokens(sc, "CircleText")[0];
+  if (circle !== undefined) {
+    return {
+      id,
+      label: circle.image.trim(),
+      shape: "circle",
+      explicit: true,
+      idSpan,
+      labelSpan: spanOf(circle),
+      bracketed: true,
+    };
+  }
   const paren = childTokens(sc, "ParenText")[0];
   if (paren !== undefined) {
     return {

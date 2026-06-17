@@ -59,7 +59,7 @@
   minimal one-page PDF** (DCTDecode image XObject, MediaBox in CSS px so the device-res JPEG is
   high-DPI) — dependency-free. SVG is **true vector** via the renderer's `toSvg` over the same
   display list, with node icons embedded as `<image>` data-URL hrefs resolved from the registry.
-- Playwright (`make e2e-ui`): 36 flows — adds PNG + PDF + SVG export + icon-picker (insert +
+- Playwright (`make e2e-ui`): 37 flows — adds stadium/circle shapes + PNG + PDF + SVG export + icon-picker (insert +
   empty-filter) to the prior set (source-persistence, family/edit flows incl. inline editor, sketch +
   theme toggles + persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

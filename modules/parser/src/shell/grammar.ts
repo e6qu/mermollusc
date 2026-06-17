@@ -52,6 +52,20 @@ class FlowchartParser extends CstParser {
       },
       {
         ALT: () => {
+          this.CONSUME(Tok.LStadium);
+          this.CONSUME(Tok.StadiumText);
+          this.CONSUME(Tok.RStadium);
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Tok.LCircle);
+          this.CONSUME(Tok.CircleText);
+          this.CONSUME(Tok.RCircle);
+        },
+      },
+      {
+        ALT: () => {
           this.CONSUME(Tok.LParen);
           this.CONSUME(Tok.ParenText);
           this.CONSUME(Tok.RParen);
