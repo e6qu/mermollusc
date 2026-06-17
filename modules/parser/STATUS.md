@@ -28,6 +28,9 @@
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
   lines) and routes to the flowchart, sequence, C4, block, network, or cloud parser.
+- `ParseError` carries `errors: string[]` **and `positions: ErrorPosition[]`** (`{ offset, length }`,
+  built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
+  host can highlight the offending range; line/column are left to the host to derive from the text.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
 - Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
   edge labels `|...|`, `%%` comments, `;`/newline separators.

@@ -8,6 +8,7 @@ export { parseCloud, parseCloudWithSource } from "./shell/index.js";
 export { parseDiagram } from "./shell/index.js";
 export type {
   ParseError,
+  ErrorPosition,
   ParsedSource,
   ParsedSequence,
   ParsedC4,

@@ -10,7 +10,8 @@ import type {
   SequenceSource,
   TextSpan,
 } from "@m/contracts";
-import type { ParseError } from "./parse.js";
+import { lexingError, parseError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 import { sequenceParser } from "./seq-grammar.js";
 import { seqLexer } from "./seq-tokens.js";
 
@@ -74,8 +75,7 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
     seeActor(from, null);
     seeActor(to, null);
     const arrow = childNodes(msg.children, "arrow")[0];
-    if (arrow === undefined)
-      return err({ kind: "parse", errors: ["internal: message without arrow"] });
+    if (arrow === undefined) return err(parseError(["internal: message without arrow"]));
 
     const messageId = brand<string, "MessageId">(`m${messages.length}`);
     messages.push({
@@ -102,12 +102,12 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
 export const parseSequenceWithSource = (text: string): Result<ParsedSequence, ParseError> => {
   const lexed = seqLexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   sequenceParser.input = lexed.tokens;
   const cst = sequenceParser.sequence();
   if (sequenceParser.errors.length > 0) {
-    return err({ kind: "parse", errors: sequenceParser.errors.map((e) => e.message) });
+    return err(recognitionError(sequenceParser.errors));
   }
   return buildResult(cst);
 };

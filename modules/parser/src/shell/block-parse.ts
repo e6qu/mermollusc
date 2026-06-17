@@ -12,7 +12,8 @@ import type {
   NodeShape,
   TextSpan,
 } from "@m/contracts";
-import type { ParseError } from "./parse.js";
+import { lexingError, parseError, recognitionError } from "./parse-error.js";
+import type { ParseError } from "./parse-error.js";
 import { blockParser } from "./block-grammar.js";
 import { blockLexer } from "./block-tokens.js";
 
@@ -152,7 +153,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
       const from = refs[i];
       const to = refs[i + 1];
       if (link === undefined || from === undefined || to === undefined) {
-        return err({ kind: "parse", errors: ["internal: malformed edge chain"] });
+        return err(parseError(["internal: malformed edge chain"]));
       }
       const pipe = childTokens(link.children, "PipeText")[0];
       const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
@@ -179,12 +180,12 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
 export const parseBlockWithSource = (text: string): Result<ParsedBlock, ParseError> => {
   const lexed = blockLexer.tokenize(text);
   if (lexed.errors.length > 0) {
-    return err({ kind: "parse", errors: lexed.errors.map((e) => e.message) });
+    return err(lexingError(lexed.errors));
   }
   blockParser.input = lexed.tokens;
   const cst = blockParser.block();
   if (blockParser.errors.length > 0) {
-    return err({ kind: "parse", errors: blockParser.errors.map((e) => e.message) });
+    return err(recognitionError(blockParser.errors));
   }
   return buildResult(cst);
 };

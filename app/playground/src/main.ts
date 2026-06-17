@@ -190,11 +190,46 @@ const paintScene = (): void => {
 // current text failed to parse (it would just keep showing the last good render). On error we also
 // mark the stage stale so the dimmed sheet signals "this no longer matches your text". The shell
 // still logs loudly; this is the human-facing half.
-const setStatus = (level: "ok" | "error", message: string): void => {
+// The range a parse error points at, so the status bar can offer to jump to it. We never move the
+// caret automatically — the parse runs on every keystroke while the textarea is focused, so seizing
+// the selection would fight the typist; instead the located status is clickable.
+let errorRange: { readonly offset: number; readonly length: number } | null = null;
+
+const lineColOf = (
+  text: string,
+  offset: number,
+): { readonly line: number; readonly col: number } => {
+  let line = 1;
+  let col = 1;
+  const limit = Math.min(offset, text.length);
+  for (let i = 0; i < limit; i++) {
+    if (text[i] === "\n") {
+      line += 1;
+      col = 1;
+    } else {
+      col += 1;
+    }
+  }
+  return { line, col };
+};
+
+const setStatus = (
+  level: "ok" | "error",
+  message: string,
+  range: { readonly offset: number; readonly length: number } | null = null,
+): void => {
   statusEl.textContent = message;
   statusEl.setAttribute("data-level", level);
+  statusEl.setAttribute("data-locatable", range === null ? "false" : "true");
   stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
+  errorRange = range;
 };
+
+statusEl.addEventListener("click", () => {
+  if (errorRange === null) return;
+  srcEl.focus();
+  srcEl.setSelectionRange(errorRange.offset, errorRange.offset + errorRange.length);
+});
 
 // Add/Connect/Relax patch flowchart text specifically and no-op elsewhere; disabling them off-
 // flowchart makes that explicit instead of a silent dead click. Regenerate re-lays any family.
@@ -234,7 +269,13 @@ const renderFromText = async (text: string): Promise<void> => {
   if (!isOk(parsed)) {
     const detail = parsed.error.errors.join("; ");
     console.error("parse failed:", detail);
-    setStatus("error", `parse error — ${detail}`);
+    const pos = parsed.error.positions[0];
+    if (pos === undefined) {
+      setStatus("error", `parse error — ${detail}`);
+    } else {
+      const { line, col } = lineColOf(text, pos.offset);
+      setStatus("error", `parse error (line ${line}:${col}) — ${detail} · click to locate`, pos);
+    }
     return;
   }
   const diagram = parsed.value;

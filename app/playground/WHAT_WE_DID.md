@@ -71,3 +71,7 @@
 - Family-aware UI: an **Examples** `<select>` loads a known-good starter per family; `applyKind`
   updates the kind badge and disables the flowchart-only Add/Connect/Relax off-flowchart (Regenerate
   stays enabled). All 29 gating Playwright flows stay green (IDs + button text preserved).
+- Parse-error locating: `setStatus` takes an optional range from `ParseError.positions[0]`; the status
+  bar shows `parse error (line L:C) — … · click to locate` and clicking it focuses the textarea and
+  selects the range (`lineColOf` derives line/col). The caret is never moved automatically — the parse
+  runs on every keystroke, so seizing the selection would fight the typist.

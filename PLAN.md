@@ -71,7 +71,7 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 |--------|-------|-------|
 | `@m/std` | ✅ Result, Brand, geometry, Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 22 |
 | `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud AST, Scene IR (+shape, edge stroke/arrow, icon ref), overrides, source-maps (incl. flowchart edge spans) | (types) |
-| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · ✅ routing · property round-trip | 38 |
+| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud — +spans; icon override on network/cloud/block · ✅ routing · property round-trip · `ParseError.positions` (offset/length) for host highlighting | 40 |
 | `@m/layout` | ✅ flowchart (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer · ✅ routing · property tests | 24 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes); html-in-canvas detect | 9 |
 | `@m/builder` | ✅ hit-test, selection, overrides, two-way relabel/add/connect/delete-node/delete-edge (+ property-based) | 27 |

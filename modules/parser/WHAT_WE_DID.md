@@ -43,3 +43,8 @@
   a `BlockQuoted` token to the block lexer's main mode); layout draws it. +1 test.
 - Flowchart: `SourceMap` now carries per-edge `|label|` spans (trimmed) so edge labels are two-way
   editable; `parseWithSource` captures them from the link's `PipeText` token. +1 test.
+- `ParseError` gained `positions: ErrorPosition[]` (`{ offset, length }`). Extracted the error
+  construction into a shared `parse-error.ts` (`lexingError` from Chevrotain `ILexingError.offset/
+  length`, `recognitionError` from the recognition exception's `token.startOffset`/image length,
+  `parseError` for located-less structural checks) and routed all six parsers through it. Lets a host
+  highlight the failing range; line/col are the host's to derive. +2 tests (lex + recognition spans).
