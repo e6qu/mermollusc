@@ -32,8 +32,9 @@
   built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
   host can highlight the offending range; line/column are left to the host to derive from the text.
 - `print(ast)` → text (core, pure); round-trip tested (flowchart).
-- Supported: `flowchart|graph` + direction, shapes `[]`/`()`/`{}`, links `-->`/`---`/`-.->`/`==>`,
-  edge labels `|...|`, `%%` comments, `;`/newline separators.
-- tests: 38 passing (printer; flowchart parse/node+edge spans; sequence parse + spans; C4 parse with nesting
+- Supported: `flowchart|graph` + direction, shapes `[]` (rect) / `()` (round) / `([])` (stadium) /
+  `(())` (circle) / `{}` (diamond), links `-->`/`---`/`-.->`/`==>`, edge labels `|...|`, `%%`
+  comments, `;`/newline separators. (The two-char openers `([`/`((` are lexed before `(`.)
+- tests: 40 passing (printer; flowchart parse/node+edge spans incl. stadium/circle; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).

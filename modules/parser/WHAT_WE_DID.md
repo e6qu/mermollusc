@@ -48,3 +48,7 @@
   length`, `recognitionError` from the recognition exception's `token.startOffset`/image length,
   `parseError` for located-less structural checks) and routed all six parsers through it. Lets a host
   highlight the failing range; line/col are the host's to derive. +2 tests (lex + recognition spans).
+- Flowchart stadium `([…])` + circle `((…))` shapes: added `LStadium`/`LCircle` two-char openers
+  (lexed before `LParen`, with their own lexer modes + closing tokens), two `shape` grammar ALTs, and
+  `readNodeRef` cases → `shape: "stadium" | "circle"`. The printer + renderer already supported them,
+  so they now round-trip; extended the round-trip property to all five shapes. +1 parse test.

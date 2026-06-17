@@ -17,6 +17,17 @@ const LSquare = createToken({ name: "LSquare", pattern: /\[/, push_mode: "square
 const RSquare = createToken({ name: "RSquare", pattern: /\]/, pop_mode: true });
 const SquareText = createToken({ name: "SquareText", pattern: /[^\]\n]+/ });
 
+// Stadium `([text])` and circle `((text))` share the `(` prefix with round `(text)`, so their
+// two-char openers must be tried before LParen in the main mode (Chevrotain matches in array order,
+// not by longest match). Each text token stops at its closing bracket so the closer can pop.
+const LStadium = createToken({ name: "LStadium", pattern: /\(\[/, push_mode: "stadium" });
+const RStadium = createToken({ name: "RStadium", pattern: /\]\)/, pop_mode: true });
+const StadiumText = createToken({ name: "StadiumText", pattern: /[^\]\n]+/ });
+
+const LCircle = createToken({ name: "LCircle", pattern: /\(\(/, push_mode: "circle" });
+const RCircle = createToken({ name: "RCircle", pattern: /\)\)/, pop_mode: true });
+const CircleText = createToken({ name: "CircleText", pattern: /[^)\n]+/ });
+
 const LParen = createToken({ name: "LParen", pattern: /\(/, push_mode: "paren" });
 const RParen = createToken({ name: "RParen", pattern: /\)/, pop_mode: true });
 const ParenText = createToken({ name: "ParenText", pattern: /[^)\n]+/ });
@@ -42,12 +53,16 @@ export const lexer = new Lexer({
       Arrow,
       OpenLink,
       LSquare,
+      LStadium,
+      LCircle,
       LParen,
       LCurly,
       Pipe,
       Identifier,
     ],
     square: [RSquare, SquareText],
+    stadium: [RStadium, StadiumText],
+    circle: [RCircle, CircleText],
     paren: [RParen, ParenText],
     curly: [RCurly, CurlyText],
     pipe: [PipeEnd, PipeText],
@@ -67,6 +82,12 @@ export const Tok = {
   LSquare,
   RSquare,
   SquareText,
+  LStadium,
+  RStadium,
+  StadiumText,
+  LCircle,
+  RCircle,
+  CircleText,
   LParen,
   RParen,
   ParenText,
@@ -91,6 +112,12 @@ export const allTokens: TokenType[] = [
   LSquare,
   RSquare,
   SquareText,
+  LStadium,
+  RStadium,
+  StadiumText,
+  LCircle,
+  RCircle,
+  CircleText,
   LParen,
   RParen,
   ParenText,

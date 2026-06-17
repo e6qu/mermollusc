@@ -15,8 +15,14 @@ const safeLabel = fc
   .map((cs) => cs.join("").trim())
   .filter((s) => s.length > 0);
 
-// Only the three shapes the flowchart parser reproduces (stadium/circle/container don't round-trip).
-const shape: fc.Arbitrary<NodeShape> = fc.constantFrom("rect", "round", "diamond");
+// The shapes the flowchart parser reproduces (container is C4-only and doesn't round-trip here).
+const shape: fc.Arbitrary<NodeShape> = fc.constantFrom(
+  "rect",
+  "round",
+  "stadium",
+  "diamond",
+  "circle",
+);
 const kind: fc.Arbitrary<EdgeKind> = fc.constantFrom("arrow", "open", "dotted", "thick");
 const direction: fc.Arbitrary<FlowDirection> = fc.constantFrom("TB", "BT", "LR", "RL");
 

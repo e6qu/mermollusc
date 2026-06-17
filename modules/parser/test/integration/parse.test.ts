@@ -27,6 +27,17 @@ describe("parse", () => {
     expect(second.value).toEqual(first.value);
   });
 
+  it("parses stadium `([…])` and circle `((…))` shapes", () => {
+    const r = parse("flowchart TD\n  A([Stadium]) --> B((Circle))\n  B --> C(Round)\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.nodes.map((n) => [n.id, n.label, n.shape])).toEqual([
+      ["A", "Stadium", "stadium"],
+      ["B", "Circle", "circle"],
+      ["C", "Round", "round"],
+    ]);
+  });
+
   it("fails loudly on an invalid direction", () => {
     expect(isErr(parse("flowchart ZZ\n  A --> B\n"))).toBe(true);
   });
