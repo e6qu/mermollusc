@@ -234,6 +234,35 @@ const FLOWS: readonly Flow[] = [
       await page.mouse.up();
     },
   },
+  {
+    name: "20-group",
+    about: "two nodes bundled into a group — a dashed outline around their bounding box",
+    drive: async (page) => {
+      await setSource(page, "flowchart TD\n  A[Start]-->B{Choice}\n  B-->C(Done)\n");
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      await page.mouse.click(box.x + 88, box.y + 56);
+      await page.keyboard.down("Shift");
+      await page.mouse.click(box.x + 88, box.y + 150);
+      await page.keyboard.up("Shift");
+      await page.locator("#group").click();
+    },
+  },
+  {
+    name: "21-group-locked",
+    about: "a locked group — solid accent outline with a padlock",
+    drive: async (page) => {
+      await setSource(page, "flowchart TD\n  A[Start]-->B{Choice}\n  B-->C(Done)\n");
+      const box = await page.locator("#stage").boundingBox();
+      if (box === null) return;
+      await page.mouse.click(box.x + 88, box.y + 56);
+      await page.keyboard.down("Shift");
+      await page.mouse.click(box.x + 88, box.y + 150);
+      await page.keyboard.up("Shift");
+      await page.locator("#group").click();
+      await page.locator("#lock").click();
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

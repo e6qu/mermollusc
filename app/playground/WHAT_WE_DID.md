@@ -136,3 +136,12 @@
   together (one pointer delta applied to every member from its start position); plus connector
   re-anchoring + extent growth via `applyOverrides`. Foundation for grouped-element moves. +2 e2e
   (sheet grows on drag-out; shift-selected pair moves together, source untouched).
+- Grouping UI (on the sidecar group model): Group / Ungroup / Lock controls in the editor tools,
+  enabled by selection. Group bundles the selected nodes' top-level units (nesting existing groups,
+  in selection order); Ungroup dissolves the selection's group; Lock toggles a move-only lock
+  (button reads Lock/Unlock). Dragging any member moves the whole group (leaves resolved via
+  `topGroupOfNode`/`leafNodes`, on the move-together + connector-re-anchor foundation); a locked
+  group is selectable but not draggable (`pathLocked`). Each group draws a rounded outline behind the
+  nodes — dashed accent when unlocked, solid + padlock when locked, nested groups nesting visually.
+  Verified in light + dark via shots; +2 e2e (controls toggle + Ungroup reverses; locked-can't-drag,
+  unlock-restores). 51 Playwright.

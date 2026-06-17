@@ -1,0 +1,74 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const canvasWidth = (page: Page) =>
+  page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
+
+// Select the default flowchart's Start node, then shift-add the Choice node below it.
+const selectPair = async (page: Page, box: { x: number; y: number }) => {
+  await page.mouse.click(box.x + 88, box.y + 56);
+  await page.keyboard.down("Shift");
+  await page.mouse.click(box.x + 88, box.y + 150);
+  await page.keyboard.up("Shift");
+};
+
+const dragRight = async (page: Page, box: { x: number; y: number }) => {
+  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 430, box.y + 70, { steps: 8 });
+  await page.mouse.up();
+};
+
+test("Group bundles the selection and toggles the controls; Ungroup reverses it", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+
+  await expect(page.locator("#group")).toBeDisabled(); // nothing selected
+  await selectPair(page, box);
+  await expect(page.locator("#group")).toBeEnabled();
+
+  await page.locator("#group").click();
+  await expect(page.locator("#group")).toBeDisabled(); // now one unit
+  await expect(page.locator("#ungroup")).toBeEnabled();
+  await expect(page.locator("#lock")).toBeEnabled();
+  await expect(page.locator("#lock")).toHaveText("Lock");
+
+  await page.locator("#ungroup").click();
+  await expect(page.locator("#ungroup")).toBeDisabled();
+  await expect(page.locator("#group")).toBeEnabled(); // selection retained, regroupable
+
+  expect(errors).toEqual([]);
+});
+
+test("a locked group can't be dragged; unlocking restores the move", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+
+  await selectPair(page, box);
+  await page.locator("#group").click();
+  await page.locator("#lock").click();
+  await expect(page.locator("#lock")).toHaveText("Unlock");
+
+  const locked = await canvasWidth(page);
+  await dragRight(page, box); // locked → ignored, sheet doesn't grow
+  expect(await canvasWidth(page)).toBe(locked);
+
+  await page.locator("#lock").click(); // unlock
+  await dragRight(page, box); // now the whole group moves → sheet grows
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(locked);
+
+  expect(errors).toEqual([]);
+});

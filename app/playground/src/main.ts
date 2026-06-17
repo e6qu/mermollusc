@@ -5,12 +5,18 @@ import {
   deleteEdge,
   deleteNode,
   emptySelection,
+  group,
   hitTest,
+  leafNodes,
   moveNode,
   patchSpan,
+  pathLocked,
   relabelNode,
   selectOnly,
+  setLocked,
   toggle,
+  topGroupOfNode,
+  ungroup,
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
@@ -18,6 +24,9 @@ import type {
   C4Source,
   CloudSource,
   DiagramAst,
+  GroupId,
+  GroupMember,
+  Groups,
   LayoutOverrides,
   NetworkSource,
   NodeId,
@@ -82,7 +91,13 @@ const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
 const zoomResetBtn = document.querySelector<HTMLButtonElement>("#zoom-reset");
 const zoomFitBtn = document.querySelector<HTMLButtonElement>("#zoom-fit");
 const minimap = document.querySelector<HTMLCanvasElement>("#minimap");
+const groupBtn = document.querySelector<HTMLButtonElement>("#group");
+const ungroupBtn = document.querySelector<HTMLButtonElement>("#ungroup");
+const lockBtn = document.querySelector<HTMLButtonElement>("#lock");
 if (
+  groupBtn === null ||
+  ungroupBtn === null ||
+  lockBtn === null ||
   zoomInBtn === null ||
   zoomOutBtn === null ||
   zoomResetBtn === null ||
@@ -124,6 +139,9 @@ let blockSource: BlockSource | null = null;
 let netSource: NetworkSource | null = null;
 let cloudSource: CloudSource | null = null;
 let overrides: LayoutOverrides = new Map();
+// Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
+let groups: Groups = new Map();
+let groupSeq = 0;
 // On-screen zoom of the diagram sheet. 1 = the canvas is drawn at scene scale (the identity the
 // hit-test math and e2e specs assume); only the zoom controls / ctrl-wheel change it.
 let viewScale = 1;
@@ -253,6 +271,7 @@ const paintScene = (): void => {
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
   ctx.translate(MARGIN, MARGIN);
+  drawGroupOutlines(shown);
   paint(ctx, cmds, iconImages, active);
   ctx.strokeStyle = "#2563eb";
   ctx.lineWidth = 2;
@@ -266,6 +285,113 @@ const paintScene = (): void => {
   lastRender = { scene: shown, logicalWidth, logicalHeight };
   drawMinimap();
 };
+
+const GROUP_PAD = 10;
+// Draw each group as a rounded outline around its members' bounding box (drawn behind the nodes).
+// Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
+const drawGroupOutlines = (shown: Scene): void => {
+  if (groups.size === 0) return;
+  const boundsById = new Map(shown.nodes.map((node) => [node.id, node.bounds]));
+  const dark = theme === darkTheme;
+  for (const g of groups.values()) {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const id of leafNodes(groups, g.id)) {
+      const b = boundsById.get(id);
+      if (b === undefined) continue;
+      minX = Math.min(minX, b.origin.x);
+      minY = Math.min(minY, b.origin.y);
+      maxX = Math.max(maxX, b.origin.x + b.size.width);
+      maxY = Math.max(maxY, b.origin.y + b.size.height);
+    }
+    if (minX === Number.POSITIVE_INFINITY) continue;
+    const x = minX - GROUP_PAD;
+    const y = minY - GROUP_PAD;
+    const accent = g.locked ? (dark ? "#f0894e" : "#d2602c") : dark ? "#4cc2c4" : "#0f6f74";
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, maxX - minX + GROUP_PAD * 2, maxY - minY + GROUP_PAD * 2, 8);
+    ctx.fillStyle = g.locked ? "rgba(210,96,44,0.07)" : "rgba(15,111,116,0.05)";
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = accent;
+    ctx.setLineDash(g.locked ? [] : [6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (g.locked) {
+      ctx.fillStyle = accent;
+      ctx.font = "12px sans-serif";
+      ctx.fillText("🔒", x + 5, y + 15);
+    }
+    ctx.restore();
+  }
+};
+
+// The top-level group of the first selected node, or null — what Ungroup/Lock act on.
+const selectedTopGroup = (): GroupId | null => {
+  for (const id of selection.nodes) {
+    const top = topGroupOfNode(groups, id);
+    if (top !== null) return top;
+  }
+  return null;
+};
+
+// Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
+const updateGroupButtons = (): void => {
+  const units = new Set<string>();
+  for (const id of selection.nodes) {
+    const top = topGroupOfNode(groups, id);
+    units.add(top === null ? `n:${id}` : `g:${top}`);
+  }
+  groupBtn.disabled = units.size < 2;
+  const top = selectedTopGroup();
+  ungroupBtn.disabled = top === null;
+  lockBtn.disabled = top === null;
+  lockBtn.textContent = top !== null && groups.get(top)?.locked === true ? "Unlock" : "Lock";
+};
+
+// Bundle the selection into a new group. Each selected node contributes its top group (nesting an
+// existing group) or itself — so groups and loose elements bundle together, in selection order.
+const groupSelection = (): void => {
+  const units: GroupMember[] = [];
+  const seen = new Set<string>();
+  for (const id of selectionOrder) {
+    const top = topGroupOfNode(groups, id);
+    const member: GroupMember = top === null ? { kind: "node", id } : { kind: "group", id: top };
+    const key = `${member.kind}:${member.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    units.push(member);
+  }
+  if (units.length < 2) return;
+  groups = group(groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
+  updateGroupButtons();
+  paintScene();
+};
+
+const ungroupSelection = (): void => {
+  const top = selectedTopGroup();
+  if (top === null) return;
+  groups = ungroup(groups, top);
+  updateGroupButtons();
+  paintScene();
+};
+
+const toggleLockSelection = (): void => {
+  const top = selectedTopGroup();
+  const g = top === null ? undefined : groups.get(top);
+  if (top === null || g === undefined) return;
+  groups = setLocked(groups, top, !g.locked);
+  updateGroupButtons();
+  paintScene();
+};
+
+groupBtn.addEventListener("click", groupSelection);
+ungroupBtn.addEventListener("click", ungroupSelection);
+lockBtn.addEventListener("click", toggleLockSelection);
+updateGroupButtons();
 
 // A purpose-built small-scale view (not a shrunk copy of the canvas): nodes become solid blocks and
 // edges thin guides, so the *structure* reads at ~180px where labels/icons would be noise. The
@@ -630,6 +756,7 @@ canvas.addEventListener("pointerdown", (ev) => {
       }
     }
     paintScene();
+    updateGroupButtons();
     return;
   }
 
@@ -642,11 +769,18 @@ canvas.addEventListener("pointerdown", (ev) => {
     selectionOrder = hit !== null && hit.kind === "node" ? [hit.id] : [];
   }
 
-  // A plain click on a node starts a drag of the whole selection; on empty canvas it starts a pan.
-  if (hit !== null && hit.kind === "node") {
+  // A plain click on a node drags it; if it's in a group, the whole group moves — unless the group
+  // is locked, in which case it's selectable (for Ungroup/Lock) but not draggable. Empty canvas pans.
+  if (hit !== null && hit.kind === "node" && !pathLocked(groups, hit.id)) {
+    const moveIds = new Set<SceneNodeId>();
+    for (const id of selection.nodes) {
+      const top = topGroupOfNode(groups, id);
+      if (top === null) moveIds.add(id);
+      else for (const leaf of leafNodes(groups, top)) moveIds.add(leaf);
+    }
     const origin = new Map<SceneNodeId, Point>();
     for (const node of shown.nodes) {
-      if (selection.nodes.has(node.id))
+      if (moveIds.has(node.id))
         origin.set(node.id, point(node.bounds.origin.x, node.bounds.origin.y));
     }
     drag = { ids: [...origin.keys()], origin, pointerX: at.x, pointerY: at.y };
@@ -662,6 +796,7 @@ canvas.addEventListener("pointerdown", (ev) => {
     canvas.style.cursor = "grabbing";
   }
   paintScene();
+  updateGroupButtons();
 });
 
 canvas.addEventListener("pointermove", (ev) => {
