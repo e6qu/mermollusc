@@ -68,6 +68,11 @@ const kindEl = document.querySelector<HTMLSpanElement>("#kind");
 const statusEl = document.querySelector<HTMLElement>("#status");
 const stageWrap = document.querySelector<HTMLElement>("#stage-wrap");
 const inlineEl = document.querySelector<HTMLInputElement>("#inline-edit");
+const iconsToggle = document.querySelector<HTMLButtonElement>("#icons-toggle");
+const iconsClose = document.querySelector<HTMLButtonElement>("#icons-close");
+const iconPicker = document.querySelector<HTMLElement>("#icon-picker");
+const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
+const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
 if (
   relaxBtn === null ||
   regenBtn === null ||
@@ -80,7 +85,12 @@ if (
   kindEl === null ||
   statusEl === null ||
   stageWrap === null ||
-  inlineEl === null
+  inlineEl === null ||
+  iconsToggle === null ||
+  iconsClose === null ||
+  iconPicker === null ||
+  iconFilter === null ||
+  iconGrid === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -131,10 +141,10 @@ let sketch = false;
 const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
 const activeTheme = (): Theme => (sketch ? { ...theme, sketch: true, font: SKETCH_FONT } : theme);
 
-const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
-  // An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
-  // only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
-  // attribute would make decoding fail.
+// An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
+// only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
+// attribute would make decoding fail.
+const svgDataUrl = (svg: string): string => {
   let markup = svg;
   if (!markup.includes("xmlns=")) {
     markup = markup.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
@@ -142,8 +152,12 @@ const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   if (!/<svg[^>]*\swidth=/.test(markup)) {
     markup = markup.replace("<svg ", '<svg width="24" height="24" ');
   }
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+};
+
+const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
   const img = new Image();
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+  img.src = svgDataUrl(svg);
   await img.decode();
   return img;
 };
@@ -675,6 +689,75 @@ loadPackEl.addEventListener("change", () => {
   if (file === undefined || file === null) return;
   void loadPack(file);
 });
+
+// Icon picker: browse the active registry (pack → category → glyph) and insert an
+// `icon "<pack>/<name>"` override at the editor caret. Built fresh on each open so it reflects any
+// packs added via "Load icons". The glyph previews reuse the SVG→data-URL path (no innerHTML).
+const insertIconRef = (packId: string, name: string): void => {
+  const ref = ` icon "${packId}/${name}"`;
+  const at = srcEl.selectionStart;
+  srcEl.value = srcEl.value.slice(0, at) + ref + srcEl.value.slice(at);
+  const caret = at + ref.length;
+  srcEl.setSelectionRange(caret, caret);
+  overrides = new Map();
+  void renderFromText(srcEl.value);
+};
+
+const buildIconGrid = (filter: string): void => {
+  iconGrid.replaceChildren();
+  const needle = filter.trim().toLowerCase();
+  let shown = 0;
+  for (const [packId, pack] of registry.packs) {
+    for (const [category, names] of pack.categories) {
+      const matches = names.filter(
+        (n) =>
+          needle === "" ||
+          n.toLowerCase().includes(needle) ||
+          packId.toLowerCase().includes(needle),
+      );
+      if (matches.length === 0) continue;
+      const title = document.createElement("div");
+      title.className = "picker-group-title";
+      title.textContent = `${packId} · ${category}`;
+      const grid = document.createElement("div");
+      grid.className = "picker-icons";
+      for (const name of matches) {
+        const svg = pack.icons.get(name);
+        if (svg === undefined) continue;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "picker-icon";
+        btn.title = `${packId}/${name}`;
+        const img = document.createElement("img");
+        img.alt = name;
+        img.src = svgDataUrl(svg);
+        btn.append(img);
+        btn.addEventListener("click", () => insertIconRef(packId, name));
+        grid.append(btn);
+        shown += 1;
+      }
+      iconGrid.append(title, grid);
+    }
+  }
+  if (shown === 0) {
+    const empty = document.createElement("p");
+    empty.className = "picker-empty";
+    empty.textContent = "No icons match.";
+    iconGrid.append(empty);
+  }
+};
+
+let pickerOpen = false;
+const setPickerOpen = (open: boolean): void => {
+  pickerOpen = open;
+  iconPicker.hidden = !open;
+  iconsToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) buildIconGrid(iconFilter.value);
+};
+
+iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
+iconsClose.addEventListener("click", () => setPickerOpen(false));
+iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
 
 const initialSource = localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
 srcEl.value = initialSource;

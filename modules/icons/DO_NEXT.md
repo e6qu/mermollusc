@@ -1,7 +1,9 @@
 # @m/icons — do next
 
 - Subdivide vendored brand packs into finer categories (devicon → language/framework/tool/cloud
-  rather than one `brands`); add an "area"/region category + an icon-picker UI that groups by category.
+  rather than one `brands`); add an "area"/region category. *(The app now has an icon-picker drawer
+  that groups by pack → category and inserts an `icon "pack/name"` override at the caret; finer
+  categories would immediately flow through to it.)*
 - Grow the `sketch` pack (more hand-drawn glyphs) and let the cloud/network kind→icon maps switch to
   it when the app is in Sketch mode.
 - AWS/Azure/GCP/Oracle/AliCloud official sets + any non-redistributable pack: user-load into the

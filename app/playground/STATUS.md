@@ -41,6 +41,10 @@
   registry (`registerPack`); a pack with id "arch" overrides the built-in network glyphs. This is
   how non-redistributable vendor sets (AWS/Azure/GCP/Oracle/AliCloud official icons) render — convert
   a downloaded SVG folder with `tools/pack-dir.mjs`, then load it. Failures log loudly.
+- **Icon picker** (`#icons-toggle`): a right-side drawer that browses the active registry (pack →
+  category → glyph, with a name filter) and inserts an `icon "<pack>/<name>"` override at the editor
+  caret. Previews reuse the SVG→data-URL path (no `innerHTML`); rebuilt on each open so loaded packs
+  appear.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
 - Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the
@@ -48,7 +52,7 @@
 - Source persistence: the editor text is saved to `localStorage` (via `renderFromText`, which every
   text change funnels through) so a reload restores the in-progress diagram; a fresh context starts
   on the sample.
-- Playwright (`make e2e-ui`): 31 flows — adds source-persistence (reload + fresh-context) to the
-  prior 29 (family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud
-  render/relabel, network-icons + override, dpr, load-pack ×2).
+- Playwright (`make e2e-ui`): 33 flows — adds icon-picker (insert + empty-filter) to the prior 31
+  (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles + persistence,
+  cloud render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.
