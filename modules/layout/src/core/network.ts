@@ -1,6 +1,6 @@
 import { brand, point, rect } from "@m/std";
 import type { NetworkAst, Scene, SceneEdge, SceneNode } from "@m/contracts";
-import { heuristicMeasure, type MeasureText } from "./graph.js";
+import type { MeasureText } from "./graph.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 48;
@@ -12,7 +12,7 @@ const labelWidth = (label: string, measure: MeasureText): number =>
 
 // Pure squarish-grid layout: nodes fill a `ceil(sqrt n)`-wide grid in a uniform cell; links are
 // straight, undirected centre-to-centre lines (no arrowheads).
-export const layoutNetwork = (ast: NetworkAst, measure: MeasureText = heuristicMeasure): Scene => {
+export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
   const cellWidth = ast.nodes.reduce(
     (w, n) => Math.max(w, labelWidth(n.label, measure)),
     MIN_CELL_WIDTH,

@@ -1,6 +1,6 @@
 import { brand, point, rect } from "@m/std";
 import type { CloudAst, CloudNodeKind, IconRef, Scene, SceneEdge, SceneNode } from "@m/contracts";
-import { heuristicMeasure, type MeasureText } from "./graph.js";
+import type { MeasureText } from "./graph.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
@@ -38,7 +38,7 @@ const leafWidth = (label: string, measure: MeasureText): number =>
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.
-export const layoutCloud = (ast: CloudAst, measure: MeasureText = heuristicMeasure): Scene => {
+export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
   const elements: Elem[] = [
     ...ast.groups.map((g) => ({
       id: g.id,

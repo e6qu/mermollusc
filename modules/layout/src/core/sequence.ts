@@ -8,7 +8,7 @@ import type {
   SceneNode,
   SequenceAst,
 } from "@m/contracts";
-import { heuristicMeasure, type MeasureText } from "./graph.js";
+import type { MeasureText } from "./graph.js";
 
 const ACTOR_HEIGHT = 40;
 const ACTOR_GAP = 60;
@@ -34,15 +34,17 @@ const MESSAGE_STYLE: Record<
 // Deterministic lane layout — no ELK. Actors sit in a row; each has a vertical lifeline; messages
 // are horizontal arrows stacked top-to-bottom in source order. Lifelines reuse SceneEdge (a
 // self-edge from the actor to itself) so the renderer needs no new concept.
-export const layoutSequence = (
-  ast: SequenceAst,
-  measure: MeasureText = heuristicMeasure,
-): Scene => {
+export const layoutSequence = (ast: SequenceAst, measure: MeasureText): Scene => {
+  const bottomY = ACTOR_HEIGHT + HEADER_GAP + ast.messages.length * MESSAGE_GAP + BOTTOM_PADDING;
   const centerX = new Map<string, number>();
   const nodes: SceneNode[] = [];
+  const edges: SceneEdge[] = [];
   let cursor = 0;
+  // One pass over the actors places each box and drops its lifeline using the known centre — no
+  // second lookup, so no fallback for a "missing" centre that can't happen.
   for (const actor of ast.actors) {
     const width = actorWidth(actor.label, measure);
+    const cx = cursor + width / 2;
     nodes.push({
       id: brand<string, "SceneNodeId">(actor.id),
       bounds: rect(cursor, 0, width, ACTOR_HEIGHT),
@@ -51,29 +53,25 @@ export const layoutSequence = (
       parent: null,
       icon: null,
     });
-    centerX.set(actor.id, cursor + width / 2);
-    cursor += width + ACTOR_GAP;
-  }
-
-  const width = Math.max(0, cursor - ACTOR_GAP);
-  const bottomY = ACTOR_HEIGHT + HEADER_GAP + ast.messages.length * MESSAGE_GAP + BOTTOM_PADDING;
-
-  const edges: SceneEdge[] = [];
-  for (const actor of ast.actors) {
-    const x = centerX.get(actor.id) ?? 0;
     edges.push({
       id: brand<string, "SceneEdgeId">(`lifeline:${actor.id}`),
       from: brand<string, "SceneNodeId">(actor.id),
       to: brand<string, "SceneNodeId">(actor.id),
-      waypoints: [point(x, ACTOR_HEIGHT), point(x, bottomY)],
+      waypoints: [point(cx, ACTOR_HEIGHT), point(cx, bottomY)],
       label: null,
       stroke: "dashed",
       arrow: "none",
     });
+    centerX.set(actor.id, cx);
+    cursor += width + ACTOR_GAP;
   }
+
+  const width = Math.max(0, cursor - ACTOR_GAP);
 
   for (const [index, message] of ast.messages.entries()) {
     const y = ACTOR_HEIGHT + HEADER_GAP + (index + 1) * MESSAGE_GAP;
+    // A message endpoint is always an actor for parser output; the `?? 0` only guards a hand-built
+    // inconsistent AST (a pure layout can't fail loudly — it returns a Scene, not a Result).
     const fromX = centerX.get(message.from) ?? 0;
     const toX = centerX.get(message.to) ?? 0;
     const style = MESSAGE_STYLE[message.kind];

@@ -1,4 +1,11 @@
-import type { EdgeKind, FlowNode, FlowchartAst, NodeId, NodeShape } from "@m/contracts";
+import type {
+  EdgeKind,
+  FlowNode,
+  FlowSubgraph,
+  FlowchartAst,
+  NodeId,
+  NodeShape,
+} from "@m/contracts";
 
 const wrapLabel = (shape: NodeShape, id: string, label: string): string => {
   switch (shape) {
@@ -43,17 +50,19 @@ export const print = (ast: FlowchartAst): string => {
   };
   // `subgraph id` when the title is just the id, else `subgraph id[title]`; members then nested
   // subgraphs, matching the parser's statements-then-subgraphs order so print→parse round-trips.
-  const emitSubgraph = (id: NodeId, label: string, indent: string): void => {
-    lines.push(label === id ? `${indent}subgraph ${id}` : `${indent}subgraph ${id}[${label}]`);
-    for (const member of ast.subgraphs.find((s) => s.id === id)?.nodes ?? []) {
-      emitNode(member, `${indent}  `);
-    }
-    for (const child of childrenOf(id)) emitSubgraph(child.id, child.label, `${indent}  `);
+  const emitSubgraph = (sub: FlowSubgraph, indent: string): void => {
+    lines.push(
+      sub.label === sub.id
+        ? `${indent}subgraph ${sub.id}`
+        : `${indent}subgraph ${sub.id}[${sub.label}]`,
+    );
+    for (const member of sub.nodes) emitNode(member, `${indent}  `);
+    for (const child of childrenOf(sub.id)) emitSubgraph(child, `${indent}  `);
     lines.push(`${indent}end`);
   };
 
   for (const node of ast.nodes) if (!inSubgraph.has(node.id)) emitNode(node.id, "  ");
-  for (const sub of childrenOf(null)) emitSubgraph(sub.id, sub.label, "  ");
+  for (const sub of childrenOf(null)) emitSubgraph(sub, "  ");
   for (const edge of ast.edges) {
     const label = edge.label === null ? "" : `|${edge.label}|`;
     lines.push(`  ${edge.from} ${arrowOf(edge.kind)}${label} ${edge.to}`);

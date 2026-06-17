@@ -1,6 +1,7 @@
 import { brand } from "@m/std";
 import type { CloudAst, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutCloud } from "../../src/core/cloud.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -17,7 +18,7 @@ const ast: CloudAst = {
 };
 
 describe("layoutCloud", () => {
-  const scene = layoutCloud(ast);
+  const scene = layoutCloud(ast, heuristicMeasure);
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
 
   it("renders groups as containers and nests their children fully inside", () => {

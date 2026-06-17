@@ -1,4 +1,4 @@
-import { layout } from "@m/layout";
+import { heuristicMeasure, layout } from "@m/layout";
 import { parse } from "@m/parser";
 import { type Canvas2D, paint, toDisplayList } from "@m/renderer";
 import { isOk } from "@m/std";
@@ -50,7 +50,7 @@ describe("text -> pixels pipeline", () => {
     expect(isOk(parsed)).toBe(true);
     if (!isOk(parsed)) return;
 
-    const laid = await layout(parsed.value);
+    const laid = await layout(parsed.value, new Map(), heuristicMeasure);
     expect(isOk(laid)).toBe(true);
     if (!isOk(laid)) return;
 

@@ -3,6 +3,7 @@ import { brand } from "@m/std";
 import type { BlockAst, NetworkAst, NetworkNodeKind, Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { layoutBlock } from "../../src/core/block.js";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutNetwork } from "../../src/core/network.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -44,7 +45,7 @@ describe("layoutBlock — grid invariants (property-based)", () => {
             blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null })),
             edges: [],
           };
-          const scene = layoutBlock(ast);
+          const scene = layoutBlock(ast, heuristicMeasure);
           expect(scene.nodes.map((n) => n.id)).toEqual(ids);
           withinExtent(scene);
         },
@@ -65,7 +66,7 @@ describe("layoutNetwork — grid invariants (property-based)", () => {
             nodes: ids.map((id, i) => ({ id: nid(id), label: id, kind: kinds[i] ?? "host", icon: null })),
             links: [],
           };
-          const scene = layoutNetwork(ast);
+          const scene = layoutNetwork(ast, heuristicMeasure);
           expect(scene.nodes.map((n) => n.id)).toEqual(ids);
           for (const n of scene.nodes) expect(n.icon).not.toBeNull();
           withinExtent(scene);

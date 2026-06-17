@@ -1,4 +1,4 @@
-import { layoutDiagram } from "@m/layout";
+import { heuristicMeasure, layoutDiagram } from "@m/layout";
 import { parseDiagram } from "@m/parser";
 import { toDisplayList } from "@m/renderer";
 import { isOk } from "@m/std";
@@ -51,7 +51,7 @@ describe("pipeline goldens", () => {
       const parsed = parseDiagram(sample.text);
       expect(isOk(parsed)).toBe(true);
       if (!isOk(parsed)) return;
-      const laid = await layoutDiagram(parsed.value);
+      const laid = await layoutDiagram(parsed.value, heuristicMeasure);
       expect(isOk(laid)).toBe(true);
       if (!isOk(laid)) return;
       expect(normalize(toDisplayList(laid.value))).toMatchSnapshot();

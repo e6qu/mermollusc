@@ -43,3 +43,11 @@
   (container synthesis + absolute containment).
 - Fixed `make build` repo-wide: tsup's .d.ts step injects a `baseUrl` (to resolve `paths`) that TS
   6.0 deprecates (TS5101); added `"ignoreDeprecations": "6.0"` to `tsconfig.base.json`.
+- Explicitness / de-fallback pass: made `measure` a **required** param on every layout
+  (`layout`/`layoutDiagram`/`layoutSequence`/`C4`/`Block`/`Network`/`Cloud`/`toElkGraph`) and `seed`
+  required on `layout`/`toElkGraph` — no defaults, so callers state intent (the now-dead `seed`
+  default fell out once `measure` was required). Exported `heuristicMeasure` from the package for
+  callers wanting the char-width metric. Removed a cleanly-dead fallback in `layoutSequence` by
+  building each lifeline in the actor loop from the known centre (no second Map lookup / `?? 0`).
+  (Remaining: the message-endpoint and cloud/c4 `boxes.get` `?? default` defend pure layouts against
+  inconsistent ASTs — removing them properly means making those layouts return `Result`.)

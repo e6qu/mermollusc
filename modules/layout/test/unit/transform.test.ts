@@ -1,7 +1,7 @@
 import { brand } from "@m/std";
 import type { FlowchartAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { toElkGraph, toScene } from "../../src/core/index.js";
+import { heuristicMeasure, toElkGraph, toScene } from "../../src/core/index.js";
 import type { PositionedGraph } from "../../src/core/index.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -20,7 +20,7 @@ const ast: FlowchartAst = {
 
 describe("toElkGraph", () => {
   it("maps direction and graph shape", () => {
-    const g = toElkGraph(ast);
+    const g = toElkGraph(ast, new Map(), heuristicMeasure);
     expect(g.config.direction).toBe("RIGHT");
     expect(g.children.map((c) => c.id)).toEqual(["A", "B"]);
     expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"] }]);
@@ -38,7 +38,7 @@ describe("toElkGraph", () => {
       ],
       edges: [],
       subgraphs: [],
-    });
+    }, new Map(), heuristicMeasure);
     const circle = g.children.find((c) => c.id === "C");
     const rectNode = g.children.find((c) => c.id === "R");
     expect(circle?.kind).toBe("leaf");

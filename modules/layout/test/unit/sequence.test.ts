@@ -1,6 +1,7 @@
 import { brand } from "@m/std";
 import type { SequenceAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
+import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutSequence } from "../../src/core/sequence.js";
 
 const aid = (s: string) => brand<string, "ActorId">(s);
@@ -19,7 +20,7 @@ const ast: SequenceAst = {
 };
 
 describe("layoutSequence", () => {
-  const scene = layoutSequence(ast);
+  const scene = layoutSequence(ast, heuristicMeasure);
 
   it("places actor boxes left to right", () => {
     expect(scene.nodes.map((n) => n.id)).toEqual(["A", "B"]);

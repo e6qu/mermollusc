@@ -60,3 +60,5 @@
   node order (top-level first, subgraphs depth-first) that the printer mirrors so print→parse is a
   fixed point. Printer emits `subgraph` blocks. Layout/renderer don't consume subgraphs yet (next
   stage), so they currently lay out flat. +4 tests (membership, nesting+title, round-trip, print).
+- print: pass the `FlowSubgraph` to `emitSubgraph` directly instead of re-`find`ing it by id,
+  removing a dead `?? []` fallback (the subgraph always exists when emitting it).
