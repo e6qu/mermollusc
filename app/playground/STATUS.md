@@ -53,10 +53,12 @@
 - Source persistence: the editor text is saved to `localStorage` (via `renderFromText`, which every
   text change funnels through) so a reload restores the in-progress diagram; a fresh context starts
   on the sample.
-- **Export PNG** (`#export-png`): composites the active theme background under the canvas (whose
-  pixels are otherwise transparent) onto an offscreen canvas at device resolution, then downloads it
-  as `mermollusc.png` via a blob URL.
-- Playwright (`make e2e-ui`): 34 flows — adds PNG export + icon-picker (insert + empty-filter) to the
-  prior set (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles +
-  persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
+- **Export** PNG (`#export-png`) and PDF (`#export-pdf`): both composite the active theme background
+  under the canvas (whose pixels are otherwise transparent) onto an offscreen canvas at device
+  resolution. PNG downloads via `toBlob`; PDF wraps the canvas-as-JPEG in a **hand-rolled minimal
+  one-page PDF** (DCTDecode image XObject, MediaBox in CSS px so the device-res JPEG is high-DPI) —
+  dependency-free, per the repo's no-dep ethos.
+- Playwright (`make e2e-ui`): 35 flows — adds PNG + PDF export + icon-picker (insert + empty-filter)
+  to the prior set (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles
+  + persistence, cloud render/relabel, network-icons + override, dpr, load-pack ×2).
 - Not yet: CodeMirror editor; HTML-in-Canvas.

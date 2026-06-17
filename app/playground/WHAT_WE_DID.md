@@ -101,3 +101,8 @@
   offscreen canvas at device resolution (the canvas pixels are transparent — the surface colour is
   CSS-only), then downloads `mermollusc.png` via a blob URL + `<a download>`. +1 Playwright flow
   (asserts the download filename + that it resolves to a real file).
+- Export PDF (`#export-pdf`): dependency-free. Extracted `compositeCanvas` + `downloadBlob` (shared
+  with PNG), then `buildImagePdf` hand-assembles a minimal one-page PDF — a DCTDecode image XObject
+  (the composited canvas as JPEG) placed to fill a MediaBox sized in CSS px (so the device-res JPEG
+  renders high-DPI), tracking byte offsets for the xref. Verified the output renders. +1 Playwright
+  flow (download filename + real file). 35 e2e green.
