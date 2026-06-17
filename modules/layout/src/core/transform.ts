@@ -1,6 +1,7 @@
 import { brand, err, ok, point, rect, type Point, type Result } from "@m/std";
 import type {
   EdgeArrow,
+  EdgeId,
   EdgeKind,
   EdgeStroke,
   FlowDirection,
@@ -106,14 +107,14 @@ export const toScene = (
   positioned: PositionedGraph,
   ast: FlowchartAst,
 ): Result<Scene, LayoutError> => {
-  const nodeById = new Map<string, FlowNode>(ast.nodes.map((n) => [n.id, n]));
-  const edgeById = new Map<string, FlowEdge>(ast.edges.map((e) => [e.id, e]));
+  const nodeById = new Map<NodeId, FlowNode>(ast.nodes.map((n) => [n.id, n]));
+  const edgeById = new Map<EdgeId, FlowEdge>(ast.edges.map((e) => [e.id, e]));
   const subgraphById = new Map<NodeId, FlowSubgraph>(ast.subgraphs.map((s) => [s.id, s]));
 
   const nodes: SceneNode[] = [];
   for (const pn of positioned.nodes) {
     const parent = pn.parent === null ? null : brand<string, "SceneNodeId">(pn.parent);
-    const sub = subgraphById.get(brand<string, "NodeId">(pn.id));
+    const sub = subgraphById.get(pn.id);
     if (sub !== undefined) {
       // A subgraph container: drawn as an outlined box with its title near the top.
       nodes.push({

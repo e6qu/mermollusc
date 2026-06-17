@@ -1,14 +1,23 @@
 import { brand, point, rect } from "@m/std";
-import type { CloudAst, CloudNodeKind, IconRef, Scene, SceneEdge, SceneNode } from "@m/contracts";
+import type {
+  CloudAst,
+  CloudNodeKind,
+  IconRef,
+  NodeId,
+  Scene,
+  SceneEdge,
+  SceneNode,
+} from "@m/contracts";
+import { SIMPLE_ICONS_PACK } from "./icon-packs.js";
 import type { MeasureText } from "./graph.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
-  compute: { pack: "simpleicons", name: "docker" },
-  storage: { pack: "simpleicons", name: "googlecloudstorage" },
-  database: { pack: "simpleicons", name: "postgresql" },
-  queue: { pack: "simpleicons", name: "apachekafka" },
-  cdn: { pack: "simpleicons", name: "cloudflare" },
+  compute: { pack: SIMPLE_ICONS_PACK, name: "docker" },
+  storage: { pack: SIMPLE_ICONS_PACK, name: "googlecloudstorage" },
+  database: { pack: SIMPLE_ICONS_PACK, name: "postgresql" },
+  queue: { pack: SIMPLE_ICONS_PACK, name: "apachekafka" },
+  cdn: { pack: SIMPLE_ICONS_PACK, name: "cloudflare" },
 };
 
 const PADDING = 16;
@@ -26,9 +35,9 @@ interface Box {
 }
 
 interface Elem {
-  readonly id: string;
+  readonly id: NodeId;
   readonly label: string;
-  readonly parent: string | null;
+  readonly parent: NodeId | null;
   readonly icon: IconRef | null;
   readonly group: boolean;
 }
@@ -57,7 +66,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
     })),
   ];
 
-  const childrenOf = new Map<string, Elem[]>();
+  const childrenOf = new Map<NodeId, Elem[]>();
   const roots: Elem[] = [];
   for (const el of elements) {
     if (el.parent === null) {
@@ -69,7 +78,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Scene => {
     }
   }
 
-  const boxes = new Map<string, Box>();
+  const boxes = new Map<NodeId, Box>();
   const place = (el: Elem, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     if (kids.length === 0) {

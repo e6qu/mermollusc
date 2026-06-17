@@ -1,4 +1,4 @@
-import { decode, err, ok, type Point, type Result } from "@m/std";
+import { brand, decode, err, ok, type Point, type Result } from "@m/std";
 import type { DiagramAst, FlowchartAst, NodeId, Scene } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
@@ -119,15 +119,16 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
   const nodes: PositionedNode[] = [];
   const flatten = (
     children: readonly ElkNode[] | undefined,
-    parent: string | null,
+    parent: NodeId | null,
     ox: number,
     oy: number,
   ): void => {
     for (const c of children ?? []) {
       const x = ox + c.x;
       const y = oy + c.y;
-      nodes.push({ id: c.id, x, y, width: c.width, height: c.height, parent });
-      flatten(c.children, c.id, x, y);
+      const id = brand<string, "NodeId">(c.id);
+      nodes.push({ id, x, y, width: c.width, height: c.height, parent });
+      flatten(c.children, id, x, y);
     }
   };
   flatten(r.children, null, 0, 0);
@@ -141,7 +142,7 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
         section === undefined
           ? []
           : [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
-      return { id: e.id, points };
+      return { id: brand<string, "EdgeId">(e.id), points };
     }),
   };
 };

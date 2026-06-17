@@ -1,5 +1,6 @@
 import { brand, point, rect } from "@m/std";
-import type { NetworkAst, Scene, SceneEdge, SceneNode } from "@m/contracts";
+import type { NetworkAst, NodeId, Scene, SceneEdge, SceneNode } from "@m/contracts";
+import { ARCH_PACK } from "./icon-packs.js";
 import type { MeasureText } from "./graph.js";
 
 const LABEL_PADDING = 24;
@@ -19,7 +20,7 @@ export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
   );
   const columns = Math.max(1, Math.ceil(Math.sqrt(ast.nodes.length)));
 
-  const centers = new Map<string, { readonly x: number; readonly y: number }>();
+  const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
   const nodes: SceneNode[] = ast.nodes.map((n, i) => {
     const col = i % columns;
     const row = Math.floor(i / columns);
@@ -33,8 +34,8 @@ export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
       shape: "rect",
       parent: null,
       // An explicit `icon "<pack>/<name>"` override wins; otherwise the kind maps 1:1 to a glyph
-      // name in the built-in "arch" pack.
-      icon: n.icon ?? { pack: "arch", name: n.kind },
+      // name in the built-in arch pack.
+      icon: n.icon ?? { pack: ARCH_PACK, name: n.kind },
     };
   });
 

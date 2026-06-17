@@ -2,6 +2,7 @@ import { brand, point, rect } from "@m/std";
 import type {
   C4Ast,
   C4Element,
+  C4ElementId,
   C4ElementKind,
   NodeShape,
   Scene,
@@ -33,7 +34,7 @@ const shapeOf = (kind: C4ElementKind): NodeShape =>
 // Pure recursive nested-box layout: boundaries wrap their children (sized to fit), siblings sit
 // in a row, relations are straight centre-to-centre edges. No ELK — coordinates are absolute.
 export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
-  const childrenOf = new Map<string, C4Element[]>();
+  const childrenOf = new Map<C4ElementId, C4Element[]>();
   const roots: C4Element[] = [];
   for (const el of ast.elements) {
     if (el.parent === null) {
@@ -45,7 +46,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Scene => {
     }
   }
 
-  const boxes = new Map<string, Box>();
+  const boxes = new Map<C4ElementId, Box>();
   const place = (el: C4Element, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     if (kids.length === 0) {

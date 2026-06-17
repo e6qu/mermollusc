@@ -51,3 +51,11 @@
   building each lifeline in the actor loop from the known centre (no second Map lookup / `?? 0`).
   (Remaining: the message-endpoint and cloud/c4 `boxes.get` `?? default` defend pure layouts against
   inconsistent ASTs — removing them properly means making those layouts return `Result`.)
+- Type-safety pass (kill stringy/magic): branded the flowchart layout boundary — `LeafNode`/
+  `ContainerNode`/`PositionedNode` ids are `NodeId`, `LayoutEdge`/`PositionedEdge` ids `EdgeId`,
+  `PositionedNode.parent` `NodeId | null` (branding happens at the ELK decode boundary in the shell).
+  Keyed every internal layout `Map<string, …>` by its domain brand instead (`NodeId`/`EdgeId`/
+  `C4ElementId`/`ActorId`) across transform/c4/cloud/sequence/block/network. Replaced the scattered
+  magic pack-id literals (`"arch"`, `"simpleicons"`) with named constants in a new `icon-packs.ts`
+  (icon *names* stay as data; the literals must match @m/icons, a sibling we can't import — the icon
+  ref is the shared contract).
