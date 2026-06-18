@@ -8,10 +8,12 @@ class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
   strokeStyle: string | CanvasGradient | CanvasPattern = "";
   lineWidth = 0;
+  globalAlpha = 1;
   font = "";
   textAlign: CanvasTextAlign = "start";
   textBaseline: CanvasTextBaseline = "alphabetic";
   readonly calls: string[] = [];
+  readonly fillTextFonts: string[] = [];
   beginPath(): void {
     this.calls.push("beginPath");
   }
@@ -32,6 +34,7 @@ class RecordingCtx implements Canvas2D {
   }
   fillText(text: string): void {
     this.calls.push(`fillText:${text}`);
+    this.fillTextFonts.push(this.font);
   }
   roundRect(): void {
     this.calls.push("roundRect");
@@ -90,6 +93,22 @@ describe("paint", () => {
     expect(ctx.calls).toContain("fillText:A");
     expect(ctx.calls).toContain("fillText:B");
     expect(ctx.calls.filter((c) => c === "moveTo").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("draws a multi-line label, scaling the continuation line down", () => {
+    const ml: Scene = {
+      nodes: [
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null },
+      ],
+      edges: [],
+      extent: rect(0, 0, 90, 56),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(ml), new Map(), { ...defaultTheme, font: "14px sans-serif" });
+    expect(ctx.calls).toContain("fillText:API");
+    expect(ctx.calls).toContain("fillText:Handles");
+    // First line at the base font; the continuation line scaled down (14 * 0.82 ≈ 11.5).
+    expect(ctx.fillTextFonts).toEqual(["14px sans-serif", "11.5px sans-serif"]);
   });
 
   it("uses the supplied theme's font and text colour", () => {

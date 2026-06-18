@@ -8,8 +8,8 @@
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
   glyph above the label — for nodes carrying a `SceneNode.icon`).
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
-  anchor (in both `paint` and `toSvg`); single-line labels are unchanged. C4 element descriptions use
-  this (label + description on a second line).
+  anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
+  primary label; continuation lines (a C4 description) render smaller and dimmed.
 - shell: `paint(ctx, cmds, iconImages?, theme?)` executes the display list against a `Canvas2D`
   (structural subset of `CanvasRenderingContext2D`; a real 2D context is assignable). `iconImages`
   maps `${pack}/${name}` → a pre-rasterised `CanvasImageSource` (missing → glyph skipped); `theme`
