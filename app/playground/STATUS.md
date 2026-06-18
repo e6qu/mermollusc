@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (72 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state**; `make check` + Playwright (74 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -17,7 +17,7 @@
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
   out of the app and the surface stays swappable.
-- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the six
+- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the seven
   families; the kind badge shows the active family; Connect/Delete dispatch per family, Add/Relax
   disable off-flowchart, and Regenerate stays live for all.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
@@ -28,16 +28,16 @@
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
 - `main.ts`: source editor (CodeMirror) ↔ canvas.
-  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
+  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all seven families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
   - double-click rename → an **inline editor overlay** (positioned over the element; Enter/blur
     commit, Escape cancel — no modal prompt) patches the source text (flowchart nodes **and edge
     labels**; sequence actor/message text; C4 element/relation; block block/edge; network node/link;
-    cloud group/leaf/link labels) — **canvas → text two-way for all six families**;
+    cloud group/leaf/link labels) — **canvas → text two-way for all families (incl. state)**;
   - structural edits: **Connect** (two selected nodes → family-specific edge/relation/message) and
     **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
-    all six families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
+    all seven families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
   - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors
     open at the visible label location.
   - group outlines are selectable: clicking an outline selects all leaf nodes in that group, enabling
@@ -92,7 +92,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 72 flows — adds corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 74 flows — adds state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

@@ -26,3 +26,7 @@
   *(done — click a group outline to select the whole group)*; *(done — editable group label/title)*.
 - *(done)* Connect and Delete dispatch across all six families, including C4 boundary blocks and
   sequence actors/messages.
+- State diagrams v1 is flat: composite/nested states, fork/join, choice, and notes are future work
+  (parser-led). The `[*]` pseudo-states render as plain circles — small filled start / ringed final
+  markers would read better (renderer-led). Connect/Delete/relabel work on real states; the merged
+  `[*]` pseudo-states aren't meaningfully editable from the canvas.

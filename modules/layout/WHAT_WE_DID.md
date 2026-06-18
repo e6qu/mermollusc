@@ -70,3 +70,7 @@
 - C4 layout now renders an element's description as a second label line: the scene label is composed
   as `label\ndescription` (null description → unchanged), and the leaf box is sized to the widest
   line. Relies on the renderer's new multi-line label handling. +1 unit case.
+- Routed **state diagrams** through the existing ELK path: a `stateToFlow` adapter in the shell maps
+  `StateAst` to a `FlowchartAst` (states → round nodes, `[*]` pseudo-states → circles, transitions →
+  arrowed edges; ids re-branded at the shell boundary), so `layoutDiagram` lays state out with the
+  same layered layout + `toScene` as flowcharts. +1 integration test.

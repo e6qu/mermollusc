@@ -182,5 +182,37 @@ export interface CloudAst {
   readonly links: readonly CloudLink[];
 }
 
+export type StateId = Brand<string, "StateId">;
+export type StateTransitionId = Brand<string, "StateTransitionId">;
+// A real state, or one of the `[*]` pseudo-states (initial when a transition's source, final when
+// its target). Pseudo-states render as small circles and carry no label.
+export type StateKind = "state" | "start" | "end";
+
+export interface StateNode {
+  readonly id: StateId;
+  readonly label: string;
+  readonly kind: StateKind;
+}
+
+export interface StateTransition {
+  readonly id: StateTransitionId;
+  readonly from: StateId;
+  readonly to: StateId;
+  readonly label: string | null;
+}
+
+export interface StateAst {
+  readonly kind: "state";
+  readonly states: readonly StateNode[];
+  readonly transitions: readonly StateTransition[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
-export type DiagramAst = FlowchartAst | SequenceAst | C4Ast | BlockAst | NetworkAst | CloudAst;
+export type DiagramAst =
+  | FlowchartAst
+  | SequenceAst
+  | C4Ast
+  | BlockAst
+  | NetworkAst
+  | CloudAst
+  | StateAst;

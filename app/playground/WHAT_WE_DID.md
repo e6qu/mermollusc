@@ -221,3 +221,9 @@
   size and the connectors re-anchoring through `applyOverrides`. One undo step (recorded on the first
   move, like drag). Completes the direct-manipulation set (move / multi-select / align / resize). +1
   e2e (corner-drag grows the node, then one ⌘Z reverts). 72 Playwright.
+- Added the **state diagram** family (`stateDiagram-v2`): parsed via `parseState`, laid out through
+  the ELK path (a `stateToFlow` adapter in `@m/layout`), and rendered with the existing box/circle
+  shapes — states are rounded boxes, `[*]` start/end are circles, transitions are arrowed labelled
+  edges. Wired into the family dispatch (kind badge, source-map capture for relabel via
+  `StateSource`, an Examples entry); Connect/Delete fall through to the generic `-->` / token
+  removers, which match state syntax. +2 e2e (render; example parses). 74 Playwright.

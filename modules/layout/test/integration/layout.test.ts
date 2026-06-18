@@ -1,5 +1,5 @@
 import { brand, isOk, point } from "@m/std";
-import type { FlowchartAst, NodeId, SequenceAst } from "@m/contracts";
+import type { FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout, layoutDiagram } from "../../src/shell/elk.js";
@@ -8,6 +8,8 @@ const nid = (s: string) => brand<string, "NodeId">(s);
 const eid = (s: string) => brand<string, "EdgeId">(s);
 const aid = (s: string) => brand<string, "ActorId">(s);
 const mid = (s: string) => brand<string, "MessageId">(s);
+const sid = (s: string) => brand<string, "StateId">(s);
+const tid = (s: string) => brand<string, "StateTransitionId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -123,5 +125,26 @@ describe("layout", () => {
     expect(isOk(sequence)).toBe(true);
     if (!isOk(sequence)) return;
     expect(sequence.value.nodes).toHaveLength(2);
+  });
+
+  it("layoutDiagram lays out a state diagram through the ELK path", async () => {
+    const stateAst: StateAst = {
+      kind: "state",
+      states: [
+        { id: sid("__state_start"), label: "", kind: "start" },
+        { id: sid("Idle"), label: "Idle", kind: "state" },
+      ],
+      transitions: [
+        { id: tid("t0"), from: sid("__state_start"), to: sid("Idle"), label: null },
+      ],
+    };
+    const laid = await layoutDiagram(stateAst, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    expect(laid.value.nodes.map((n) => n.id).sort()).toEqual(["Idle", "__state_start"]);
+    // The start pseudo-state becomes a circle, the real state a rounded box.
+    expect(laid.value.nodes.find((n) => n.id === "Idle")?.shape).toBe("round");
+    expect(laid.value.nodes.find((n) => n.id === "__state_start")?.shape).toBe("circle");
+    expect(laid.value.edges).toHaveLength(1);
   });
 });

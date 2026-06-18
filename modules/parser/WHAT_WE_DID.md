@@ -66,3 +66,8 @@
   "description")`. The grammar's element rule gained an `OPTION` for `, "descr"`; the CST→AST mapping
   reads the second quoted string into `C4Element.description` (null when omitted; the label span used
   for relabel still points at the first quoted string). Boundaries stay 2-arg. +1 integration test.
+- Added a **state diagram** parser (`stateDiagram-v2` / `stateDiagram`): tokens (with a colon
+  push-mode for trailing labels, like the sequence parser), grammar, and CST→AST + source spans
+  (`parseState` / `parseStateWithSource`). Supports transitions `A --> B [: label]`, the `[*]`
+  start/end pseudo-states (initial as a source, final as a target — merged to one `__state_start` /
+  `__state_end` each), state descriptions `A : label`, and `state "Label" as A`. +3 integration tests.

@@ -32,6 +32,12 @@ export type {
   CloudNode,
   CloudLink,
   CloudAst,
+  StateId,
+  StateTransitionId,
+  StateKind,
+  StateNode,
+  StateTransition,
+  StateAst,
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
@@ -55,4 +61,5 @@ export type {
   BlockSource,
   NetworkSource,
   CloudSource,
+  StateSource,
 } from "./core/index.js";
