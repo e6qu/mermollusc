@@ -45,6 +45,7 @@ import type {
   SceneNodeId,
   SequenceSource,
   SourceMap,
+  StateSource,
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
@@ -56,6 +57,7 @@ import {
   parseDiagram,
   parseNetworkWithSource,
   parseSequenceWithSource,
+  parseStateWithSource,
   parseWithSource,
 } from "@m/parser";
 import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
@@ -164,6 +166,7 @@ let c4Source: C4Source | null = null;
 let blockSource: BlockSource | null = null;
 let netSource: NetworkSource | null = null;
 let cloudSource: CloudSource | null = null;
+let stateSource: StateSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1110,6 +1113,10 @@ const EXAMPLES = new Map<string, string>([
     "cloud",
     'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n    database db "Orders"\n    queue jobs "Jobs"\n    cdn edge "Edge"\n  }\n  web -- db\n',
   ],
+  [
+    "state",
+    "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Loading : fetch\n  Loading --> Ready : ok\n  Loading --> Idle : error\n  Ready --> [*]\n",
+  ],
 ]);
 
 const renderFromText = async (text: string): Promise<void> => {
@@ -1149,6 +1156,7 @@ const renderFromText = async (text: string): Promise<void> => {
   blockSource = null;
   netSource = null;
   cloudSource = null;
+  stateSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1178,6 +1186,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "cloud": {
       const withSource = parseCloudWithSource(text);
       cloudSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "state": {
+      const withSource = parseStateWithSource(text);
+      stateSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1543,6 +1556,12 @@ canvas.addEventListener("dblclick", (ev) => {
       hit.kind === "node"
         ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
         : seqSource.messages.get(brand<string, "MessageId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "state" && stateSource !== null) {
+    const span =
+      hit.kind === "node"
+        ? stateSource.states.get(brand<string, "StateId">(hit.id))
+        : stateSource.transitions.get(brand<string, "StateTransitionId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   }
 

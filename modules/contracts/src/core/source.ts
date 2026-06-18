@@ -1,7 +1,16 @@
 // Maps AST identities back to byte ranges in the source text, so the builder can patch the
 // exact span a node/edge came from (two-way sync) without reformatting the rest of the file.
 
-import type { ActorId, C4ElementId, C4RelId, EdgeId, MessageId, NodeId } from "./ast.js";
+import type {
+  ActorId,
+  C4ElementId,
+  C4RelId,
+  EdgeId,
+  MessageId,
+  NodeId,
+  StateId,
+  StateTransitionId,
+} from "./ast.js";
 
 export interface TextSpan {
   readonly start: number;
@@ -44,6 +53,14 @@ export interface BlockSource {
 export interface NetworkSource {
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
+}
+
+// Editable text spans for a state diagram: each state's label (from `id : label` or
+// `state "label" as id`) and each transition's `: label`. Bare states / unlabelled transitions have
+// no entry; `[*]` pseudo-states never do.
+export interface StateSource {
+  readonly states: ReadonlyMap<StateId, TextSpan>;
+  readonly transitions: ReadonlyMap<StateTransitionId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

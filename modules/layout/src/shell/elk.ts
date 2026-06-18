@@ -1,5 +1,5 @@
 import { brand, decode, err, type Point, type Result } from "@m/std";
-import type { DiagramAst, FlowchartAst, NodeId, Scene } from "@m/contracts";
+import type { DiagramAst, FlowchartAst, NodeId, Scene, StateAst } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
 import {
@@ -167,6 +167,28 @@ export const layout = async (
   }
 };
 
+// A state diagram is a directed graph of boxes + labelled edges — structurally a flowchart — so it
+// lays out through the same ELK path. States become round nodes; the `[*]` start/end pseudo-states
+// become small circles; transitions become arrowed edges. Ids are re-branded into the flowchart id
+// space (a shell-boundary operation).
+const stateToFlow = (ast: StateAst): FlowchartAst => ({
+  kind: "flowchart",
+  direction: "TB",
+  nodes: ast.states.map((s) => ({
+    id: brand<string, "NodeId">(s.id),
+    label: s.label,
+    shape: s.kind === "state" ? "round" : "circle",
+  })),
+  edges: ast.transitions.map((t) => ({
+    id: brand<string, "EdgeId">(t.id),
+    from: brand<string, "NodeId">(t.from),
+    to: brand<string, "NodeId">(t.to),
+    kind: "arrow",
+    label: t.label,
+  })),
+  subgraphs: [],
+});
+
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
 export const layoutDiagram = async (
@@ -186,5 +208,7 @@ export const layoutDiagram = async (
       return layoutNetwork(ast, measure);
     case "cloud":
       return layoutCloud(ast, measure);
+    case "state":
+      return layout(stateToFlow(ast), new Map(), measure);
   }
 };

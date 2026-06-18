@@ -2,7 +2,7 @@
 
 **State:** AST + SceneGraph IR defined (types only); `make check` green.
 
-- AST: flowchart + sequence + C4 variants (`FlowchartAst` incl. `FlowSubgraph` grouping, `SequenceAst`,
+- AST: flowchart + sequence + C4 + state variants (`FlowchartAst` incl. `FlowSubgraph` grouping, `SequenceAst`,
   `C4Ast` with nesting via `parent` and an optional `C4Element.description`); `DiagramAst`
   discriminated union; branded ids, closed unions.
 - SceneGraph IR: `SceneNode`/`SceneEdge`/`Scene` over `@m/std` geometry, with node `shape` and containment via `parent`.

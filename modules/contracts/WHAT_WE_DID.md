@@ -19,3 +19,6 @@
   unchanged).
 - Added required sidecar `Group.label` for editor-owned group titles.
 - Added optional `C4Element.description` (`string | null`) for the C4 description argument.
+- Added the `StateAst` family — `StateNode` (kind `state`/`start`/`end`), `StateTransition`, branded
+  `StateId`/`StateTransitionId` — plus `StateSource` (state + transition label spans), and added
+  `StateAst` to the `DiagramAst` union.

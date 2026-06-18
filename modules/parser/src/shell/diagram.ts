@@ -7,6 +7,7 @@ import { parseNetwork } from "./net-parse.js";
 import { parse } from "./parse.js";
 import type { ParseError } from "./parse.js";
 import { parseSequence } from "./seq-parse.js";
+import { parseState } from "./state-parse.js";
 
 // Sniffs the first meaningful line (skipping blanks and `%%` comments) to pick the family.
 export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
@@ -15,6 +16,7 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
       .split("\n")
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith("%%")) ?? "";
+  if (header.startsWith("stateDiagram")) return parseState(text);
   if (header.startsWith("sequenceDiagram")) return parseSequence(text);
   if (header.startsWith("C4")) return parseC4(text);
   if (header.startsWith("block")) return parseBlock(text);

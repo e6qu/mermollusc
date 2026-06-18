@@ -13,3 +13,6 @@
 - Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label
   placement.
+- State-diagram `[*]` pseudo-states currently render as plain circles (via the flowchart `circle`
+  shape); small *filled* initial / ringed final markers would read more like real state charts —
+  needs a dedicated marker shape or a start/end-aware draw.
