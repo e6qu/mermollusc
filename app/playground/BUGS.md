@@ -39,3 +39,5 @@ Checked while fuzzing each family for odd-input crashes.
 - ~~A sidecar group outlived a text edit that removed its nodes~~ — groups (unlike overrides) weren't
   cleared on edit, so editing away and back could resurrect a phantom group onto reused ids.
   `renderFromText` now prunes groups to the live node set (`pruneGroups`). Found via the fuzz pass.
+
+Checked interactive-control accessible names and canvas labelling (a11y pass).
