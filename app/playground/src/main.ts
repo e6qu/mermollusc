@@ -111,10 +111,18 @@ const minimap = document.querySelector<HTMLCanvasElement>("#minimap");
 const groupBtn = document.querySelector<HTMLButtonElement>("#group");
 const ungroupBtn = document.querySelector<HTMLButtonElement>("#ungroup");
 const lockBtn = document.querySelector<HTMLButtonElement>("#lock");
+const arrangeBtn = document.querySelector<HTMLButtonElement>("#arrange");
+const arrangeMenu = document.querySelector<HTMLDivElement>("#arrange-menu");
+// Distribute needs ≥3 units; kept as refs so the popover can disable them at <3 (the align buttons
+// are wired by id without refs).
+const distHBtn = document.querySelector<HTMLButtonElement>("#dist-h");
+const distVBtn = document.querySelector<HTMLButtonElement>("#dist-v");
 if (
   groupBtn === null ||
   ungroupBtn === null ||
   lockBtn === null ||
+  arrangeBtn === null ||
+  arrangeMenu === null ||
   zoomInBtn === null ||
   zoomOutBtn === null ||
   zoomResetBtn === null ||
@@ -526,6 +534,18 @@ const selectedTopGroup = (): GroupId | null => {
   return null;
 };
 
+// Distinct *movable* top-level units in the selection — a loose node or a whole top group, minus
+// anything under a locked group. Alignment/distribution act on these (a group moves as a unit).
+const movableUnitCount = (): number => {
+  const seen = new Set<string>();
+  for (const id of selection.nodes) {
+    if (pathLocked(groups, id)) continue;
+    const top = topGroupOfNode(groups, id);
+    seen.add(top === null ? `n:${id}` : `g:${top}`);
+  }
+  return seen.size;
+};
+
 // Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
 const updateGroupButtons = (): void => {
   const units = new Set<string>();
@@ -538,7 +558,179 @@ const updateGroupButtons = (): void => {
   ungroupBtn.disabled = top === null;
   lockBtn.disabled = top === null;
   lockBtn.textContent = top !== null && groups.get(top)?.locked === true ? "Unlock" : "Lock";
+  // Arrange acts on ≥2 movable units (distribute on ≥3); close the popover if it no longer applies.
+  const movable = movableUnitCount();
+  arrangeBtn.disabled = movable < 2;
+  if (distHBtn !== null) distHBtn.disabled = movable < 3;
+  if (distVBtn !== null) distVBtn.disabled = movable < 3;
+  if (movable < 2) closeArrange();
 };
+
+type AlignKind = "left" | "right" | "top" | "bottom" | "centerX" | "centerY" | "distH" | "distV";
+
+interface UnitBox {
+  readonly leaves: readonly SceneNodeId[];
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+// Each movable selection unit (loose node or top group) with the bounding box of its leaves, in
+// shown coordinates. Alignment translates a whole unit, so a group keeps its internal layout.
+const selectedUnitBoxes = (shown: Scene): UnitBox[] => {
+  const byId = new Map(shown.nodes.map((n) => [n.id, n.bounds]));
+  const seen = new Set<string>();
+  const units: UnitBox[] = [];
+  for (const id of selection.nodes) {
+    if (pathLocked(groups, id)) continue;
+    const top = topGroupOfNode(groups, id);
+    const key = top === null ? `n:${id}` : `g:${top}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const leaves = top === null ? [id] : leafNodes(groups, top);
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const leaf of leaves) {
+      const b = byId.get(leaf);
+      if (b === undefined) continue;
+      minX = Math.min(minX, b.origin.x);
+      minY = Math.min(minY, b.origin.y);
+      maxX = Math.max(maxX, b.origin.x + b.size.width);
+      maxY = Math.max(maxY, b.origin.y + b.size.height);
+    }
+    if (minX === Number.POSITIVE_INFINITY) continue;
+    units.push({ leaves, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+  }
+  return units;
+};
+
+// The per-leaf translation that aligns/distributes the unit boxes. Distribute spaces the unit
+// centres evenly between the extreme units (which stay put); align snaps an edge or centre axis.
+const arrangeDeltas = (
+  kind: AlignKind,
+  units: readonly UnitBox[],
+): Map<SceneNodeId, { readonly dx: number; readonly dy: number }> => {
+  const deltas = new Map<SceneNodeId, { readonly dx: number; readonly dy: number }>();
+  const put = (u: UnitBox, dx: number, dy: number): void => {
+    for (const leaf of u.leaves) deltas.set(leaf, { dx, dy });
+  };
+  const lefts = units.map((u) => u.x);
+  const rights = units.map((u) => u.x + u.w);
+  const tops = units.map((u) => u.y);
+  const bottoms = units.map((u) => u.y + u.h);
+  switch (kind) {
+    case "left": {
+      const t = Math.min(...lefts);
+      for (const u of units) put(u, t - u.x, 0);
+      break;
+    }
+    case "right": {
+      const t = Math.max(...rights);
+      for (const u of units) put(u, t - u.w - u.x, 0);
+      break;
+    }
+    case "top": {
+      const t = Math.min(...tops);
+      for (const u of units) put(u, 0, t - u.y);
+      break;
+    }
+    case "bottom": {
+      const t = Math.max(...bottoms);
+      for (const u of units) put(u, 0, t - u.h - u.y);
+      break;
+    }
+    case "centerX": {
+      const axis = (Math.min(...lefts) + Math.max(...rights)) / 2;
+      for (const u of units) put(u, axis - u.w / 2 - u.x, 0);
+      break;
+    }
+    case "centerY": {
+      const axis = (Math.min(...tops) + Math.max(...bottoms)) / 2;
+      for (const u of units) put(u, 0, axis - u.h / 2 - u.y);
+      break;
+    }
+    case "distH": {
+      const sorted = [...units].sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2));
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      if (first === undefined || last === undefined) break;
+      const lo = first.x + first.w / 2;
+      const step = (last.x + last.w / 2 - lo) / (sorted.length - 1);
+      sorted.forEach((u, i) => {
+        put(u, lo + i * step - u.w / 2 - u.x, 0);
+      });
+      break;
+    }
+    case "distV": {
+      const sorted = [...units].sort((a, b) => a.y + a.h / 2 - (b.y + b.h / 2));
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      if (first === undefined || last === undefined) break;
+      const lo = first.y + first.h / 2;
+      const step = (last.y + last.h / 2 - lo) / (sorted.length - 1);
+      sorted.forEach((u, i) => {
+        put(u, 0, lo + i * step - u.h / 2 - u.y);
+      });
+      break;
+    }
+  }
+  return deltas;
+};
+
+const applyArrange = (kind: AlignKind): void => {
+  if (scene === null) return;
+  const shown = applyOverrides(scene, overrides);
+  const units = selectedUnitBoxes(shown);
+  const need = kind === "distH" || kind === "distV" ? 3 : 2;
+  if (units.length < need) return;
+  const deltas = arrangeDeltas(kind, units);
+  if (deltas.size === 0) return;
+  const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
+  recordOverlay();
+  for (const [id, d] of deltas) {
+    const at = origin.get(id);
+    if (at !== undefined) overrides = moveNode(overrides, id, point(at.x + d.dx, at.y + d.dy));
+  }
+  persistOverlay();
+  paintScene();
+};
+
+const closeArrange = (): void => {
+  arrangeMenu.hidden = true;
+  arrangeBtn.setAttribute("aria-expanded", "false");
+};
+arrangeBtn.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const willOpen = arrangeMenu.hidden;
+  arrangeMenu.hidden = !willOpen;
+  arrangeBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+});
+document.addEventListener("pointerdown", (ev) => {
+  if (arrangeMenu.hidden) return;
+  const t = ev.target;
+  if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn)) return;
+  closeArrange();
+});
+
+const ARRANGE_ACTIONS: ReadonlyArray<{ readonly id: string; readonly kind: AlignKind }> = [
+  { id: "align-left", kind: "left" },
+  { id: "align-centerX", kind: "centerX" },
+  { id: "align-right", kind: "right" },
+  { id: "align-top", kind: "top" },
+  { id: "align-centerY", kind: "centerY" },
+  { id: "align-bottom", kind: "bottom" },
+  { id: "dist-h", kind: "distH" },
+  { id: "dist-v", kind: "distV" },
+];
+for (const { id, kind } of ARRANGE_ACTIONS) {
+  document.querySelector<HTMLButtonElement>(`#${id}`)?.addEventListener("click", () => {
+    applyArrange(kind);
+    closeArrange();
+  });
+}
 
 // Bundle the selection into a new group. Each selected node contributes its top group (nesting an
 // existing group) or itself — so groups and loose elements bundle together, in selection order.

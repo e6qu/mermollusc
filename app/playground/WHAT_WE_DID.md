@@ -209,3 +209,10 @@
   overlay once, reset by any click/undo); locked groups don't move; a selected group's members nudge
   together (same expansion as drag). All gated on the editor not being focused, so CodeMirror keeps
   these keys for the source text. +2 e2e; footer hint updated. 69 Playwright.
+- Added **Arrange** — align (left/center/right/top/middle/bottom) and distribute (horizontal/vertical)
+  for the selection, via a small popover in the tools row (enabled on 2+ movable units; distribute on
+  3+). Operates on *units*: a loose node or a whole top group, aligned by its bounding box so a group
+  translates as one and keeps its internal layout; locked groups are excluded (like drag/nudge).
+  Writes position overrides and is a single undo step. The popover opens upward (the toolbar is at the
+  editor's bottom edge) and closes on outside-click / when the selection drops below 2. +2 e2e
+  (align-left shares an edge; align undoes as one step). 71 Playwright.

@@ -219,6 +219,26 @@
         border-top: 1px solid var(--line);
         background: color-mix(in srgb, var(--surface) 92%, var(--ink) 8%);
       }
+      /* Arrange popover: opens upward from its button (the toolbar sits at the bottom of the editor),
+         a 3-column grid of align/distribute actions shown only while it's open. */
+      .arrange { position: relative; display: inline-flex; }
+      .arrange-menu {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 6px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 8px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        z-index: 50;
+      }
+      .arrange-menu[hidden] { display: none; }
+      .arrange-menu button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 
       /* ---- stage: drafting table with the diagram as a sheet ---- */
       /* The column holds the scrolling stage plus a corner-pinned minimap overlay (which must sit
@@ -446,6 +466,20 @@
             <button id="group" type="button" title="Bundle the selected nodes into a group">Group</button>
             <button id="ungroup" type="button" title="Dissolve the selected node's group">Ungroup</button>
             <button id="lock" type="button" title="Lock the group so it can't be dragged">Lock</button>
+            <span class="arrange">
+              <button id="arrange" type="button" aria-expanded="false"
+                title="Align or distribute the selected nodes">Arrange ▾</button>
+              <div id="arrange-menu" class="arrange-menu" hidden>
+                <button id="align-left" type="button" title="Align left edges">Left</button>
+                <button id="align-centerX" type="button" title="Align horizontal centers">Center</button>
+                <button id="align-right" type="button" title="Align right edges">Right</button>
+                <button id="align-top" type="button" title="Align top edges">Top</button>
+                <button id="align-centerY" type="button" title="Align vertical centers">Middle</button>
+                <button id="align-bottom" type="button" title="Align bottom edges">Bottom</button>
+                <button id="dist-h" type="button" title="Even horizontal spacing (3+ units)">Dist H</button>
+                <button id="dist-v" type="button" title="Even vertical spacing (3+ units)">Dist V</button>
+              </div>
+            </span>
           </div>
         </section>
 
