@@ -74,6 +74,8 @@ export type C4ElementKind = "person" | "system" | "container" | "boundary";
 export interface C4Element {
   readonly id: C4ElementId;
   readonly label: string;
+  // The optional C4 description (`Person(id, "label", "description")`); null when omitted.
+  readonly description: string | null;
   readonly kind: C4ElementKind;
   readonly parent: C4ElementId | null; // set when nested inside a boundary
 }

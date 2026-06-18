@@ -187,3 +187,5 @@
   uses a 3-arg form the C4 grammar rejects (it accepts `Person(id, "label")`). The new inline error
   marker made it obvious. Corrected the example to the 2-arg form; noted the optional-description arg
   as a parser enhancement.
+- Restored the C4 Examples entry to Mermaid's natural 3-arg form now that descriptions parse and
+  render (`Person(alice, "Alice", "A customer")`, `Container(api, "API", "Handles requests")`).

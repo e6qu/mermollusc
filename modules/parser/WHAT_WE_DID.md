@@ -62,3 +62,7 @@
   stage), so they currently lay out flat. +4 tests (membership, nesting+title, round-trip, print).
 - print: pass the `FlowSubgraph` to `emitSubgraph` directly instead of re-`find`ing it by id,
   removing a dead `?? []` fallback (the subgraph always exists when emitting it).
+- C4 elements accept Mermaid's optional description argument — `Person/System/Container(id, "label",
+  "description")`. The grammar's element rule gained an `OPTION` for `, "descr"`; the CST→AST mapping
+  reads the second quoted string into `C4Element.description` (null when omitted; the label span used
+  for relabel still points at the first quoted string). Boundaries stay 2-arg. +1 integration test.

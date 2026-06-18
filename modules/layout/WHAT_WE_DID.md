@@ -67,3 +67,6 @@
   dropped-edge `continue` fallbacks. The idiomatic `?? []` multimap accumulation stays — an empty
   child list is a valid state, not a masked error. The shell dispatcher returns each `Result`
   directly (no more `ok()` wrapping). +7 fail-loudly unit cases.
+- C4 layout now renders an element's description as a second label line: the scene label is composed
+  as `label\ndescription` (null description → unchanged), and the leaf box is sized to the widest
+  line. Relies on the renderer's new multi-line label handling. +1 unit case.

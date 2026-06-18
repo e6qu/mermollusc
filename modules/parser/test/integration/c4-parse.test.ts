@@ -25,6 +25,15 @@ describe("parseC4", () => {
     expect(r.value.rels[0]).toMatchObject({ from: "alice", to: "api", label: "uses" });
   });
 
+  it("captures the optional description, leaving it null when omitted", () => {
+    const r = parseC4('C4Context\n  Person(alice, "Alice", "A customer")\n  System(web, "Web")\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const byId = new Map<string, C4Element>(r.value.elements.map((e) => [e.id, e]));
+    expect(byId.get("alice")).toMatchObject({ label: "Alice", description: "A customer" });
+    expect(byId.get("web")?.description).toBeNull();
+  });
+
   it("fails loudly on a malformed element", () => {
     const r = parseC4('C4Context\n  Person(alice "missing comma")\n');
     expect(isOk(r)).toBe(false);

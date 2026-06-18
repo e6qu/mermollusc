@@ -35,3 +35,6 @@
   `px()` call sites became `coordinate()`/`length()`.
 - Exported `edgeLabelAnchor` so hosts can align overlays (like the playground's inline edge-label
   editor) with the renderer's routed-polyline label placement. +1 unit test.
+- Labels may now contain newlines: `paint` and `toSvg` split a label on `\n` and stack the lines
+  centred on the anchor (single-line labels are unchanged). Used by C4 element descriptions; a
+  general capability for any multi-line label. +1 unit test (stacked <tspan>s).

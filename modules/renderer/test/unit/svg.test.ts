@@ -56,6 +56,20 @@ describe("toSvg", () => {
     expect(svg).not.toContain("A < B");
   });
 
+  it("renders a multi-line label as stacked <tspan>s", () => {
+    const ml: Scene = {
+      nodes: [
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null },
+      ],
+      edges: [],
+      extent: rect(0, 0, 90, 56),
+    };
+    const out = toSvg(toDisplayList(ml), { width: 90, height: 56, margin: 0, theme: defaultTheme, icons: new Map() });
+    expect(out.match(/<tspan/g)?.length).toBe(2);
+    expect(out).toContain(">API</tspan>");
+    expect(out).toContain(">Handles</tspan>");
+  });
+
   it("emits an <image> for a node icon when an href is supplied", () => {
     const iconScene: Scene = {
       nodes: [

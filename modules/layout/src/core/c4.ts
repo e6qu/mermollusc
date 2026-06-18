@@ -25,8 +25,16 @@ interface Box {
   readonly h: number;
 }
 
+// The text the renderer draws: the label, with the optional description as a second line. (The
+// renderer splits a label on newlines and stacks the lines.)
+const sceneLabel = (el: C4Element): string =>
+  el.description === null ? el.label : `${el.label}\n${el.description}`;
+
+const widestLine = (text: string, measure: MeasureText): number =>
+  text.split("\n").reduce((w, line) => Math.max(w, measure(line)), 0);
+
 const leafWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_LEAF_WIDTH, measure(label) + LABEL_PADDING);
+  Math.max(MIN_LEAF_WIDTH, widestLine(label, measure) + LABEL_PADDING);
 
 const shapeOf = (kind: C4ElementKind): NodeShape =>
   kind === "boundary" ? "container" : kind === "person" ? "round" : "rect";
@@ -50,7 +58,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
   const place = (el: C4Element, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     if (kids.length === 0) {
-      const box: Box = { x, y, w: leafWidth(el.label, measure), h: LEAF_HEIGHT };
+      const box: Box = { x, y, w: leafWidth(sceneLabel(el), measure), h: LEAF_HEIGHT };
       boxes.set(el.id, box);
       return box;
     }
@@ -84,7 +92,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
     nodes.push({
       id: brand<string, "SceneNodeId">(el.id),
       bounds: rect(b.x, b.y, b.w, b.h),
-      label: el.label,
+      label: sceneLabel(el),
       shape: shapeOf(el.kind),
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: null,

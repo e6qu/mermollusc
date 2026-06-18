@@ -8,5 +8,6 @@
 - Block: grouped `block:id … end`, column spans, and bare-block relabel (wrap into `id["label"]`).
 - Network: subnet/zone grouping; bare-node relabel (wrap into `kind id "label"`).
 - Cloud: bare-leaf relabel (wrap into `kind id "label"`); group/region collapse.
-- C4: accept the optional description argument Mermaid allows — `Person(id, "label", "descr")` and
-  likewise for `System`/`Container` — currently only the 2-arg `Person(id, "label")` form parses.
+- *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
+  now parses into `C4Element.description` (null when omitted); the layout renders it as a second
+  label line. Boundaries stay 2-arg.
