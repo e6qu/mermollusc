@@ -30,3 +30,9 @@
   (parser-led). The `[*]` pseudo-states render as plain circles — small filled start / ringed final
   markers would read better (renderer-led). Connect/Delete/relabel work on real states; the merged
   `[*]` pseudo-states aren't meaningfully editable from the canvas.
+- *(done)* ER renders crow's-foot cardinality end markers (per-end `EdgeEnd`) and entity attribute
+  compartments (`SceneNode.rows`); the `er` example shows attribute blocks and a `25-er` shots flow
+  captures it. Connect/Delete/relabel already work on entities + relationships. The shared `EndMarker`
+  machinery would also serve a future class-diagram family.
+- Fixed the `make shots` instrument to drive the source through the `window.__editor` handle (it
+  still used `#src.fill()`, which broke after the CodeMirror migration).

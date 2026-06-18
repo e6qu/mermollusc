@@ -244,3 +244,13 @@
   `role="img"` + a dynamic `aria-label` — a successful render summarises kind, node/edge counts, and
   up to 24 node labels; a parse/layout error announces "Diagram error: …" (via `setStatus`). Audited
   that every visible button/select/link already has an accessible name. +2 e2e. 79 Playwright.
+- Added the **ER diagram** family (`erDiagram`): parsed via `parseEr`, laid out through the ELK path
+  (an `erToFlow` adapter in `@m/layout`), rendered with the existing box/edge shapes (cardinality
+  shown textually in the relationship label). Two-way: relabel entity names + relationship verbs
+  (`ErSource`), Connect (`connectEr` → `||--o{`), Delete (entity via the generic remover, relationship
+  via `deleteErRel`). Examples entry + family dispatch wired. +2 e2e. 81 Playwright.
+- ER rendered for real: crow's-foot cardinality end markers + entity attribute compartments now draw
+  (renderer + layout work). Enriched the `er` example with attribute blocks (PK/UK/FK columns), added
+  an ER pipeline golden, a `25-er` shots flow, and a third ER e2e (attribute block renders cleanly).
+  Fixed the `make shots` instrument — its `setSource` still used `#src.fill()`, stale since the
+  CodeMirror migration — to drive `window.__editor`. 82 Playwright green.

@@ -50,7 +50,7 @@ describe("layoutSequence", () => {
     for (const ll of lifelines) {
       expect(ll.waypoints[0]?.x).toBe(ll.waypoints[1]?.x); // vertical
       expect(ll.stroke).toBe("dashed");
-      expect(ll.arrow).toBe("none");
+      expect(ll.toEnd).toBe("none");
     }
   });
 
@@ -62,8 +62,8 @@ describe("layoutSequence", () => {
     if (m0 === undefined || m1 === undefined) return;
     expect(m0.waypoints[0]?.y).toBe(m0.waypoints[1]?.y); // horizontal
     expect(m0.label).toBe("Hello");
-    expect(m0).toMatchObject({ from: "A", to: "B", stroke: "solid", arrow: "filled" });
-    expect(m1).toMatchObject({ stroke: "dashed", arrow: "none" });
+    expect(m0).toMatchObject({ from: "A", to: "B", stroke: "solid", toEnd: "arrow" });
+    expect(m1).toMatchObject({ stroke: "dashed", toEnd: "none" });
     // messages stack downward in order
     expect(m1.waypoints[0]?.y ?? 0).toBeGreaterThan(m0.waypoints[0]?.y ?? 0);
   });

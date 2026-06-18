@@ -39,13 +39,21 @@ export type {
   StateTransition,
   StateComposite,
   StateAst,
+  ErEntityId,
+  ErRelId,
+  ErCardinality,
+  ErKey,
+  ErAttribute,
+  ErEntity,
+  ErRelationship,
+  ErAst,
   DiagramAst,
 } from "./ast.js";
 export type {
   SceneNodeId,
   SceneEdgeId,
   EdgeStroke,
-  EdgeArrow,
+  EdgeEnd,
   IconRef,
   SceneNode,
   SceneEdge,
@@ -63,4 +71,5 @@ export type {
   NetworkSource,
   CloudSource,
   StateSource,
+  ErSource,
 } from "./source.js";

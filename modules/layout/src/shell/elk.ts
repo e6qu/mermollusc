@@ -1,5 +1,14 @@
-import { brand, decode, err, type Point, type Result } from "@m/std";
-import type { DiagramAst, FlowchartAst, NodeId, Scene, StateAst } from "@m/contracts";
+import { brand, decode, err, ok, point, rect, type Point, type Result } from "@m/std";
+import type {
+  DiagramAst,
+  ErAst,
+  FlowchartAst,
+  NodeId,
+  Scene,
+  SceneEdge,
+  SceneNode,
+  StateAst,
+} from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
 import {
@@ -195,6 +204,95 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
   })),
 });
 
+// One attribute per row, e.g. `string name PK "the customer's name"`.
+const attributeRow = (a: ErAst["entities"][number]["attributes"][number]): string => {
+  const keys = a.keys.length > 0 ? ` ${a.keys.join(",")}` : "";
+  const comment = a.comment === "" ? "" : ` "${a.comment}"`;
+  return `${a.type} ${a.name}${keys}${comment}`;
+};
+
+// ER lays out through ELK like a flowchart, but entities are sized to fit their attribute rows (a
+// flowchart node can't), so it builds the ELK graph directly rather than via `toElkGraph`. The Scene
+// carries crow's-foot cardinality on each relationship end (the `ErCardinality` strings *are*
+// `EdgeEnd` values) and the attribute rows on each entity.
+const ER_TITLE_H = 30;
+const ER_ROW_H = 20;
+const ER_PAD = 22;
+const ER_MIN_W = 96;
+const layoutEr = async (ast: ErAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> => {
+  const rowsById = new Map(
+    ast.entities.map((e) => [e.id as string, e.attributes.map(attributeRow)]),
+  );
+  const graph: LayoutGraph = {
+    id: "root",
+    config: { direction: "RIGHT", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
+    children: ast.entities.map((e) => {
+      const rows = rowsById.get(e.id) ?? [];
+      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), measure(e.label));
+      return {
+        kind: "leaf",
+        id: brand<string, "NodeId">(e.id),
+        width: Math.max(ER_MIN_W, widest + ER_PAD),
+        height: ER_TITLE_H + rows.length * ER_ROW_H,
+        position: null,
+      };
+    }),
+    edges: ast.relationships.map((r) => ({
+      id: brand<string, "EdgeId">(r.id),
+      sources: [brand<string, "NodeId">(r.from)],
+      targets: [brand<string, "NodeId">(r.to)],
+    })),
+  };
+  try {
+    const raw = await elk.layout(toElkInput(graph));
+    const decoded = decode(ResultZ, raw);
+    if (!decoded.ok) {
+      return err({
+        kind: "layout",
+        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
+      });
+    }
+    const positioned = toPositioned(decoded.value);
+    const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
+    const relById = new Map(ast.relationships.map((r) => [r.id as string, r]));
+    const nodes: SceneNode[] = [];
+    for (const e of ast.entities) {
+      const p = posById.get(e.id);
+      if (p === undefined) {
+        return err({ kind: "layout", message: `er: entity ${e.id} was not positioned` });
+      }
+      const rows = rowsById.get(e.id) ?? [];
+      nodes.push({
+        id: brand<string, "SceneNodeId">(e.id),
+        bounds: rect(p.x, p.y, p.width, p.height),
+        label: e.label,
+        shape: "rect",
+        parent: null,
+        icon: null,
+        rows: rows.length > 0 ? rows : null,
+      });
+    }
+    const edges: SceneEdge[] = [];
+    for (const pe of positioned.edges) {
+      const rel = relById.get(pe.id);
+      if (rel === undefined) continue;
+      edges.push({
+        id: brand<string, "SceneEdgeId">(pe.id),
+        from: brand<string, "SceneNodeId">(rel.from),
+        to: brand<string, "SceneNodeId">(rel.to),
+        waypoints: pe.points.map((q) => point(q.x, q.y)),
+        label: rel.label === "" ? null : rel.label,
+        stroke: rel.identifying ? "solid" : "dashed",
+        fromEnd: rel.fromCard,
+        toEnd: rel.toCard,
+      });
+    }
+    return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
+  } catch (e) {
+    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
+  }
+};
+
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
 export const layoutDiagram = async (
@@ -216,5 +314,7 @@ export const layoutDiagram = async (
       return layoutCloud(ast, measure);
     case "state":
       return layout(stateToFlow(ast), new Map(), measure);
+    case "er":
+      return layoutEr(ast, measure);
   }
 };

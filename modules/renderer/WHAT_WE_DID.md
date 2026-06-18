@@ -42,3 +42,14 @@
   scaled-down font with lower `globalAlpha`; `toSvg` emits a smaller `font-size` + `fill-opacity` on
   the trailing `<tspan>`s. This gives C4 element descriptions the proper smaller/dimmed look under the
   label (added `globalAlpha` to the `Canvas2D` structural type). +1 unit assertion (styled tspan).
+- Added **per-edge-end markers** for ER crow's-foot cardinality (and future UML heads). The polyline
+  `DrawCmd` now carries `fromMarker`/`toMarker` (precomputed in the core from `SceneEdge.fromEnd/toEnd`)
+  instead of a single `arrow` boolean: each `EndMarker` is backend-agnostic geometry — stroked `lines`
+  (perpendicular bars for "one", a three-prong fan for "many"), a filled `triangle` (arrowhead), and a
+  stroked `circle` (the optional "zero" ring). `paint` (added `arc` to `Canvas2D`) and `toSvg`
+  (`<line>`/`<circle>`/`<polygon>`, dropping the old `<marker>` def) render identical glyphs.
+- Rendered ER **attribute compartments**: a node with `rows` draws a title band, a divider polyline,
+  and one left-aligned row per attribute. Added a `LabelAlign` (`center`/`left`) field to the label
+  `DrawCmd`; `paint` sets `textAlign`, `toSvg` sets `text-anchor`. +5 unit/integration assertions
+  (marker geometry per cardinality, degenerate-edge fallback, compartment rows, canvas arc, SVG
+  circle/line). Raised the coverage ratchet.

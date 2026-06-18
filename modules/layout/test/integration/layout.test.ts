@@ -1,5 +1,5 @@
 import { brand, isOk, point } from "@m/std";
-import type { FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
+import type { ErAst, FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout, layoutDiagram } from "../../src/shell/elk.js";
@@ -10,6 +10,8 @@ const aid = (s: string) => brand<string, "ActorId">(s);
 const mid = (s: string) => brand<string, "MessageId">(s);
 const sid = (s: string) => brand<string, "StateId">(s);
 const tid = (s: string) => brand<string, "StateTransitionId">(s);
+const erid = (s: string) => brand<string, "ErEntityId">(s);
+const errid = (s: string) => brand<string, "ErRelId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -145,5 +147,42 @@ describe("layout", () => {
     expect(laid.value.nodes.find((n) => n.id === "Idle")?.shape).toBe("round");
     expect(laid.value.nodes.find((n) => n.id === "__state_start")?.shape).toBe("circle");
     expect(laid.value.edges).toHaveLength(1);
+  });
+
+  it("layoutDiagram lays out an ER diagram, showing cardinality in the edge label", async () => {
+    const erAst: ErAst = {
+      kind: "er",
+      entities: [
+        {
+          id: erid("CUSTOMER"),
+          label: "CUSTOMER",
+          attributes: [{ type: "string", name: "name", keys: ["PK"], comment: "" }],
+        },
+        { id: erid("ORDER"), label: "ORDER", attributes: [] },
+      ],
+      relationships: [
+        {
+          id: errid("r0"),
+          from: erid("CUSTOMER"),
+          to: erid("ORDER"),
+          fromCard: "one",
+          toCard: "zeroOrMany",
+          identifying: true,
+          label: "places",
+        },
+      ],
+    };
+    const laid = await layoutDiagram(erAst, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    expect(laid.value.nodes.map((n) => n.id).sort()).toEqual(["CUSTOMER", "ORDER"]);
+    expect(laid.value.nodes.every((n) => n.shape === "rect")).toBe(true);
+    // The verb is the edge label; cardinality is on the ends (crow's-foot), not in the text.
+    expect(laid.value.edges[0]?.label).toBe("places");
+    expect(laid.value.edges[0]?.fromEnd).toBe("one");
+    expect(laid.value.edges[0]?.toEnd).toBe("zeroOrMany");
+    // CUSTOMER carries its attribute as a compartment row; ORDER has none.
+    expect(laid.value.nodes.find((n) => n.id === "CUSTOMER")?.rows).toEqual(["string name PK"]);
+    expect(laid.value.nodes.find((n) => n.id === "ORDER")?.rows).toBeNull();
   });
 });

@@ -96,6 +96,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       shape: shapeOf(el.kind),
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: null,
+      rows: null,
     });
   }
 
@@ -119,7 +120,8 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       ],
       label: rel.label === "" ? null : rel.label,
       stroke: "solid",
-      arrow: "filled",
+      fromEnd: "none",
+      toEnd: "arrow",
     });
   }
 

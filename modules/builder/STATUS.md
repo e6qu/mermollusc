@@ -11,7 +11,7 @@
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line), C4 element/relation
   deletion (including boundary blocks + nested relations), and sequence actor/message deletion —
   line-based, bracket-aware where labels can collide with ids.
-- tests: 53 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: 54 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases, and
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept)).
 - groups (sidecar, in `@m/contracts`): `group`/`ungroup`/`setLocked`/`setGroupLabel`/`pruneGroups` + `parentOf`/`leafNodes`/

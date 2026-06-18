@@ -81,3 +81,12 @@
   is `NaN` — that NaN was leaking into `ParseError.positions`, becoming a NaN highlight range that
   crashed the editor's lint on empty/truncated input. Non-finite positions are now filtered out (the
   message still surfaces; `positions` is the locatable subset). +1 unit case.
+- Added an **ER diagram** parser (`erDiagram`): the crow's-foot relationship operator (`||--o{` etc.)
+  is lexed as one token and split into normalised `fromCard`/`toCard` (`one`/`zeroOrOne`/`oneOrMany`/
+  `zeroOrMany`) + identifying (`--`) vs non-identifying (`..`); entities come from relationship
+  endpoints or bare declarations; quoted entity names and `: label` supported. +4 integration tests.
+- Extended the ER parser with **attribute blocks** (`ENTITY { type name PK,FK "comment" … }`): added
+  `{`/`}` tokens (ordered after `Relationship` so a leading `}` stays the cardinality operator) and a
+  skipped comma; `block`/`attribute` grammar rules; the CST→AST step reads type + name + key
+  identifiers (classified to `PK`/`FK`/`UK`) + an optional quoted comment into `ErEntity.attributes`.
+  +1 integration test.

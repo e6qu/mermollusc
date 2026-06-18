@@ -23,11 +23,13 @@ export {
   connectUndirected,
   connectC4,
   connectMessage,
+  connectEr,
   deleteNode,
   deleteEdge,
   deleteC4,
   deleteC4Rel,
   deleteActor,
   deleteMessage,
+  deleteErRel,
 } from "./patch.js";
 export type { PatchError } from "./patch.js";

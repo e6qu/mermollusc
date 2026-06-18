@@ -9,3 +9,5 @@ Checked while adding the optional C4 element description.
 Checked while adding the StateAst family.
 
 Checked while adding composite states.
+
+Checked while adding the ErAst family.

@@ -28,12 +28,19 @@
   per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, block, network, cloud, or state parser.
+  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, or ER parser.
 - `parseState(text)` / `parseStateWithSource(text)` → `StateAst` (+ `StateSource`): `stateDiagram-v2`
   subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
   `state X { … }` (recursive; each composite scopes its own `[*]`, mirrors `FlowSubgraph` membership/
   nesting → `StateAst.composites`). Source spans cover each state's label and each transition's label.
+- `parseEr(text)` / `parseErWithSource(text)` → `ErAst` (+ `ErSource`: entity-id and relationship-label
+  spans): `erDiagram` subset — the crow's-foot operator (`||--o{` etc.) is lexed whole and split into
+  normalised `fromCard`/`toCard` + identifying (`--`) vs non-identifying (`..`); entities come from
+  endpoints or bare declarations (quoted names allowed); `: label` for the verb; and **attribute
+  blocks** `ENTITY { type name PK,FK "comment" … }` → `ErEntity.attributes` (keys lex as identifiers,
+  classified to `PK`/`FK`/`UK` in the AST step; commas skipped). The `}` brace is lexed *after* the
+  relationship operator so a leading `}` stays the cardinality token.
 - `ParseError` carries `errors: string[]` **and `positions: ErrorPosition[]`** (`{ offset, length }`,
   built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
   host can highlight the offending range; line/column are left to the host to derive from the text.
@@ -45,6 +52,6 @@
   before `(`; `subgraph`/`end` are keywords with `longer_alt: Identifier`. Offset tracking is on so
   the builder claims a node for the subgraph it's declared in, then emits a canonical node order
   that the printer mirrors for round-trip.)
-- tests: 50 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
+- tests: 54 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).

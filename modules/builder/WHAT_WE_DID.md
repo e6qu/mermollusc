@@ -59,3 +59,8 @@
   empties that cascade out), so a sidecar group can't outlive the diagram it described — fixing stale
   groups that survived a text edit and could resurrect onto reused ids. Returns the input unchanged
   (by identity) when nothing's dead. +2 unit cases.
+- Added `connectEr` (appends `from ||--o{ to : relates`, a default one-to-many) and `deleteErRel`
+  (removes the first ER relationship line between two entities) so ER diagrams get canvas
+  Connect/Delete like the other families. +1 integration case.
+- Migrated the hit-test/overrides scene fixtures to the new `SceneNode.rows` + `SceneEdge.fromEnd/toEnd`
+  contract (the builder core is scene-shape-agnostic, so no source change — fixtures only).

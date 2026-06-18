@@ -39,6 +39,9 @@ class RecordingCtx implements Canvas2D {
   roundRect(): void {
     this.calls.push("roundRect");
   }
+  arc(): void {
+    this.calls.push("arc");
+  }
   setLineDash(): void {
     this.calls.push("setLineDash");
   }
@@ -52,8 +55,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rows: null },
   ],
   edges: [
     {
@@ -63,7 +66,8 @@ const scene: Scene = {
       waypoints: [point(30, 40), point(30, 80)],
       label: null,
       stroke: "solid",
-      arrow: "filled",
+      fromEnd: "none",
+      toEnd: "arrow",
     },
   ],
   extent: rect(0, 0, 60, 120),
@@ -78,6 +82,7 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "arch", name: "server" },
+      rows: null,
     },
   ],
   edges: [],
@@ -95,10 +100,39 @@ describe("paint", () => {
     expect(ctx.calls.filter((c) => c === "moveTo").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
+    const er: Scene = {
+      nodes: [
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rows: null },
+      ],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(30, 40), point(30, 100)],
+          label: "rel",
+          stroke: "dashed",
+          fromEnd: "one",
+          toEnd: "zeroOrMany",
+        },
+      ],
+      extent: rect(0, 0, 60, 140),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(er));
+    // The "zeroOrMany" ring is drawn with arc(); the row text appears left-aligned in the box.
+    expect(ctx.calls).toContain("arc");
+    expect(ctx.calls).toContain("fillText:int id PK");
+    // The dashed edge stroke plus the bar/prong segments all go through stroke().
+    expect(ctx.calls.filter((c) => c === "stroke").length).toBeGreaterThanOrEqual(3);
+  });
+
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 90, 56),
@@ -122,7 +156,7 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 60, 40),

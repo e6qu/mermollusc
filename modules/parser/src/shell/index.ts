@@ -13,4 +13,6 @@ export { parseCloud, parseCloudWithSource } from "./cloud-parse.js";
 export type { ParsedCloud } from "./cloud-parse.js";
 export { parseState, parseStateWithSource } from "./state-parse.js";
 export type { ParsedState } from "./state-parse.js";
+export { parseEr, parseErWithSource } from "./er-parse.js";
+export type { ParsedEr } from "./er-parse.js";
 export { parseDiagram } from "./diagram.js";

@@ -10,8 +10,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rows: null },
   ],
   edges: [
     {
@@ -21,7 +21,8 @@ const scene: Scene = {
       waypoints: [point(30, 40), point(30, 80)],
       label: "go",
       stroke: "solid",
-      arrow: "filled",
+      fromEnd: "none",
+      toEnd: "arrow",
     },
   ],
   extent: rect(0, 0, 60, 120),
@@ -47,7 +48,8 @@ describe("toSvg", () => {
     expect(svg).toContain("<rect"); // the rect node (+ background)
     expect(svg).toContain("<polygon"); // the diamond node
     expect(svg).toContain("<polyline"); // the edge
-    expect(svg).toContain('marker-end="url(#arrow)"'); // the filled arrow
+    expect(svg).toContain(`<polygon points`); // the diamond and the filled arrowhead
+    expect(svg).toContain(`fill="${defaultTheme.stroke}"`); // the arrowhead is filled with the stroke colour
     expect(svg).toContain("<text"); // labels
   });
 
@@ -56,10 +58,40 @@ describe("toSvg", () => {
     expect(svg).not.toContain("A < B");
   });
 
+  it("emits ER crow's-foot markers and left-aligned attribute rows", () => {
+    const er: Scene = {
+      nodes: [
+        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rows: null },
+      ],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(30, 50), point(30, 100)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "one",
+          toEnd: "zeroOrMany",
+        },
+      ],
+      extent: rect(0, 0, 120, 140),
+    };
+    const out = toSvg(toDisplayList(er), { width: 120, height: 140, margin: 0, theme: defaultTheme, icons: new Map() });
+    // The "many" prongs are <line>s; the "zero" ring is a <circle>; the attribute row is start-anchored.
+    expect(out).toContain("<line");
+    expect(out).toContain("<circle");
+    expect(out).toMatch(/text-anchor="start"[^>]*>.*int id PK/);
+    // No leftover <marker>/marker-end machinery — markers are explicit geometry now.
+    expect(out).not.toContain("marker-end");
+    expect(out).not.toContain("<marker");
+  });
+
   it("renders a multi-line label as stacked <tspan>s", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 90, 56),
@@ -82,6 +114,7 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "p", name: "n" },
+          rows: null,
         },
       ],
       edges: [],

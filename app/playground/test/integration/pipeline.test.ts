@@ -37,6 +37,9 @@ class RecordingCtx implements Canvas2D {
   roundRect(): void {
     this.calls.push("roundRect");
   }
+  arc(): void {
+    this.calls.push("arc");
+  }
   setLineDash(): void {
     this.calls.push("setLineDash");
   }

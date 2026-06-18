@@ -1,4 +1,4 @@
-import type { DrawCmd } from "../core/index.js";
+import type { DrawCmd, EndMarker } from "../core/index.js";
 import { defaultTheme, type Theme } from "./paint.js";
 
 // A vector SVG backend that consumes the same `DrawCmd[]` display list as the canvas painter, so an
@@ -16,7 +16,25 @@ export interface SvgOptions {
   readonly icons: ReadonlyMap<string, string>;
 }
 
-const ARROW = 9;
+// Render a pre-computed edge-end marker as SVG primitives, matching the canvas painter exactly.
+const markerToSvg = (marker: EndMarker, theme: Theme): string => {
+  const parts: string[] = [];
+  for (const [a, b] of marker.lines) {
+    parts.push(
+      `<line x1="${num(a.x)}" y1="${num(a.y)}" x2="${num(b.x)}" y2="${num(b.y)}" stroke="${theme.stroke}" stroke-width="1.5"/>`,
+    );
+  }
+  if (marker.circle !== null) {
+    parts.push(
+      `<circle cx="${num(marker.circle.center.x)}" cy="${num(marker.circle.center.y)}" r="${num(marker.circle.radius)}" fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"/>`,
+    );
+  }
+  if (marker.triangle !== null) {
+    const pts = marker.triangle.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
+    parts.push(`<polygon points="${pts}" fill="${theme.stroke}"/>`);
+  }
+  return parts.join("");
+};
 
 const esc = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -43,8 +61,8 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
     case "polyline": {
       const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
       const dash = cmd.dashed ? ' stroke-dasharray="6 4"' : "";
-      const marker = cmd.arrow ? ' marker-end="url(#arrow)"' : "";
-      return `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}${marker}/>`;
+      const line = `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
+      return `${line}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}`;
     }
     case "icon": {
       const href = icons.get(`${cmd.ref.pack}/${cmd.ref.name}`);
@@ -64,16 +82,16 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
           return `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}"${style}>${esc(line)}</tspan>`;
         })
         .join("");
-      return `<text text-anchor="middle" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
+      const anchor = cmd.align === "left" ? "start" : "middle";
+      return `<text text-anchor="${anchor}" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
     }
   }
 };
 
 export const toSvg = (cmds: readonly DrawCmd[], opts: SvgOptions = defaultSvgOptions()): string => {
   const { width, height, margin, theme, icons } = opts;
-  // An arrowhead marker matching the painter's filled triangle; userSpaceOnUse so it doesn't scale
-  // with stroke-width and stays the painter's size.
-  const marker = `<marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="${ARROW + 2}" markerHeight="${ARROW + 2}" refX="${ARROW}" refY="${ARROW / 2}" orient="auto"><path d="M0,0 L${ARROW},${ARROW / 2} L0,${ARROW} Z" fill="${theme.stroke}"/></marker>`;
+  // Edge-end markers (arrowheads, crow's-foot glyphs) are emitted inline per polyline as explicit
+  // geometry from the core, so the document needs no <marker> defs.
   const body = cmds
     .map((c) => cmdToSvg(c, theme, icons))
     .filter((s) => s !== "")
@@ -81,7 +99,6 @@ export const toSvg = (cmds: readonly DrawCmd[], opts: SvgOptions = defaultSvgOpt
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${num(width)}" height="${num(height)}" viewBox="0 0 ${num(width)} ${num(height)}" style="font:${attr(theme.font)}">`,
     `  <rect width="${num(width)}" height="${num(height)}" fill="${theme.background}"/>`,
-    `  <defs>${marker}</defs>`,
     `  <g transform="translate(${num(margin)},${num(margin)})">`,
     `    ${body}`,
     "  </g>",

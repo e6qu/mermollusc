@@ -3,6 +3,7 @@ import type {
   ActorId,
   C4ElementId,
   EdgeKind,
+  ErEntityId,
   NodeId,
   NodeShape,
   SourceMap,
@@ -59,6 +60,27 @@ export const connectC4 = (text: string, from: C4ElementId, to: C4ElementId): str
 // is inserted for the user to rename.
 export const connectMessage = (text: string, from: ActorId, to: ActorId): string =>
   `${withTrailingNewline(text)}  ${from}->>${to}: message\n`;
+
+// An ER relationship (`from ||--o{ to : relates`) — a default one-to-many with a placeholder label
+// the user can rename via the inline editor.
+export const connectEr = (text: string, from: ErEntityId, to: ErEntityId): string =>
+  `${withTrailingNewline(text)}  ${from} ||--o{ ${to} : relates\n`;
+
+// The crow's-foot operator between two ER entities on a relationship line.
+const ER_REL = /^\s*(\S+)\s+(?:\|o|\|\||\}o|\}\|)(?:--|\.\.)(?:o\||\|\||o\{|\|\{)\s+(\S+)/;
+
+// Remove the first ER relationship line between two entities (by their ids; duplicates can't be told
+// apart by endpoints).
+export const deleteErRel = (text: string, from: ErEntityId, to: ErEntityId): string => {
+  const lines = text.split("\n");
+  const idx = lines.findIndex((line) => {
+    const m = ER_REL.exec(line);
+    return m !== null && m[1] === from && m[2] === to;
+  });
+  if (idx === -1) return text;
+  lines.splice(idx, 1);
+  return lines.join("\n");
+};
 
 const occurrences = (s: string, ch: string): number => s.split(ch).length - 1;
 
