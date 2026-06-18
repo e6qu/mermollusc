@@ -203,3 +203,9 @@
   containment). Plain drag still pans, so nothing regresses; shift = additive is consistent with
   shift-click. Makes Group / multi-move / Delete over a cluster a single gesture instead of clicking
   each node. +1 e2e; footer hint added. 67 Playwright.
+- Added canvas **keyboard affordances**: `⌘/Ctrl-A` selects all nodes, `Escape` deselects, and the
+  arrow keys nudge the selection (Shift = a 10px step vs 1px) — fine positioning to complement coarse
+  drag. A run of consecutive nudges shares one undo entry (a `nudging` flag records the pre-run
+  overlay once, reset by any click/undo); locked groups don't move; a selected group's members nudge
+  together (same expansion as drag). All gated on the editor not being focused, so CodeMirror keeps
+  these keys for the source text. +2 e2e; footer hint updated. 69 Playwright.
