@@ -55,3 +55,7 @@
 - Added `resizeNode(overrides, id, position, size)` — the resize counterpart to `moveNode` (which
   only sets position): resizing from a corner moves the origin too, so both are pinned together.
   `applyOverrides` already honoured `NodeOverride.size`, so this completes manual node sizing. +1 unit.
+- Added `pruneGroups(groups, liveNodes)`: drops group members for scene nodes no longer present (and
+  empties that cascade out), so a sidecar group can't outlive the diagram it described — fixing stale
+  groups that survived a text edit and could resurrect onto reused ids. Returns the input unchanged
+  (by identity) when nothing's dead. +2 unit cases.

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -117,5 +118,34 @@ test("double-clicking a group outline edits its label", async ({ page }) => {
   const overlay = await page.evaluate(() => localStorage.getItem("mermollusc-overlay"));
   expect(overlay).not.toBeNull();
   expect(overlay).toContain("Core flow");
+  expect(errors).toEqual([]);
+});
+
+test("a group is pruned when its nodes leave the source (no stale resurrection)", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+
+  await selectPair(page, box);
+  await page.locator("#group").click();
+  await expect(page.locator("#ungroup")).toBeEnabled();
+
+  // Edit to a diagram without the grouped nodes — the sidecar group must not survive.
+  await setSource(page, "flowchart TD\n  X --> Y\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await expect(page.locator("#ungroup")).toBeDisabled();
+  const groupCount = await page.evaluate(() => {
+    const raw = localStorage.getItem("mermollusc-overlay");
+    return raw === null ? 0 : (JSON.parse(raw).groups ?? []).length;
+  });
+  expect(groupCount).toBe(0);
+
   expect(errors).toEqual([]);
 });

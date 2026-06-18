@@ -19,6 +19,7 @@ import {
   moveNode,
   patchSpan,
   pathLocked,
+  pruneGroups,
   relabelNode,
   resizeNode,
   selectOnly,
@@ -1149,6 +1150,14 @@ const renderFromText = async (text: string): Promise<void> => {
   );
   ast = diagram;
   scene = laid.value;
+  // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
+  // resurrect onto reused ids later. (Overrides are cleared on edit; groups otherwise persist.)
+  const prunedGroups = pruneGroups(groups, new Set(laid.value.nodes.map((n) => n.id)));
+  if (prunedGroups !== groups) {
+    groups = prunedGroups;
+    persistOverlay();
+    updateGroupButtons();
+  }
   // Capture source spans for canvas→text edits — one family is live at a time.
   source = null;
   seqSource = null;
