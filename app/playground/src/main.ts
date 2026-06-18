@@ -185,6 +185,9 @@ let drag: {
   readonly pointerX: number;
   readonly pointerY: number;
 } | null = null;
+// Whether the in-progress drag has already snapshotted the overlay for undo (done on the first move,
+// so a click that never moves leaves no no-op history entry).
+let dragRecorded = false;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
 let pan: {
@@ -209,6 +212,50 @@ const SOURCE_KEY = "mermollusc-source";
 const OVERLAY_KEY = "mermollusc-overlay";
 const persistOverlay = (): void => {
   localStorage.setItem(OVERLAY_KEY, serializeOverlay(overrides, groups));
+};
+
+// Undo/redo for sidecar overlay actions (drag, group/ungroup/lock, group label, regenerate) — the
+// canvas counterpart to CodeMirror's text history (which owns the source text). `recordOverlay`
+// snapshots the *pre-mutation* overlay; undo swaps that snapshot with the present state, redo
+// reverses it. A text edit clears the stacks, since the saved positions belong to the old diagram.
+interface OverlaySnapshot {
+  readonly overrides: LayoutOverrides;
+  readonly groups: Groups;
+}
+const HISTORY_LIMIT = 100;
+let undoStack: OverlaySnapshot[] = [];
+let redoStack: OverlaySnapshot[] = [];
+const snapshotOverlay = (): OverlaySnapshot => ({
+  overrides: new Map(overrides),
+  groups: new Map(groups),
+});
+const recordOverlay = (): void => {
+  undoStack.push(snapshotOverlay());
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack = [];
+};
+const clearOverlayHistory = (): void => {
+  undoStack = [];
+  redoStack = [];
+};
+const restoreOverlay = (snapshot: OverlaySnapshot): void => {
+  overrides = new Map(snapshot.overrides);
+  groups = new Map(snapshot.groups);
+  persistOverlay();
+  paintScene();
+  updateGroupButtons();
+};
+const undoOverlay = (): void => {
+  const prev = undoStack.pop();
+  if (prev === undefined) return;
+  redoStack.push(snapshotOverlay());
+  restoreOverlay(prev);
+};
+const redoOverlay = (): void => {
+  const next = redoStack.pop();
+  if (next === undefined) return;
+  undoStack.push(snapshotOverlay());
+  restoreOverlay(next);
 };
 
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
@@ -487,6 +534,7 @@ const groupSelection = (): void => {
     units.push(member);
   }
   if (units.length < 2) return;
+  recordOverlay();
   groups = group(groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
   updateGroupButtons();
   persistOverlay();
@@ -496,6 +544,7 @@ const groupSelection = (): void => {
 const ungroupSelection = (): void => {
   const top = selectedTopGroup();
   if (top === null) return;
+  recordOverlay();
   groups = ungroup(groups, top);
   updateGroupButtons();
   persistOverlay();
@@ -506,6 +555,7 @@ const toggleLockSelection = (): void => {
   const top = selectedTopGroup();
   const g = top === null ? undefined : groups.get(top);
   if (top === null || g === undefined) return;
+  recordOverlay();
   groups = setLocked(groups, top, !g.locked);
   updateGroupButtons();
   persistOverlay();
@@ -939,6 +989,7 @@ canvas.addEventListener("pointerdown", (ev) => {
         origin.set(node.id, point(node.bounds.origin.x, node.bounds.origin.y));
     }
     drag = { ids: [...origin.keys()], origin, pointerX: at.x, pointerY: at.y };
+    dragRecorded = false;
     canvas.setPointerCapture(ev.pointerId);
   } else if (hit === null) {
     pan = {
@@ -964,6 +1015,10 @@ canvas.addEventListener("pointermove", (ev) => {
   const at = scenePoint(ev);
   const dx = at.x - drag.pointerX;
   const dy = at.y - drag.pointerY;
+  if (!dragRecorded && (dx !== 0 || dy !== 0)) {
+    recordOverlay();
+    dragRecorded = true;
+  }
   for (const id of drag.ids) {
     const o = drag.origin.get(id);
     if (o !== undefined) overrides = moveNode(overrides, id, point(o.x + dx, o.y + dy));
@@ -1071,6 +1126,8 @@ canvas.addEventListener("dblclick", (ev) => {
       pending = {
         text: g.label,
         commit: (next) => {
+          if (next === g.label) return;
+          recordOverlay();
           groups = setGroupLabel(groups, groupHit, next);
           persistOverlay();
           paintScene();
@@ -1244,11 +1301,29 @@ window.addEventListener("keydown", (ev) => {
   void renderFromText(text);
 });
 
+// Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
+// when the editor isn't focused, so CodeMirror keeps ⌘Z for the source text; the two histories don't
+// fight (text in CodeMirror, layout/groups here).
+window.addEventListener("keydown", (ev) => {
+  if (editor.hasFocus()) return;
+  if (!ev.metaKey && !ev.ctrlKey) return;
+  const key = ev.key.toLowerCase();
+  if (key === "z" && !ev.shiftKey) {
+    ev.preventDefault();
+    undoOverlay();
+  } else if (key === "y" || (key === "z" && ev.shiftKey)) {
+    ev.preventDefault();
+    redoOverlay();
+  }
+});
+
 relaxBtn.addEventListener("click", () => {
   void relax();
 });
-// Regenerate: drop manual positions and lay out cleanly from the text.
+// Regenerate: drop manual positions and lay out cleanly from the text. Undoable — so a regenerate
+// that throws away a hand-tuned layout can be taken back (the groups are kept either way).
 regenBtn.addEventListener("click", () => {
+  if (overrides.size > 0) recordOverlay();
   overrides = new Map();
   persistOverlay();
   void renderFromText(editor.value());
@@ -1275,6 +1350,7 @@ exampleEl.addEventListener("change", () => {
   exampleEl.value = "";
   if (text === undefined) return;
   overrides = new Map();
+  clearOverlayHistory(); // a different diagram — the old positions/history no longer apply
   persistOverlay();
   editor.setValue(text);
   void renderFromText(text);
@@ -1594,6 +1670,7 @@ if (fromHash === null) {
 // editor is created here, last, because its change callback closes over `renderFromText`.
 editor = createEditor(editorMount, initialSource, (text) => {
   overrides = new Map();
+  clearOverlayHistory(); // the text (and thus the diagram) changed — old positions/history are stale
   persistOverlay();
   void renderFromText(text);
 });

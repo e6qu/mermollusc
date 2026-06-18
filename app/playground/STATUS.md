@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (63 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (66 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -45,6 +45,11 @@
   - group labels are sidecar metadata: double-click a group outline to edit its title; the label
     renders as a fieldset-style legend on the top border (a background notch breaks the outline so
     the text reads cleanly); overlay persistence keeps it across reloads.
+  - **drag-to-move works for every family** (the sidecar overrides + `applyOverrides` are
+    family-agnostic; dragging persists to the overlay and survives reload).
+  - **undo/redo for canvas actions** (`⌘/Ctrl-Z`, `⌘⇧Z`/`Ctrl-Y`): a separate overlay-history stack
+    covers drag, group/ungroup/lock, group label, and Regenerate. It's gated on the editor not being
+    focused, so CodeMirror keeps `⌘Z` for the source text — the two histories don't fight.
 - node e2e composition test (text → pixels) passing.
 - Icons in nodes: network node kinds resolve to built-in glyphs (`findIcon` → SVG → rasterised
   image, cached), handed to `paint` and drawn above each node's label.
@@ -76,7 +81,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 63 flows — adds editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 66 flows — adds undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
