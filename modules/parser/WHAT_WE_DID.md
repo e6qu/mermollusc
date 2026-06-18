@@ -77,3 +77,7 @@
   at root, `__start__<id>`/`__end__<id>` inside a composite), and composites accumulate `StateAst.
   composites` (id/label/parent/members) mirroring `FlowSubgraph`. A composite id is a container, not
   a leaf state (filtered out of `states`). +1 integration test.
+- Fixed `recognitionError`: an end-of-input error carries Chevrotain's EOF token, whose `startOffset`
+  is `NaN` — that NaN was leaking into `ParseError.positions`, becoming a NaN highlight range that
+  crashed the editor's lint on empty/truncated input. Non-finite positions are now filtered out (the
+  message still surfaces; `positions` is the locatable subset). +1 unit case.

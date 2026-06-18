@@ -29,4 +29,18 @@ describe("parse error positions", () => {
       expect(pos.length).toBeGreaterThanOrEqual(1);
     }
   });
+
+  it("emits no bogus position for an end-of-input error (EOF token has a NaN offset)", () => {
+    // No trailing newline → the error is on Chevrotain's EOF token; its `startOffset` is NaN, which
+    // must not leak into `positions` (it would become a NaN highlight range and crash the editor).
+    for (const text of ["flowchart TD\n  A -->", "", "stateDiagram-v2\n  A -->"]) {
+      const r = parseDiagram(text);
+      expect(isOk(r)).toBe(false);
+      if (isOk(r)) continue;
+      for (const pos of r.error.positions) {
+        expect(Number.isFinite(pos.offset)).toBe(true);
+        expect(pos.offset).toBeLessThanOrEqual(text.length);
+      }
+    }
+  });
 });

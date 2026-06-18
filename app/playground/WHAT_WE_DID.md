@@ -230,3 +230,9 @@
 - State diagrams now support **composite states** (`state X { … }`): they render as container boxes
   wrapping their nested states (reusing the flowchart subgraph layout + container rendering), each
   composite scoping its own `[*]`. +1 e2e (composite renders without error). 75 Playwright.
+- Fixed a crash on **empty / truncated source** (clearing the editor, or input ending mid-token like
+  `A -->`): the parser's EOF error produced a NaN/out-of-bounds position, and the editor handed it to
+  CodeMirror's lint as a diagnostic range → uncaught `lineAt` throw. `editor.setError` now clamps to a
+  non-empty span strictly inside the document and marks nothing when there's nothing valid to mark
+  (belt-and-suspenders with the parser fix). +1 e2e (clearing / truncated input never crashes). 76
+  Playwright. Found via a per-family odd-input fuzz pass.

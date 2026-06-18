@@ -45,6 +45,6 @@
   before `(`; `subgraph`/`end` are keywords with `longer_alt: Identifier`. Offset tracking is on so
   the builder claims a node for the subgraph it's declared in, then emits a canonical node order
   that the printer mirrors for round-trip.)
-- tests: 49 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
+- tests: 50 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
   + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
   parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).
