@@ -1,8 +1,8 @@
 import { CstParser } from "chevrotain";
 import { C4Tok, c4AllTokens } from "./c4-tokens.js";
 
-// Subset of Mermaid C4: typed elements `Person/System/Container(id, "label")`, nestable
-// `Boundary(id, "label") { ... }`, and `Rel(from, to, "label")`.
+// Subset of Mermaid C4: typed elements `Person/System/Container(id, "label"[, "description"])`,
+// nestable `Boundary(id, "label") { ... }`, and `Rel(from, to, "label")`.
 class C4Parser extends CstParser {
   constructor() {
     super(c4AllTokens);
@@ -37,6 +37,11 @@ class C4Parser extends CstParser {
     this.CONSUME(C4Tok.Identifier);
     this.CONSUME(C4Tok.Comma);
     this.CONSUME(C4Tok.QuotedString);
+    // Mermaid allows an optional description after the label.
+    this.OPTION(() => {
+      this.CONSUME2(C4Tok.Comma);
+      this.CONSUME2(C4Tok.QuotedString);
+    });
     this.CONSUME(C4Tok.RParen);
   });
 

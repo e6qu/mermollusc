@@ -25,6 +25,11 @@ const attr = (s: string): string => esc(s).replace(/"/g, "&quot;");
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
+const labelLineHeight = (font: string): number => {
+  const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];
+  return (px === undefined ? 14 : Number(px)) * 1.3;
+};
+
 const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>): string => {
   switch (cmd.kind) {
     case "box":
@@ -46,8 +51,16 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       if (href === undefined) return "";
       return `<image x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.size)}" height="${num(cmd.size)}" href="${attr(href)}"/>`;
     }
-    case "label":
-      return `<text x="${num(cmd.x)}" y="${num(cmd.y)}" text-anchor="middle" dominant-baseline="central" fill="${theme.text}">${esc(cmd.text)}</text>`;
+    case "label": {
+      // Mirror the painter's multi-line handling: one <tspan> per line, centred on the anchor.
+      const lines = cmd.text.split("\n");
+      const lh = labelLineHeight(theme.font);
+      const top = cmd.y - ((lines.length - 1) * lh) / 2;
+      const tspans = lines
+        .map((line, i) => `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}">${esc(line)}</tspan>`)
+        .join("");
+      return `<text text-anchor="middle" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
+    }
   }
 };
 

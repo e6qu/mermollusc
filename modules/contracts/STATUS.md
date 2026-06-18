@@ -3,7 +3,8 @@
 **State:** AST + SceneGraph IR defined (types only); `make check` green.
 
 - AST: flowchart + sequence + C4 variants (`FlowchartAst` incl. `FlowSubgraph` grouping, `SequenceAst`,
-  `C4Ast` with nesting via `parent`); `DiagramAst` discriminated union; branded ids, closed unions.
+  `C4Ast` with nesting via `parent` and an optional `C4Element.description`); `DiagramAst`
+  discriminated union; branded ids, closed unions.
 - SceneGraph IR: `SceneNode`/`SceneEdge`/`Scene` over `@m/std` geometry, with node `shape` and containment via `parent`.
 - `LayoutOverrides`: sidecar manual geometry (scene node → position/size/pinned).
 - `Groups`: sidecar editor grouping with required `label`, ordered members, and move-only lock.

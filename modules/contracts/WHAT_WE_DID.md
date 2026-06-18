@@ -18,3 +18,4 @@
   `subgraph … end` grouping (membership on the subgraph, nesting via `parent`, so `FlowNode` is
   unchanged).
 - Added required sidecar `Group.label` for editor-owned group titles.
+- Added optional `C4Element.description` (`string | null`) for the C4 description argument.

@@ -10,8 +10,9 @@
   message-text and actor-label spans): `sequenceDiagram` subset — `participant [as Label]`,
   messages with the four arrow kinds (`->>`/`-->>`/`->`/`-->`), actors inferred from endpoints.
 - `parseC4(text)` / `parseC4WithSource(text)` → `C4Ast` (+ `C4Source`: inner-label spans for each
-  element and relation): C4 subset — `Person/System/Container(id, "label")`, nestable
-  `Boundary(id, "label") { ... }`, `Rel(from, to, "label")`. `parseC4` is the ast-only wrapper.
+  element and relation): C4 subset — `Person/System/Container(id, "label"[, "description"])`, nestable
+  `Boundary(id, "label") { ... }`, `Rel(from, to, "label")`. The optional element description lands in
+  `C4Element.description` (null when omitted). `parseC4` is the ast-only wrapper.
 - `parseBlock(text)` / `parseBlockWithSource(text)` → `BlockAst` (+ `BlockSource`: label spans for
   explicitly-labelled blocks and pipe-labelled edges): `block-beta` subset — `columns N` directive,
   block declarations `id` / `id["label"]` / `id(label)` / `id{label}` (quotes stripped) with an

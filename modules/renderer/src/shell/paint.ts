@@ -58,6 +58,12 @@ export const darkTheme: Theme = {
   sketch: false,
 };
 
+// Line spacing for multi-line labels, derived from the theme font's px size (default 14).
+const labelLineHeight = (font: string): number => {
+  const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];
+  return (px === undefined ? 14 : Number(px)) * 1.3;
+};
+
 const ARROW_SIZE = 9;
 
 // Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
@@ -203,7 +209,12 @@ export const paint = (
       }
       case "label": {
         ctx.fillStyle = theme.text;
-        ctx.fillText(cmd.text, cmd.x, cmd.y);
+        // A label may carry newlines (e.g. a C4 element's description on a second line); stack the
+        // lines centred on the anchor so the block stays vertically centred in the node.
+        const lines = cmd.text.split("\n");
+        const lh = labelLineHeight(theme.font);
+        const top = cmd.y - ((lines.length - 1) * lh) / 2;
+        for (const [i, line] of lines.entries()) ctx.fillText(line, cmd.x, top + i * lh);
         break;
       }
     }

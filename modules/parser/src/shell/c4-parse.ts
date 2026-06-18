@@ -54,6 +54,12 @@ const quotedSpan = (c: Children): TextSpan | null => {
   return tok === undefined ? null : innerSpan(tok);
 };
 
+// The optional second quoted string of an element (`Person(id, "label", "description")`), or null.
+const descriptionOf = (c: Children): string | null => {
+  const tok = childTokens(c, "QuotedString")[1];
+  return tok === undefined ? null : unquote(tok.image);
+};
+
 const walkItems = (items: readonly CstNode[], parent: C4ElementId | null, acc: C4Acc): void => {
   for (const item of items) {
     const el = childNodes(item.children, "element")[0];
@@ -64,6 +70,7 @@ const walkItems = (items: readonly CstNode[], parent: C4ElementId | null, acc: C
       acc.elements.push({
         id,
         label: unquote(imageOf(el.children, "QuotedString") ?? '""'),
+        description: descriptionOf(el.children),
         kind: elementKind(el.children),
         parent,
       });
@@ -77,6 +84,7 @@ const walkItems = (items: readonly CstNode[], parent: C4ElementId | null, acc: C
       acc.elements.push({
         id,
         label: unquote(imageOf(boundary.children, "QuotedString") ?? '""'),
+        description: null,
         kind: "boundary",
         parent,
       });

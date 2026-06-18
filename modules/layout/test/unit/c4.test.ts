@@ -10,10 +10,10 @@ const rid = (s: string) => brand<string, "C4RelId">(s);
 const ast: C4Ast = {
   kind: "c4",
   elements: [
-    { id: cid("alice"), label: "Alice", kind: "person", parent: null },
-    { id: cid("backend"), label: "Backend", kind: "boundary", parent: null },
-    { id: cid("api"), label: "API", kind: "container", parent: cid("backend") },
-    { id: cid("db"), label: "DB", kind: "container", parent: cid("backend") },
+    { id: cid("alice"), label: "Alice", description: "A customer", kind: "person", parent: null },
+    { id: cid("backend"), label: "Backend", description: null, kind: "boundary", parent: null },
+    { id: cid("api"), label: "API", description: null, kind: "container", parent: cid("backend") },
+    { id: cid("db"), label: "DB", description: null, kind: "container", parent: cid("backend") },
   ],
   rels: [{ id: rid("r0"), from: cid("alice"), to: cid("api"), label: "uses" }],
 };
@@ -27,7 +27,9 @@ describe("layoutC4", () => {
   it("fails loudly when an element's parent is dangling", () => {
     const bad: C4Ast = {
       kind: "c4",
-      elements: [{ id: cid("api"), label: "API", kind: "container", parent: cid("missing") }],
+      elements: [
+        { id: cid("api"), label: "API", description: null, kind: "container", parent: cid("missing") },
+      ],
       rels: [],
     };
     expect(layoutC4(bad, heuristicMeasure).ok).toBe(false);
@@ -36,7 +38,7 @@ describe("layoutC4", () => {
   it("fails loudly when a relation references an unknown element", () => {
     const bad: C4Ast = {
       kind: "c4",
-      elements: [{ id: cid("alice"), label: "Alice", kind: "person", parent: null }],
+      elements: [{ id: cid("alice"), label: "Alice", description: null, kind: "person", parent: null }],
       rels: [{ id: rid("r0"), from: cid("alice"), to: cid("ghost"), label: "uses" }],
     };
     expect(layoutC4(bad, heuristicMeasure).ok).toBe(false);
@@ -63,5 +65,13 @@ describe("layoutC4", () => {
   it("emits a straight edge per relation", () => {
     expect(scene.edges.map((e) => e.id)).toEqual(["r0"]);
     expect(scene.edges[0]?.waypoints).toHaveLength(2);
+  });
+
+  it("renders a description as a second label line and widens the box to fit it", () => {
+    const alice = byId.get("alice");
+    if (alice === undefined) throw new Error("missing alice");
+    expect(alice.label).toBe("Alice\nA customer");
+    // "A customer" is wider than both "Alice" and the MIN_LEAF_WIDTH (80) floor, so the box grew.
+    expect(alice.bounds.size.width).toBeGreaterThan(80);
   });
 });
