@@ -12,8 +12,11 @@
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.
-- Drag-to-move for non-flowchart families still needs explicit product decisions around persistence
-  and whether sidecar overrides should span every family.
+- *(done — already worked)* Drag-to-move spans every family: the sidecar overrides + `applyOverrides`
+  are family-agnostic, so dragging any family's nodes persists and survives reload (verified + e2e).
+- *(done)* Undo/redo for canvas actions (`⌘Z` / `⌘⇧Z`): an overlay-history stack covers drag,
+  group/ungroup/lock, group label, and Regenerate, gated on the editor not being focused so CodeMirror
+  keeps `⌘Z` for the text. Possible follow-up: a unified undo that also spans text edits.
 - *(done)* The inline label editor uses the renderer's routed-polyline edge-label anchor, so editing
   a bent edge opens on the visible label location.
 - *(done)* Ctrl/⌘-wheel zoom is cursor-anchored (the point under the pointer stays put) and dragging

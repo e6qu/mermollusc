@@ -189,3 +189,12 @@
   as a parser enhancement.
 - Restored the C4 Examples entry to Mermaid's natural 3-arg form now that descriptions parse and
   render (`Person(alice, "Alice", "A customer")`, `Container(api, "API", "Handles requests")`).
+- Added **undo/redo for canvas (overlay) actions** — drag, group/ungroup/lock, group label, and
+  Regenerate. A small history of overlay snapshots (overrides + groups) is recorded just before each
+  such mutation (a drag records once, on its first move); `⌘/Ctrl-Z` pops it and `⌘⇧Z`/`Ctrl-Y`
+  redoes. It's gated on the editor not being focused, so CodeMirror keeps `⌘Z` for the source text —
+  the layout/group history and the text history stay separate and don't fight. Editing the text (or
+  loading an example) clears the overlay history, since the saved positions belong to the old
+  diagram. Relax is intentionally excluded (it rebuilds the base scene, which the overlay snapshot
+  doesn't capture). +2 e2e (drag undo+redo; group undo). Confirmed drag-to-move already works for
+  every family (overrides are family-agnostic). 66 Playwright.
