@@ -13,6 +13,7 @@ export {
   topGroupOfNode,
   pathLocked,
   topGroups,
+  pruneGroups,
 } from "./core/index.js";
 export {
   relabelNode,

@@ -36,3 +36,6 @@ Checked while fuzzing each family for odd-input crashes.
 - ~~Empty or truncated source crashed the editor~~ — an EOF parse error gave a NaN highlight range
   that CodeMirror lint choked on; fixed in the parser (filter non-finite positions) and the editor
   (clamp/guard the diagnostic range). Found via a per-family odd-input fuzz pass.
+- ~~A sidecar group outlived a text edit that removed its nodes~~ — groups (unlike overrides) weren't
+  cleared on edit, so editing away and back could resurrect a phantom group onto reused ids.
+  `renderFromText` now prunes groups to the live node set (`pruneGroups`). Found via the fuzz pass.

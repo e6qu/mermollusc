@@ -6,6 +6,7 @@ import {
   leafNodes,
   parentOf,
   pathLocked,
+  pruneGroups,
   setGroupLabel,
   setLocked,
   topGroupOfNode,
@@ -96,5 +97,22 @@ describe("groups", () => {
     expect(ungroup(g, gid("nope"))).toBe(g);
     expect(setLocked(g, gid("nope"), true)).toBe(g);
     expect(setGroupLabel(g, gid("nope"), "x")).toBe(g);
+  });
+
+  it("pruneGroups drops members for gone nodes and empties that cascade out", () => {
+    // g1 = {a, b}; g2 (outer) = {g1, c}. Drop node b and c → g1 = {a}, g2 = {g1}.
+    let g: Groups = group(new Map(), gid("g1"), [node("a"), node("b")]);
+    g = group(g, gid("g2"), [sub("g1"), node("c")]);
+    const pruned = pruneGroups(g, new Set([n("a")]));
+    expect(leafNodes(pruned, gid("g1"))).toEqual([n("a")]);
+    expect(pruned.get(gid("g2"))?.members).toEqual([sub("g1")]);
+  });
+
+  it("pruneGroups removes a group whose nodes all vanished (no stale resurrection)", () => {
+    const g = group(new Map(), gid("g1"), [node("a"), node("b")]);
+    expect(pruneGroups(g, new Set<SceneNodeId>()).size).toBe(0);
+    // a group whose every node still exists is untouched.
+    const live = new Set([n("a"), n("b")]);
+    expect(pruneGroups(g, live).get(gid("g1"))?.members).toEqual([node("a"), node("b")]);
   });
 });

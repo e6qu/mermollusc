@@ -88,6 +88,38 @@ export const pathLocked = (groups: Groups, node: SceneNodeId): boolean => {
   return false;
 };
 
+// Drop group members that reference scene nodes no longer present (and subgroups that thereby become
+// empty), so a sidecar group can't outlive the diagram it described — e.g. resurrect onto reused ids
+// after the text is edited away and back. Fixpoint: removing a node member can empty a group, which
+// then drops from its parent, until the set stabilises (membership only ever shrinks).
+export const pruneGroups = (groups: Groups, liveNodes: ReadonlySet<SceneNodeId>): Groups => {
+  // Nothing dead → return the input unchanged, so callers can detect a no-op by identity. (Only a
+  // dead *node* member can start a cascade; an empty group can only arise from one.)
+  const hasDead = [...groups.values()].some((g) =>
+    g.members.some((m) => m.kind === "node" && !liveNodes.has(m.id)),
+  );
+  if (!hasDead) return groups;
+  const memberCount = (gs: Groups): number => {
+    let n = 0;
+    for (const g of gs.values()) n += g.members.length;
+    return n;
+  };
+  let current: Groups = groups;
+  for (;;) {
+    const next = new Map<GroupId, Group>();
+    for (const [id, g] of current) {
+      const members = g.members.filter((m) =>
+        m.kind === "node" ? liveNodes.has(m.id) : current.has(m.id),
+      );
+      if (members.length > 0) {
+        next.set(id, members.length === g.members.length ? g : { ...g, members });
+      }
+    }
+    if (next.size === current.size && memberCount(next) === memberCount(current)) return next;
+    current = next;
+  }
+};
+
 // Top-level groups (those not nested inside another), in insertion order.
 export const topGroups = (groups: Groups): readonly Group[] => {
   const out: Group[] = [];

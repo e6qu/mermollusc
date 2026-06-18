@@ -236,3 +236,7 @@
   non-empty span strictly inside the document and marks nothing when there's nothing valid to mark
   (belt-and-suspenders with the parser fix). +1 e2e (clearing / truncated input never crashes). 76
   Playwright. Found via a per-family odd-input fuzz pass.
+- Fixed stale sidecar groups: a group survived a text edit that removed its nodes (overrides are
+  cleared on edit, groups weren't), so editing away and back could resurrect a phantom group onto
+  reused ids. `renderFromText` now prunes groups to the live node set (via builder `pruneGroups`) on
+  each successful parse. +1 e2e. 77 Playwright. Found via the robustness fuzz pass.
