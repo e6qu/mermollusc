@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -13,9 +14,10 @@ test("renders a flowchart with a subgraph end to end without errors", async ({ p
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page
-    .locator("#src")
-    .fill("flowchart TD\n  subgraph Backend\n    api[API] --> db[DB]\n  end\n  user[User] --> api\n");
+  await setSource(
+    page,
+    "flowchart TD\n  subgraph Backend\n    api[API] --> db[DB]\n  end\n  user[User] --> api\n",
+  );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   expect(errors).toEqual([]);

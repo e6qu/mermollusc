@@ -11,7 +11,13 @@
     "@m/parser": "workspace:*",
     "@m/layout": "workspace:*",
     "@m/renderer": "workspace:*",
-    "@m/icons": "workspace:*"
+    "@m/icons": "workspace:*",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@codemirror/commands": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/lint": "catalog:",
+    "@lezer/highlight": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

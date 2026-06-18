@@ -1,0 +1,243 @@
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
+import { type Diagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
+import { Annotation, EditorState } from "@codemirror/state";
+import {
+  drawSelection,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
+import { tags } from "@lezer/highlight";
+
+// A source range into the document, matching the parser's `ParseError.positions` shape.
+export interface SourceRange {
+  readonly offset: number;
+  readonly length: number;
+}
+
+// The editor surface main.ts talks to — deliberately small, so the CodeMirror types never leak into
+// the rest of the app and the textarea could be swapped back without touching call sites.
+export interface Editor {
+  value(): string;
+  setValue(text: string): void;
+  insertAtCursor(text: string): void;
+  cursor(): number;
+  select(from: number, to: number): void;
+  focus(): void;
+  hasFocus(): boolean;
+  setError(range: SourceRange | null, message: string): void;
+}
+
+// Keywords across all six families. Highlighting a network/cloud node kind (`cloud`, `group`,
+// `database`) as a keyword everywhere is harmless — these are reserved words in the grammars that use
+// them, and a bare identifier that happens to collide just gets a keyword colour.
+const KEYWORDS = new Set([
+  "flowchart",
+  "graph",
+  "subgraph",
+  "end",
+  "direction",
+  "TD",
+  "TB",
+  "BT",
+  "RL",
+  "LR",
+  "sequenceDiagram",
+  "participant",
+  "actor",
+  "as",
+  "note",
+  "over",
+  "loop",
+  "alt",
+  "opt",
+  "par",
+  "C4Context",
+  "C4Container",
+  "C4Component",
+  "Person",
+  "Person_Ext",
+  "System",
+  "System_Ext",
+  "SystemDb",
+  "Container",
+  "ContainerDb",
+  "Component",
+  "Boundary",
+  "System_Boundary",
+  "Container_Boundary",
+  "Enterprise_Boundary",
+  "Rel",
+  "BiRel",
+  "block-beta",
+  "columns",
+  "network",
+  "cloud",
+  "group",
+  "router",
+  "server",
+  "switch",
+  "firewall",
+  "host",
+  "database",
+  "compute",
+  "storage",
+  "queue",
+  "cdn",
+]);
+
+const ARROW = /^(?:-\.->|-->>|==>|-->|->>|---|->|--)/;
+const IDENT = /^[A-Za-z_][\w-]*/;
+
+// A lightweight stream tokenizer — enough to colour headers, links, strings, comments, and brackets
+// without re-implementing each family's full grammar (the parsers own correctness; this is colour).
+const mermaidLanguage = StreamLanguage.define<Record<string, never>>({
+  token(stream) {
+    if (stream.eatSpace()) return null;
+    if (stream.match("%%")) {
+      stream.skipToEnd();
+      return "comment";
+    }
+    if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) return "string";
+    if (stream.match(ARROW)) return "operator";
+    const ch = stream.peek();
+    if (ch !== undefined && "[]{}()|".includes(ch)) {
+      stream.next();
+      return "bracket";
+    }
+    const word = stream.match(IDENT);
+    if (word !== null && typeof word !== "boolean") {
+      const text = word[0];
+      return text !== undefined && KEYWORDS.has(text) ? "keyword" : null;
+    }
+    stream.next();
+    return null;
+  },
+  tokenTable: {
+    keyword: tags.keyword,
+    string: tags.string,
+    comment: tags.lineComment,
+    operator: tags.operator,
+    bracket: tags.bracket,
+  },
+});
+
+// Colours are CSS variables so the existing light/dark `data-theme` switch drives them — no need to
+// rebuild the editor when the theme toggles.
+const highlight = HighlightStyle.define([
+  { tag: tags.keyword, color: "var(--cm-keyword)", fontWeight: "600" },
+  { tag: tags.string, color: "var(--cm-string)" },
+  { tag: tags.lineComment, color: "var(--cm-comment)", fontStyle: "italic" },
+  { tag: tags.operator, color: "var(--cm-operator)" },
+  { tag: tags.bracket, color: "var(--cm-bracket)" },
+]);
+
+const appTheme = EditorView.theme({
+  "&": { height: "100%", fontSize: "13px", backgroundColor: "var(--surface)", color: "var(--ink)" },
+  "&.cm-focused": { outline: "none" },
+  ".cm-scroller": { fontFamily: "var(--font-mono)", lineHeight: "1.7", overflow: "auto" },
+  ".cm-content": { padding: "14px 0", caretColor: "var(--primary)" },
+  ".cm-gutters": {
+    backgroundColor: "var(--surface)",
+    color: "var(--ink-soft)",
+    border: "none",
+    paddingRight: "4px",
+  },
+  ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--primary) 6%, transparent)" },
+  ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
+  ".cm-cursor": { borderLeftColor: "var(--primary)" },
+});
+
+// Marks a transaction as programmatic (a structural edit, an example load, a share-link), so the
+// change listener can tell it apart from the user typing and not re-fire the render-from-text path.
+const programmatic = Annotation.define<boolean>();
+
+declare global {
+  interface Window {
+    // An e2e hook: reading/writing the document through CodeMirror's own state is robust, whereas
+    // `.fill()`/`toHaveValue()` only work on a real <textarea>. Set once the editor mounts.
+    __editor?: { value(): string; setValue(text: string): void };
+  }
+}
+
+export const createEditor = (
+  parent: HTMLElement,
+  initial: string,
+  onUserChange: (value: string) => void,
+): Editor => {
+  const view = new EditorView({
+    parent,
+    state: EditorState.create({
+      doc: initial,
+      extensions: [
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        highlightActiveLine(),
+        history(),
+        drawSelection(),
+        EditorView.lineWrapping,
+        keymap.of([...defaultKeymap, ...historyKeymap]),
+        syntaxHighlighting(highlight),
+        mermaidLanguage,
+        lintGutter(),
+        appTheme,
+        EditorView.updateListener.of((update) => {
+          if (!update.docChanged) return;
+          const isProgrammatic = update.transactions.some(
+            (t) => t.annotation(programmatic) === true,
+          );
+          if (!isProgrammatic) onUserChange(view.state.doc.toString());
+        }),
+      ],
+    }),
+  });
+
+  const replaceDoc = (text: string, programmaticChange: boolean): void => {
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: text },
+      annotations: programmaticChange ? [programmatic.of(true)] : [],
+    });
+  };
+  const setValue = (text: string): void => replaceDoc(text, true);
+
+  const editor: Editor = {
+    value: () => view.state.doc.toString(),
+    setValue,
+    insertAtCursor: (text) => {
+      const at = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: at, insert: text },
+        selection: { anchor: at + text.length },
+        annotations: programmatic.of(true),
+      });
+    },
+    cursor: () => view.state.selection.main.head,
+    select: (from, to) => {
+      view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true });
+    },
+    focus: () => view.focus(),
+    hasFocus: () => view.hasFocus,
+    setError: (range, message) => {
+      const diagnostics: Diagnostic[] =
+        range === null
+          ? []
+          : [
+              {
+                from: range.offset,
+                to: Math.max(range.offset + range.length, range.offset + 1),
+                severity: "error",
+                message,
+              },
+            ];
+      view.dispatch(setDiagnostics(view.state, diagnostics));
+    },
+  };
+
+  // The e2e hook's `setValue` emulates a user edit (non-programmatic, so the change listener fires and
+  // the diagram re-renders) — matching how a spec's old `textarea.fill()` drove an `input` event.
+  window.__editor = { value: editor.value, setValue: (text) => replaceDoc(text, false) };
+  return editor;
+};

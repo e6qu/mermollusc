@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -8,7 +9,7 @@ test("double-click a sequence actor relabels it in the source text", async ({ pa
   const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page.locator("#src").fill("sequenceDiagram\n  participant A as Alice\n  A->>B: hi\n");
+  await setSource(page, "sequenceDiagram\n  participant A as Alice\n  A->>B: hi\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   // First actor box sits at the origin; its centre is a deterministic hit point.
@@ -22,5 +23,5 @@ test("double-click a sequence actor relabels it in the source text", async ({ pa
   await editor.fill("Renamed");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/as Renamed/);
+  await expectSourceMatches(page, /as Renamed/);
 });

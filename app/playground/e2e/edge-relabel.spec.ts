@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -9,7 +10,7 @@ test("double-click a flowchart edge relabels its |label| in the source text", as
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // Two nodes stacked top-to-bottom; the labelled edge runs down the centre between them.
-  await page.locator("#src").fill("flowchart TB\n  A[Top] -->|yes| B[Bottom]\n");
+  await setSource(page, "flowchart TB\n  A[Top] -->|yes| B[Bottom]\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await canvas.boundingBox();
@@ -23,5 +24,5 @@ test("double-click a flowchart edge relabels its |label| in the source text", as
   await editor.fill("maybe");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/-->\|maybe\|/);
+  await expectSourceMatches(page, /-->\|maybe\|/);
 });

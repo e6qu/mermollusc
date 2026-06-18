@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -11,7 +12,7 @@ test("Add node appends a node to the source text and re-renders", async ({ page 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   await page.locator("#add-node").click();
-  await expect(page.locator("#src")).toHaveValue(/node 1/);
+  await expectSourceMatches(page, /node 1/);
 
   expect(errors).toEqual([]);
 });

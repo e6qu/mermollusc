@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -46,7 +47,7 @@ test("clicking near the bottom of the minimap scrolls the stage down", async ({ 
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
-  await page.locator("#src").fill(DIAMOND);
+  await setSource(page, DIAMOND);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await zoomIn(page, 4);
   await expect(page.locator("#minimap")).toBeVisible();
@@ -66,7 +67,7 @@ test("dragging within the minimap pans the stage", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
-  await page.locator("#src").fill(DIAMOND);
+  await setSource(page, DIAMOND);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await zoomIn(page, 4);
   await expect(page.locator("#minimap")).toBeVisible();

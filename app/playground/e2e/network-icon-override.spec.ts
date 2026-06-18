@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -14,7 +15,7 @@ test("a per-node `icon` override resolves and renders a vendored mark", async ({
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // The override points at a bundled simple-icons mark; the kind default would be the arch glyph.
-  await page.locator("#src").fill(
+  await setSource(page,
     'network\n  server web "Web" icon "simpleicons/nginx"\n  database db "DB"\n  web -- db\n',
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

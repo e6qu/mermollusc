@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -15,7 +16,7 @@ test("renders a nested cloud diagram with service glyphs (no resolve failures)",
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page.locator("#src").fill(
+  await setSource(page,
     'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n    database db "Orders"\n    queue jobs "Jobs"\n    cdn edge "Edge"\n  }\n  web -- db\n',
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

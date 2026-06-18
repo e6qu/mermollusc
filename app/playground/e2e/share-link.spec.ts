@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -7,7 +8,7 @@ test("a #src= link reproduces the diagram on load", async ({ page }) => {
   const text = "flowchart LR\n  Shared --> Link\n";
   await page.goto(`/#src=${encodeURIComponent(text)}`);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await expect(page.locator("#src")).toHaveValue(text);
+  await expectSourceMatches(page, text);
 });
 
 test("Share encodes the current source into the URL hash", async ({ page }) => {
@@ -15,7 +16,7 @@ test("Share encodes the current source into the URL hash", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   const edited = "flowchart TD\n  P[Pasteable]\n";
-  await page.locator("#src").fill(edited);
+  await setSource(page, edited);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.locator("#share-link").click();

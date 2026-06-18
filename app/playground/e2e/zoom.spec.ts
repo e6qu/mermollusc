@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -36,7 +37,7 @@ test("Fit scales a tall diagram down so all of it fits the stage", async ({ page
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
-  await page.locator("#src").fill("flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n");
+  await setSource(page, "flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.locator("#zoom-fit").click();
@@ -51,7 +52,7 @@ test("dragging the empty canvas pans the (overflowing) stage", async ({ page }) 
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
-  await page.locator("#src").fill("flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n");
+  await setSource(page, "flowchart TD\n  A-->B-->C-->D-->E-->F-->G-->H-->I-->J-->K-->L-->M-->N\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const wrap = page.locator("#stage-wrap");

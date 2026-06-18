@@ -60,6 +60,7 @@ import {
 import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point } from "@m/std";
+import { createEditor, type Editor } from "./editor.js";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -70,9 +71,15 @@ const SAMPLE = `flowchart TD
 
 const MARGIN = 24;
 
-const srcEl = document.querySelector<HTMLTextAreaElement>("#src");
+const editorMount = document.querySelector<HTMLDivElement>("#editor");
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
-if (srcEl === null || canvas === null) throw new Error("playground: missing #src or #stage");
+if (editorMount === null || canvas === null)
+  throw new Error("playground: missing #editor or #stage");
+
+// Assigned once in the init block below (its change callback needs `renderFromText`, defined later);
+// every handler that touches the source goes through this instead of a raw element. The definite-
+// assignment assertion reflects that ordering — handlers only fire after init has run.
+let editor!: Editor;
 const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
@@ -729,12 +736,15 @@ const setStatus = (
   statusEl.setAttribute("data-locatable", range === null ? "false" : "true");
   stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
   errorRange = range;
+  // Mirror the located error into the editor as an inline diagnostic (red squiggle + gutter marker +
+  // hover message); clears it on any non-error status.
+  editor.setError(range, message);
 };
 
 statusEl.addEventListener("click", () => {
   if (errorRange === null) return;
-  srcEl.focus();
-  srcEl.setSelectionRange(errorRange.offset, errorRange.offset + errorRange.length);
+  editor.focus();
+  editor.select(errorRange.offset, errorRange.offset + errorRange.length);
 });
 
 // Add-node and Relax patch/seed flowchart specifically. Connect and Delete now work for every family
@@ -758,7 +768,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "c4",
-    'C4Context\n  Person(alice, "Alice", "A customer")\n  Boundary(b, "Backend") {\n    Container(api, "API")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n  Rel(api, db, "reads/writes")\n',
+    'C4Context\n  Person(alice, "Alice")\n  Boundary(b, "Backend") {\n    Container(api, "API")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n  Rel(api, db, "reads/writes")\n',
   ],
   ["block", 'block-beta\n  columns 2\n  a["Web"]\n  b["API"]\n  c["DB"]\n  a --> b\n  b --> c\n'],
   [
@@ -1043,10 +1053,10 @@ canvas.addEventListener("dblclick", (ev) => {
   const patchAt = (
     span: TextSpan,
   ): { readonly text: string; readonly commit: (n: string) => void } => ({
-    text: srcEl.value.slice(span.start, span.end),
+    text: editor.value().slice(span.start, span.end),
     commit: (next) => {
-      srcEl.value = patchSpan(srcEl.value, span, next);
-      void renderFromText(srcEl.value);
+      editor.setValue(patchSpan(editor.value(), span, next));
+      void renderFromText(editor.value());
     },
   });
 
@@ -1077,12 +1087,12 @@ canvas.addEventListener("dblclick", (ev) => {
       pending = {
         text: shown.nodes.find((n) => n.id === hit.id)?.label ?? "",
         commit: (next) => {
-          const patched = relabelNode(srcEl.value, src, nodeId, next);
+          const patched = relabelNode(editor.value(), src, nodeId, next);
           if (!isOk(patched)) {
             console.error("relabel failed:", patched.error.message);
             return;
           }
-          srcEl.value = patched.value;
+          editor.setValue(patched.value);
           void renderFromText(patched.value);
         },
       };
@@ -1132,8 +1142,8 @@ addBtn.addEventListener("click", () => {
   const used = new Set<string>(ast.nodes.map((n) => n.id));
   let n = 1;
   while (used.has(`n${n}`)) n++;
-  srcEl.value = addNode(srcEl.value, brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect");
-  void renderFromText(srcEl.value);
+  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect"));
+  void renderFromText(editor.value());
 });
 
 // Connect: link the first two shift-selected nodes (in click order), in each family's own edge
@@ -1143,8 +1153,8 @@ connectBtn.addEventListener("click", () => {
   if (ast === null || selectionOrder.length < 2) return;
   const [first, second] = selectionOrder;
   if (first === undefined || second === undefined) return;
-  srcEl.value = appendEdge(ast.kind, srcEl.value, first, second);
-  void renderFromText(srcEl.value);
+  editor.setValue(appendEdge(ast.kind, editor.value(), first, second));
+  void renderFromText(editor.value());
 });
 
 const appendEdge = (
@@ -1212,15 +1222,15 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
 };
 
 // Delete key removes the selected nodes (and their edges) from the text, in the active family's
-// syntax. Guarded on the textarea not being focused so it never hijacks a Backspace while editing.
+// syntax. Guarded on the editor not being focused so it never hijacks a Backspace while editing.
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
-  if (document.activeElement === srcEl) return;
+  if (editor.hasFocus()) return;
   if (ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
   const kind = ast.kind;
-  let text = srcEl.value;
+  let text = editor.value();
   for (const id of selectionOrder) text = removeNode(kind, text, id);
   if (scene !== null) {
     for (const edgeId of selection.edges) {
@@ -1230,7 +1240,7 @@ window.addEventListener("keydown", (ev) => {
   }
   selection = emptySelection;
   selectionOrder = [];
-  srcEl.value = text;
+  editor.setValue(text);
   void renderFromText(text);
 });
 
@@ -1241,7 +1251,7 @@ relaxBtn.addEventListener("click", () => {
 regenBtn.addEventListener("click", () => {
   overrides = new Map();
   persistOverlay();
-  void renderFromText(srcEl.value);
+  void renderFromText(editor.value());
 });
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
@@ -1266,7 +1276,7 @@ exampleEl.addEventListener("change", () => {
   if (text === undefined) return;
   overrides = new Map();
   persistOverlay();
-  srcEl.value = text;
+  editor.setValue(text);
   void renderFromText(text);
 });
 
@@ -1275,7 +1285,7 @@ exampleEl.addEventListener("change", () => {
 sketchBtn.addEventListener("click", () => {
   sketch = !sketch;
   sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
-  void renderFromText(srcEl.value);
+  void renderFromText(editor.value());
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
@@ -1302,7 +1312,7 @@ const loadPack = async (file: File): Promise<void> => {
   registry = registerPack(registry, decoded.value);
   iconImages.clear(); // drop stale glyphs so overridden packs re-rasterise
   setStatus("ok", `loaded icon pack "${decoded.value.meta.id}"`);
-  void renderFromText(srcEl.value);
+  void renderFromText(editor.value());
 };
 
 loadPackEl.addEventListener("change", () => {
@@ -1315,14 +1325,10 @@ loadPackEl.addEventListener("change", () => {
 // `icon "<pack>/<name>"` override at the editor caret. Built fresh on each open so it reflects any
 // packs added via "Load icons". The glyph previews reuse the SVG→data-URL path (no innerHTML).
 const insertIconRef = (packId: string, name: string): void => {
-  const ref = ` icon "${packId}/${name}"`;
-  const at = srcEl.selectionStart;
-  srcEl.value = srcEl.value.slice(0, at) + ref + srcEl.value.slice(at);
-  const caret = at + ref.length;
-  srcEl.setSelectionRange(caret, caret);
+  editor.insertAtCursor(` icon "${packId}/${name}"`);
   overrides = new Map();
   persistOverlay();
-  void renderFromText(srcEl.value);
+  void renderFromText(editor.value());
 };
 
 const buildIconGrid = (filter: string): void => {
@@ -1536,7 +1542,7 @@ exportSvgBtn.addEventListener("click", () => {
 // to the clipboard. The hash is reflected in the address bar either way; clipboard is best-effort
 // (it can be denied) and its outcome is surfaced to the status bar, never silently dropped.
 const shareUrl = (): string =>
-  `${location.origin}${location.pathname}#src=${encodeURIComponent(srcEl.value)}`;
+  `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}`;
 
 shareBtn.addEventListener("click", () => {
   const url = shareUrl();
@@ -1566,7 +1572,6 @@ const hashSource = (): string | null => {
 
 const fromHash = hashSource();
 const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
-srcEl.value = initialSource;
 // Restore the persisted overlay only for the persisted source — a share-link source is a different
 // diagram whose node ids wouldn't match. A corrupt/invalid overlay is logged loudly and ignored.
 if (fromHash === null) {
@@ -1585,9 +1590,11 @@ if (fromHash === null) {
     }
   }
 }
-srcEl.addEventListener("input", () => {
+// Editing the text by hand drops manual layout (positions no longer match) and re-renders. The
+// editor is created here, last, because its change callback closes over `renderFromText`.
+editor = createEditor(editorMount, initialSource, (text) => {
   overrides = new Map();
   persistOverlay();
-  void renderFromText(srcEl.value);
+  void renderFromText(text);
 });
 void renderFromText(initialSource);

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -10,7 +11,7 @@ test("renders a C4 diagram (with a nested boundary) from the textarea", async ({
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page.locator("#src").fill(
+  await setSource(page,
     'C4Context\n  Person(alice, "Alice")\n  Boundary(b, "Backend") {\n    Container(api, "API")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n',
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
