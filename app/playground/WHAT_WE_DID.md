@@ -240,3 +240,7 @@
   cleared on edit, groups weren't), so editing away and back could resurrect a phantom group onto
   reused ids. `renderFromText` now prunes groups to the live node set (via builder `pruneGroups`) on
   each successful parse. +1 e2e. 77 Playwright. Found via the robustness fuzz pass.
+- Accessibility: the diagram `#stage` canvas (rendered pixels, opaque to screen readers) now carries
+  `role="img"` + a dynamic `aria-label` — a successful render summarises kind, node/edge counts, and
+  up to 24 node labels; a parse/layout error announces "Diagram error: …" (via `setStatus`). Audited
+  that every visible button/select/link already has an accessible name. +2 e2e. 79 Playwright.

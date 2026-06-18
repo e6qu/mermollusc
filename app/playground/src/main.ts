@@ -1074,6 +1074,9 @@ const setStatus = (
   // Mirror the located error into the editor as an inline diagnostic (red squiggle + gutter marker +
   // hover message); clears it on any non-error status.
   editor.setError(range, message);
+  // The canvas (role="img") needs a text alternative for screen readers — the status line is the
+  // baseline; `renderFromText` enriches it with node labels on a successful render.
+  canvas.setAttribute("aria-label", level === "error" ? `Diagram error: ${message}` : message);
 };
 
 statusEl.addEventListener("click", () => {
@@ -1147,6 +1150,19 @@ const renderFromText = async (text: string): Promise<void> => {
   setStatus(
     "ok",
     `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`,
+  );
+  // Enrich the canvas's screen-reader text with the actual node labels (capped so a huge diagram
+  // doesn't produce an unwieldy string).
+  const labels = laid.value.nodes
+    .map((n) => n.label)
+    .filter((l) => l.length > 0)
+    .slice(0, 24);
+  const ellipsis = laid.value.nodes.filter((n) => n.label.length > 0).length > labels.length;
+  canvas.setAttribute(
+    "aria-label",
+    `${diagram.kind} diagram: ${plural(laid.value.nodes.length, "node")}, ${plural(laid.value.edges.length, "edge")}${
+      labels.length > 0 ? `. Nodes: ${labels.join(", ")}${ellipsis ? ", …" : ""}` : ""
+    }`,
   );
   ast = diagram;
   scene = laid.value;
