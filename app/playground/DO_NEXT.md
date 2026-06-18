@@ -30,3 +30,6 @@
   (parser-led). The `[*]` pseudo-states render as plain circles — small filled start / ringed final
   markers would read better (renderer-led). Connect/Delete/relabel work on real states; the merged
   `[*]` pseudo-states aren't meaningfully editable from the canvas.
+- ER v1 shows cardinality as text in the relationship label and has no entity attribute rows; proper
+  crow's-foot end markers + attribute compartments are renderer-led follow-ups (would also serve a
+  future class-diagram family).

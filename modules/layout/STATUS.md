@@ -34,9 +34,9 @@
   element whose `parent` is dangling/cyclic so it was never placed) instead of silently placing it at
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
-- `layoutDiagram(ast)` routes by family: flowchart **and state** → ELK (async, state via a
+- `layoutDiagram(ast)` routes by family: flowchart, **state, and ER** → ELK (async, state via a
   `stateToFlow` adapter); the rest → pure layouts.
-- tests: 29 unit + 6 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- tests: 29 unit + 7 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; property-based: block/network grids **and the ELK flowchart path**

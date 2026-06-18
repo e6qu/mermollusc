@@ -1,5 +1,13 @@
 import { brand, decode, err, type Point, type Result } from "@m/std";
-import type { DiagramAst, FlowchartAst, NodeId, Scene, StateAst } from "@m/contracts";
+import type {
+  DiagramAst,
+  ErAst,
+  ErCardinality,
+  FlowchartAst,
+  NodeId,
+  Scene,
+  StateAst,
+} from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { z } from "zod";
 import {
@@ -195,6 +203,38 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
   })),
 });
 
+// An ER diagram is entities (boxes) joined by cardinality-labelled relationships — also a graph, so
+// it rides the ELK path too. Crow's-foot end markers are future renderer work; v1 shows the
+// cardinality textually in the relationship label (`1 places *`). Identifying relationships are solid
+// (`open`), non-identifying dashed (`dotted`); neither carries an arrowhead.
+const CARD_SYMBOL: Record<ErCardinality, string> = {
+  one: "1",
+  zeroOrOne: "0..1",
+  oneOrMany: "1..*",
+  zeroOrMany: "*",
+};
+const erToFlow = (ast: ErAst): FlowchartAst => ({
+  kind: "flowchart",
+  direction: "LR",
+  nodes: ast.entities.map((e) => ({
+    id: brand<string, "NodeId">(e.id),
+    label: e.label,
+    shape: "rect",
+  })),
+  edges: ast.relationships.map((r) => {
+    const left = CARD_SYMBOL[r.fromCard];
+    const right = CARD_SYMBOL[r.toCard];
+    return {
+      id: brand<string, "EdgeId">(r.id),
+      from: brand<string, "NodeId">(r.from),
+      to: brand<string, "NodeId">(r.to),
+      kind: r.identifying ? "open" : "dotted",
+      label: r.label === "" ? `${left}–${right}` : `${left} ${r.label} ${right}`,
+    };
+  }),
+  subgraphs: [],
+});
+
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
 export const layoutDiagram = async (
@@ -216,5 +256,7 @@ export const layoutDiagram = async (
       return layoutCloud(ast, measure);
     case "state":
       return layout(stateToFlow(ast), new Map(), measure);
+    case "er":
+      return layout(erToFlow(ast), new Map(), measure);
   }
 };

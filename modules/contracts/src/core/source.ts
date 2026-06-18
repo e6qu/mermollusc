@@ -6,6 +6,8 @@ import type {
   C4ElementId,
   C4RelId,
   EdgeId,
+  ErEntityId,
+  ErRelId,
   MessageId,
   NodeId,
   StateId,
@@ -61,6 +63,12 @@ export interface NetworkSource {
 export interface StateSource {
   readonly states: ReadonlyMap<StateId, TextSpan>;
   readonly transitions: ReadonlyMap<StateTransitionId, TextSpan>;
+}
+
+// Editable text spans for an ER diagram: each entity's name and each relationship's `: label`.
+export interface ErSource {
+  readonly entities: ReadonlyMap<ErEntityId, TextSpan>;
+  readonly relationships: ReadonlyMap<ErRelId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

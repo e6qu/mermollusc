@@ -15,3 +15,5 @@ Checked while adding the optional C4 element description.
 Checked while routing state diagrams through the ELK layout path.
 
 Checked while routing composite states through flowchart subgraphs.
+
+Checked while routing ER diagrams through the ELK path.

@@ -24,3 +24,5 @@
   `StateAst` to the `DiagramAst` union.
 - Added `StateComposite` (id/label/parent/member-state-ids, mirroring `FlowSubgraph`) and
   `StateAst.composites` for nested `state X { … }` composite states.
+- Added the `ErAst` family — `ErEntity`, `ErRelationship` (normalised `ErCardinality` per end +
+  identifying flag), branded `ErEntityId`/`ErRelId` — plus `ErSource`, and added `ErAst` to `DiagramAst`.

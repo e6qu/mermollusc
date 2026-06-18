@@ -62,7 +62,7 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Seven families render in the browser — flowchart, sequence, C4, block, network, cloud, state — and
+**Eight families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER — and
 all are two-way** (double-click → patch the source text). Every family has drag/resize/align,
 connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
 simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
@@ -70,13 +70,13 @@ simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 | module | state | tests |
 |--------|-------|-------|
 | `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, `Coordinate`/`Length` geometry (validated), Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 26 |
-| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud/state AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
-| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud · state (`stateDiagram-v2`, incl. composite states) — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 49 |
-| `@m/layout` | ✅ flowchart + state (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 35 |
+| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud/state/ER AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
+| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud · state (`stateDiagram-v2`, composites) · ER (`erDiagram`) — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 54 |
+| `@m/layout` | ✅ flowchart + state + ER (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 36 |
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides (move + connector re-anchor + extent growth), two-way relabel/add · connect (all families) + delete (flowchart/block/network/cloud) · sidecar group model (nestable, move-only lock) · overlay codec (persist) (+ property-based) | 41 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all seven families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + connect across all families | 7 vitest + 75 Playwright |
+| `@m/app` | ✅ renders + two-way edits all eight families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + connect across all families | 7 vitest + 81 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces

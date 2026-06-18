@@ -23,12 +23,14 @@ export {
   connectUndirected,
   connectC4,
   connectMessage,
+  connectEr,
   deleteNode,
   deleteEdge,
   deleteC4,
   deleteC4Rel,
   deleteActor,
   deleteMessage,
+  deleteErRel,
 } from "./core/index.js";
 export type { PatchError } from "./core/index.js";
 export { serializeOverlay, decodeOverlay } from "./shell/index.js";

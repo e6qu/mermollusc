@@ -41,3 +41,5 @@ Checked while fuzzing each family for odd-input crashes.
   `renderFromText` now prunes groups to the live node set (`pruneGroups`). Found via the fuzz pass.
 
 Checked interactive-control accessible names and canvas labelling (a11y pass).
+
+Checked while adding the ER-diagram family.

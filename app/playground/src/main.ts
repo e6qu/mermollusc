@@ -3,6 +3,7 @@ import {
   applyOverrides,
   connect,
   connectC4,
+  connectEr,
   connectMessage,
   connectUndirected,
   decodeOverlay,
@@ -10,6 +11,7 @@ import {
   deleteC4,
   deleteC4Rel,
   deleteEdge,
+  deleteErRel,
   deleteMessage,
   deleteNode,
   emptySelection,
@@ -35,6 +37,7 @@ import type {
   BlockSource,
   C4Source,
   CloudSource,
+  ErSource,
   DiagramAst,
   GroupId,
   GroupMember,
@@ -55,6 +58,7 @@ import {
   parseBlockWithSource,
   parseC4WithSource,
   parseCloudWithSource,
+  parseErWithSource,
   parseDiagram,
   parseNetworkWithSource,
   parseSequenceWithSource,
@@ -168,6 +172,7 @@ let blockSource: BlockSource | null = null;
 let netSource: NetworkSource | null = null;
 let cloudSource: CloudSource | null = null;
 let stateSource: StateSource | null = null;
+let erSource: ErSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1121,6 +1126,10 @@ const EXAMPLES = new Map<string, string>([
     "state",
     "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Loading : fetch\n  Loading --> Ready : ok\n  Loading --> Idle : error\n  Ready --> [*]\n",
   ],
+  [
+    "er",
+    "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : in\n",
+  ],
 ]);
 
 const renderFromText = async (text: string): Promise<void> => {
@@ -1182,6 +1191,7 @@ const renderFromText = async (text: string): Promise<void> => {
   netSource = null;
   cloudSource = null;
   stateSource = null;
+  erSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1216,6 +1226,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "state": {
       const withSource = parseStateWithSource(text);
       stateSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "er": {
+      const withSource = parseErWithSource(text);
+      erSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1588,6 +1603,12 @@ canvas.addEventListener("dblclick", (ev) => {
         ? stateSource.states.get(brand<string, "StateId">(hit.id))
         : stateSource.transitions.get(brand<string, "StateTransitionId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "er" && erSource !== null) {
+    const span =
+      hit.kind === "node"
+        ? erSource.entities.get(brand<string, "ErEntityId">(hit.id))
+        : erSource.relationships.get(brand<string, "ErRelId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
   }
 
   if (pending === null) return;
@@ -1643,6 +1664,12 @@ const appendEdge = (
         brand<string, "ActorId">(first),
         brand<string, "ActorId">(second),
       );
+    case "er":
+      return connectEr(
+        text,
+        brand<string, "ErEntityId">(first),
+        brand<string, "ErEntityId">(second),
+      );
     default:
       return connect(
         text,
@@ -1676,6 +1703,8 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
       );
     case "sequence":
       return deleteMessage(text, brand<string, "ActorId">(from), brand<string, "ActorId">(to));
+    case "er":
+      return deleteErRel(text, brand<string, "ErEntityId">(from), brand<string, "ErEntityId">(to));
     default:
       return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));
   }

@@ -39,6 +39,12 @@ export type {
   StateTransition,
   StateComposite,
   StateAst,
+  ErEntityId,
+  ErRelId,
+  ErCardinality,
+  ErEntity,
+  ErRelationship,
+  ErAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -63,4 +69,5 @@ export type {
   NetworkSource,
   CloudSource,
   StateSource,
+  ErSource,
 } from "./source.js";

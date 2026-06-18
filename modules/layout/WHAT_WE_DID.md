@@ -76,3 +76,6 @@
   same layered layout + `toScene` as flowcharts. +1 integration test.
 - Composite states ride the flowchart subgraph path: `stateToFlow` now maps `StateAst.composites` to
   `FlowSubgraph`s (id/label/parent/members), so ELK nests them as containers — no new layout code.
+- ER diagrams ride the ELK path too: an `erToFlow` adapter maps entities → rect nodes and
+  relationships → unarrowed edges (solid for identifying, dashed for non-identifying) whose label
+  carries the cardinality textually (`1 places *`). Crow's-foot end markers are future renderer work.

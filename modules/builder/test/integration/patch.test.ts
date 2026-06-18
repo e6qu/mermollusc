@@ -1,6 +1,7 @@
 import { brand, isOk } from "@m/std";
 import {
   parseC4WithSource,
+  parseErWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
   parseWithSource,
@@ -10,12 +11,14 @@ import {
   addNode,
   connect,
   connectC4,
+  connectEr,
   connectMessage,
   connectUndirected,
   deleteActor,
   deleteC4,
   deleteC4Rel,
   deleteEdge,
+  deleteErRel,
   deleteMessage,
   deleteNode,
   patchSpan,
@@ -25,6 +28,7 @@ import {
 const nid = (s: string) => brand<string, "NodeId">(s);
 const cid = (s: string) => brand<string, "C4ElementId">(s);
 const aid = (s: string) => brand<string, "ActorId">(s);
+const erid = (s: string) => brand<string, "ErEntityId">(s);
 
 const sourceOf = (text: string) => {
   const r = parseWithSource(text);
@@ -102,6 +106,19 @@ describe("relabelNode", () => {
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.value.ast.rels.some((rel) => rel.from === "a" && rel.to === "b")).toBe(true);
+  });
+
+  it("connectEr appends a relationship the ER parser accepts, and deleteErRel removes it", () => {
+    const next = connectEr("erDiagram\n  CUSTOMER ||--o{ ORDER : places\n", erid("A"), erid("B"));
+    expect(next).toContain("A ||--o{ B : relates");
+    const r = parseErWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.relationships.some((rel) => rel.from === "A" && rel.to === "B")).toBe(true);
+
+    const removed = deleteErRel(next, erid("A"), erid("B"));
+    expect(removed).not.toContain("A ||--o{ B"); // the added relationship is gone
+    expect(removed).toContain("CUSTOMER ||--o{ ORDER"); // the original stays
   });
 
   it("connectMessage appends a message the sequence parser accepts", () => {

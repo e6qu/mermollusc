@@ -217,6 +217,32 @@ export interface StateAst {
   readonly composites: readonly StateComposite[];
 }
 
+export type ErEntityId = Brand<string, "ErEntityId">;
+export type ErRelId = Brand<string, "ErRelId">;
+// Crow's-foot cardinalities (Mermaid `||`/`|o`/`}o`/`}|` etc.), normalised per end.
+export type ErCardinality = "one" | "zeroOrOne" | "oneOrMany" | "zeroOrMany";
+
+export interface ErEntity {
+  readonly id: ErEntityId;
+  readonly label: string;
+}
+
+export interface ErRelationship {
+  readonly id: ErRelId;
+  readonly from: ErEntityId;
+  readonly to: ErEntityId;
+  readonly fromCard: ErCardinality;
+  readonly toCard: ErCardinality;
+  readonly identifying: boolean; // `--` solid (identifying) vs `..` dashed (non-identifying)
+  readonly label: string;
+}
+
+export interface ErAst {
+  readonly kind: "er";
+  readonly entities: readonly ErEntity[];
+  readonly relationships: readonly ErRelationship[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -225,4 +251,5 @@ export type DiagramAst =
   | BlockAst
   | NetworkAst
   | CloudAst
-  | StateAst;
+  | StateAst
+  | ErAst;

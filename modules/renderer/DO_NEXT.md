@@ -16,3 +16,6 @@
 - State-diagram `[*]` pseudo-states currently render as plain circles (via the flowchart `circle`
   shape); small *filled* initial / ringed final markers would read more like real state charts —
   needs a dedicated marker shape or a start/end-aware draw.
+- ER crow's-foot cardinality + class-diagram UML arrowheads need per-edge-end markers (the current
+  `SceneEdge.arrow` is a single filled/none head). A shared "edge end decoration" concept would
+  unlock both; ER v1 shows cardinality textually in the edge label instead.
