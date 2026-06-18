@@ -31,3 +31,10 @@
   the four cardinalities are a subset of `EdgeEnd`, so an `ErCardinality` is assignable directly.
 - Added `SceneNode.rows` (`readonly string[] | null`) for ER entity attribute compartments, and
   `ErEntity.attributes` (`ErAttribute` = type/name/`ErKey[]`/comment) for parsed attribute blocks.
+- Added the `ClassAst` family (UML class diagrams) — `ClassEntity` with `ClassMember[]`
+  (visibility `+`/`-`/`#`/`~`, text, field/method kind), `ClassRel` with `ClassArrow` ends
+  (`triangle`/`diamondFilled`/`diamondHollow`/`arrowOpen`/`none`) + a dashed flag — plus `ClassSource`,
+  and added `ClassAst` to `DiagramAst`.
+- Extended `EdgeEnd` with the UML heads (`arrowOpen`, `triangle`, `diamondFilled`, `diamondHollow`);
+  `ClassArrow` is a subset so it assigns straight onto a `SceneEdge` end. Added `SceneNode.rowDivider`
+  (`number | null`) for a UML class's field/method compartment split.

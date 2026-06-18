@@ -7,6 +7,7 @@ export { parseNetwork, parseNetworkWithSource } from "./shell/index.js";
 export { parseCloud, parseCloudWithSource } from "./shell/index.js";
 export { parseState, parseStateWithSource } from "./shell/index.js";
 export { parseEr, parseErWithSource } from "./shell/index.js";
+export { parseClass, parseClassWithSource } from "./shell/index.js";
 export { parseDiagram } from "./shell/index.js";
 export type {
   ParseError,
@@ -19,4 +20,5 @@ export type {
   ParsedCloud,
   ParsedState,
   ParsedEr,
+  ParsedClass,
 } from "./shell/index.js";

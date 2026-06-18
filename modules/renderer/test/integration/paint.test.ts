@@ -55,8 +55,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, rows: null },
   ],
   edges: [
     {
@@ -82,7 +82,7 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "arch", name: "server" },
-      rows: null,
+      rowDivider: null, rows: null,
     },
   ],
   edges: [],
@@ -103,8 +103,8 @@ describe("paint", () => {
   it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [
         {
@@ -129,10 +129,59 @@ describe("paint", () => {
     expect(ctx.calls.filter((c) => c === "stroke").length).toBeGreaterThanOrEqual(3);
   });
 
+  it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {
+    const cls: Scene = {
+      nodes: [
+        {
+          id: snid("Animal"),
+          bounds: rect(0, 0, 120, 70),
+          label: "Animal",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: 1,
+          rows: ["+int age", "+move() void"],
+        },
+        {
+          id: snid("Duck"),
+          bounds: rect(0, 120, 100, 30),
+          label: "Duck",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          rows: null,
+        },
+      ],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("Animal"),
+          to: snid("Duck"),
+          waypoints: [point(60, 70), point(60, 120)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "triangle",
+          toEnd: "none",
+        },
+      ],
+      extent: rect(0, 0, 120, 150),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(cls));
+    // Title + both compartment rows render; the hollow head fills then strokes (closePath used).
+    expect(ctx.calls).toContain("fillText:Animal");
+    expect(ctx.calls).toContain("fillText:+int age");
+    expect(ctx.calls).toContain("fillText:+move() void");
+    expect(ctx.calls).toContain("closePath");
+    // The box (1) + title divider + inner field/method divider → at least three stroke() calls.
+    expect(ctx.calls.filter((c) => c === "stroke").length).toBeGreaterThanOrEqual(3);
+  });
+
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 90, 56),
@@ -156,7 +205,7 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 60, 40),

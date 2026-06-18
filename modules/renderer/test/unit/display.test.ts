@@ -8,8 +8,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, rows: null },
   ],
   edges: [
     {
@@ -53,7 +53,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "arch", name: "server" },
-      rows: null,
+      rowDivider: null, rows: null,
         },
       ],
       edges: [],
@@ -76,7 +76,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rows: ["string name PK", "int age"],
+          rowDivider: null, rows: ["string name PK", "int age"],
         },
       ],
       edges: [],
@@ -103,8 +103,8 @@ describe("toDisplayList", () => {
     const markerOf = (end: (typeof ends)[number]) => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
         ],
         edges: [
           {
@@ -123,9 +123,10 @@ describe("toDisplayList", () => {
       const poly = toDisplayList(s).find((c) => c.kind === "polyline");
       return poly?.kind === "polyline" ? poly.toMarker : null;
     };
-    // none → nothing; arrow → a filled triangle; "one" → two bars; the optional cardinalities add a ring.
-    expect(markerOf("none")).toEqual({ lines: [], triangle: null, circle: null });
-    expect(markerOf("arrow")?.triangle).not.toBeNull();
+    // none → nothing; arrow → a filled polygon; "one" → two bars; the optional cardinalities add a ring.
+    expect(markerOf("none")).toEqual({ lines: [], polygons: [], circle: null });
+    expect(markerOf("arrow")?.polygons).toHaveLength(1);
+    expect(markerOf("arrow")?.polygons[0]?.fill).toBe("solid");
     expect(markerOf("one")?.lines).toHaveLength(2);
     expect(markerOf("zeroOrOne")?.circle).not.toBeNull();
     expect(markerOf("oneOrMany")?.lines.length).toBeGreaterThanOrEqual(3);
@@ -133,10 +134,43 @@ describe("toDisplayList", () => {
     expect(markerOf("zeroOrMany")?.lines).toHaveLength(3);
   });
 
+  it("draws UML class heads: hollow inheritance triangle, filled + hollow diamonds, open arrow", () => {
+    const markerOf = (end: "triangle" | "diamondFilled" | "diamondHollow" | "arrowOpen") => {
+      const s: Scene = {
+        nodes: [
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+        ],
+        edges: [
+          {
+            id: seid("e"),
+            from: snid("A"),
+            to: snid("B"),
+            waypoints: [point(20, 40), point(20, 80)],
+            label: null,
+            stroke: "solid",
+            fromEnd: end,
+            toEnd: "none",
+          },
+        ],
+        extent: rect(0, 0, 40, 120),
+      };
+      const poly = toDisplayList(s).find((c) => c.kind === "polyline");
+      return poly?.kind === "polyline" ? poly.fromMarker : null;
+    };
+    expect(markerOf("triangle")?.polygons[0]?.fill).toBe("hollow");
+    expect(markerOf("diamondFilled")?.polygons[0]?.fill).toBe("solid");
+    expect(markerOf("diamondHollow")?.polygons[0]?.fill).toBe("hollow");
+    expect(markerOf("diamondHollow")?.polygons[0]?.points).toHaveLength(4); // a rhombus
+    // The open association arrow is two stroked segments (a V), no filled polygon.
+    expect(markerOf("arrowOpen")?.polygons).toHaveLength(0);
+    expect(markerOf("arrowOpen")?.lines).toHaveLength(2);
+  });
+
   it("falls back to a stable marker direction for a degenerate (zero-length) edge", () => {
     const s: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [
         {
@@ -153,7 +187,7 @@ describe("toDisplayList", () => {
       extent: rect(0, 0, 40, 40),
     };
     const poly = toDisplayList(s).find((c) => c.kind === "polyline");
-    const tri = poly?.kind === "polyline" ? poly.toMarker.triangle : null;
+    const tri = poly?.kind === "polyline" ? (poly.toMarker.polygons[0]?.points ?? null) : null;
     expect(tri).not.toBeNull();
     // No NaN coordinates leak through from the zero-length segment.
     expect(tri?.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);

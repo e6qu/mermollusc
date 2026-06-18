@@ -2,6 +2,7 @@ import type { Result } from "@m/std";
 import type { DiagramAst } from "@m/contracts";
 import { parseBlock } from "./block-parse.js";
 import { parseC4 } from "./c4-parse.js";
+import { parseClass } from "./class-parse.js";
 import { parseCloud } from "./cloud-parse.js";
 import { parseEr } from "./er-parse.js";
 import { parseNetwork } from "./net-parse.js";
@@ -18,6 +19,7 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith("%%")) ?? "";
   if (header.startsWith("stateDiagram")) return parseState(text);
+  if (header.startsWith("classDiagram")) return parseClass(text);
   if (header.startsWith("erDiagram")) return parseEr(text);
   if (header.startsWith("sequenceDiagram")) return parseSequence(text);
   if (header.startsWith("C4")) return parseC4(text);

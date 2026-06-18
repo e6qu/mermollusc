@@ -28,7 +28,7 @@
   per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, or ER parser.
+  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, or class parser.
 - `parseState(text)` / `parseStateWithSource(text)` → `StateAst` (+ `StateSource`): `stateDiagram-v2`
   subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
@@ -41,6 +41,12 @@
   blocks** `ENTITY { type name PK,FK "comment" … }` → `ErEntity.attributes` (keys lex as identifiers,
   classified to `PK`/`FK`/`UK` in the AST step; commas skipped). The `}` brace is lexed *after* the
   relationship operator so a leading `}` stays the cardinality token.
+- `parseClass(text)` / `parseClassWithSource(text)` → `ClassAst` (+ `ClassSource`: class-name and
+  relationship-label spans): `classDiagram` subset — `class Foo { +int id\n +area() double }` member
+  bodies (each member is a whole line in a dedicated lexer mode), the `Foo : +member` shorthand, and
+  relationship lines whose operator (`<|--`/`--|>`/`*--`/`o--`/`-->`/`..>`/`..|>`/`--`) splits into
+  `fromArrow`/`toArrow` (`ClassArrow`) + a dashed flag. Members carry visibility (`+`/`-`/`#`/`~`) and
+  a field/method `kind`. (Stereotypes + multiplicity labels are future work.)
 - `ParseError` carries `errors: string[]` **and `positions: ErrorPosition[]`** (`{ offset, length }`,
   built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
   host can highlight the offending range; line/column are left to the host to derive from the text.

@@ -15,4 +15,6 @@ export { parseState, parseStateWithSource } from "./state-parse.js";
 export type { ParsedState } from "./state-parse.js";
 export { parseEr, parseErWithSource } from "./er-parse.js";
 export type { ParsedEr } from "./er-parse.js";
+export { parseClass, parseClassWithSource } from "./class-parse.js";
+export type { ParsedClass } from "./class-parse.js";
 export { parseDiagram } from "./diagram.js";

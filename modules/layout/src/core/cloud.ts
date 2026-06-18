@@ -124,6 +124,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: el.icon,
       rows: null,
+      rowDivider: null,
     });
   }
 

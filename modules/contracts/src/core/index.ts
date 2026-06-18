@@ -47,6 +47,15 @@ export type {
   ErEntity,
   ErRelationship,
   ErAst,
+  ClassEntityId,
+  ClassRelId,
+  ClassVisibility,
+  ClassMemberKind,
+  ClassMember,
+  ClassEntity,
+  ClassArrow,
+  ClassRel,
+  ClassAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -72,4 +81,5 @@ export type {
   CloudSource,
   StateSource,
   ErSource,
+  ClassSource,
 } from "./source.js";

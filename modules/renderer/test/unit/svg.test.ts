@@ -10,8 +10,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, rows: null },
   ],
   edges: [
     {
@@ -61,8 +61,8 @@ describe("toSvg", () => {
   it("emits ER crow's-foot markers and left-aligned attribute rows", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [
         {
@@ -88,10 +88,64 @@ describe("toSvg", () => {
     expect(out).not.toContain("<marker");
   });
 
+  it("renders a UML class diagram: hollow inheritance triangle + field/method divider", () => {
+    const cls: Scene = {
+      nodes: [
+        {
+          id: snid("Animal"),
+          bounds: rect(0, 0, 120, 70),
+          label: "Animal",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: 1,
+          rows: ["+int age", "+move() void"],
+        },
+        {
+          id: snid("Duck"),
+          bounds: rect(0, 120, 100, 30),
+          label: "Duck",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          rows: null,
+        },
+      ],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("Animal"),
+          to: snid("Duck"),
+          waypoints: [point(60, 70), point(60, 120)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "triangle",
+          toEnd: "none",
+        },
+      ],
+      extent: rect(0, 0, 120, 150),
+    };
+    const out = toSvg(toDisplayList(cls), {
+      width: 120,
+      height: 150,
+      margin: 0,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    // The hollow inheritance head is a background-filled, stroked polygon (not a solid stroke fill).
+    expect(out).toMatch(
+      new RegExp(`<polygon points="[^"]*" fill="${defaultTheme.background}" stroke="${defaultTheme.stroke}"`),
+    );
+    // Title divider + inner field/method divider → at least two markerless <polyline>s.
+    expect((out.match(/<polyline/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(out).toContain(">+int age</tspan>");
+  });
+
   it("renders a multi-line label as stacked <tspan>s", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 90, 56),
@@ -114,7 +168,7 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "p", name: "n" },
-          rows: null,
+          rowDivider: null, rows: null,
         },
       ],
       edges: [],

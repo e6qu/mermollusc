@@ -53,3 +53,10 @@
   `DrawCmd`; `paint` sets `textAlign`, `toSvg` sets `text-anchor`. +5 unit/integration assertions
   (marker geometry per cardinality, degenerate-edge fallback, compartment rows, canvas arc, SVG
   circle/line). Raised the coverage ratchet.
+- Generalised end markers for **UML class heads**: `EndMarker.triangle` became a `polygons` list of
+  `{ points, fill }` where `fill` is `solid` (stroke-coloured arrowhead / composition diamond) or
+  `hollow` (background-filled + outlined inheritance triangle / aggregation diamond), plus an
+  open-arrow `arrowOpen` (a stroked V) for association/dependency. `paint`/`toSvg` fill+outline per
+  mode. Rendered the class field/method **inner divider** via `SceneNode.rowDivider`. +2 integration
+  assertions (canvas hollow head + divider, SVG background-filled polygon) and +1 unit (each UML
+  head's geometry). Raised the coverage ratchet again.
