@@ -1,7 +1,7 @@
 import { brand, point, rect } from "@m/std";
 import type { LayoutOverrides, Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { applyOverrides, clearOverride, moveNode } from "../../src/core/overrides.js";
+import { applyOverrides, clearOverride, moveNode, resizeNode } from "../../src/core/overrides.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
@@ -31,6 +31,17 @@ describe("overrides", () => {
     const a = o.get(snid("A"));
     expect(a?.position).toEqual(point(200, 50));
     expect(a?.pinned).toBe(true);
+  });
+
+  it("resizeNode records a pinned position + size, and applyOverrides resizes the node", () => {
+    const sz = rect(0, 0, 120, 80).size;
+    const o = resizeNode(new Map(), snid("A"), point(10, 20), sz);
+    const a = o.get(snid("A"));
+    expect(a?.position).toEqual(point(10, 20));
+    expect(a?.size).toEqual(sz);
+    expect(a?.pinned).toBe(true);
+    const shown = applyOverrides(scene, o);
+    expect(shown.nodes[0]?.bounds.size).toEqual(sz);
   });
 
   it("applyOverrides repositions only the overridden node", () => {

@@ -20,6 +20,7 @@ import {
   patchSpan,
   pathLocked,
   relabelNode,
+  resizeNode,
   selectOnly,
   serializeOverlay,
   setGroupLabel,
@@ -59,7 +60,7 @@ import {
 } from "@m/parser";
 import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
 import type { Theme } from "@m/renderer";
-import { brand, isOk, point, type Point } from "@m/std";
+import { brand, isOk, point, type Point, size } from "@m/std";
 import { createEditor, type Editor } from "./editor.js";
 
 const SAMPLE = `flowchart TD
@@ -210,6 +211,18 @@ let marquee: { readonly x0: number; readonly y0: number; x1: number; y1: number 
 // True while a run of arrow-key nudges is in progress, so the run shares a single undo entry (the
 // pre-nudge overlay is recorded once); reset by any other interaction.
 let nudging = false;
+// A corner-handle resize of the single selected node: the *fixed* opposite corner (scene coords)
+// the box grows from. `resizeRecorded` mirrors `dragRecorded` — the undo entry is taken on the first
+// move so a handle click that doesn't move leaves no entry.
+let resize: {
+  readonly id: SceneNodeId;
+  readonly anchorX: number;
+  readonly anchorY: number;
+} | null = null;
+let resizeRecorded = false;
+const RESIZE_MIN_W = 30;
+const RESIZE_MIN_H = 24;
+const HANDLE_HIT = 7;
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
@@ -380,6 +393,25 @@ const paintScene = (): void => {
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
   }
+  // Resize handles: small squares at the corners of the single selected node.
+  const resizableId = singleResizableNodeId();
+  if (resizableId !== null) {
+    const node = shown.nodes.find((n) => n.id === resizableId);
+    if (node !== undefined) {
+      const { origin, size: box } = node.bounds;
+      const hs = 4;
+      ctx.fillStyle = "#2563eb";
+      const corners: ReadonlyArray<readonly [number, number]> = [
+        [origin.x, origin.y],
+        [origin.x + box.width, origin.y],
+        [origin.x, origin.y + box.height],
+        [origin.x + box.width, origin.y + box.height],
+      ];
+      for (const [hx, hy] of corners) {
+        ctx.fillRect(hx - hs, hy - hs, hs * 2, hs * 2);
+      }
+    }
+  }
   ctx.restore();
   lastRender = { scene: shown, logicalWidth, logicalHeight };
   drawMinimap();
@@ -544,6 +576,43 @@ const movableUnitCount = (): number => {
     seen.add(top === null ? `n:${id}` : `g:${top}`);
   }
   return seen.size;
+};
+
+// The single selected node, when it's the only thing selected and not under a locked group — the one
+// node that shows resize handles. (Resize is single-node; multi-select uses Group/Arrange instead.)
+const singleResizableNodeId = (): SceneNodeId | null => {
+  if (selection.nodes.size !== 1) return null;
+  const [only] = selection.nodes;
+  if (only === undefined || pathLocked(groups, only)) return null;
+  return only;
+};
+
+// If `at` is on a corner handle of the resizable node, the fixed opposite corner the box grows from.
+const resizeAnchorAt = (
+  shown: Scene,
+  at: Point,
+): { readonly id: SceneNodeId; readonly anchorX: number; readonly anchorY: number } | null => {
+  const id = singleResizableNodeId();
+  if (id === null) return null;
+  const node = shown.nodes.find((n) => n.id === id);
+  if (node === undefined) return null;
+  const { origin, size: box } = node.bounds;
+  const x0 = origin.x;
+  const y0 = origin.y;
+  const x1 = origin.x + box.width;
+  const y1 = origin.y + box.height;
+  const corners = [
+    { cx: x0, cy: y0, ax: x1, ay: y1 },
+    { cx: x1, cy: y0, ax: x0, ay: y1 },
+    { cx: x0, cy: y1, ax: x1, ay: y0 },
+    { cx: x1, cy: y1, ax: x0, ay: y0 },
+  ];
+  for (const c of corners) {
+    if (Math.abs(at.x - c.cx) <= HANDLE_HIT && Math.abs(at.y - c.cy) <= HANDLE_HIT) {
+      return { id, anchorX: c.ax, anchorY: c.ay };
+    }
+  }
+  return null;
 };
 
 // Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
@@ -1155,6 +1224,16 @@ canvas.addEventListener("pointerdown", (ev) => {
       : null;
   const additive = ev.shiftKey || ev.metaKey;
 
+  // A corner handle of the single selected node starts a resize (takes priority over re-selecting
+  // the node under the corner). Shift/⌘ is multi-select intent, so skip resize then.
+  const resizeStart = additive ? null : resizeAnchorAt(shown, at);
+  if (resizeStart !== null) {
+    resize = resizeStart;
+    resizeRecorded = false;
+    canvas.setPointerCapture(ev.pointerId);
+    return;
+  }
+
   if (additive) {
     if (hit !== null) {
       selection = toggle(selection, hit);
@@ -1224,6 +1303,27 @@ canvas.addEventListener("pointerdown", (ev) => {
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (resize !== null) {
+    const at = scenePoint(ev);
+    if (!resizeRecorded) {
+      recordOverlay();
+      resizeRecorded = true;
+    }
+    const rawW = at.x - resize.anchorX;
+    const rawH = at.y - resize.anchorY;
+    const w = Math.max(RESIZE_MIN_W, Math.abs(rawW));
+    const h = Math.max(RESIZE_MIN_H, Math.abs(rawH));
+    const cornerX = resize.anchorX + (rawW >= 0 ? w : -w);
+    const cornerY = resize.anchorY + (rawH >= 0 ? h : -h);
+    overrides = resizeNode(
+      overrides,
+      resize.id,
+      point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
+      size(w, h),
+    );
+    paintScene();
+    return;
+  }
   if (marquee !== null) {
     const at = scenePoint(ev);
     marquee = { ...marquee, x1: at.x, y1: at.y };
@@ -1251,6 +1351,12 @@ canvas.addEventListener("pointermove", (ev) => {
 });
 
 canvas.addEventListener("pointerup", (ev) => {
+  if (resize !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    resize = null;
+    persistOverlay();
+    return;
+  }
   if (marquee !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     const box = marquee;

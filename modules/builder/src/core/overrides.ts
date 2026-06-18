@@ -1,5 +1,5 @@
 import type { LayoutOverrides, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
-import { point, rect, type Point, type Rect } from "@m/std";
+import { point, rect, type Point, type Rect, type Size } from "@m/std";
 
 export const moveNode = (
   overrides: LayoutOverrides,
@@ -8,6 +8,19 @@ export const moveNode = (
 ): LayoutOverrides => {
   const next = new Map(overrides);
   next.set(id, { position, size: overrides.get(id)?.size ?? null, pinned: true });
+  return next;
+};
+
+// Pin a node to an explicit box (position + size) — the resize counterpart to `moveNode`, which
+// only sets position. Resizing from a corner moves the origin too, so both are set together.
+export const resizeNode = (
+  overrides: LayoutOverrides,
+  id: SceneNodeId,
+  position: Point,
+  size: Size,
+): LayoutOverrides => {
+  const next = new Map(overrides);
+  next.set(id, { position, size, pinned: true });
   return next;
 };
 
