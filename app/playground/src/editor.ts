@@ -221,17 +221,21 @@ export const createEditor = (
     focus: () => view.focus(),
     hasFocus: () => view.hasFocus,
     setError: (range, message) => {
-      const diagnostics: Diagnostic[] =
-        range === null
-          ? []
-          : [
-              {
-                from: range.offset,
-                to: Math.max(range.offset + range.length, range.offset + 1),
-                severity: "error",
-                message,
-              },
-            ];
+      // Clamp to a non-empty span strictly inside the doc — `from ∈ [0, len-1]`, `to ∈ [from+1, len]`.
+      // A diagnostic range that's empty, out of bounds, or non-finite makes CodeMirror's lint throw,
+      // so mark nothing when there's nothing valid to mark (an empty doc, or an un-located/EOF error).
+      const len = view.state.doc.length;
+      const diagnostics: Diagnostic[] = [];
+      if (
+        range !== null &&
+        len > 0 &&
+        Number.isFinite(range.offset) &&
+        Number.isFinite(range.length)
+      ) {
+        const from = Math.min(Math.max(range.offset, 0), len - 1);
+        const to = Math.min(Math.max(range.offset + range.length, from + 1), len);
+        diagnostics.push({ from, to, severity: "error", message });
+      }
       view.dispatch(setDiagnostics(view.state, diagnostics));
     },
   };

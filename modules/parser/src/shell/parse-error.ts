@@ -30,8 +30,10 @@ export const lexingError = (errors: readonly ILexingError[]): ParseError => ({
 export const recognitionError = (errors: readonly IRecognitionException[]): ParseError => ({
   kind: "parse",
   errors: errors.map((e) => e.message),
-  positions: errors.map((e) => ({
-    offset: e.token.startOffset,
-    length: Math.max(1, e.token.image.length),
-  })),
+  // Chevrotain's EOF token (an "unexpected end of input" error) has a NaN `startOffset` — it can't be
+  // located, so drop it from `positions` rather than emit a bogus offset. The message still surfaces;
+  // `positions` is just the locatable subset.
+  positions: errors
+    .filter((e) => Number.isFinite(e.token.startOffset))
+    .map((e) => ({ offset: e.token.startOffset, length: Math.max(1, e.token.image.length) })),
 });

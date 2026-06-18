@@ -4,6 +4,25 @@ import { setSource } from "./support/source.js";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
+test("clearing the editor / truncated input never crashes (EOF parse error)", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  // Empty + EOF-anchored errors used to throw an out-of-bounds CodeMirror lint range.
+  for (const src of ["", "   \n", "flowchart TD\n  A -->", "stateDiagram-v2\n  X -->"]) {
+    await setSource(page, src);
+  }
+  // Recovers to a valid render afterwards.
+  await setSource(page, "flowchart TD\n  A --> B\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await expect(page.locator("#kind")).toHaveText("flowchart");
+
+  expect(errors).toEqual([]);
+});
+
 test("marks the failing span inline on a parse error and clears it once valid", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

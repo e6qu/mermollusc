@@ -26,8 +26,13 @@ Checked while adding the state-diagram family.
 
 Checked while adding composite states.
 
+Checked while fuzzing each family for odd-input crashes.
+
 ## Resolved
 
 - ~~The C4 Examples menu entry failed to parse~~ — it used a 3-argument `Person(id, "label", "descr")`
   the C4 grammar doesn't accept; corrected to the 2-argument form. (Surfaced by the new inline
   parse-error marker.)
+- ~~Empty or truncated source crashed the editor~~ — an EOF parse error gave a NaN highlight range
+  that CodeMirror lint choked on; fixed in the parser (filter non-finite positions) and the editor
+  (clamp/guard the diagnostic range). Found via a per-family odd-input fuzz pass.
