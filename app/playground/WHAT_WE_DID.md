@@ -216,3 +216,8 @@
   Writes position overrides and is a single undo step. The popover opens upward (the toolbar is at the
   editor's bottom edge) and closes on outside-click / when the selection drops below 2. +2 e2e
   (align-left shares an edge; align undoes as one step). 71 Playwright.
+- Added **node resize**: a single selected (unlocked) node shows corner handles; dragging one resizes
+  it about the opposite corner via the new builder `resizeNode` (position + size override), with a min
+  size and the connectors re-anchoring through `applyOverrides`. One undo step (recorded on the first
+  move, like drag). Completes the direct-manipulation set (move / multi-select / align / resize). +1
+  e2e (corner-drag grows the node, then one ⌘Z reverts). 72 Playwright.

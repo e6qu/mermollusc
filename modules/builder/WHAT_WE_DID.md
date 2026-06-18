@@ -52,3 +52,6 @@
   the first matching actor-to-actor message. +5 parser-backed integration tests.
 - Added group labels to the sidecar group model via `setGroupLabel`; overlay serialization/decoding
   persists the required label field with every group. +2 unit cases.
+- Added `resizeNode(overrides, id, position, size)` — the resize counterpart to `moveNode` (which
+  only sets position): resizing from a corner moves the origin too, so both are pinned together.
+  `applyOverrides` already honoured `NodeOverride.size`, so this completes manual node sizing. +1 unit.
