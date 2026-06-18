@@ -22,3 +22,5 @@
 - Added the `StateAst` family — `StateNode` (kind `state`/`start`/`end`), `StateTransition`, branded
   `StateId`/`StateTransitionId` — plus `StateSource` (state + transition label spans), and added
   `StateAst` to the `DiagramAst` union.
+- Added `StateComposite` (id/label/parent/member-state-ids, mirroring `FlowSubgraph`) and
+  `StateAst.composites` for nested `state X { … }` composite states.

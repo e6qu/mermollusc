@@ -5,3 +5,5 @@ _None known._
 Checked while adding the optional C4 element description.
 
 Checked while adding the state-diagram parser.
+
+Checked while adding composite states.

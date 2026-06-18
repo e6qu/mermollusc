@@ -134,9 +134,8 @@ describe("layout", () => {
         { id: sid("__state_start"), label: "", kind: "start" },
         { id: sid("Idle"), label: "Idle", kind: "state" },
       ],
-      transitions: [
-        { id: tid("t0"), from: sid("__state_start"), to: sid("Idle"), label: null },
-      ],
+      transitions: [{ id: tid("t0"), from: sid("__state_start"), to: sid("Idle"), label: null }],
+      composites: [],
     };
     const laid = await layoutDiagram(stateAst, heuristicMeasure);
     expect(isOk(laid)).toBe(true);

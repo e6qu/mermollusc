@@ -11,5 +11,5 @@
 - *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
   now parses into `C4Element.description` (null when omitted); the layout renders it as a second
   label line. Boundaries stay 2-arg.
-- State: composite/nested states (`state X { … }`), fork/join, choice, and notes — v1 is flat states
-  + transitions + `[*]` + labels. Also: distinct final states rather than one merged `[*]` end.
+- State: *(done — composite / nested `state X { … }` with scoped `[*]`)*. Still: fork/join, choice,
+  and notes; distinct final states rather than one merged `[*]` end per scope.

@@ -12,6 +12,8 @@ const StateKw = createToken({ name: "StateKw", pattern: /state/, longer_alt: Ide
 const As = createToken({ name: "StateAs", pattern: /as/, longer_alt: Identifier });
 const Star = createToken({ name: "StateStar", pattern: /\[\*\]/ });
 const Arrow = createToken({ name: "StateArrow", pattern: /-->/ });
+const LBrace = createToken({ name: "StateLBrace", pattern: /\{/ });
+const RBrace = createToken({ name: "StateRBrace", pattern: /\}/ });
 const QuotedString = createToken({ name: "StateQuotedString", pattern: /"(?:[^"\\]|\\.)*"/ });
 const NewLine = createToken({ name: "StateNewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "StateSemicolon", pattern: /;/ });
@@ -43,6 +45,8 @@ export const stateLexer = new Lexer({
       As,
       Star,
       Arrow,
+      LBrace,
+      RBrace,
       QuotedString,
       Colon,
       Identifier,
@@ -59,6 +63,8 @@ export const StateTok = {
   As,
   Star,
   Arrow,
+  LBrace,
+  RBrace,
   QuotedString,
   NewLine,
   Semicolon,
@@ -77,6 +83,8 @@ export const stateAllTokens: TokenType[] = [
   As,
   Star,
   Arrow,
+  LBrace,
+  RBrace,
   QuotedString,
   Colon,
   LabelEnd,

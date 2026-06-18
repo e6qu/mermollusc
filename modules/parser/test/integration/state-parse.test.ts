@@ -20,13 +20,40 @@ describe("parseState", () => {
     const byId = new Map<string, StateNode>(r.value.states.map((s) => [s.id, s]));
     expect(byId.get("Idle")).toMatchObject({ kind: "state", label: "Idle" });
     expect(byId.get("Running")).toMatchObject({ kind: "state", label: "Running fast" });
-    expect(byId.get("__state_start")?.kind).toBe("start");
-    expect(byId.get("__state_end")?.kind).toBe("end");
+    expect(byId.get("__start")?.kind).toBe("start");
+    expect(byId.get("__end")?.kind).toBe("end");
     expect(r.value.transitions).toHaveLength(3);
     expect(r.value.transitions.find((t) => t.from === "Idle" && t.to === "Running")?.label).toBe(
       "start",
     );
-    expect(r.value.transitions[0]).toMatchObject({ from: "__state_start", to: "Idle" });
+    expect(r.value.transitions[0]).toMatchObject({ from: "__start", to: "Idle" });
+  });
+
+  it("nests a composite `state X { … }` with its own scoped [*]", () => {
+    const text = `stateDiagram-v2
+  [*] --> Active
+  state Active {
+    [*] --> Idle
+    Idle --> Running : go
+  }
+  Active --> [*]
+`;
+    const r = parseState(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    // Active is a composite (container), not a leaf state.
+    expect(r.value.states.find((s) => s.id === "Active")).toBeUndefined();
+    const active = r.value.composites.find((c) => c.id === "Active");
+    expect(active).toBeDefined();
+    expect(active?.parent).toBeNull();
+    // Its members are the nested states + its own scoped start pseudo-state.
+    expect(active?.states).toEqual(expect.arrayContaining(["__start__Active", "Idle", "Running"]));
+    // The top-level [*] is distinct from the composite's inner [*].
+    const ids = r.value.states.map((s) => s.id);
+    expect(ids).toEqual(expect.arrayContaining(["__start", "__end", "__start__Active"]));
+    // Transitions cross the boundary: root start → Active, Active → root end.
+    expect(r.value.transitions.find((t) => t.from === "__start" && t.to === "Active")).toBeDefined();
+    expect(r.value.transitions.find((t) => t.from === "Active" && t.to === "__end")).toBeDefined();
   });
 
   it("records a relabel span for a description and a transition label", () => {

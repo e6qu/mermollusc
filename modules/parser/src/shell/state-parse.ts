@@ -2,6 +2,7 @@ import type { CstElement, CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   StateAst,
+  StateComposite,
   StateId,
   StateKind,
   StateNode,
@@ -25,10 +26,6 @@ type Children = Record<string, CstElement[] | undefined>;
 const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
 const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 const unquote = (s: string): string => s.slice(1, -1);
-
-// The two `[*]` pseudo-states: one initial (a transition source), one final (a transition target).
-const START = "__state_start";
-const END = "__state_end";
 
 // Span of a label token's trimmed text (the text after `:` carries a leading space).
 const trimmedSpan = (t: IToken): TextSpan => {
@@ -54,54 +51,59 @@ const endpointOf = (ep: CstNode): Endpoint => {
   return { star: false, image: childTokens(ep.children, "StateIdentifier")[0]?.image ?? "" };
 };
 
+// Per-composite `[*]` pseudo-state ids — each scope (the root, or a `state X { … }` block) has its
+// own initial / final, so a nested `[*]` doesn't collide with the top-level one.
+const pseudoId = (scope: string | null, role: "start" | "end"): string =>
+  scope === null ? `__${role}` : `__${role}__${scope}`;
+
 const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
-  const root = cst.children;
-  // Insertion-ordered: a state's first mention fixes its position; the label is last-write-wins.
-  const kinds = new Map<string, StateKind>();
+  const kinds = new Map<string, StateKind>(); // every state incl. pseudo, in first-mention order
   const labels = new Map<string, string>();
+  const compositeIds = new Set<string>();
+  const compositeLabel = new Map<string, string>();
+  const compositeParent = new Map<string, string | null>();
+  const memberOf = new Map<string, Set<string>>(); // composite id → its direct members
   const stateSpans = new Map<StateId, TextSpan>();
   const transitions: StateTransition[] = [];
   const transitionSpans = new Map<StateTransitionId, TextSpan>();
 
-  const seeReal = (id: string, label: string | null): void => {
-    if (!kinds.has(id)) kinds.set(id, "state");
+  const addMember = (composite: string | null, id: string): void => {
+    if (composite === null) return; // top-level membership is implicit (absence from any composite)
+    const set = memberOf.get(composite) ?? new Set<string>();
+    set.add(id);
+    memberOf.set(composite, set);
+  };
+  const seeReal = (id: string, label: string | null, scope: string | null): void => {
+    if (!kinds.has(id)) {
+      kinds.set(id, "state");
+      addMember(scope, id);
+    }
     if (label !== null) labels.set(id, label);
     else if (!labels.has(id)) labels.set(id, id);
   };
-  const resolve = (ep: Endpoint, role: "source" | "target"): string => {
+  const resolve = (ep: Endpoint, role: "start" | "end", scope: string | null): string => {
     if (!ep.star) {
-      seeReal(ep.image, null);
+      seeReal(ep.image, null, scope);
       return ep.image;
     }
-    const id = role === "source" ? START : END;
-    kinds.set(id, role === "source" ? "start" : "end");
+    const id = pseudoId(scope, role);
+    if (!kinds.has(id)) {
+      kinds.set(id, role);
+      addMember(scope, id);
+    }
     return id;
   };
 
-  for (const stmt of childNodes(root, "stateStatement")) {
-    const decl = childNodes(stmt.children, "stateDecl")[0];
-    if (decl !== undefined) {
-      const id = childTokens(decl.children, "StateIdentifier")[0]?.image ?? "";
-      const quoted = childTokens(decl.children, "StateQuotedString")[0];
-      if (quoted !== undefined) {
-        seeReal(id, unquote(quoted.image));
-        stateSpans.set(brand<string, "StateId">(id), innerSpan(quoted));
-      }
-      continue;
-    }
-
-    const line = childNodes(stmt.children, "stateLine")[0];
-    if (line === undefined) continue;
+  const walkLine = (line: CstNode, scope: string | null): void => {
     const endpoints = childNodes(line.children, "stateEndpoint");
     const ep1 = endpoints[0];
-    if (ep1 === undefined) continue;
+    if (ep1 === undefined) return;
     const label = childTokens(line.children, "StateLabelText")[0];
-
     if (childTokens(line.children, "StateArrow").length > 0) {
       const ep2 = endpoints[1];
-      if (ep2 === undefined) continue;
-      const from = resolve(endpointOf(ep1), "source");
-      const to = resolve(endpointOf(ep2), "target");
+      if (ep2 === undefined) return;
+      const from = resolve(endpointOf(ep1), "start", scope);
+      const to = resolve(endpointOf(ep2), "end", scope);
       const id = brand<string, "StateTransitionId">(`t${transitions.length}`);
       transitions.push({
         id,
@@ -110,23 +112,62 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
         label: label === undefined ? null : label.image.trim(),
       });
       if (label !== undefined) transitionSpans.set(id, trimmedSpan(label));
-      continue;
+      return;
     }
-
     // `A : label` — a state description; `[*] : …` is meaningless, so ignore it.
     const e = endpointOf(ep1);
-    if (e.star || label === undefined) continue;
-    seeReal(e.image, label.image.trim());
+    if (e.star || label === undefined) return;
+    seeReal(e.image, label.image.trim(), scope);
     stateSpans.set(brand<string, "StateId">(e.image), trimmedSpan(label));
-  }
+  };
 
-  const states: StateNode[] = [...kinds].map(([id, kind]) => ({
+  const walk = (statements: readonly CstNode[], scope: string | null): void => {
+    for (const stmt of statements) {
+      const decl = childNodes(stmt.children, "stateDecl")[0];
+      if (decl !== undefined) {
+        const quoted = childTokens(decl.children, "StateQuotedString")[0];
+        const id = childTokens(decl.children, "StateIdentifier")[0]?.image ?? "";
+        const label = quoted === undefined ? id : unquote(quoted.image);
+        const block = childNodes(decl.children, "stateBlock")[0];
+        if (block !== undefined) {
+          // A `state X { … }` composite: a container, not a leaf state.
+          compositeIds.add(id);
+          compositeLabel.set(id, label);
+          if (!compositeParent.has(id)) compositeParent.set(id, scope);
+          addMember(scope, id);
+          if (quoted !== undefined) stateSpans.set(brand<string, "StateId">(id), innerSpan(quoted));
+          walk(childNodes(block.children, "stateStatement"), id);
+        } else {
+          seeReal(id, label, scope);
+          if (quoted !== undefined) stateSpans.set(brand<string, "StateId">(id), innerSpan(quoted));
+        }
+        continue;
+      }
+      const line = childNodes(stmt.children, "stateLine")[0];
+      if (line !== undefined) walkLine(line, scope);
+    }
+  };
+
+  walk(childNodes(cst.children, "stateStatement"), null);
+
+  const states: StateNode[] = [...kinds]
+    .filter(([id]) => !compositeIds.has(id))
+    .map(([id, kind]) => ({
+      id: brand<string, "StateId">(id),
+      label: kind === "state" ? (labels.get(id) ?? id) : "",
+      kind,
+    }));
+  const composites: StateComposite[] = [...compositeIds].map((id) => ({
     id: brand<string, "StateId">(id),
-    label: kind === "state" ? (labels.get(id) ?? id) : "",
-    kind,
+    label: compositeLabel.get(id) ?? id,
+    parent: (() => {
+      const p = compositeParent.get(id) ?? null;
+      return p === null ? null : brand<string, "StateId">(p);
+    })(),
+    states: [...(memberOf.get(id) ?? new Set<string>())].map((m) => brand<string, "StateId">(m)),
   }));
   return ok({
-    ast: { kind: "state", states, transitions },
+    ast: { kind: "state", states, transitions, composites },
     source: { states: stateSpans, transitions: transitionSpans },
   });
 };

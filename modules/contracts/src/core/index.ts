@@ -37,6 +37,7 @@ export type {
   StateKind,
   StateNode,
   StateTransition,
+  StateComposite,
   StateAst,
   DiagramAst,
 } from "./ast.js";

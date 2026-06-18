@@ -71,3 +71,9 @@
   (`parseState` / `parseStateWithSource`). Supports transitions `A --> B [: label]`, the `[*]`
   start/end pseudo-states (initial as a source, final as a target — merged to one `__state_start` /
   `__state_end` each), state descriptions `A : label`, and `state "Label" as A`. +3 integration tests.
+- Extended the state parser with **composite states** `state X { … }` (recursive brace blocks):
+  the grammar's `stateDecl` gained an optional block, and the CST→AST walk recurses with a scope
+  stack — each scope (the root, or a composite) gets its own `[*]` pseudo-states (`__start`/`__end`
+  at root, `__start__<id>`/`__end__<id>` inside a composite), and composites accumulate `StateAst.
+  composites` (id/label/parent/members) mirroring `FlowSubgraph`. A composite id is a container, not
+  a leaf state (filtered out of `states`). +1 integration test.

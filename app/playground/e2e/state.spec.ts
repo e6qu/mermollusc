@@ -26,6 +26,27 @@ test("renders a state diagram (transitions, [*], labels) from the textarea", asy
   expect(errors).toEqual([]);
 });
 
+test("renders a composite state (nested `state X { … }`) as a container", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(
+    page,
+    "stateDiagram-v2\n  [*] --> Active\n  state Active {\n    [*] --> Idle\n    Idle --> Running : go\n  }\n  Active --> [*]\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  await expect(page.locator("#kind")).toHaveText("state");
+  expect(parseErrors).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("the State example loads and parses", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
