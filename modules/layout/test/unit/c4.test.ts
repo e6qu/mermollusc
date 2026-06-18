@@ -19,8 +19,28 @@ const ast: C4Ast = {
 };
 
 describe("layoutC4", () => {
-  const scene = layoutC4(ast, heuristicMeasure);
+  const result = layoutC4(ast, heuristicMeasure);
+  if (!result.ok) throw new Error(result.error.message);
+  const scene = result.value;
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+
+  it("fails loudly when an element's parent is dangling", () => {
+    const bad: C4Ast = {
+      kind: "c4",
+      elements: [{ id: cid("api"), label: "API", kind: "container", parent: cid("missing") }],
+      rels: [],
+    };
+    expect(layoutC4(bad, heuristicMeasure).ok).toBe(false);
+  });
+
+  it("fails loudly when a relation references an unknown element", () => {
+    const bad: C4Ast = {
+      kind: "c4",
+      elements: [{ id: cid("alice"), label: "Alice", kind: "person", parent: null }],
+      rels: [{ id: rid("r0"), from: cid("alice"), to: cid("ghost"), label: "uses" }],
+    };
+    expect(layoutC4(bad, heuristicMeasure).ok).toBe(false);
+  });
 
   it("nests children fully inside the boundary box", () => {
     const backend = byId.get("backend");

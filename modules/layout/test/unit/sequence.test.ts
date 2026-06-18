@@ -20,7 +20,19 @@ const ast: SequenceAst = {
 };
 
 describe("layoutSequence", () => {
-  const scene = layoutSequence(ast, heuristicMeasure);
+  const result = layoutSequence(ast, heuristicMeasure);
+  if (!result.ok) throw new Error(result.error.message);
+  const scene = result.value;
+
+  it("fails loudly when a message references an undeclared actor", () => {
+    const bad: SequenceAst = {
+      kind: "sequence",
+      actors: [{ id: aid("A"), label: "Alice" }],
+      messages: [{ id: mid("m0"), from: aid("A"), to: aid("Z"), text: "x", kind: "solid" }],
+    };
+    const r = layoutSequence(bad, heuristicMeasure);
+    expect(r.ok).toBe(false);
+  });
 
   it("places actor boxes left to right", () => {
     expect(scene.nodes.map((n) => n.id)).toEqual(["A", "B"]);

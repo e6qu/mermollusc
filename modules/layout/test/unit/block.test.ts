@@ -19,8 +19,20 @@ const ast: BlockAst = {
 };
 
 describe("layoutBlock", () => {
-  const scene = layoutBlock(ast, heuristicMeasure);
+  const result = layoutBlock(ast, heuristicMeasure);
+  if (!result.ok) throw new Error(result.error.message);
+  const scene = result.value;
   const byId = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+
+  it("fails loudly when an edge references an unknown block", () => {
+    const bad: BlockAst = {
+      kind: "block",
+      columns: 1,
+      blocks: [{ id: nid("a"), label: "A", shape: "rect", icon: null }],
+      edges: [{ id: eid("e0"), from: nid("a"), to: nid("ghost"), kind: "arrow", label: null }],
+    };
+    expect(layoutBlock(bad, heuristicMeasure).ok).toBe(false);
+  });
 
   it("lays blocks out row-major across the given column count", () => {
     const a = byId.get("a")?.bounds;
@@ -51,8 +63,9 @@ describe("layoutBlock", () => {
   });
 
   it("honours an injected text measurer for node sizing", () => {
-    const wide = layoutBlock(ast, (label) => label.length * 60);
-    const a = wide.nodes.find((n) => n.id === "a")?.bounds.size.width;
+    const wideResult = layoutBlock(ast, (label) => label.length * 60);
+    if (!wideResult.ok) throw new Error(wideResult.error.message);
+    const a = wideResult.value.nodes.find((n) => n.id === "a")?.bounds.size.width;
     // 1-char label: heuristic cell = max(48, 8+24)=48; measured = max(48, 60+24)=84.
     expect(a).toBe(84);
     expect(scene.nodes.find((n) => n.id === "a")?.bounds.size.width).toBe(48);

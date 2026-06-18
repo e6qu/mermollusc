@@ -29,7 +29,14 @@
   metric explicitly (the app injects a real canvas `measureText`; callers wanting the char-width
   metric pass the exported `heuristicMeasure`). `layout(ast, seed, measure)` likewise takes `seed`
   explicitly (empty map = clean, non-empty = relax).
+- All five pure layouts return **`Result<Scene, LayoutError>`** and fail loudly on an internally-
+  inconsistent AST (an edge/relation/message/link endpoint that isn't a known node, or — c4/cloud — an
+  element whose `parent` is dangling/cyclic so it was never placed) instead of silently placing it at
+  the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
+  per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart → ELK (async); the rest → pure layouts.
-- tests: 26 passing (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy (container + absolute member coords); clean layout; relax; sequence; C4;
-  block/network grid; cloud nesting + icons; injected-measurer sizing; routing; property-based:
-  block/network grids **and the ELK flowchart path** preserve ids + fit every box inside the extent).
+- tests: 28 unit + 5 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+  (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
+  nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
+  endpoints and dangling parents; property-based: block/network grids **and the ELK flowchart path**
+  preserve ids + fit every box inside the extent).

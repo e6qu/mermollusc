@@ -45,7 +45,9 @@ describe("layoutBlock — grid invariants (property-based)", () => {
             blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null })),
             edges: [],
           };
-          const scene = layoutBlock(ast, heuristicMeasure);
+          const result = layoutBlock(ast, heuristicMeasure);
+          if (!result.ok) throw new Error(result.error.message);
+          const scene = result.value;
           expect(scene.nodes.map((n) => n.id)).toEqual(ids);
           withinExtent(scene);
         },
@@ -66,7 +68,9 @@ describe("layoutNetwork — grid invariants (property-based)", () => {
             nodes: ids.map((id, i) => ({ id: nid(id), label: id, kind: kinds[i] ?? "host", icon: null })),
             links: [],
           };
-          const scene = layoutNetwork(ast, heuristicMeasure);
+          const result = layoutNetwork(ast, heuristicMeasure);
+          if (!result.ok) throw new Error(result.error.message);
+          const scene = result.value;
           expect(scene.nodes.map((n) => n.id)).toEqual(ids);
           for (const n of scene.nodes) expect(n.icon).not.toBeNull();
           withinExtent(scene);

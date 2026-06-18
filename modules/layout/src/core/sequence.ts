@@ -1,4 +1,4 @@
-import { brand, point, rect } from "@m/std";
+import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   ActorId,
   EdgeArrow,
@@ -9,7 +9,7 @@ import type {
   SceneNode,
   SequenceAst,
 } from "@m/contracts";
-import type { MeasureText } from "./graph.js";
+import type { LayoutError, MeasureText } from "./graph.js";
 
 const ACTOR_HEIGHT = 40;
 const ACTOR_GAP = 60;
@@ -35,7 +35,10 @@ const MESSAGE_STYLE: Record<
 // Deterministic lane layout — no ELK. Actors sit in a row; each has a vertical lifeline; messages
 // are horizontal arrows stacked top-to-bottom in source order. Lifelines reuse SceneEdge (a
 // self-edge from the actor to itself) so the renderer needs no new concept.
-export const layoutSequence = (ast: SequenceAst, measure: MeasureText): Scene => {
+export const layoutSequence = (
+  ast: SequenceAst,
+  measure: MeasureText,
+): Result<Scene, LayoutError> => {
   const bottomY = ACTOR_HEIGHT + HEADER_GAP + ast.messages.length * MESSAGE_GAP + BOTTOM_PADDING;
   const centerX = new Map<ActorId, number>();
   const nodes: SceneNode[] = [];
@@ -71,10 +74,16 @@ export const layoutSequence = (ast: SequenceAst, measure: MeasureText): Scene =>
 
   for (const [index, message] of ast.messages.entries()) {
     const y = ACTOR_HEIGHT + HEADER_GAP + (index + 1) * MESSAGE_GAP;
-    // A message endpoint is always an actor for parser output; the `?? 0` only guards a hand-built
-    // inconsistent AST (a pure layout can't fail loudly — it returns a Scene, not a Result).
-    const fromX = centerX.get(message.from) ?? 0;
-    const toX = centerX.get(message.to) ?? 0;
+    // Parser output always declares an actor for every message endpoint; a miss means the AST is
+    // internally inconsistent, so fail loudly rather than place the arrow at a phantom x=0.
+    const fromX = centerX.get(message.from);
+    const toX = centerX.get(message.to);
+    if (fromX === undefined || toX === undefined) {
+      return err({
+        kind: "layout",
+        message: `sequence: message ${message.id} references an undeclared actor`,
+      });
+    }
     const style = MESSAGE_STYLE[message.kind];
     edges.push({
       id: brand<string, "SceneEdgeId">(message.id),
@@ -87,5 +96,5 @@ export const layoutSequence = (ast: SequenceAst, measure: MeasureText): Scene =>
     });
   }
 
-  return { nodes, edges, extent: rect(0, 0, width, bottomY) };
+  return ok({ nodes, edges, extent: rect(0, 0, width, bottomY) });
 };

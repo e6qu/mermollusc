@@ -1,7 +1,7 @@
-import { brand, point, rect } from "@m/std";
+import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type { NetworkAst, NodeId, Scene, SceneEdge, SceneNode } from "@m/contracts";
 import { ARCH_PACK } from "./icon-packs.js";
-import type { MeasureText } from "./graph.js";
+import type { LayoutError, MeasureText } from "./graph.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 48;
@@ -13,7 +13,10 @@ const labelWidth = (label: string, measure: MeasureText): number =>
 
 // Pure squarish-grid layout: nodes fill a `ceil(sqrt n)`-wide grid in a uniform cell; links are
 // straight, undirected centre-to-centre lines (no arrowheads).
-export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
+export const layoutNetwork = (
+  ast: NetworkAst,
+  measure: MeasureText,
+): Result<Scene, LayoutError> => {
   const cellWidth = ast.nodes.reduce(
     (w, n) => Math.max(w, labelWidth(n.label, measure)),
     MIN_CELL_WIDTH,
@@ -43,7 +46,12 @@ export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
   for (const link of ast.links) {
     const from = centers.get(link.from);
     const to = centers.get(link.to);
-    if (from === undefined || to === undefined) continue;
+    if (from === undefined || to === undefined) {
+      return err({
+        kind: "layout",
+        message: `network: link ${link.id} references an unknown node`,
+      });
+    }
     edges.push({
       id: brand<string, "SceneEdgeId">(link.id),
       from: brand<string, "SceneNodeId">(link.from),
@@ -59,5 +67,5 @@ export const layoutNetwork = (ast: NetworkAst, measure: MeasureText): Scene => {
   const usedColumns = Math.min(columns, Math.max(1, ast.nodes.length));
   const width = usedColumns * cellWidth + (usedColumns - 1) * GAP;
   const height = Math.max(1, rows) * NODE_HEIGHT + Math.max(0, rows - 1) * GAP;
-  return { nodes, edges, extent: rect(0, 0, width, height) };
+  return ok({ nodes, edges, extent: rect(0, 0, width, height) });
 };
