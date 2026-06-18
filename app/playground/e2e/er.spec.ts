@@ -27,6 +27,31 @@ test("renders an ER diagram (entities + cardinality relationships) from the text
   expect(errors).toEqual([]);
 });
 
+test("renders entity attribute blocks (crow's-foot + compartment rows) without error", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  await setSource(
+    page,
+    'erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n  }\n  CUSTOMER ||--o{ ORDER : places\n',
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  await expect(page.locator("#kind")).toHaveText("er");
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /er diagram.*CUSTOMER/);
+  expect(parseErrors).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("the ER example loads and parses cleanly", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));

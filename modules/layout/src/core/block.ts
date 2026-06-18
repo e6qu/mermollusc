@@ -1,7 +1,7 @@
 import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   BlockAst,
-  EdgeArrow,
+  EdgeEnd,
   EdgeKind,
   EdgeStroke,
   NodeId,
@@ -16,11 +16,11 @@ const NODE_HEIGHT = 40;
 const MIN_CELL_WIDTH = 48;
 const GAP = 24;
 
-const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow: EdgeArrow }> = {
-  arrow: { stroke: "solid", arrow: "filled" },
-  open: { stroke: "solid", arrow: "none" },
-  dotted: { stroke: "dashed", arrow: "filled" },
-  thick: { stroke: "solid", arrow: "filled" },
+const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly toEnd: EdgeEnd }> = {
+  arrow: { stroke: "solid", toEnd: "arrow" },
+  open: { stroke: "solid", toEnd: "none" },
+  dotted: { stroke: "dashed", toEnd: "arrow" },
+  thick: { stroke: "solid", toEnd: "arrow" },
 };
 
 const labelWidth = (label: string, measure: MeasureText): number =>
@@ -49,6 +49,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       shape: b.shape,
       parent: null,
       icon: b.icon,
+      rows: null,
     };
   });
 
@@ -65,6 +66,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       to: brand<string, "SceneNodeId">(e.to),
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: e.label,
+      fromEnd: "none",
       ...EDGE_STYLE[e.kind],
     });
   }

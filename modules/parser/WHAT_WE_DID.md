@@ -84,5 +84,9 @@
 - Added an **ER diagram** parser (`erDiagram`): the crow's-foot relationship operator (`||--o{` etc.)
   is lexed as one token and split into normalised `fromCard`/`toCard` (`one`/`zeroOrOne`/`oneOrMany`/
   `zeroOrMany`) + identifying (`--`) vs non-identifying (`..`); entities come from relationship
-  endpoints or bare declarations; quoted entity names and `: label` supported. Attribute blocks
-  (`E { … }`) are future work. +4 integration tests.
+  endpoints or bare declarations; quoted entity names and `: label` supported. +4 integration tests.
+- Extended the ER parser with **attribute blocks** (`ENTITY { type name PK,FK "comment" … }`): added
+  `{`/`}` tokens (ordered after `Relationship` so a leading `}` stays the cardinality operator) and a
+  skipped comma; `block`/`attribute` grammar rules; the CST→AST step reads type + name + key
+  identifiers (classified to `PK`/`FK`/`UK`) + an optional quoted comment into `ErEntity.attributes`.
+  +1 integration test.

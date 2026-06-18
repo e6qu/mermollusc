@@ -64,6 +64,6 @@ describe("layoutCloud", () => {
 
   it("connects links undirected (no arrowhead)", () => {
     expect(scene.edges).toHaveLength(1);
-    expect(scene.edges[0]?.arrow).toBe("none");
+    expect(scene.edges[0]?.toEnd).toBe("none");
   });
 });

@@ -3,10 +3,17 @@
 **State:** Canvas2D renderer implemented; `make check` green.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond shapes, node labels, edge
-  polylines with dashed/solid stroke + optional arrowhead, edge labels anchored by exported
+  polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
   `edgeLabelAnchor` at the midpoint *along the routed polyline* — perpendicular-nudged, so a bent
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
   glyph above the label — for nodes carrying a `SceneNode.icon`).
+- **Edge-end markers:** the polyline `DrawCmd` carries a `fromMarker`/`toMarker` `EndMarker`,
+  precomputed from `SceneEdge.fromEnd`/`toEnd` — backend-agnostic geometry: stroked `lines` (a single
+  bar `|` per "one", a three-prong fan for "many"), a filled `triangle` (arrowhead), and a stroked
+  `circle` (the optional "zero" ring). This renders ER crow's-foot cardinality and would serve UML
+  arrowheads; `paint` and `toSvg` draw identical glyphs from the same primitives.
+- **ER attribute compartments:** a `SceneNode.rows` node draws a title band, a divider, and one
+  left-aligned attribute row each (the `label` `DrawCmd` carries a `LabelAlign` of `center`/`left`).
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.
@@ -16,13 +23,14 @@
   (`Theme` — `defaultTheme` light / `darkTheme`, each with a `sketch` flag) supplies the surface +
   node/stroke/text colours + font.
 - shell: `toSvg(cmds, opts)` — a **vector SVG backend** over the same `DrawCmd[]` display list (box
-  → `<rect>`, diamond → `<polygon>`, polyline → `<polyline>` + an `<marker>` arrowhead, label →
-  `<text>`, icon → `<image href>` from a supplied `pack/name`→href map). Pure string output; renders
+  → `<rect>`, diamond → `<polygon>`, polyline → `<polyline>` + inline `<line>`/`<circle>`/`<polygon>`
+  end markers, label → `<text>` (`text-anchor` per `LabelAlign`), icon → `<image href>` from a
+  supplied `pack/name`→href map). Pure string output; renders
   the crisp shapes (no sketch jitter). Backs the app's "SVG" export.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
 - **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges become wobbly, double-stroked
   hand-drawn outlines via a seeded LCG jitter — deterministic, no fill, using only the structural
-  `Canvas2D` (no rough.js dep, so the mock-based tests still hold). Dashed edges/arrowheads stay crisp.
+  `Canvas2D` (no rough.js dep, so the mock-based tests still hold). Dashed edges/end markers stay crisp.
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
   only, the default `paint` path is always used.

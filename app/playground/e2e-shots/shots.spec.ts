@@ -20,10 +20,19 @@ const settled = async (page: Page): Promise<void> => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 };
 
+// The source editor is CodeMirror, not a <textarea>, so it's driven through the `window.__editor`
+// handle `main.ts` exposes (same mechanism as the e2e support helpers), not `.fill()`.
 const setSource = async (page: Page, text: string): Promise<void> => {
-  await page.locator("#src").fill(text);
+  await expect.poll(() => page.evaluate(() => window.__editor !== undefined)).toBe(true);
+  await page.evaluate((t) => window.__editor?.setValue(t), text);
   await settled(page);
 };
+
+declare global {
+  interface Window {
+    __editor?: { value(): string; setValue(text: string): void };
+  }
+}
 
 // Click the canvas at a point relative to its top-left, in CSS pixels — the instrument's primitive
 // for "interact with a node/edge" without reaching into scene internals.
@@ -292,6 +301,16 @@ const FLOWS: readonly Flow[] = [
       await page.keyboard.up("Shift");
       await page.locator("#connect").click();
       await settled(page);
+    },
+  },
+  {
+    name: "25-er",
+    about: "ER diagram: entity attribute compartments and crow's-foot cardinality on relationships",
+    drive: async (page) => {
+      await setSource(
+        page,
+        'erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n  }\n  ORDER {\n    int id PK\n    string status\n  }\n  CUSTOMER ||--o{ ORDER : places\n  ORDER }|..|| PRODUCT\n',
+      );
     },
   },
 ];

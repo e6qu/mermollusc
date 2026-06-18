@@ -78,4 +78,10 @@
   `FlowSubgraph`s (id/label/parent/members), so ELK nests them as containers — no new layout code.
 - ER diagrams ride the ELK path too: an `erToFlow` adapter maps entities → rect nodes and
   relationships → unarrowed edges (solid for identifying, dashed for non-identifying) whose label
-  carries the cardinality textually (`1 places *`). Crow's-foot end markers are future renderer work.
+  carries the cardinality textually (`1 places *`).
+- Reworked ER layout into a dedicated `layoutEr` (replacing `erToFlow`): entities must be sized to fit
+  their attribute rows before ELK runs (a flowchart node can't carry rows), so it builds the ELK graph
+  directly — each entity box is `ER_TITLE_H + rows·ER_ROW_H` tall and as wide as its widest measured
+  row/label. Scene edges now carry the cardinality on `fromEnd`/`toEnd` (the `ErCardinality` strings
+  *are* `EdgeEnd` values — no mapping) and entities carry their `rows`; the verb is the plain edge
+  label. Migrated every family's node/edge producers to `SceneNode.rows` + `SceneEdge.fromEnd/toEnd`.

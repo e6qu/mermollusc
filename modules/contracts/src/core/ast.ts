@@ -221,10 +221,20 @@ export type ErEntityId = Brand<string, "ErEntityId">;
 export type ErRelId = Brand<string, "ErRelId">;
 // Crow's-foot cardinalities (Mermaid `||`/`|o`/`}o`/`}|` etc.), normalised per end.
 export type ErCardinality = "one" | "zeroOrOne" | "oneOrMany" | "zeroOrMany";
+export type ErKey = "PK" | "FK" | "UK";
+
+export interface ErAttribute {
+  readonly type: string;
+  readonly name: string;
+  readonly keys: readonly ErKey[];
+  readonly comment: string;
+}
 
 export interface ErEntity {
   readonly id: ErEntityId;
   readonly label: string;
+  // Attribute rows from an `ENTITY { type name PK "comment" }` block; empty when none.
+  readonly attributes: readonly ErAttribute[];
 }
 
 export interface ErRelationship {

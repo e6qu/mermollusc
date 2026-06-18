@@ -1,7 +1,7 @@
 import { brand, err, ok, point, rect, type Result } from "@m/std";
 import type {
   ActorId,
-  EdgeArrow,
+  EdgeEnd,
   EdgeStroke,
   MessageKind,
   Scene,
@@ -22,15 +22,13 @@ const BOTTOM_PADDING = 30;
 const actorWidth = (label: string, measure: MeasureText): number =>
   Math.max(MIN_ACTOR_WIDTH, measure(label) + LABEL_PADDING);
 
-const MESSAGE_STYLE: Record<
-  MessageKind,
-  { readonly stroke: EdgeStroke; readonly arrow: EdgeArrow }
-> = {
-  solid: { stroke: "solid", arrow: "filled" },
-  dashed: { stroke: "dashed", arrow: "filled" },
-  solidOpen: { stroke: "solid", arrow: "none" },
-  dashedOpen: { stroke: "dashed", arrow: "none" },
-};
+const MESSAGE_STYLE: Record<MessageKind, { readonly stroke: EdgeStroke; readonly toEnd: EdgeEnd }> =
+  {
+    solid: { stroke: "solid", toEnd: "arrow" },
+    dashed: { stroke: "dashed", toEnd: "arrow" },
+    solidOpen: { stroke: "solid", toEnd: "none" },
+    dashedOpen: { stroke: "dashed", toEnd: "none" },
+  };
 
 // Deterministic lane layout — no ELK. Actors sit in a row; each has a vertical lifeline; messages
 // are horizontal arrows stacked top-to-bottom in source order. Lifelines reuse SceneEdge (a
@@ -56,6 +54,7 @@ export const layoutSequence = (
       shape: "rect",
       parent: null,
       icon: null,
+      rows: null,
     });
     edges.push({
       id: brand<string, "SceneEdgeId">(`lifeline:${actor.id}`),
@@ -64,7 +63,8 @@ export const layoutSequence = (
       waypoints: [point(cx, ACTOR_HEIGHT), point(cx, bottomY)],
       label: null,
       stroke: "dashed",
-      arrow: "none",
+      fromEnd: "none",
+      toEnd: "none",
     });
     centerX.set(actor.id, cx);
     cursor += width + ACTOR_GAP;
@@ -92,7 +92,8 @@ export const layoutSequence = (
       waypoints: [point(fromX, y), point(toX, y)],
       label: message.text === "" ? null : message.text,
       stroke: style.stroke,
-      arrow: style.arrow,
+      fromEnd: "none",
+      toEnd: style.toEnd,
     });
   }
 

@@ -13,4 +13,6 @@
   label line. Boundaries stay 2-arg.
 - State: *(done — composite / nested `state X { … }` with scoped `[*]`)*. Still: fork/join, choice,
   and notes; distinct final states rather than one merged `[*]` end per scope.
-- ER: entity attribute blocks (`ENTITY { type name PK }`) — v1 is entities + relationships only.
+- ER: *(done)* entity attribute blocks (`ENTITY { type name PK,FK "comment" }`) parse into
+  `ErEntity.attributes` (type, name, keys, comment); keys lex as identifiers and are classified in the
+  CST→AST step, commas between keys are skipped. Relationships + bare entities already parsed.

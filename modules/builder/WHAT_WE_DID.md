@@ -62,3 +62,5 @@
 - Added `connectEr` (appends `from ||--o{ to : relates`, a default one-to-many) and `deleteErRel`
   (removes the first ER relationship line between two entities) so ER diagrams get canvas
   Connect/Delete like the other families. +1 integration case.
+- Migrated the hit-test/overrides scene fixtures to the new `SceneNode.rows` + `SceneEdge.fromEnd/toEnd`
+  contract (the builder core is scene-shape-agnostic, so no source change — fixtures only).

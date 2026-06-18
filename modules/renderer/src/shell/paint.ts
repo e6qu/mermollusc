@@ -1,5 +1,4 @@
-import type { Point } from "@m/std";
-import type { DrawCmd } from "../core/index.js";
+import type { DrawCmd, EndMarker } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
 // 2D context is assignable to this; tests pass a recording mock.
@@ -19,6 +18,7 @@ export interface Canvas2D {
   fill(): void;
   fillText(text: string, x: number, y: number): void;
   roundRect(x: number, y: number, w: number, h: number, radius: number): void;
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
   setLineDash(segments: readonly number[]): void;
   drawImage(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void;
 }
@@ -69,8 +69,6 @@ const labelLineHeight = (font: string): number => {
 const scaleFont = (font: string, factor: number): string =>
   font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${(Number(n) * factor).toFixed(1)}px`);
 
-const ARROW_SIZE = 9;
-
 // Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
 const lcg = (seed: number) => {
   let s = seed >>> 0 || 1;
@@ -116,20 +114,34 @@ const sketchRect = (ctx: Canvas2D, x: number, y: number, w: number, h: number, s
   sketchLine(ctx, x, y + h, x, y, s + 3);
 };
 
-const drawArrowHead = (ctx: Canvas2D, points: readonly Point[], stroke: string): void => {
-  const tip = points[points.length - 1];
-  const prev = points[points.length - 2];
-  if (tip === undefined || prev === undefined) return;
-  const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
-  const left = angle + Math.PI - 0.4;
-  const right = angle + Math.PI + 0.4;
-  ctx.fillStyle = stroke;
-  ctx.beginPath();
-  ctx.moveTo(tip.x + ARROW_SIZE * Math.cos(left), tip.y + ARROW_SIZE * Math.sin(left));
-  ctx.lineTo(tip.x, tip.y);
-  ctx.lineTo(tip.x + ARROW_SIZE * Math.cos(right), tip.y + ARROW_SIZE * Math.sin(right));
-  ctx.closePath();
-  ctx.fill();
+// Render a pre-computed edge-end marker (crow's-foot bars/prongs, an arrowhead, an optional ring).
+// Geometry is fixed in the core; the painter only strokes/fills the primitives.
+const drawMarker = (ctx: Canvas2D, marker: EndMarker, stroke: string): void => {
+  ctx.strokeStyle = stroke;
+  ctx.setLineDash([]);
+  for (const [a, b] of marker.lines) {
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  if (marker.circle !== null) {
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(marker.circle.center.x, marker.circle.center.y, marker.circle.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (marker.triangle !== null) {
+    const [p0, ...rest] = marker.triangle;
+    if (p0 === undefined) return;
+    ctx.fillStyle = stroke;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    for (const p of rest) ctx.lineTo(p.x, p.y);
+    ctx.closePath();
+    ctx.fill();
+  }
 };
 
 export const paint = (
@@ -193,7 +205,8 @@ export const paint = (
             sketchLine(ctx, prev.x, prev.y, p.x, p.y, seed++);
             prev = p;
           }
-          if (cmd.arrow) drawArrowHead(ctx, cmd.points, theme.stroke);
+          drawMarker(ctx, cmd.fromMarker, theme.stroke);
+          drawMarker(ctx, cmd.toMarker, theme.stroke);
           break;
         }
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
@@ -202,7 +215,8 @@ export const paint = (
         for (const p of rest) ctx.lineTo(p.x, p.y);
         ctx.stroke();
         ctx.setLineDash([]);
-        if (cmd.arrow) drawArrowHead(ctx, cmd.points, theme.stroke);
+        drawMarker(ctx, cmd.fromMarker, theme.stroke);
+        drawMarker(ctx, cmd.toMarker, theme.stroke);
         break;
       }
       case "icon": {
@@ -216,6 +230,7 @@ export const paint = (
         // A label may carry newlines (e.g. a C4 element's description on a second line); stack the
         // lines centred on the anchor. The first line is the primary label; continuation lines are
         // secondary (a C4 description), so they render smaller and dimmed.
+        ctx.textAlign = cmd.align === "left" ? "left" : "center";
         const lines = cmd.text.split("\n");
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;

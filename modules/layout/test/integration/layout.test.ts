@@ -153,8 +153,12 @@ describe("layout", () => {
     const erAst: ErAst = {
       kind: "er",
       entities: [
-        { id: erid("CUSTOMER"), label: "CUSTOMER" },
-        { id: erid("ORDER"), label: "ORDER" },
+        {
+          id: erid("CUSTOMER"),
+          label: "CUSTOMER",
+          attributes: [{ type: "string", name: "name", keys: ["PK"], comment: "" }],
+        },
+        { id: erid("ORDER"), label: "ORDER", attributes: [] },
       ],
       relationships: [
         {
@@ -173,7 +177,12 @@ describe("layout", () => {
     if (!isOk(laid)) return;
     expect(laid.value.nodes.map((n) => n.id).sort()).toEqual(["CUSTOMER", "ORDER"]);
     expect(laid.value.nodes.every((n) => n.shape === "rect")).toBe(true);
-    expect(laid.value.edges[0]?.label).toBe("1 places *");
-    expect(laid.value.edges[0]?.arrow).toBe("none"); // ER relationships aren't arrowed
+    // The verb is the edge label; cardinality is on the ends (crow's-foot), not in the text.
+    expect(laid.value.edges[0]?.label).toBe("places");
+    expect(laid.value.edges[0]?.fromEnd).toBe("one");
+    expect(laid.value.edges[0]?.toEnd).toBe("zeroOrMany");
+    // CUSTOMER carries its attribute as a compartment row; ORDER has none.
+    expect(laid.value.nodes.find((n) => n.id === "CUSTOMER")?.rows).toEqual(["string name PK"]);
+    expect(laid.value.nodes.find((n) => n.id === "ORDER")?.rows).toBeNull();
   });
 });

@@ -34,6 +34,13 @@
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
   `state X { … }` (recursive; each composite scopes its own `[*]`, mirrors `FlowSubgraph` membership/
   nesting → `StateAst.composites`). Source spans cover each state's label and each transition's label.
+- `parseEr(text)` / `parseErWithSource(text)` → `ErAst` (+ `ErSource`: entity-id and relationship-label
+  spans): `erDiagram` subset — the crow's-foot operator (`||--o{` etc.) is lexed whole and split into
+  normalised `fromCard`/`toCard` + identifying (`--`) vs non-identifying (`..`); entities come from
+  endpoints or bare declarations (quoted names allowed); `: label` for the verb; and **attribute
+  blocks** `ENTITY { type name PK,FK "comment" … }` → `ErEntity.attributes` (keys lex as identifiers,
+  classified to `PK`/`FK`/`UK` in the AST step; commas skipped). The `}` brace is lexed *after* the
+  relationship operator so a leading `}` stays the cardinality token.
 - `ParseError` carries `errors: string[]` **and `positions: ErrorPosition[]`** (`{ offset, length }`,
   built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
   host can highlight the offending range; line/column are left to the host to derive from the text.

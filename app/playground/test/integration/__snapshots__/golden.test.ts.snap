@@ -3,61 +3,75 @@
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
   "box 0,0 48x40 r0",
-  "label "Web" 24,20",
+  "label "Web" 24,20 center",
   "box 72,0 48x40 r0",
-  "label "API" 96,20",
+  "label "API" 96,20 center",
   "box 0,64 48x40 r0",
-  "label "DB" 24,84",
-  "polyline 24,20 96,20 dashed=false arrow=true",
-  "polyline 96,20 24,84 dashed=false arrow=true",
+  "label "DB" 24,84 center",
+  "polyline 24,20 96,20 dashed=false from=l0t0c0 to=l0t1c0",
+  "polyline 96,20 24,84 dashed=false from=l0t0c0 to=l0t1c0",
 ]
 `;
 
 exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 [
   "box 0,0 80x56 r8",
-  "label "Alice" 40,28",
+  "label "Alice" 40,28 center",
   "box 104,0 224x98 r4",
-  "label "Backend" 216,12",
+  "label "Backend" 216,12 center",
   "box 120,26 80x56 r0",
-  "label "API" 160,54",
+  "label "API" 160,54 center",
   "box 224,26 88x56 r0",
-  "label "Database" 268,54",
-  "polyline 40,28 160,54 dashed=false arrow=true",
-  "label "uses" 98,52",
+  "label "Database" 268,54 center",
+  "polyline 40,28 160,54 dashed=false from=l0t0c0 to=l0t1c0",
+  "label "uses" 98,52 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 [
   "box 0,0 216x98 r4",
-  "label "AWS" 108,12",
+  "label "AWS" 108,12 center",
   "box 16,26 80x56 r0",
   "icon simpleicons/docker 46,32 20",
-  "label "Web" 56,58",
+  "label "Web" 56,58 center",
   "box 120,26 80x56 r0",
   "icon simpleicons/googlecloudstorage 150,32 20",
-  "label "Assets" 160,58",
-  "polyline 56,54 160,54 dashed=false arrow=false",
+  "label "Assets" 160,58 center",
+  "polyline 56,54 160,54 dashed=false from=l0t0c0 to=l0t0c0",
+]
+`;
+
+exports[`pipeline goldens > lays out er to a stable display list 1`] = `
+[
+  "box 12,12 134x70 r0",
+  "label "CUSTOMER" 79,27 center",
+  "polyline 12,42 146,42 dashed=false from=l0t0c0 to=l0t0c0",
+  "label "string name PK" 20,52 left",
+  "label "int age" 20,72 left",
+  "box 206,32 96x30 r0",
+  "label "ORDER" 254,47 center",
+  "polyline 146,47 206,47 dashed=false from=l2t0c0 to=l3t0c1",
+  "label "places" 176,58 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 [
   "box 32,12 64x40 r0",
-  "label "Start" 64,32",
+  "label "Start" 64,32 center",
   "diamond 64,112 72x40",
-  "label "Choice" 64,112",
+  "label "Choice" 64,112 center",
   "box 12,172 80x40 r8",
-  "label "Process" 52,192",
+  "label "Process" 52,192 center",
   "box 36,252 48x40 r8",
-  "label "End" 60,272",
-  "polyline 64,52 64,92 dashed=false arrow=true",
-  "polyline 52,132 52,172 dashed=false arrow=true",
-  "label "yes" 41,152",
-  "polyline 76,132 76,142 102,142 102,222 68,222 68,252 dashed=false arrow=true",
-  "label "no" 91,196",
-  "polyline 52,212 52,252 dashed=false arrow=true",
+  "label "End" 60,272 center",
+  "polyline 64,52 64,92 dashed=false from=l0t0c0 to=l0t1c0",
+  "polyline 52,132 52,172 dashed=false from=l0t0c0 to=l0t1c0",
+  "label "yes" 41,152 center",
+  "polyline 76,132 76,142 102,142 102,222 68,222 68,252 dashed=false from=l0t0c0 to=l0t1c0",
+  "label "no" 91,196 center",
+  "polyline 52,212 52,252 dashed=false from=l0t0c0 to=l0t1c0",
 ]
 `;
 
@@ -65,30 +79,30 @@ exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
   "box 0,0 88x48 r0",
   "icon arch/cloud 34,6 20",
-  "label "Internet" 44,32",
+  "label "Internet" 44,32 center",
   "box 128,0 88x48 r0",
   "icon arch/router 162,6 20",
-  "label "Edge" 172,32",
+  "label "Edge" 172,32 center",
   "box 0,88 88x48 r0",
   "icon arch/server 34,94 20",
-  "label "Web" 44,120",
-  "polyline 44,24 172,24 dashed=false arrow=false",
-  "polyline 172,24 44,112 dashed=false arrow=false",
-  "label "eth0" 102,59",
+  "label "Web" 44,120 center",
+  "polyline 44,24 172,24 dashed=false from=l0t0c0 to=l0t0c0",
+  "polyline 172,24 44,112 dashed=false from=l0t0c0 to=l0t0c0",
+  "label "eth0" 102,59 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
 [
   "box 0,0 64x40 r0",
-  "label "Alice" 32,20",
+  "label "Alice" 32,20 center",
   "box 124,0 60x40 r0",
-  "label "Bob" 154,20",
-  "polyline 32,40 32,190 dashed=true arrow=false",
-  "polyline 154,40 154,190 dashed=true arrow=false",
-  "polyline 32,120 154,120 dashed=false arrow=true",
-  "label "Hello" 93,131",
-  "polyline 154,160 32,160 dashed=true arrow=true",
-  "label "Hi there" 93,149",
+  "label "Bob" 154,20 center",
+  "polyline 32,40 32,190 dashed=true from=l0t0c0 to=l0t0c0",
+  "polyline 154,40 154,190 dashed=true from=l0t0c0 to=l0t0c0",
+  "polyline 32,120 154,120 dashed=false from=l0t0c0 to=l0t1c0",
+  "label "Hello" 93,131 center",
+  "polyline 154,160 32,160 dashed=true from=l0t0c0 to=l0t1c0",
+  "label "Hi there" 93,149 center",
 ]
 `;

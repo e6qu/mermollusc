@@ -2,9 +2,11 @@ import type { CstElement, CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   ErAst,
+  ErAttribute,
   ErCardinality,
   ErEntity,
   ErEntityId,
+  ErKey,
   ErRelationship,
   ErRelId,
   ErSource,
@@ -56,6 +58,30 @@ interface Endpoint {
   readonly span: TextSpan;
 }
 
+const isKey = (s: string): s is ErKey => s === "PK" || s === "FK" || s === "UK";
+
+// `type name [keys…] ["comment"]`. The grammar guarantees the first two identifiers (type, name);
+// remaining identifiers are keys, of which only PK/FK/UK are meaningful. Returns null only on the
+// grammar-unreachable case of a block with fewer than two identifiers, so the row is skipped loudly
+// rather than fabricated.
+const attributeOf = (node: CstNode): ErAttribute | null => {
+  const idents = childTokens(node.children, "ErIdentifier");
+  const type = idents[0];
+  const name = idents[1];
+  if (type === undefined || name === undefined) return null;
+  const keys = idents.slice(2).reduce<ErKey[]>((acc, t) => {
+    if (isKey(t.image)) acc.push(t.image);
+    return acc;
+  }, []);
+  const comment = childTokens(node.children, "ErQuotedString")[0];
+  return {
+    type: type.image,
+    name: name.image,
+    keys,
+    comment: comment === undefined ? "" : unquote(comment.image),
+  };
+};
+
 const endpointOf = (ep: CstNode): Endpoint | null => {
   const quoted = childTokens(ep.children, "ErQuotedString")[0];
   if (quoted !== undefined) {
@@ -73,6 +99,7 @@ const endpointOf = (ep: CstNode): Endpoint | null => {
 const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
   const labels = new Map<string, string>(); // entity id → label, first-mention order
   const entitySpans = new Map<ErEntityId, TextSpan>();
+  const attrsById = new Map<string, ErAttribute[]>(); // entity id → its attribute rows
   const relationships: ErRelationship[] = [];
   const relSpans = new Map<ErRelId, TextSpan>();
 
@@ -88,8 +115,17 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
     const left = endpoints[0] === undefined ? null : endpointOf(endpoints[0]);
     if (left === null) continue;
     seeEntity(left);
+    const block = childNodes(stmt.children, "erBlock")[0];
+    if (block !== undefined) {
+      const rows = childNodes(block.children, "erAttribute").reduce<ErAttribute[]>((acc, n) => {
+        const a = attributeOf(n);
+        if (a !== null) acc.push(a);
+        return acc;
+      }, []);
+      attrsById.set(left.id, rows);
+    }
     const relTok = childTokens(stmt.children, "ErRelationship")[0];
-    if (relTok === undefined) continue; // bare entity declaration
+    if (relTok === undefined) continue; // bare entity declaration or attribute block
     const right = endpoints[1] === undefined ? null : endpointOf(endpoints[1]);
     if (right === null) continue;
     seeEntity(right);
@@ -113,6 +149,7 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
   const entities: ErEntity[] = [...labels].map(([id, label]) => ({
     id: brand<string, "ErEntityId">(id),
     label,
+    attributes: attrsById.get(id) ?? [],
   }));
   return ok({
     ast: { kind: "er", entities, relationships },

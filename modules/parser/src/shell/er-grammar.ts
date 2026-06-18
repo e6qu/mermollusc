@@ -1,8 +1,8 @@
 import { CstParser } from "chevrotain";
 import { ErTok, erAllTokens } from "./er-tokens.js";
 
-// Subset of Mermaid `erDiagram`: relationship lines `A <card><line><card> B [: label]` and bare
-// entity declarations `A`. Entity attribute blocks (`A { … }`) are future work.
+// Subset of Mermaid `erDiagram`: relationship lines `A <card><line><card> B [: label]`, bare entity
+// declarations `A`, and entity attribute blocks `A { type name PK,FK "comment" … }`.
 class ErParser extends CstParser {
   constructor() {
     super(erAllTokens);
@@ -28,17 +28,45 @@ class ErParser extends CstParser {
     ]),
   );
 
-  // `A` (bare entity) or `A <rel> B [: label]` (relationship).
+  // `A` (bare entity), `A <rel> B [: label]` (relationship), or `A { … }` (attribute block).
   private readonly statement = this.RULE("erStatement", () => {
     this.SUBRULE(this.entity);
-    this.OPTION(() => {
-      this.CONSUME(ErTok.Relationship);
-      this.SUBRULE2(this.entity);
-      this.OPTION2(() => {
-        this.CONSUME(ErTok.Colon);
-        this.CONSUME(ErTok.LabelText);
-      });
-    });
+    this.OPTION(() =>
+      this.OR([
+        {
+          ALT: () => {
+            this.CONSUME(ErTok.Relationship);
+            this.SUBRULE2(this.entity);
+            this.OPTION2(() => {
+              this.CONSUME(ErTok.Colon);
+              this.CONSUME(ErTok.LabelText);
+            });
+          },
+        },
+        { ALT: () => this.SUBRULE(this.block) },
+      ]),
+    );
+  });
+
+  // `{ <newlines> (attribute <newlines>)* }` — attribute rows separated by line breaks.
+  private readonly block = this.RULE("erBlock", () => {
+    this.CONSUME(ErTok.LBrace);
+    this.MANY(() =>
+      this.OR([
+        { ALT: () => this.CONSUME(ErTok.NewLine) },
+        { ALT: () => this.CONSUME(ErTok.Semicolon) },
+        { ALT: () => this.SUBRULE(this.attribute) },
+      ]),
+    );
+    this.CONSUME(ErTok.RBrace);
+  });
+
+  // `type name [key…] ["comment"]` — keys (PK/FK/UK) and the comment are classified in the AST step.
+  private readonly attribute = this.RULE("erAttribute", () => {
+    this.CONSUME(ErTok.Identifier);
+    this.CONSUME2(ErTok.Identifier);
+    this.MANY(() => this.CONSUME3(ErTok.Identifier));
+    this.OPTION(() => this.CONSUME(ErTok.QuotedString));
   });
 
   private readonly entity = this.RULE("erEntity", () =>

@@ -11,9 +11,13 @@ const Relationship = createToken({
   pattern: /(?:\|o|\|\||\}o|\}\|)(?:--|\.\.)(?:o\||\|\||o\{|\|\{)/,
 });
 const QuotedString = createToken({ name: "ErQuotedString", pattern: /"(?:[^"\\]|\\.)*"/ });
+const LBrace = createToken({ name: "ErLBrace", pattern: /\{/ });
+const RBrace = createToken({ name: "ErRBrace", pattern: /\}/ });
 const NewLine = createToken({ name: "ErNewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "ErSemicolon", pattern: /;/ });
 const WhiteSpace = createToken({ name: "ErWhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
+// Commas only separate attribute keys (`PK,FK`); skipping them lets each key lex as an identifier.
+const Comma = createToken({ name: "ErComma", pattern: /,/, group: Lexer.SKIPPED });
 const Comment = createToken({ name: "ErComment", pattern: /%%[^\n]*/, group: Lexer.SKIPPED });
 
 const Colon = createToken({ name: "ErColon", pattern: /:/, push_mode: "label" });
@@ -30,10 +34,14 @@ export const erLexer = new Lexer({
     main: [
       WhiteSpace,
       Comment,
+      Comma,
       NewLine,
       Semicolon,
       ErDiagram,
+      // Relationship (`}o..||`) before RBrace so a leading `}` is read as the operator, not a brace.
       Relationship,
+      LBrace,
+      RBrace,
       QuotedString,
       Colon,
       Identifier,
@@ -48,6 +56,8 @@ export const ErTok = {
   ErDiagram,
   Relationship,
   QuotedString,
+  LBrace,
+  RBrace,
   NewLine,
   Semicolon,
   Colon,
@@ -58,10 +68,13 @@ export const ErTok = {
 export const erAllTokens: TokenType[] = [
   WhiteSpace,
   Comment,
+  Comma,
   NewLine,
   Semicolon,
   ErDiagram,
   Relationship,
+  LBrace,
+  RBrace,
   QuotedString,
   Colon,
   LabelEnd,

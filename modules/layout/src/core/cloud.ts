@@ -123,6 +123,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       shape: el.group ? "container" : "rect",
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: el.icon,
+      rows: null,
     });
   }
 
@@ -143,7 +144,8 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       ],
       label: link.label,
       stroke: "solid",
-      arrow: "none",
+      fromEnd: "none",
+      toEnd: "none",
     });
   }
 

@@ -52,6 +52,29 @@ describe("parseEr", () => {
     expect(r.value.source.entities.get(eid("A"))).toBeDefined();
   });
 
+  it("parses an entity attribute block: types, names, keys, and comments", () => {
+    const text = `erDiagram
+  CUSTOMER {
+    string name PK "the customer's name"
+    int age
+    string email UK,FK
+  }
+  CUSTOMER ||--o{ ORDER : places
+`;
+    const r = parseEr(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const customer = r.value.entities.find((e) => e.id === "CUSTOMER");
+    expect(customer?.attributes).toEqual([
+      { type: "string", name: "name", keys: ["PK"], comment: "the customer's name" },
+      { type: "int", name: "age", keys: [], comment: "" },
+      { type: "string", name: "email", keys: ["UK", "FK"], comment: "" },
+    ]);
+    // The entity is still wired into the relationship; ORDER carries no attributes.
+    expect(r.value.relationships[0]).toMatchObject({ from: "CUSTOMER", to: "ORDER" });
+    expect(r.value.entities.find((e) => e.id === "ORDER")?.attributes).toEqual([]);
+  });
+
   it("fails loudly on a malformed relationship", () => {
     expect(isOk(parseEr("erDiagram\n  A -- B\n"))).toBe(false);
   });

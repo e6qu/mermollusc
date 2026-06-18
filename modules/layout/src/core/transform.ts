@@ -1,6 +1,6 @@
 import { brand, err, ok, point, rect, type Point, type Result } from "@m/std";
 import type {
-  EdgeArrow,
+  EdgeEnd,
   EdgeId,
   EdgeKind,
   EdgeStroke,
@@ -24,11 +24,11 @@ import type {
   PositionedGraph,
 } from "./graph.js";
 
-const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly arrow: EdgeArrow }> = {
-  arrow: { stroke: "solid", arrow: "filled" },
-  open: { stroke: "solid", arrow: "none" },
-  dotted: { stroke: "dashed", arrow: "filled" },
-  thick: { stroke: "solid", arrow: "filled" },
+const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly toEnd: EdgeEnd }> = {
+  arrow: { stroke: "solid", toEnd: "arrow" },
+  open: { stroke: "solid", toEnd: "none" },
+  dotted: { stroke: "dashed", toEnd: "arrow" },
+  thick: { stroke: "solid", toEnd: "arrow" },
 };
 
 const ELK_DIRECTION: Record<FlowDirection, LayoutConfig["direction"]> = {
@@ -124,6 +124,7 @@ export const toScene = (
         shape: "container",
         parent,
         icon: null,
+        rows: null,
       });
       continue;
     }
@@ -136,6 +137,7 @@ export const toScene = (
       shape: fn.shape,
       parent,
       icon: null,
+      rows: null,
     });
   }
 
@@ -150,6 +152,7 @@ export const toScene = (
       to: brand<string, "SceneNodeId">(astEdge.to),
       waypoints: pe.points.map((p) => point(p.x, p.y)),
       label: astEdge.label,
+      fromEnd: "none",
       ...EDGE_STYLE[astEdge.kind],
     });
   }

@@ -39,6 +39,7 @@ export const layoutNetwork = (
       // An explicit `icon "<pack>/<name>"` override wins; otherwise the kind maps 1:1 to a glyph
       // name in the built-in arch pack.
       icon: n.icon ?? { pack: ARCH_PACK, name: n.kind },
+      rows: null,
     };
   });
 
@@ -59,7 +60,8 @@ export const layoutNetwork = (
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: link.label,
       stroke: "solid",
-      arrow: "none",
+      fromEnd: "none",
+      toEnd: "none",
     });
   }
 

@@ -25,6 +25,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "cloud",
     text: 'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n  }\n  web -- assets\n',
   },
+  {
+    name: "er",
+    text: 'erDiagram\n  CUSTOMER {\n    string name PK\n    int age\n  }\n  CUSTOMER ||--o{ ORDER : places\n',
+  },
 ];
 
 const r = (n: number): number => Math.round(n);
@@ -36,12 +40,15 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `box ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)} r${r(c.radius)}`;
       case "diamond":
         return `diamond ${r(c.cx)},${r(c.cy)} ${r(c.width)}x${r(c.height)}`;
-      case "polyline":
-        return `polyline ${c.points.map((p) => `${r(p.x)},${r(p.y)}`).join(" ")} dashed=${c.dashed} arrow=${c.arrow}`;
+      case "polyline": {
+        const m = (mk: (typeof c)["toMarker"]): string =>
+          `l${mk.lines.length}t${mk.triangle === null ? 0 : 1}c${mk.circle === null ? 0 : 1}`;
+        return `polyline ${c.points.map((p) => `${r(p.x)},${r(p.y)}`).join(" ")} dashed=${c.dashed} from=${m(c.fromMarker)} to=${m(c.toMarker)}`;
+      }
       case "icon":
         return `icon ${c.ref.pack}/${c.ref.name} ${r(c.x)},${r(c.y)} ${r(c.size)}`;
       case "label":
-        return `label "${c.text}" ${r(c.x)},${r(c.y)}`;
+        return `label "${c.text}" ${r(c.x)},${r(c.y)} ${c.align}`;
     }
   });
 
