@@ -196,6 +196,9 @@ let pan: {
   readonly scrollLeft: number;
   readonly scrollTop: number;
 } | null = null;
+// A shift-drag box-select on the empty canvas: the start corner and the current corner, in scene
+// coordinates. On release, every node the box touches is added to the selection.
+let marquee: { readonly x0: number; readonly y0: number; x1: number; y1: number } | null = null;
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
@@ -351,6 +354,19 @@ const paintScene = (): void => {
       const { origin, size } = node.bounds;
       ctx.strokeRect(origin.x - 3, origin.y - 3, size.width + 6, size.height + 6);
     }
+  }
+  if (marquee !== null) {
+    const x = Math.min(marquee.x0, marquee.x1);
+    const y = Math.min(marquee.y0, marquee.y1);
+    const w = Math.abs(marquee.x1 - marquee.x0);
+    const h = Math.abs(marquee.y1 - marquee.y0);
+    ctx.fillStyle = "rgba(37,99,235,0.08)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
   }
   ctx.restore();
   lastRender = { scene: shown, logicalWidth, logicalHeight };
@@ -952,6 +968,11 @@ canvas.addEventListener("pointerdown", (ev) => {
       }
     } else if (groupHit !== null) {
       toggleGroupSelection(groupHit);
+    } else {
+      // Shift-drag on empty canvas → box-select; resolved on release in `pointerup`.
+      marquee = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
+      canvas.setPointerCapture(ev.pointerId);
+      return;
     }
     paintScene();
     updateGroupButtons();
@@ -1006,6 +1027,12 @@ canvas.addEventListener("pointerdown", (ev) => {
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (marquee !== null) {
+    const at = scenePoint(ev);
+    marquee = { ...marquee, x1: at.x, y1: at.y };
+    paintScene();
+    return;
+  }
   if (pan !== null) {
     stageWrap.scrollLeft = pan.scrollLeft - (ev.clientX - pan.startX);
     stageWrap.scrollTop = pan.scrollTop - (ev.clientY - pan.startY);
@@ -1027,6 +1054,35 @@ canvas.addEventListener("pointermove", (ev) => {
 });
 
 canvas.addEventListener("pointerup", (ev) => {
+  if (marquee !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    const box = marquee;
+    marquee = null;
+    if (scene !== null) {
+      const shown = applyOverrides(scene, overrides);
+      const minX = Math.min(box.x0, box.x1);
+      const maxX = Math.max(box.x0, box.x1);
+      const minY = Math.min(box.y0, box.y1);
+      const maxY = Math.max(box.y0, box.y1);
+      const nodes = new Set(selection.nodes);
+      for (const node of shown.nodes) {
+        const { origin, size } = node.bounds;
+        const touches =
+          origin.x < maxX &&
+          origin.x + size.width > minX &&
+          origin.y < maxY &&
+          origin.y + size.height > minY;
+        if (touches && !nodes.has(node.id)) {
+          nodes.add(node.id);
+          selectionOrder = [...selectionOrder, node.id];
+        }
+      }
+      selection = { nodes, edges: selection.edges };
+    }
+    paintScene();
+    updateGroupButtons();
+    return;
+  }
   if (pan !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     pan = null;

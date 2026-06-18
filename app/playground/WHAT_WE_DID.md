@@ -198,3 +198,8 @@
   diagram. Relax is intentionally excluded (it rebuilds the base scene, which the overlay snapshot
   doesn't capture). +2 e2e (drag undo+redo; group undo). Confirmed drag-to-move already works for
   every family (overrides are family-agnostic). 66 Playwright.
+- Added **box-select (marquee)**: shift-drag on the empty canvas draws a dashed selection rectangle
+  and, on release, adds every node it touches to the selection (intersection test, not full
+  containment). Plain drag still pans, so nothing regresses; shift = additive is consistent with
+  shift-click. Makes Group / multi-move / Delete over a cluster a single gesture instead of clicking
+  each node. +1 e2e; footer hint added. 67 Playwright.
