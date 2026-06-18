@@ -14,6 +14,8 @@ Checked while swapping the source textarea for CodeMirror.
 
 Checked while adding undo/redo for canvas actions.
 
+Checked while adding marquee box-select.
+
 ## Resolved
 
 - ~~The C4 Examples menu entry failed to parse~~ — it used a 3-argument `Person(id, "label", "descr")`
