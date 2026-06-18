@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state**; `make check` + Playwright (74 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state**; `make check` + Playwright (75 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -92,7 +92,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 74 flows — adds state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 75 flows — adds composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

@@ -186,7 +186,13 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
     kind: "arrow",
     label: t.label,
   })),
-  subgraphs: [],
+  // Composite states map onto flowchart subgraphs — ELK nests them as containers, same machinery.
+  subgraphs: ast.composites.map((c) => ({
+    id: brand<string, "NodeId">(c.id),
+    label: c.label,
+    parent: c.parent === null ? null : brand<string, "NodeId">(c.parent),
+    nodes: c.states.map((s) => brand<string, "NodeId">(s)),
+  })),
 });
 
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes

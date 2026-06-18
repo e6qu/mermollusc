@@ -227,3 +227,6 @@
   edges. Wired into the family dispatch (kind badge, source-map capture for relabel via
   `StateSource`, an Examples entry); Connect/Delete fall through to the generic `-->` / token
   removers, which match state syntax. +2 e2e (render; example parses). 74 Playwright.
+- State diagrams now support **composite states** (`state X { … }`): they render as container boxes
+  wrapping their nested states (reusing the flowchart subgraph layout + container rendering), each
+  composite scoping its own `[*]`. +1 e2e (composite renders without error). 75 Playwright.

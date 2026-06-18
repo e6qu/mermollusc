@@ -24,6 +24,8 @@ Checked while adding node resize handles.
 
 Checked while adding the state-diagram family.
 
+Checked while adding composite states.
+
 ## Resolved
 
 - ~~The C4 Examples menu entry failed to parse~~ — it used a 3-argument `Person(id, "label", "descr")`

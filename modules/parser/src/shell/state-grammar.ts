@@ -32,12 +32,28 @@ class StateParser extends CstParser {
     this.OR([{ ALT: () => this.SUBRULE(this.stateDecl) }, { ALT: () => this.SUBRULE(this.line) }]),
   );
 
-  // `state "Long label" as id`
+  // `state id`, `state "Long label" as id`, optionally a `{ … }` composite block on either.
   private readonly stateDecl = this.RULE("stateDecl", () => {
     this.CONSUME(StateTok.StateKw);
-    this.CONSUME(StateTok.QuotedString);
-    this.CONSUME(StateTok.As);
-    this.CONSUME(StateTok.Identifier);
+    this.OR([
+      {
+        ALT: () => {
+          this.CONSUME(StateTok.QuotedString);
+          this.CONSUME(StateTok.As);
+          this.CONSUME(StateTok.Identifier);
+        },
+      },
+      { ALT: () => this.CONSUME2(StateTok.Identifier) },
+    ]);
+    this.OPTION(() => this.SUBRULE(this.block));
+  });
+
+  private readonly block = this.RULE("stateBlock", () => {
+    this.CONSUME(StateTok.LBrace);
+    this.MANY(() =>
+      this.OR([{ ALT: () => this.SUBRULE(this.sep) }, { ALT: () => this.SUBRULE(this.statement) }]),
+    );
+    this.CONSUME(StateTok.RBrace);
   });
 
   // `endpoint --> endpoint [: label]` or `endpoint : label`

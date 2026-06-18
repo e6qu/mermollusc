@@ -201,10 +201,20 @@ export interface StateTransition {
   readonly label: string | null;
 }
 
+// A `state X { … }` composite. Mirrors `FlowSubgraph`: direct membership lives in `states`, nesting
+// via `parent`. Composite ids share the `StateId` space — a transition may target a composite.
+export interface StateComposite {
+  readonly id: StateId;
+  readonly label: string;
+  readonly parent: StateId | null;
+  readonly states: readonly StateId[];
+}
+
 export interface StateAst {
   readonly kind: "state";
   readonly states: readonly StateNode[];
   readonly transitions: readonly StateTransition[];
+  readonly composites: readonly StateComposite[];
 }
 
 // Grows one variant per family. The `kind` tag discriminates.

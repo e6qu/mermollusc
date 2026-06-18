@@ -74,3 +74,5 @@
   `StateAst` to a `FlowchartAst` (states → round nodes, `[*]` pseudo-states → circles, transitions →
   arrowed edges; ids re-branded at the shell boundary), so `layoutDiagram` lays state out with the
   same layered layout + `toScene` as flowcharts. +1 integration test.
+- Composite states ride the flowchart subgraph path: `stateToFlow` now maps `StateAst.composites` to
+  `FlowSubgraph`s (id/label/parent/members), so ELK nests them as containers — no new layout code.

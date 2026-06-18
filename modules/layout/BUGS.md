@@ -13,3 +13,5 @@ Checked while adding the optional C4 element description.
   layout result with Zod at the shell boundary before it reaches the core.
 
 Checked while routing state diagrams through the ELK layout path.
+
+Checked while routing composite states through flowchart subgraphs.
