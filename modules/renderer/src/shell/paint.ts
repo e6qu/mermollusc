@@ -7,6 +7,7 @@ export interface Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern;
   strokeStyle: string | CanvasGradient | CanvasPattern;
   lineWidth: number;
+  globalAlpha: number;
   font: string;
   textAlign: CanvasTextAlign;
   textBaseline: CanvasTextBaseline;
@@ -63,6 +64,10 @@ const labelLineHeight = (font: string): number => {
   const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];
   return (px === undefined ? 14 : Number(px)) * 1.3;
 };
+
+// Scale a CSS font string's px size (for the smaller secondary line); unchanged if it has no px size.
+const scaleFont = (font: string, factor: number): string =>
+  font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${(Number(n) * factor).toFixed(1)}px`);
 
 const ARROW_SIZE = 9;
 
@@ -208,13 +213,26 @@ export const paint = (
         break;
       }
       case "label": {
-        ctx.fillStyle = theme.text;
         // A label may carry newlines (e.g. a C4 element's description on a second line); stack the
-        // lines centred on the anchor so the block stays vertically centred in the node.
+        // lines centred on the anchor. The first line is the primary label; continuation lines are
+        // secondary (a C4 description), so they render smaller and dimmed.
         const lines = cmd.text.split("\n");
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;
-        for (const [i, line] of lines.entries()) ctx.fillText(line, cmd.x, top + i * lh);
+        for (const [i, line] of lines.entries()) {
+          if (i === 0) {
+            ctx.fillStyle = theme.text;
+            ctx.font = theme.font;
+            ctx.globalAlpha = 1;
+          } else {
+            ctx.fillStyle = theme.text;
+            ctx.font = scaleFont(theme.font, 0.82);
+            ctx.globalAlpha = 0.7;
+          }
+          ctx.fillText(line, cmd.x, top + i * lh);
+        }
+        ctx.font = theme.font;
+        ctx.globalAlpha = 1;
         break;
       }
     }

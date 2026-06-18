@@ -38,3 +38,7 @@
 - Labels may now contain newlines: `paint` and `toSvg` split a label on `\n` and stack the lines
   centred on the anchor (single-line labels are unchanged). Used by C4 element descriptions; a
   general capability for any multi-line label. +1 unit test (stacked <tspan>s).
+- Multi-line label continuation lines now render as a secondary style: `paint` draws them in a
+  scaled-down font with lower `globalAlpha`; `toSvg` emits a smaller `font-size` + `fill-opacity` on
+  the trailing `<tspan>`s. This gives C4 element descriptions the proper smaller/dimmed look under the
+  label (added `globalAlpha` to the `Canvas2D` structural type). +1 unit assertion (styled tspan).

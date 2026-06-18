@@ -67,7 +67,9 @@ describe("toSvg", () => {
     const out = toSvg(toDisplayList(ml), { width: 90, height: 56, margin: 0, theme: defaultTheme, icons: new Map() });
     expect(out.match(/<tspan/g)?.length).toBe(2);
     expect(out).toContain(">API</tspan>");
-    expect(out).toContain(">Handles</tspan>");
+    // The continuation line is dimmed + smaller; the primary line is not styled down.
+    expect(out).toMatch(/font-size="[\d.]+" fill-opacity="0.7">Handles<\/tspan>/);
+    expect(out).not.toMatch(/fill-opacity="0.7">API/);
   });
 
   it("emits an <image> for a node icon when an href is supplied", () => {

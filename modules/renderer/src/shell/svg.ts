@@ -52,12 +52,17 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       return `<image x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.size)}" height="${num(cmd.size)}" href="${attr(href)}"/>`;
     }
     case "label": {
-      // Mirror the painter's multi-line handling: one <tspan> per line, centred on the anchor.
+      // Mirror the painter: one <tspan> per line, centred on the anchor. Continuation lines (a C4
+      // description) render smaller and dimmed than the first (primary) line.
       const lines = cmd.text.split("\n");
       const lh = labelLineHeight(theme.font);
+      const sub = (labelLineHeight(theme.font) / 1.3) * 0.82;
       const top = cmd.y - ((lines.length - 1) * lh) / 2;
       const tspans = lines
-        .map((line, i) => `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}">${esc(line)}</tspan>`)
+        .map((line, i) => {
+          const style = i === 0 ? "" : ` font-size="${num(sub)}" fill-opacity="0.7"`;
+          return `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}"${style}>${esc(line)}</tspan>`;
+        })
         .join("");
       return `<text text-anchor="middle" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
     }

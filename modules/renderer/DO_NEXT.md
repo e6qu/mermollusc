@@ -5,9 +5,9 @@
   font — **Patrick Hand** (OFL, google/fonts) woff2 + provenance — instead of the system cursive stack.
   Companion: an authored AGPL `sketch` glyph pack (stickman/wobbly) for a fully hand-drawn look.
 - Add per-element theming (e.g. distinct colours per node shape / diagram family).
-- Multi-line labels render every line in the base font; a C4 description would read better as a
-  smaller, muted secondary line — needs a sublabel style (a theme `subText`/`subFont` or a dedicated
-  `sublabel` draw command).
+- *(done)* Multi-line labels render continuation lines (a C4 description) smaller and dimmed than the
+  first line — `paint` scales the font + lowers `globalAlpha`; `toSvg` emits a smaller `font-size` +
+  `fill-opacity` on the trailing `<tspan>`s.
 - HTML-in-Canvas: `htmlInCanvasSupported()` detection is in; build the actual rich-label backend
   once the API ships in stable Chromium (it's flag-only today, so unverifiable here).
 - Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
