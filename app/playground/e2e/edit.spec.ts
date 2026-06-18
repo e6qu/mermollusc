@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -10,7 +11,7 @@ test("re-renders the canvas when the source text changes", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page.locator("#src").fill("flowchart LR\n  X[A single wider node here]\n");
+  await setSource(page, "flowchart LR\n  X[A single wider node here]\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

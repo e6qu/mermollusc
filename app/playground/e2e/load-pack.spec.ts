@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -18,7 +19,7 @@ test("loading a user icon pack re-renders without errors", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // A network diagram references the "arch" glyphs the loaded pack overrides.
-  await page.locator("#src").fill('network\n  server web "Web"\n  database db "DB"\n  web -- db\n');
+  await setSource(page, 'network\n  server web "Web"\n  database db "DB"\n  web -- db\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.locator("#load-pack").setInputFiles(ARCH_PACK);

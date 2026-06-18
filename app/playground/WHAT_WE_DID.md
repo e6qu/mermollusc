@@ -172,3 +172,18 @@
   selects all leaf nodes under the clicked group, so Ungroup/Lock work from an outline click. +1 e2e.
 - Group labels are editable sidecar metadata: double-clicking a group outline opens the inline
   editor, `setGroupLabel` updates the group, and overlay persistence stores the title. +1 e2e.
+- Replaced the source `<textarea>` with **CodeMirror 6** (`src/editor.ts`). A small `Editor` interface
+  (`value`/`setValue`/`insertAtCursor`/`cursor`/`select`/`focus`/`hasFocus`/`setError`) keeps the
+  CodeMirror types out of `main.ts`, so every source read/write that used `srcEl.value` now goes
+  through it. Highlighting is a stream tokenizer over the shared family keyword set with CSS-variable
+  colours (so the light/dark switch drives them, no editor rebuild). The parser's `line:col` error is
+  mirrored inline via `@codemirror/lint` (`setError` → a gutter marker + underline + hover message),
+  complementing the click-to-locate status. Programmatic `setValue` (structural edits, examples,
+  share-link) is annotated so it doesn't re-fire the render path; only user typing does. e2e drives
+  the editor through a `window.__editor` handle + `e2e/support/source.ts` helpers (a contenteditable
+  isn't a `<textarea>`, so `.fill()`/`toHaveValue()` don't apply). +2 e2e (inline error marker;
+  highlight spans). 63 Playwright. Deps pinned in the catalog via `tools/pick-version.mjs`.
+- Boy-scout: the shipped **C4 Examples entry didn't parse** — `Person(alice, "Alice", "A customer")`
+  uses a 3-arg form the C4 grammar rejects (it accepts `Person(id, "label")`). The new inline error
+  marker made it obvious. Corrected the example to the 2-arg form; noted the optional-description arg
+  as a parser enhancement.

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -15,7 +16,7 @@ test("every network node kind resolves to a built-in glyph (no resolve failures)
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  await page.locator("#src").fill(
+  await setSource(page,
     'network\n  server a "A"\n  database b "B"\n  cloud c "C"\n  router d "D"\n  switch e "E"\n  firewall f "F"\n  host g "G"\n',
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

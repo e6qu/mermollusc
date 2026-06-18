@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -9,7 +10,7 @@ test("double-click relabels a C4 element and writes back to the source text", as
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // A single element sits at the scene origin, so a point just inside the top-left is a safe hit.
-  await page.locator("#src").fill('C4Context\n  Person(user, "Customer")\n');
+  await setSource(page, 'C4Context\n  Person(user, "Customer")\n');
   await expect.poll(() => canvasWidth(page)).toBeLessThan(160);
 
   const box = await canvas.boundingBox();
@@ -22,5 +23,5 @@ test("double-click relabels a C4 element and writes back to the source text", as
   await editor.fill("Renamed");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/Person\(user, "Renamed"\)/);
+  await expectSourceMatches(page, /Person\(user, "Renamed"\)/);
 });

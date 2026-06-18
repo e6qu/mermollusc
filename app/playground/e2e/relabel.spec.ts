@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -9,7 +10,7 @@ test("double-click relabels a node and writes back to the source text", async ({
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // Reduce to a single node so it occupies the whole canvas — the centre is a safe hit point.
-  await page.locator("#src").fill("flowchart TD\n  A[Start]\n");
+  await setSource(page, "flowchart TD\n  A[Start]\n");
   await expect.poll(() => canvasWidth(page)).toBeLessThan(160);
 
   const box = await canvas.boundingBox();
@@ -22,5 +23,5 @@ test("double-click relabels a node and writes back to the source text", async ({
   await editor.fill("Renamed");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/A\[Renamed\]/);
+  await expectSourceMatches(page, /A\[Renamed\]/);
 });

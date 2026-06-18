@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -11,7 +12,7 @@ test("double-click relabels a network node and writes back to the source text", 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // A single node sits at the scene origin, so a point just inside the top-left is a safe hit.
-  await page.locator("#src").fill('network\n  server web "Web"\n');
+  await setSource(page, 'network\n  server web "Web"\n');
   await expect.poll(() => canvasWidth(page)).toBeLessThan(160);
 
   const box = await canvas.boundingBox();
@@ -24,5 +25,5 @@ test("double-click relabels a network node and writes back to the source text", 
   await editor.fill("Renamed");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/server web "Renamed"/);
+  await expectSourceMatches(page, /server web "Renamed"/);
 });

@@ -1,9 +1,14 @@
 # @m/app (playground) — do next
 
-- Swap the textarea for CodeMirror (syntax highlight, **inline error markers at the failing span**,
-  span-aware edits). The status bar now names the parse error *and its line:col* and offers
-  click-to-locate (selecting the range in the textarea); CodeMirror would mark it inline instead.
+- *(done)* Swapped the textarea for **CodeMirror 6**: family-aware syntax highlighting, and the
+  parser's `line:col` parse error is mirrored inline as a lint diagnostic (gutter marker + underline
+  + hover message) on top of the existing click-to-locate. `main.ts` talks to a small `Editor`
+  interface (`src/editor.ts`) so CodeMirror types never leak into the app; e2e drives it through a
+  `window.__editor` handle (`e2e/support/source.ts`) since `.fill()`/`toHaveValue()` only work on a
+  `<textarea>`.
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
+- The CodeMirror bundle pushes the production chunk past Vite's 500 kB warning; consider code-split
+  (dynamic import of the editor or the icon packs) if startup weight matters.
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, expectSourceNotMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -6,7 +7,7 @@ const canvasWidth = (page: Page) =>
 test("Connect links two network nodes with an undirected `a -- b`", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill('network\n  server a "A"\n  server b "B"\n');
+  await setSource(page, 'network\n  server a "A"\n  server b "B"\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await page.locator("#stage").boundingBox();
@@ -21,7 +22,7 @@ test("Connect links two network nodes with an undirected `a -- b`", async ({ pag
 
   await expect(page.locator("#connect")).toBeEnabled();
   await page.locator("#connect").click();
-  await expect(page.locator("#src")).toHaveValue(/\n {2}a -- b\n/);
+  await expectSourceMatches(page, /\n {2}a -- b\n/);
 });
 
 test("Delete removes a network node and its links from the source", async ({ page }) => {
@@ -30,7 +31,7 @@ test("Delete removes a network node and its links from the source", async ({ pag
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill('network\n  server a "A"\n  server b "B"\n  a -- b\n');
+  await setSource(page, 'network\n  server a "A"\n  server b "B"\n  a -- b\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await page.locator("#stage").boundingBox();
@@ -39,15 +40,15 @@ test("Delete removes a network node and its links from the source", async ({ pag
   await page.mouse.click(box.x + 44, box.y + box.height / 2); // select node "a"
   await page.keyboard.press("Delete");
 
-  await expect(page.locator("#src")).not.toHaveValue(/server a/);
-  await expect(page.locator("#src")).not.toHaveValue(/a -- b/);
+  await expectSourceNotMatches(page, /server a/);
+  await expectSourceNotMatches(page, /a -- b/);
   expect(errors).toEqual([]);
 });
 
 test("Connect adds a C4 Rel between two elements", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill('C4Context\n  Person(a, "A")\n  System(b, "B")\n');
+  await setSource(page, 'C4Context\n  Person(a, "A")\n  System(b, "B")\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await page.locator("#stage").boundingBox();
@@ -60,13 +61,13 @@ test("Connect adds a C4 Rel between two elements", async ({ page }) => {
   await page.keyboard.up("Shift");
 
   await page.locator("#connect").click();
-  await expect(page.locator("#src")).toHaveValue(/Rel\(a, b, ""\)/);
+  await expectSourceMatches(page, /Rel\(a, b, ""\)/);
 });
 
 test("Connect adds a sequence message between two actors", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill("sequenceDiagram\n  A->>B: hi\n");
+  await setSource(page, "sequenceDiagram\n  A->>B: hi\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await page.locator("#stage").boundingBox();
@@ -79,7 +80,7 @@ test("Connect adds a sequence message between two actors", async ({ page }) => {
   await page.keyboard.up("Shift");
 
   await page.locator("#connect").click();
-  await expect(page.locator("#src")).toHaveValue(/A->>B: message/);
+  await expectSourceMatches(page, /A->>B: message/);
 });
 
 test("Delete removes a C4 boundary block and relations to nested elements", async ({ page }) => {
@@ -88,7 +89,7 @@ test("Delete removes a C4 boundary block and relations to nested elements", asyn
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill(
+  await setSource(page,
     'C4Context\n  Person(u, "U")\n  Boundary(bk, "Backend") {\n    Container(api, "API")\n  }\n  Rel(u, api, "x")\n',
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
@@ -99,10 +100,10 @@ test("Delete removes a C4 boundary block and relations to nested elements", asyn
   await page.mouse.click(box.x + box.width - 48, box.y + 34);
   await page.keyboard.press("Delete");
 
-  await expect(page.locator("#src")).not.toHaveValue(/Boundary\(bk/);
-  await expect(page.locator("#src")).not.toHaveValue(/Container\(api/);
-  await expect(page.locator("#src")).not.toHaveValue(/Rel\(u, api/);
-  await expect(page.locator("#src")).toHaveValue(/Person\(u, "U"\)/);
+  await expectSourceNotMatches(page, /Boundary\(bk/);
+  await expectSourceNotMatches(page, /Container\(api/);
+  await expectSourceNotMatches(page, /Rel\(u, api/);
+  await expectSourceMatches(page, /Person\(u, "U"\)/);
   expect(errors).toEqual([]);
 });
 
@@ -112,7 +113,7 @@ test("Delete removes a sequence actor and messages touching it", async ({ page }
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await page.locator("#src").fill(
+  await setSource(page,
     "sequenceDiagram\n  participant A\n  participant B\n  participant C\n  A->>B: hi\n  B->>C: yo\n",
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
@@ -123,8 +124,8 @@ test("Delete removes a sequence actor and messages touching it", async ({ page }
   await page.mouse.click(box.x + 54, box.y + 42);
   await page.keyboard.press("Delete");
 
-  await expect(page.locator("#src")).not.toHaveValue(/participant A/);
-  await expect(page.locator("#src")).not.toHaveValue(/A->>B/);
-  await expect(page.locator("#src")).toHaveValue(/B->>C: yo/);
+  await expectSourceNotMatches(page, /participant A/);
+  await expectSourceNotMatches(page, /A->>B/);
+  await expectSourceMatches(page, /B->>C: yo/);
   expect(errors).toEqual([]);
 });

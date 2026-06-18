@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (61 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (63 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -10,8 +10,13 @@
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
   silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`. A parse
-  error names its **line:col** (derived from `ParseError.positions`) and is **click-to-locate** —
-  clicking the status selects the offending range in the textarea (never auto-moves the caret mid-type).
+  error names its **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking
+  the status selects the offending range, never auto-moving the caret mid-type), and is **mirrored
+  inline in the editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.
+- **Source editor is CodeMirror 6** (`src/editor.ts`): family-aware syntax highlighting (a stream
+  tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
+  them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
+  out of the app and the surface stays swappable.
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the six
   families; the kind badge shows the active family; Connect/Delete dispatch per family, Add/Relax
   disable off-flowchart, and Regenerate stays live for all.
@@ -22,7 +27,7 @@
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
-- `main.ts`: source `<textarea>` ↔ canvas.
+- `main.ts`: source editor (CodeMirror) ↔ canvas.
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all six families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
@@ -71,9 +76,10 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 61 flows — adds subgraph render (no-crash) + share-link (load + encode)
-  + stadium/circle shapes + PNG + PDF + SVG export + icon-picker (insert + empty-filter) to the prior
-  set (source-persistence, family/edit flows incl. inline editor, sketch + theme toggles +
-  persistence, cloud render/relabel, network-icons + override, structural edit coverage for every
-  family, group outline selection + label editing, dpr, load-pack ×2).
-- Not yet: CodeMirror editor; HTML-in-Canvas.
+- Playwright (`make e2e-ui`): 63 flows — adds editor coverage (inline parse-error marker; highlight
+  spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
+  PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
+  family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
+  network-icons + override, structural edit coverage for every family, group outline selection +
+  label editing, dpr, load-pack ×2). Specs drive the editor through the `window.__editor` handle.
+- Not yet: HTML-in-Canvas.

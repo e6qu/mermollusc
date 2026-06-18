@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -14,7 +15,7 @@ test("dragging a node past the bounds grows the sheet and keeps the source uncha
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const before = await canvasWidth(page);
-  const src = await page.locator("#src").inputValue();
+  const src = await sourceValue(page);
 
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();
@@ -27,7 +28,7 @@ test("dragging a node past the bounds grows the sheet and keeps the source uncha
 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(before);
   // A geometry drag never edits the text.
-  expect(await page.locator("#src").inputValue()).toBe(src);
+  expect(await sourceValue(page)).toBe(src);
   expect(errors).toEqual([]);
 });
 
@@ -38,7 +39,7 @@ test("a shift-selected pair drags together (both move, source untouched)", async
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const before = await canvasWidth(page);
-  const src = await page.locator("#src").inputValue();
+  const src = await sourceValue(page);
 
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();
@@ -54,6 +55,6 @@ test("a shift-selected pair drags together (both move, source untouched)", async
   await page.mouse.up();
 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(before);
-  expect(await page.locator("#src").inputValue()).toBe(src);
+  expect(await sourceValue(page)).toBe(src);
   expect(errors).toEqual([]);
 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -8,7 +9,7 @@ test("the icon picker filters and inserts an icon override at the caret", async 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // A network node line; place the caret at its end so the inserted override lands on that line.
-  await page.locator("#src").fill('network\n  server web "Web"');
+  await setSource(page, 'network\n  server web "Web"');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.locator("#icons-toggle").click();
@@ -21,7 +22,7 @@ test("the icon picker filters and inserts an icon override at the caret", async 
   await first.click();
 
   // An `icon "<pack>/docker"` override was inserted into the source.
-  await expect(page.locator("#src")).toHaveValue(/icon "[^"]+\/docker"/);
+  await expectSourceMatches(page, /icon "[^"]+\/docker"/);
 
   await page.locator("#icons-close").click();
   await expect(picker).toBeHidden();

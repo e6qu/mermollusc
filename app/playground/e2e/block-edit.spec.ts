@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -9,7 +10,7 @@ test("double-click relabels a block and writes back to the source text", async (
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // A single block sits at the scene origin, so a point just inside the top-left is a safe hit.
-  await page.locator("#src").fill('block-beta\n  a["Web"]\n');
+  await setSource(page, 'block-beta\n  a["Web"]\n');
   await expect.poll(() => canvasWidth(page)).toBeLessThan(160);
 
   const box = await canvas.boundingBox();
@@ -22,5 +23,5 @@ test("double-click relabels a block and writes back to the source text", async (
   await editor.fill("Renamed");
   await editor.press("Enter");
 
-  await expect(page.locator("#src")).toHaveValue(/a\["Renamed"\]/);
+  await expectSourceMatches(page, /a\["Renamed"\]/);
 });

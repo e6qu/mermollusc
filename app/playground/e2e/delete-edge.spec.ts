@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectSourceMatches, expectSourceNotMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -9,7 +10,7 @@ test("selecting an edge and pressing Delete removes it from the source text", as
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   // Declarations on their own lines, edge on a standalone line — so deleting the edge spares them.
-  await page.locator("#src").fill("flowchart TB\n  A[Top]\n  B[Bottom]\n  A --> B\n");
+  await setSource(page, "flowchart TB\n  A[Top]\n  B[Bottom]\n  A --> B\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const box = await canvas.boundingBox();
@@ -19,7 +20,7 @@ test("selecting an edge and pressing Delete removes it from the source text", as
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.keyboard.press("Delete");
 
-  await expect(page.locator("#src")).not.toHaveValue(/-->/);
+  await expectSourceNotMatches(page, /-->/);
   // Node declarations survive.
-  await expect(page.locator("#src")).toHaveValue(/A\[Top\]/);
+  await expectSourceMatches(page, /A\[Top\]/);
 });
