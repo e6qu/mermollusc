@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (67 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud**; `make check` + Playwright (69 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -49,6 +49,9 @@
     family-agnostic; dragging persists to the overlay and survives reload).
   - **box-select**: shift-drag on the empty canvas draws a marquee and adds every node it touches to
     the selection (plain drag still pans) — fast multi-select for Group / multi-move / Delete.
+  - **keyboard affordances** (canvas-focused, so CodeMirror keeps them for the text otherwise):
+    `⌘/Ctrl-A` select all nodes, `Escape` deselect, and `↑↓←→` nudge the selection (Shift = a bigger
+    step; a nudge run is one undo entry; locked groups don't move).
   - **undo/redo for canvas actions** (`⌘/Ctrl-Z`, `⌘⇧Z`/`Ctrl-Y`): a separate overlay-history stack
     covers drag, group/ungroup/lock, group label, and Regenerate. It's gated on the editor not being
     focused, so CodeMirror keeps `⌘Z` for the source text — the two histories don't fight.
@@ -83,7 +86,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 67 flows — adds box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 69 flows — adds keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

@@ -16,6 +16,8 @@ Checked while adding undo/redo for canvas actions.
 
 Checked while adding marquee box-select.
 
+Checked while adding keyboard nudge / select-all / escape.
+
 ## Resolved
 
 - ~~The C4 Examples menu entry failed to parse~~ — it used a 3-argument `Person(id, "label", "descr")`

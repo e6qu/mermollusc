@@ -199,6 +199,9 @@ let pan: {
 // A shift-drag box-select on the empty canvas: the start corner and the current corner, in scene
 // coordinates. On release, every node the box touches is added to the selection.
 let marquee: { readonly x0: number; readonly y0: number; x1: number; y1: number } | null = null;
+// True while a run of arrow-key nudges is in progress, so the run shares a single undo entry (the
+// pre-nudge overlay is recorded once); reset by any other interaction.
+let nudging = false;
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
@@ -244,6 +247,7 @@ const clearOverlayHistory = (): void => {
 const restoreOverlay = (snapshot: OverlaySnapshot): void => {
   overrides = new Map(snapshot.overrides);
   groups = new Map(snapshot.groups);
+  nudging = false; // a fresh nudge run after undo/redo starts its own undo entry
   persistOverlay();
   paintScene();
   updateGroupButtons();
@@ -949,6 +953,7 @@ const scenePoint = (ev: MouseEvent) => {
 
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
+  nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
   const shown = applyOverrides(scene, overrides);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
@@ -1370,6 +1375,82 @@ window.addEventListener("keydown", (ev) => {
   } else if (key === "y" || (key === "z" && ev.shiftKey)) {
     ev.preventDefault();
     redoOverlay();
+  } else if (key === "a") {
+    // Select every node (⌘A in the canvas; CodeMirror keeps it for the text when it's focused).
+    if (scene === null) return;
+    ev.preventDefault();
+    const ids = scene.nodes.map((n) => n.id);
+    selection = { nodes: new Set(ids), edges: new Set() };
+    selectionOrder = ids;
+    nudging = false;
+    paintScene();
+    updateGroupButtons();
+  }
+});
+
+// Every leaf node the selection can move: a selected loose node, or all leaves of a selected node's
+// group — minus anything under a locked group (which is selectable but not movable, like drag).
+const movableSelectionLeaves = (): SceneNodeId[] => {
+  const ids = new Set<SceneNodeId>();
+  for (const id of selection.nodes) {
+    if (pathLocked(groups, id)) continue;
+    const top = topGroupOfNode(groups, id);
+    if (top === null) ids.add(id);
+    else for (const leaf of leafNodes(groups, top)) ids.add(leaf);
+  }
+  return [...ids];
+};
+
+// Arrow-key nudge: fine positioning to complement coarse drag (Shift = a bigger step). A run of
+// nudges shares one undo entry. Escape clears the selection.
+const nudgeSelection = (dx: number, dy: number): void => {
+  if (scene === null) return;
+  const ids = movableSelectionLeaves();
+  if (ids.length === 0) return;
+  const shown = applyOverrides(scene, overrides);
+  const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
+  if (!nudging) {
+    recordOverlay();
+    nudging = true;
+  }
+  for (const id of ids) {
+    const at = origin.get(id);
+    if (at !== undefined) overrides = moveNode(overrides, id, point(at.x + dx, at.y + dy));
+  }
+  persistOverlay();
+  paintScene();
+};
+
+window.addEventListener("keydown", (ev) => {
+  if (editor.hasFocus()) return;
+  if (ev.key === "Escape") {
+    if (selection.nodes.size === 0 && selection.edges.size === 0) return;
+    selection = emptySelection;
+    selectionOrder = [];
+    nudging = false;
+    paintScene();
+    updateGroupButtons();
+    return;
+  }
+  if (ev.metaKey || ev.ctrlKey) return; // leave ⌘-combos to the other handlers / the browser
+  const step = ev.shiftKey ? 10 : 1;
+  switch (ev.key) {
+    case "ArrowLeft":
+      ev.preventDefault();
+      nudgeSelection(-step, 0);
+      break;
+    case "ArrowRight":
+      ev.preventDefault();
+      nudgeSelection(step, 0);
+      break;
+    case "ArrowUp":
+      ev.preventDefault();
+      nudgeSelection(0, -step);
+      break;
+    case "ArrowDown":
+      ev.preventDefault();
+      nudgeSelection(0, step);
+      break;
   }
 });
 
