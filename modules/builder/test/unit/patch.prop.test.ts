@@ -20,7 +20,7 @@ const sceneOf = (ids: readonly string[]): Scene => ({
     shape: "rect",
     parent: null,
     icon: null,
-    rowDivider: null, rows: null,
+    rowDivider: null, subtitle: null, rows: null,
   })),
   edges: [],
   extent: rect(0, 0, ids.length * 10 + 60, 40),

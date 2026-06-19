@@ -47,7 +47,8 @@
   bodies (each member is a whole line in a dedicated lexer mode), the `Foo : +member` shorthand, and
   relationship lines whose operator (`<|--`/`--|>`/`*--`/`o--`/`-->`/`..>`/`..|>`/`--`) splits into
   `fromArrow`/`toArrow` (`ClassArrow`) + a dashed flag. Members carry visibility (`+`/`-`/`#`/`~`) and
-  a field/method `kind`. (Stereotypes + multiplicity labels are future work.)
+  a field/method `kind`; a `<<interface>>`/`<<abstract>>` body line → `ClassEntity.stereotype`.
+  (Multiplicity labels + generics are future work.)
 - `parseRequirement(text)` / `parseRequirementWithSource(text)` → `RequirementAst` (+ `ReqSource`:
   entity-name spans): `requirementDiagram` subset — `requirement foo { key: value … }` /
   `element bar { … }` declarations (the six requirement types + `element`; body lines split on the

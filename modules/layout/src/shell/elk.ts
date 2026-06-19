@@ -274,6 +274,7 @@ const layoutEr = async (ast: ErAst, measure: MeasureText): Promise<Result<Scene,
         icon: null,
         rows: rows.length > 0 ? rows : null,
         rowDivider: null,
+        subtitle: null,
       });
     }
     const edges: SceneEdge[] = [];
@@ -323,6 +324,10 @@ const CLASS_TITLE_H = 30;
 const CLASS_ROW_H = 20;
 const CLASS_PAD = 24;
 const CLASS_MIN_W = 100;
+// Extra title-band height for a `«stereotype»` line above the name (matches the renderer's SUBTITLE_H).
+const CLASS_SUBTITLE_H = 16;
+const classSubtitle = (e: ClassAst["entities"][number]): string | null =>
+  e.stereotype === null ? null : `«${e.stereotype}»`;
 const layoutClass = async (
   ast: ClassAst,
   measure: MeasureText,
@@ -342,12 +347,14 @@ const layoutClass = async (
     config: { direction: "DOWN", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
     children: ast.entities.map((e) => {
       const rows = compartmentsById.get(e.id)?.rows ?? [];
-      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), measure(e.label));
+      const sub = classSubtitle(e);
+      const seed = Math.max(measure(e.label), sub === null ? 0 : measure(sub));
+      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), seed);
       return {
         kind: "leaf",
         id: brand<string, "NodeId">(e.id),
         width: Math.max(CLASS_MIN_W, widest + CLASS_PAD),
-        height: CLASS_TITLE_H + rows.length * CLASS_ROW_H,
+        height: CLASS_TITLE_H + (sub === null ? 0 : CLASS_SUBTITLE_H) + rows.length * CLASS_ROW_H,
         position: null,
       };
     }),
@@ -385,6 +392,7 @@ const layoutClass = async (
         icon: null,
         rows: comp.rows.length > 0 ? comp.rows : null,
         rowDivider: comp.divider,
+        subtitle: classSubtitle(e),
       });
     }
     const edges: SceneEdge[] = [];
@@ -471,6 +479,7 @@ const layoutRequirement = async (
         icon: null,
         rows,
         rowDivider: rows.length > 1 ? 1 : null,
+        subtitle: null,
       });
     }
     const edges: SceneEdge[] = [];

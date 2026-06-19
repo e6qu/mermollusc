@@ -272,3 +272,6 @@
   dispatch (`parseRequirementWithSource` → `reqSource`), relabel (entity names only — verbs are
   keywords), Connect (`connectRequirement`), Delete (`deleteRequirementRel`). Added a requirement
   pipeline golden, a `29-requirement` shots flow, and a requirement e2e. 86 Playwright green.
+- Class stereotypes (`<<interface>>`/`<<abstract>>`) now render as a `«…»` subtitle above the class
+  name (parser + layout + renderer); enriched the `class` example + `26-class`/`27-class-dark` shots
+  to show them. No app code change.

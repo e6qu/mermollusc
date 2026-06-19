@@ -42,3 +42,6 @@
   requirement types or `element`, with `ReqField[]` key/value body lines), `ReqRel` (`ReqRelKind` =
   the seven verbs contains/copies/derives/satisfies/verifies/refines/traces) — plus `ReqSource`, and
   added `RequirementAst` to `DiagramAst`. No new scene fields needed (reuses `rows`/`rowDivider`).
+- Added `ClassEntity.stereotype` (`string | null`) for a class `«interface»`/`«abstract»` annotation,
+  and a general `SceneNode.subtitle` (`string | null`) — a small line drawn above a compartment box's
+  title (widening the title band) — to render it.

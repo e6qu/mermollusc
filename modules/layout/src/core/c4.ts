@@ -98,6 +98,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       icon: null,
       rows: null,
       rowDivider: null,
+      subtitle: null,
     });
   }
 

@@ -31,7 +31,7 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
   },
   {
     name: "class",
-    text: "classDiagram\n  class Animal {\n    +int age\n    +move() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
+    text: "classDiagram\n  class Animal {\n    <<abstract>>\n    +int age\n    +move() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
   },
   {
     name: "requirement",

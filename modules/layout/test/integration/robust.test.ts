@@ -8,7 +8,7 @@ const emptyClass: ClassAst = { kind: "class", entities: [], relationships: [] };
 const emptyEr: ErAst = { kind: "er", entities: [], relationships: [] };
 const selfClass: ClassAst = {
   kind: "class",
-  entities: [{ id: brand<string, "ClassEntityId">("A"), label: "A", members: [] }],
+  entities: [{ id: brand<string, "ClassEntityId">("A"), label: "A", stereotype: null, members: [] }],
   relationships: [{
     id: brand<string, "ClassRelId">("r0"),
     from: brand<string, "ClassEntityId">("A"),

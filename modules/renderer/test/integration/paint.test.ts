@@ -61,8 +61,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
   ],
   edges: [
     {
@@ -88,7 +88,7 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "arch", name: "server" },
-      rowDivider: null, rows: null,
+      rowDivider: null, subtitle: null, rows: null,
     },
   ],
   edges: [],
@@ -109,8 +109,8 @@ describe("paint", () => {
   it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [
         {
@@ -151,7 +151,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: 1,
+          rowDivider: 1, subtitle: null,
           rows: ["+int age", "+move() void"],
         },
         {
@@ -161,7 +161,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null,
+          rowDivider: null, subtitle: null,
           rows: null,
         },
       ],
@@ -193,7 +193,7 @@ describe("paint", () => {
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 90, 56),
@@ -217,7 +217,7 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [],
       extent: rect(0, 0, 60, 40),
@@ -239,7 +239,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null,
+          rowDivider: null, subtitle: null,
           rows: ["string name PK", "int age"],
         },
       ],

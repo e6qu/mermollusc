@@ -8,8 +8,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
   ],
   edges: [
     {
@@ -73,7 +73,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "arch", name: "server" },
-      rowDivider: null, rows: null,
+      rowDivider: null, subtitle: null, rows: null,
         },
       ],
       edges: [],
@@ -96,7 +96,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, rows: ["string name PK", "int age"],
+          rowDivider: null, subtitle: null, rows: ["string name PK", "int age"],
         },
       ],
       edges: [],
@@ -118,13 +118,52 @@ describe("toDisplayList", () => {
     expect(divider?.kind === "polyline" ? divider.toMarker.lines : null).toEqual([]);
   });
 
+  it("renders a class stereotype as a centred subtitle above the title, with a lowered divider", () => {
+    const cls: Scene = {
+      nodes: [
+        {
+          id: snid("Shape"),
+          bounds: rect(0, 0, 120, 86),
+          label: "Shape",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          subtitle: "«interface»",
+          rows: ["+draw() void"],
+        },
+      ],
+      edges: [],
+      extent: rect(0, 0, 120, 86),
+    };
+    const out = toDisplayList(cls);
+    const labels = out.filter((c) => c.kind === "label");
+    // Subtitle first (above), then the name, then the member row — all in document order.
+    expect(labels.map((l) => (l.kind === "label" ? l.text : ""))).toEqual([
+      "«interface»",
+      "Shape",
+      "+draw() void",
+    ]);
+    // The subtitle sits above the title; the title divider drops below the taller title band.
+    const sub = labels[0];
+    const title = labels[1];
+    const divider = out.find((c) => c.kind === "polyline");
+    const subY = sub?.kind === "label" ? sub.y : 0;
+    const titleY = title?.kind === "label" ? title.y : 0;
+    const divY = divider?.kind === "polyline" ? (divider.points[0]?.y ?? 0) : 0;
+    expect(subY).toBeLessThan(titleY);
+    expect(divY).toBeGreaterThan(titleY);
+    // The title band is taller than a plain compartment box's 30px (subtitle adds 16).
+    expect(divY).toBeGreaterThan(30);
+  });
+
   it("turns each crow's-foot cardinality into its own marker geometry", () => {
     const ends = ["none", "arrow", "one", "zeroOrOne", "oneOrMany", "zeroOrMany"] as const;
     const markerOf = (end: (typeof ends)[number]) => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
         ],
         edges: [
           {
@@ -158,8 +197,8 @@ describe("toDisplayList", () => {
     const markerOf = (end: "triangle" | "diamondFilled" | "diamondHollow" | "arrowOpen") => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
         ],
         edges: [
           {
@@ -190,7 +229,7 @@ describe("toDisplayList", () => {
   it("falls back to a stable marker direction for a degenerate (zero-length) edge", () => {
     const s: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [
         {

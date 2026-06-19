@@ -16,7 +16,8 @@
   `paint` and `toSvg` draw identical glyphs from the same primitives.
 - **Compartment boxes:** a `SceneNode.rows` node (ER entity / UML class) draws a title band, a
   divider, and one left-aligned row each (the `label` `DrawCmd` carries a `LabelAlign`); a non-null
-  `rowDivider` adds a second divider at that row index — the UML class field/method split.
+  `rowDivider` adds a second divider at that row index — the UML class field/method split; a non-null
+  `subtitle` (a class `«stereotype»`) draws a centred line above the title, widening the title band.
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.

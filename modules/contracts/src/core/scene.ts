@@ -44,6 +44,9 @@ export interface SceneNode {
   // Index of the first row below an *extra* inner divider — the field/method split in a UML class
   // box. null draws only the title divider (an ER entity, or a class with one compartment).
   readonly rowDivider: number | null;
+  // A small, dimmed line drawn *above* the title (a UML class `«interface»` stereotype); null for
+  // none. Widens the title band so it doesn't crowd the name or the divider.
+  readonly subtitle: string | null;
 }
 
 export interface SceneEdge {

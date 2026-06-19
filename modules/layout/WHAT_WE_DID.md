@@ -97,3 +97,6 @@
   their `«kind»` tag + `key: value` field rows (the tag sits in its own compartment via `rowDivider`),
   joined by verb-labelled edges — an open arrow (`arrowOpen`), solid for `contains` and dashed for the
   other six verbs.
+- Class stereotypes: `layoutClass` maps `ClassEntity.stereotype` to a `«…»` `SceneNode.subtitle` and
+  grows the box title band by `CLASS_SUBTITLE_H` (mirrors the renderer) so the stereotype line sits
+  above the name without crowding it or the divider.

@@ -41,6 +41,7 @@ export const layoutNetwork = (
       icon: n.icon ?? { pack: ARCH_PACK, name: n.kind },
       rows: null,
       rowDivider: null,
+      subtitle: null,
     };
   });
 
