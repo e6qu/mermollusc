@@ -43,6 +43,18 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "polyline")).toHaveLength(1);
   });
 
+  it("layers edges under nodes, with edge labels on top", () => {
+    const firstPolyline = cmds.findIndex((c) => c.kind === "polyline");
+    const firstBox = cmds.findIndex((c) => c.kind === "box");
+    const edgeLabel = cmds.findIndex((c) => c.kind === "label" && c.text === "go");
+    // edge line drawn before the node box (so a node occludes a crossing link)...
+    expect(firstPolyline).toBeGreaterThanOrEqual(0);
+    expect(firstPolyline).toBeLessThan(firstBox);
+    // ...and the edge label drawn after every node (so it stays readable on top).
+    const lastNode = cmds.findLastIndex((c) => c.kind === "box" || c.kind === "diamond");
+    expect(edgeLabel).toBeGreaterThan(lastNode);
+  });
+
   it("plates edge labels (so the line can't strike through) but not node labels", () => {
     const byText = (t: string) => cmds.find((c) => c.kind === "label" && c.text === t);
     const edgeLabel = byText("go");
