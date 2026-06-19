@@ -6,9 +6,9 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
   per icon, logs loudly, skips the glyph (the painter draws box + label without it), and returns the
   failed keys; `renderFromText` surfaces them in the status bar. The diagram always paints instead of
   the fire-and-forget render aborting on an unhandled rejection.
-- **Inline editor ignores `viewScale`.** After zoom in/out or Fit, the `#inline-edit` overlay opens at
-  unscaled scene coordinates, off the target node/edge label. Scale the anchor by `viewScale`
-  (account for canvas rect + scroll). *(P2, open.)*
+- ~~**Inline editor ignores `viewScale`.**~~ Fixed — `openInlineEditor` maps the scene-space anchor to
+  screen the same way the canvas paints (offset by extent origin, scaled by `viewScale`), so the
+  overlay sits on its target after a zoom/Fit. +1 zoom e2e (offset scales with zoom).
 - **Requirement verb labels aren't editable** despite the "double-click any … label" claim
   (`ReqSource.relationships` is intentionally empty). Capture verb spans + cycle the seven verbs, or
   drop the claim for requirement. *(P2, open.)*

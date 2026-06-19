@@ -297,3 +297,6 @@
   dragged negative, so the common path is unchanged (87 Playwright still green).
 - Fixed external-review P2 (goldens omit state): added flat `state` + `state-composite` samples to the
   pipeline goldens so composite / `[*]` pseudo-state geometry regressions are caught.
+- Fixed external-review P2 (inline editor ignored `viewScale`): `openInlineEditor` now maps the
+  scene-space anchor to screen exactly as the canvas paints (offset by extent origin, scaled by
+  `viewScale`), so the overlay lands on its target after a zoom/Fit. +1 zoom e2e.

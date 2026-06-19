@@ -1523,10 +1523,15 @@ const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) 
   closeEditor?.(false);
   const cr = canvas.getBoundingClientRect();
   inlineEl.value = value;
-  inlineEl.style.left = `${cr.left + MARGIN + anchor.x}px`;
-  inlineEl.style.top = `${cr.top + MARGIN + anchor.y}px`;
-  inlineEl.style.width = `${Math.max(64, anchor.w)}px`;
-  inlineEl.style.height = `${Math.max(24, anchor.h)}px`;
+  // The anchor is in scene coordinates; map it to screen the same way the canvas paints — offset by
+  // the extent origin and scaled by the current zoom — so the overlay sits on its target after a
+  // zoom/Fit (it previously ignored `viewScale` and drifted off the element).
+  const ox = lastRender?.scene.extent.origin.x ?? 0;
+  const oy = lastRender?.scene.extent.origin.y ?? 0;
+  inlineEl.style.left = `${cr.left + (MARGIN - ox + anchor.x) * viewScale}px`;
+  inlineEl.style.top = `${cr.top + (MARGIN - oy + anchor.y) * viewScale}px`;
+  inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
+  inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   inlineEl.hidden = false;
   inlineEl.focus();
   inlineEl.select();
