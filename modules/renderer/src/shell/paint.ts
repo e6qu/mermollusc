@@ -1,4 +1,4 @@
-import { wedgeColor } from "../core/index.js";
+import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
@@ -14,6 +14,7 @@ export interface Canvas2D {
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
+  bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void;
   closePath(): void;
   stroke(): void;
   fill(): void;
@@ -209,6 +210,18 @@ export const paint = (
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
         ctx.strokeStyle = theme.stroke;
+        // A curved 2-point connector (mindmap spoke / gitGraph branch) — a smooth bezier, no markers.
+        const last = cmd.points[cmd.points.length - 1];
+        if (cmd.curved && cmd.points.length === 2 && last !== undefined) {
+          const [c1, c2] = bezierControls(first, last);
+          ctx.setLineDash(cmd.dashed ? [6, 4] : []);
+          ctx.beginPath();
+          ctx.moveTo(first.x, first.y);
+          ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, last.x, last.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          break;
+        }
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
         if (theme.sketch && !cmd.dashed) {
           let prev = first;

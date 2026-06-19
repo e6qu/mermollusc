@@ -157,6 +157,9 @@ export const toScene = (
       waypoints: pe.points.map((p) => point(p.x, p.y)),
       label: astEdge.label,
       fromEnd: "none",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
       ...EDGE_STYLE[astEdge.kind],
     });
   }

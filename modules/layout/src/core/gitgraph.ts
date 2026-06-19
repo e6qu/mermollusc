@@ -134,6 +134,9 @@ export const layoutGitGraph = (
         stroke: "solid",
         fromEnd: "none",
         toEnd: "none",
+        curved: true,
+        fromLabel: null,
+        toLabel: null,
       });
     }
   }

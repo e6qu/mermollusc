@@ -63,3 +63,6 @@
   a `PieSource` (slice-label spans). Added `PieAst` to `DiagramAst`; re-exported all through both barrels.
 - `StateKind` gained `fork`/`join`/`choice` (Mermaid `<<fork>>`/`<<join>>`/`<<choice>>`); the layout
   maps them to bar (rect) / diamond shapes.
+- `SceneEdge` gained `curved` (draw as a bowed bezier — mindmap spokes / gitGraph connectors) and
+  `fromLabel`/`toLabel` (small per-end labels — class multiplicity). `ClassRel` gained `fromMult`/
+  `toMult`; `StateAst` gained `notes` (`StateNote` = id/target/text).

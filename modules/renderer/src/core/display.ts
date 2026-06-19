@@ -49,6 +49,9 @@ export type DrawCmd =
       readonly dashed: boolean;
       readonly fromMarker: EndMarker;
       readonly toMarker: EndMarker;
+      // Draw as a smooth bezier bowed along the dominant axis (a 2-point mindmap/gitGraph connector)
+      // rather than straight segments. Markers are unused on curved edges (they're arrowless).
+      readonly curved: boolean;
     }
   | {
       readonly kind: "icon";
@@ -186,6 +189,18 @@ const endMarker = (end: EdgeEnd, nodePt: Point, away: Point): EndMarker => {
         circle: { center: at(MARKER_LEN + 6, 0), radius: CIRCLE_R },
       };
   }
+};
+
+// Two cubic-bezier control points for a smooth curve from `a` to `b`, bowed along the dominant axis
+// (the curve leaves `a` and arrives `b` parallel to that axis — an S-curve). Shared by the canvas and
+// SVG backends so a curved edge looks identical in both. Used for mindmap spokes / gitGraph connectors.
+export const bezierControls = (a: Point, b: Point): readonly [Point, Point] => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return [point(a.x + dx * 0.5, a.y), point(b.x - dx * 0.5, b.y)];
+  }
+  return [point(a.x, a.y + dy * 0.5), point(b.x, b.y - dy * 0.5)];
 };
 
 // Unit vector from `b` toward `a`; falls back to +x for a degenerate (zero-length) segment so a
@@ -339,7 +354,25 @@ const dividerAt = (x: number, y: number, width: number): DrawCmd => ({
   dashed: false,
   fromMarker: EMPTY_MARKER,
   toMarker: EMPTY_MARKER,
+  curved: false,
 });
+
+const END_LABEL_INSET = 18; // distance from the endpoint, along the edge, for a per-end label
+const END_LABEL_NUDGE = 9; // perpendicular offset so it clears the line
+
+// A small label just inside `end` (the endpoint), offset toward `toward` (the next waypoint) and
+// nudged perpendicular — for a class relationship's per-end multiplicity.
+const endLabel = (text: string, end: Point, toward: Point): DrawCmd => {
+  const u = awayUnit(toward, end); // unit vector from `end` toward the next point
+  return {
+    kind: "label",
+    x: coordinate(end.x + u.x * END_LABEL_INSET - u.y * END_LABEL_NUDGE),
+    y: coordinate(end.y + u.y * END_LABEL_INSET + u.x * END_LABEL_NUDGE),
+    text,
+    align: "center",
+    plate: true,
+  };
+};
 
 const LABEL_GAP = 11;
 
@@ -409,6 +442,7 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       dashed: edge.stroke === "dashed",
       fromMarker,
       toMarker,
+      curved: edge.curved,
     });
     if (edge.label !== null) {
       const anchor = edgeLabelAnchor(pts);
@@ -420,6 +454,14 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
         align: "center",
         plate: true,
       });
+    }
+    // Per-end labels (class multiplicity) sit just inside each endpoint, offset along the first/last
+    // segment and nudged perpendicular so they clear the line.
+    if (edge.fromLabel !== null && first !== undefined && second !== undefined) {
+      labels.push(endLabel(edge.fromLabel, first, second));
+    }
+    if (edge.toLabel !== null && last !== undefined && prev !== undefined) {
+      labels.push(endLabel(edge.toLabel, last, prev));
     }
   }
   const nodes = scene.nodes.flatMap(nodeCmds);

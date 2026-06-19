@@ -150,6 +150,7 @@ describe("layout", () => {
       ],
       transitions: [{ id: tid("t0"), from: sid("__state_start"), to: sid("Idle"), label: null }],
       composites: [],
+      notes: [],
     };
     const laid = await layoutDiagram(stateAst, heuristicMeasure);
     expect(isOk(laid)).toBe(true);
@@ -242,6 +243,8 @@ describe("layout", () => {
           toArrow: "none",
           dashed: false,
           label: "extends",
+          fromMult: "",
+          toMult: "",
         },
       ],
     };

@@ -38,6 +38,7 @@ export type {
   StateNode,
   StateTransition,
   StateComposite,
+  StateNote,
   StateAst,
   ErEntityId,
   ErRelId,

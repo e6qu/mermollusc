@@ -23,6 +23,9 @@ class RecordingCtx implements Canvas2D {
   lineTo(): void {
     this.calls.push("lineTo");
   }
+  bezierCurveTo(): void {
+    this.calls.push("bezierCurveTo");
+  }
   closePath(): void {
     this.calls.push("closePath");
   }
@@ -74,6 +77,9 @@ const scene: Scene = {
       stroke: "solid",
       fromEnd: "none",
       toEnd: "arrow",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     },
   ],
   wedges: [],
@@ -124,6 +130,9 @@ describe("paint", () => {
           stroke: "dashed",
           fromEnd: "one",
           toEnd: "zeroOrMany",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
         },
       ],
       wedges: [],
@@ -178,6 +187,9 @@ describe("paint", () => {
           stroke: "solid",
           fromEnd: "triangle",
           toEnd: "none",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
         },
       ],
       wedges: [],

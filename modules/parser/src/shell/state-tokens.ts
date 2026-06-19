@@ -10,6 +10,10 @@ const StateDiagram = createToken({
 });
 const StateKw = createToken({ name: "StateKw", pattern: /state/, longer_alt: Identifier });
 const As = createToken({ name: "StateAs", pattern: /as/, longer_alt: Identifier });
+const Note = createToken({ name: "StateNoteKw", pattern: /note/, longer_alt: Identifier });
+const Over = createToken({ name: "StateOver", pattern: /over/, longer_alt: Identifier });
+const LeftOf = createToken({ name: "StateLeftOf", pattern: /left of/, longer_alt: Identifier });
+const RightOf = createToken({ name: "StateRightOf", pattern: /right of/, longer_alt: Identifier });
 const Star = createToken({ name: "StateStar", pattern: /\[\*\]/ });
 // A `<<fork>>` / `<<join>>` / `<<choice>>` state annotation; the inner keyword sets the state's kind.
 const Annotation = createToken({
@@ -48,6 +52,10 @@ export const stateLexer = new Lexer({
       StateDiagram,
       StateKw,
       As,
+      RightOf,
+      LeftOf,
+      Over,
+      Note,
       Star,
       Annotation,
       Arrow,
@@ -67,6 +75,10 @@ export const StateTok = {
   StateDiagram,
   StateKw,
   As,
+  Note,
+  Over,
+  LeftOf,
+  RightOf,
   Star,
   Annotation,
   Arrow,
@@ -89,6 +101,10 @@ export const stateAllTokens: TokenType[] = [
   StateKw,
   As,
   Star,
+  Note,
+  Over,
+  LeftOf,
+  RightOf,
   Annotation,
   Arrow,
   LBrace,

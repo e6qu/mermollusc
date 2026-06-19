@@ -61,9 +61,12 @@ class ClassParser extends CstParser {
       this.OR([
         {
           ALT: () => {
+            // optional per-end multiplicity around the operator: `A "1" --> "*" B`
+            this.OPTION2(() => this.CONSUME(ClassTok.QuotedString));
             this.CONSUME(ClassTok.Relationship);
+            this.OPTION3(() => this.CONSUME2(ClassTok.QuotedString));
             this.CONSUME2(ClassTok.Identifier);
-            this.OPTION2(() => {
+            this.OPTION4(() => {
               this.CONSUME(ClassTok.Colon);
               this.CONSUME(ClassTok.LabelText);
             });

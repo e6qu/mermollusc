@@ -165,6 +165,10 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
     const parts = REL.exec(relTok.image);
     if (parts === null) continue;
     const [, leftSym = "", line = "", rightSym = ""] = parts;
+    // Per-end multiplicity: a quoted string before the operator is the `from` end, after it the `to`.
+    const quotes = childTokens(rm.children, "ClassQuotedString");
+    const fromMultTok = quotes.find((q) => q.startOffset < relTok.startOffset);
+    const toMultTok = quotes.find((q) => q.startOffset > relTok.startOffset);
     const id = brand<string, "ClassRelId">(`r${relationships.length}`);
     relationships.push({
       id,
@@ -174,6 +178,8 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
       toArrow: rightArrow(rightSym),
       dashed: line === "..",
       label: label === undefined ? "" : label.image.trim(),
+      fromMult: fromMultTok === undefined ? "" : fromMultTok.image.slice(1, -1),
+      toMult: toMultTok === undefined ? "" : toMultTok.image.slice(1, -1),
     });
     if (label !== undefined) relSpans.set(id, trimmedSpan(label));
   }

@@ -64,6 +64,9 @@ export const layoutNetwork = (
       stroke: "solid",
       fromEnd: "none",
       toEnd: "none",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     });
   }
 

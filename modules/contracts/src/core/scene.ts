@@ -58,6 +58,13 @@ export interface SceneEdge {
   readonly stroke: EdgeStroke;
   readonly fromEnd: EdgeEnd;
   readonly toEnd: EdgeEnd;
+  // Draw the edge as a smooth curve (a 2-point bezier bowed along its dominant axis) rather than
+  // straight segments — used by radial mindmap spokes and gitGraph branch/merge connectors.
+  readonly curved: boolean;
+  // Small labels anchored near each end (a UML class relationship's per-end multiplicity, e.g. `1` /
+  // `*`); null when absent. Distinct from `label`, which sits at the edge midpoint.
+  readonly fromLabel: string | null;
+  readonly toLabel: string | null;
 }
 
 // A filled circular sector (a pie-chart slice). Angles are in canvas convention — radians from the

@@ -13,7 +13,7 @@ const selfClass: ClassAst = {
     id: brand<string, "ClassRelId">("r0"),
     from: brand<string, "ClassEntityId">("A"),
     to: brand<string, "ClassEntityId">("A"),
-    fromArrow: "none", toArrow: "arrowOpen", dashed: false, label: "",
+    fromArrow: "none", toArrow: "arrowOpen", dashed: false, label: "", fromMult: "", toMult: "",
   }],
 };
 const selfFlow: FlowchartAst = {
