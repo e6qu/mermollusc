@@ -15,3 +15,6 @@
   or cyclic so it was never placed. The silent `?? 0` / `?? {default box}` / dropped-edge `continue`
   fallbacks are gone. The idiomatic `?? []` multimap builds stay — an empty child list is a valid
   state, not a masked error.
+- *(done)* The ER/class/requirement compartment layouts share one `layoutCompartments` engine
+  (`CompartmentBox`/`CompartmentEdge` specs + per-family metrics) instead of three copies of the ELK
+  boilerplate. A future compartment family is now a small AST→spec mapper.
