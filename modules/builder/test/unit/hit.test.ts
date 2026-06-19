@@ -23,6 +23,7 @@ const scene: Scene = {
       toEnd: "arrow",
     },
   ],
+  wedges: [],
   extent: rect(0, 0, 60, 140),
 };
 

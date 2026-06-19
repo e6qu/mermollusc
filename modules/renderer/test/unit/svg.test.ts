@@ -25,6 +25,7 @@ const scene: Scene = {
       toEnd: "arrow",
     },
   ],
+  wedges: [],
   extent: rect(0, 0, 60, 120),
 };
 
@@ -89,6 +90,7 @@ describe("toSvg", () => {
           toEnd: "zeroOrMany",
         },
       ],
+      wedges: [],
       extent: rect(0, 0, 120, 140),
     };
     const out = toSvg(toDisplayList(er), { width: 120, height: 140, origin: { x: 0, y: 0 },
@@ -138,6 +140,7 @@ describe("toSvg", () => {
           toEnd: "none",
         },
       ],
+      wedges: [],
       extent: rect(0, 0, 120, 150),
     };
     const out = toSvg(toDisplayList(cls), {
@@ -163,6 +166,7 @@ describe("toSvg", () => {
         { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 90, 56),
     };
     const out = toSvg(toDisplayList(ml), { width: 90, height: 56, origin: { x: 0, y: 0 },
@@ -188,6 +192,7 @@ describe("toSvg", () => {
         },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 60, 40),
     };
     const withIcon = toSvg(toDisplayList(iconScene), {
@@ -200,5 +205,36 @@ describe("toSvg", () => {
     });
     expect(withIcon).toContain("<image");
     expect(withIcon).toContain("p/n".length > 0 ? "href=" : "");
+  });
+
+  it("renders a pie wedge as a filled <path> sector", () => {
+    const pieScene: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 0,
+        },
+      ],
+      extent: rect(0, 0, 200, 200),
+    };
+    const svg = toSvg(toDisplayList(pieScene), {
+      width: 248,
+      height: 248,
+      origin: { x: 0, y: 0 },
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(svg).toContain("<path");
+    expect(svg).toContain(" A 80 80 0 "); // an arc of the wedge radius
+    expect(svg).toContain("Half 50%");
   });
 });

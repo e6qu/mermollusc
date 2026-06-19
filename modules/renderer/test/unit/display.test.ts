@@ -23,6 +23,7 @@ const scene: Scene = {
       toEnd: "arrow",
     },
   ],
+  wedges: [],
   extent: rect(0, 0, 60, 120),
 };
 
@@ -77,6 +78,7 @@ describe("toDisplayList", () => {
         },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 80, 48),
     };
     const out = toDisplayList(withIcon);
@@ -100,6 +102,7 @@ describe("toDisplayList", () => {
         },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 120, 70),
     };
     const out = toDisplayList(er);
@@ -134,6 +137,7 @@ describe("toDisplayList", () => {
         },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 120, 86),
     };
     const out = toDisplayList(cls);
@@ -177,6 +181,7 @@ describe("toDisplayList", () => {
             toEnd: end,
           },
         ],
+        wedges: [],
         extent: rect(0, 0, 40, 120),
       };
       const poly = toDisplayList(s).find((c) => c.kind === "polyline");
@@ -212,6 +217,7 @@ describe("toDisplayList", () => {
             toEnd: "none",
           },
         ],
+        wedges: [],
         extent: rect(0, 0, 40, 120),
       };
       const poly = toDisplayList(s).find((c) => c.kind === "polyline");
@@ -243,6 +249,7 @@ describe("toDisplayList", () => {
           toEnd: "arrow",
         },
       ],
+      wedges: [],
       extent: rect(0, 0, 40, 40),
     };
     const poly = toDisplayList(s).find((c) => c.kind === "polyline");
@@ -256,5 +263,30 @@ describe("toDisplayList", () => {
     const anchor = edgeLabelAnchor([point(0, 0), point(100, 0), point(100, 100)]);
     expect(anchor.x).toBe(100);
     expect(anchor.y).toBe(11);
+  });
+
+  it("emits a wedge command plus a percentage label for each pie slice", () => {
+    const s: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 0,
+        },
+      ],
+      extent: rect(0, 0, 200, 200),
+    };
+    const cmds = toDisplayList(s);
+    const wedge = cmds.find((c) => c.kind === "wedge");
+    const label = cmds.find((c) => c.kind === "label");
+    expect(wedge?.kind === "wedge" ? wedge.colorIndex : -1).toBe(0);
+    expect(label?.kind === "label" ? label.text : "").toBe("Half 50%");
   });
 });

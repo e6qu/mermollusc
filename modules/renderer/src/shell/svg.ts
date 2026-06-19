@@ -1,3 +1,4 @@
+import { wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { defaultTheme, type Theme } from "./paint.js";
 
@@ -101,6 +102,17 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const boxH = lines.length * lh;
       const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2)}" width="${num(boxW)}" height="${num(boxH)}" fill="${theme.background}"/>`;
       return `${rect}${text}`;
+    }
+    case "wedge": {
+      // A sector as an SVG path: line out to the start angle, arc to the end angle, close to centre.
+      // Same canvas-convention angles + point formula as the painter, so the two backends agree.
+      const x0 = cmd.cx + cmd.radius * Math.cos(cmd.startAngle);
+      const y0 = cmd.cy + cmd.radius * Math.sin(cmd.startAngle);
+      const x1 = cmd.cx + cmd.radius * Math.cos(cmd.endAngle);
+      const y1 = cmd.cy + cmd.radius * Math.sin(cmd.endAngle);
+      const largeArc = cmd.endAngle - cmd.startAngle > Math.PI ? 1 : 0;
+      const d = `M ${num(cmd.cx)} ${num(cmd.cy)} L ${num(x0)} ${num(y0)} A ${num(cmd.radius)} ${num(cmd.radius)} 0 ${largeArc} 1 ${num(x1)} ${num(y1)} Z`;
+      return `<path d="${d}" fill="${wedgeColor(cmd.colorIndex)}" stroke="${theme.background}" stroke-width="2"/>`;
     }
   }
 };

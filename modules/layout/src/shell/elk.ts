@@ -25,6 +25,7 @@ import {
   layoutCloud,
   layoutGitGraph,
   layoutNetwork,
+  layoutPie,
   layoutSequence,
   layoutTimeline,
   toElkGraph,
@@ -367,6 +368,7 @@ const layoutCompartments = async (
     return ok({
       nodes,
       edges: sceneEdges,
+      wedges: [],
       extent: rect(0, 0, positioned.width, positioned.height),
     });
   } catch (e) {
@@ -518,5 +520,7 @@ export const layoutDiagram = async (
       return layoutTimeline(ast, measure);
     case "mindmap":
       return layout(mindmapToFlow(ast), new Map(), measure);
+    case "pie":
+      return layoutPie(ast, measure);
   }
 };

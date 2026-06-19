@@ -128,6 +128,7 @@ export const layoutTimeline = (
   return ok({
     nodes,
     edges,
+    wedges: [],
     extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
   });
 };

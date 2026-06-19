@@ -424,6 +424,25 @@ export interface MindmapAst {
   readonly nodes: readonly MindmapNode[];
 }
 
+export type PieSliceId = Brand<string, "PieSliceId">;
+
+export interface PieSlice {
+  readonly id: PieSliceId;
+  readonly label: string;
+  // A positive number (the smart constructor / parser rejects zero and negatives). Slices are shares
+  // of the total, not percentages — the renderer derives the percentage.
+  readonly value: number;
+}
+
+export interface PieAst {
+  readonly kind: "pie";
+  readonly title: string | null;
+  // `pie showData` — show the raw value alongside each slice's percentage.
+  readonly showData: boolean;
+  // Slices in source order; rendered clockwise from 12 o'clock.
+  readonly slices: readonly PieSlice[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -438,4 +457,5 @@ export type DiagramAst =
   | RequirementAst
   | GitGraphAst
   | TimelineAst
-  | MindmapAst;
+  | MindmapAst
+  | PieAst;

@@ -316,3 +316,7 @@
 - Wired the **mindmap** family end-to-end: imported `parseMindmapWithSource` + `MindmapSource`, added a
   `mindmapSource` var, a "Mindmap" Examples entry (+`index.html` option), the `renderFromText`
   source-map case, and an inline-relabel branch (node labels editable). +1 golden sample, +2 e2e specs.
+- Wired the **pie** family: a "Pie" Examples entry (+`index.html` option). Pie renders through the
+  generic `parseDiagram` + `layoutDiagram` path (wedges need no per-family source-map); it's render-only
+  (a chart — wedges aren't hit-testable nodes), so there's no relabel/drag wiring. +1 golden, +3 e2e
+  (render, example loads, non-positive value lints). The golden `normalize` learned the `wedge` cmd.

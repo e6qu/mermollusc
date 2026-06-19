@@ -127,3 +127,8 @@
   (`MindmapShape` → `NodeShape`; hexagon approximated by a diamond), parent→child links to arrowless
   (`open`) edges, direction `LR` (root at left, branches fanning right). No dedicated engine and no
   renderer change — ELK's layered tree does the work. Covered in the layout integration test.
+- Added `layoutPie` (`core/pie.ts`) + a `pie` case in `layoutDiagram`: a deterministic radial layout
+  (no ELK). Slices are sized by their share of the total and laid clockwise from 12 o'clock (canvas
+  angle `-π/2`); output is a `Scene` with only `wedges` (no nodes/edges). An empty / title-only pie
+  returns a valid empty scene rather than dividing by zero. +5 unit tests. All other layouts now emit
+  `wedges: []`.

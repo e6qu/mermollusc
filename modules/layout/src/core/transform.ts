@@ -161,5 +161,5 @@ export const toScene = (
     });
   }
 
-  return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
+  return ok({ nodes, edges, wedges: [], extent: rect(0, 0, positioned.width, positioned.height) });
 };

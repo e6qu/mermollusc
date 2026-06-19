@@ -41,6 +41,9 @@
 - **mindmap (`mindmapToFlow`):** a tree, laid out through the flowchart ELK path — nodes become shaped
   flowchart nodes (hexagon → diamond), parent→child links become arrowless (`open`) edges, `LR` so the
   root sits at the left with branches fanning right.
+- **pie (`layoutPie`):** a deterministic radial layout — slices sized by share of the total, laid
+  clockwise from 12 o'clock. Output is a `Scene` carrying only `wedges` (the new SceneGraph primitive);
+  no nodes/edges.
 - **gitGraph (`layoutGitGraph`):** deterministic lane layout — commits in creation order along the main
   axis, one lane per branch on the cross axis (`LR` default; `TB`/`BT` swap/flip the axes); commits are
   circle nodes (`HIGHLIGHT` → rect), branch names round head nodes, one edge per parent (fork out at a

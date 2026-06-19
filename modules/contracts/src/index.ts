@@ -80,6 +80,9 @@ export type {
   MindmapShape,
   MindmapNode,
   MindmapAst,
+  PieSliceId,
+  PieSlice,
+  PieAst,
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
@@ -88,6 +91,7 @@ export type {
   IconRef,
   SceneNode,
   SceneEdge,
+  SceneWedge,
   Scene,
   LayoutOverrides,
   NodeOverride,
@@ -110,4 +114,5 @@ export type {
   GitGraphSource,
   TimelineSource,
   MindmapSource,
+  PieSource,
 } from "./core/index.js";

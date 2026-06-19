@@ -76,6 +76,7 @@ const scene: Scene = {
       toEnd: "arrow",
     },
   ],
+  wedges: [],
   extent: rect(0, 0, 60, 120),
 };
 
@@ -92,6 +93,7 @@ const iconScene: Scene = {
     },
   ],
   edges: [],
+  wedges: [],
   extent: rect(0, 0, 80, 48),
 };
 
@@ -124,6 +126,7 @@ describe("paint", () => {
           toEnd: "zeroOrMany",
         },
       ],
+      wedges: [],
       extent: rect(0, 0, 60, 140),
     };
     const ctx = new RecordingCtx();
@@ -177,6 +180,7 @@ describe("paint", () => {
           toEnd: "none",
         },
       ],
+      wedges: [],
       extent: rect(0, 0, 120, 150),
     };
     const ctx = new RecordingCtx();
@@ -196,6 +200,7 @@ describe("paint", () => {
         { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 90, 56),
     };
     const ctx = new RecordingCtx();
@@ -220,6 +225,7 @@ describe("paint", () => {
         { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 60, 40),
     };
     const ctx = new RecordingCtx();
@@ -244,6 +250,7 @@ describe("paint", () => {
         },
       ],
       edges: [],
+      wedges: [],
       extent: rect(0, 0, 120, 70),
     };
     const sketchy = new RecordingCtx();

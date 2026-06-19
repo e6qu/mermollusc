@@ -1185,6 +1185,10 @@ const EXAMPLES = new Map<string, string>([
     "mindmap",
     "mindmap\n  root((mermollusc))\n    Origins\n      Mermaid\n      PlantUML\n    Families\n      Flowchart\n      Sequence\n      Timeline\n    Output\n      Canvas\n      SVG\n",
   ],
+  [
+    "pie",
+    'pie showData\n  title Favourite pets\n  "Dogs" : 386\n  "Cats" : 247\n  "Rabbits" : 89\n  "Birds" : 52\n',
+  ],
 ]);
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a

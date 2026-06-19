@@ -56,3 +56,8 @@
 - Added the **mindmap** AST (`MindmapAst`: `nodes` in pre-order, each with `shape`, indentation-derived
   `parent`, and `level`) plus a `MindmapNodeId` brand, the `MindmapShape` union, and a `MindmapSource`
   (node-label spans). Added `MindmapAst` to `DiagramAst`; re-exported through both barrels.
+- Added a `SceneWedge` (filled circular sector — centre, radius, canvas-convention start/end angles,
+  label, value, percent, colour index) and a required `wedges` array on `Scene` — the first SceneGraph
+  primitive beyond nodes/edges, for radial diagrams. Every node/edge family sets `wedges: []`.
+- Added the **pie** AST (`PieAst`: `title`, `showData`, `slices`) + `PieSliceId` brand, `PieSlice`, and
+  a `PieSource` (slice-label spans). Added `PieAst` to `DiagramAst`; re-exported all through both barrels.
