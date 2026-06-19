@@ -258,3 +258,6 @@
   (`parseClassWithSource` → `classSource`), relabel (class names + relationship labels via
   `ClassSource`), Connect (`connectClass` → `-->`), Delete (`deleteClassRel`). Added a class pipeline
   golden, a `26-class` shots flow, and a class e2e (render + example). 84 Playwright green.
+- Robustness/polish pass: edge labels now render on a background plate (renderer-led), so a label
+  between two close nodes (e.g. an ER verb) stays legible instead of being crossed by the line +
+  markers. No app code change beyond the canvas mock gaining `measureText`/`fillRect`.

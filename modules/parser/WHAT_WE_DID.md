@@ -96,3 +96,7 @@
   `-->`, `..>`, `..|>`, `--`) is lexed whole and split into `fromArrow`/`toArrow` (`ClassArrow`) + a
   dashed flag (heads `<|`/`|>` triangle, `*`/`o` diamonds, `<`/`>` open arrow). Members split the
   visibility glyph from the text and detect `()` → method. +4 integration tests.
+- Robustness pass: added a cross-family malformed/degenerate-input suite (`robust.test.ts`) that
+  asserts `parseDiagram` **never throws** (always returns a `Result`) and parses every family's
+  empty-body header — locking in the fail-loudly contract for header-only, truncated relationships,
+  unclosed `{` blocks, self-references, 5k-char tokens, and unicode/emoji labels. No bug surfaced.

@@ -63,6 +63,9 @@ export type DrawCmd =
       readonly y: Coordinate;
       readonly text: string;
       readonly align: LabelAlign;
+      // Draw a background plate behind the text (edge labels), so the routed line/markers don't
+      // strike through it. Node/title/row labels sit on a filled box already and set this false.
+      readonly plate: boolean;
     };
 
 const EMPTY_MARKER: EndMarker = { lines: [], polygons: [], circle: null };
@@ -195,6 +198,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     y: cy,
     text: node.label,
     align: "center",
+    plate: false,
   } satisfies DrawCmd;
   if (node.shape === "diamond") {
     return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
@@ -210,7 +214,14 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         height: size.height,
         radius: length(4),
       },
-      { kind: "label", x: cx, y: coordinate(origin.y + 12), text: node.label, align: "center" },
+      {
+        kind: "label",
+        x: cx,
+        y: coordinate(origin.y + 12),
+        text: node.label,
+        align: "center",
+        plate: false,
+      },
     ];
   }
   const box = {
@@ -232,6 +243,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + ROW_TITLE_H / 2),
         text: node.label,
         align: "center",
+        plate: false,
       },
       dividerAt(origin.x, origin.y + ROW_TITLE_H, size.width),
     ];
@@ -242,6 +254,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + ROW_TITLE_H + ROW_H * i + ROW_H / 2),
         text: row,
         align: "left",
+        plate: false,
       });
     }
     if (node.rowDivider !== null && node.rowDivider > 0 && node.rowDivider < node.rows.length) {
@@ -266,6 +279,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
       y: coordinate(origin.y + 6 + ICON_SIZE + 6),
       text: node.label,
       align: "center",
+      plate: false,
     },
   ];
 };
@@ -346,7 +360,14 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
     });
     if (edge.label !== null) {
       const anchor = edgeLabelAnchor(pts);
-      cmds.push({ kind: "label", x: anchor.x, y: anchor.y, text: edge.label, align: "center" });
+      cmds.push({
+        kind: "label",
+        x: anchor.x,
+        y: anchor.y,
+        text: edge.label,
+        align: "center",
+        plate: true,
+      });
     }
   }
   return cmds;

@@ -19,6 +19,9 @@
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.
+- edge labels carry a `plate` flag: a background box is drawn behind the text (so the routed line +
+  end markers don't strike through it). `paint` measures the widest line; `toSvg` estimates it.
+  Node/title/row labels keep `plate: false`.
 - shell: `paint(ctx, cmds, iconImages?, theme?)` executes the display list against a `Canvas2D`
   (structural subset of `CanvasRenderingContext2D`; a real 2D context is assignable). `iconImages`
   maps `${pack}/${name}` → a pre-rasterised `CanvasImageSource` (missing → glyph skipped); `theme`

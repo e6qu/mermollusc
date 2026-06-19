@@ -34,6 +34,12 @@ class RecordingCtx implements Canvas2D {
   fillText(text: string): void {
     this.calls.push(`fillText:${text}`);
   }
+  fillRect(): void {
+    this.calls.push("fillRect");
+  }
+  measureText(text: string): { readonly width: number } {
+    return { width: text.length * 7 };
+  }
   roundRect(): void {
     this.calls.push("roundRect");
   }

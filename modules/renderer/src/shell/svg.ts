@@ -88,7 +88,16 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
         })
         .join("");
       const anchor = cmd.align === "left" ? "start" : "middle";
-      return `<text text-anchor="${anchor}" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
+      const text = `<text text-anchor="${anchor}" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
+      if (!cmd.plate) return text;
+      // A background plate behind an edge label. Width is estimated from the longest line (no font
+      // metrics in a pure string backend); a slightly generous box just masks the line cleanly.
+      const fontPx = labelLineHeight(theme.font) / 1.3;
+      const widest = lines.reduce((w, l) => Math.max(w, l.length), 0);
+      const boxW = widest * fontPx * 0.6 + 6;
+      const boxH = lines.length * lh;
+      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2)}" width="${num(boxW)}" height="${num(boxH)}" fill="${theme.background}"/>`;
+      return `${rect}${text}`;
     }
   }
 };

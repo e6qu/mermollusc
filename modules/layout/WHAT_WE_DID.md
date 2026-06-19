@@ -90,3 +90,6 @@
   compartments via `SceneNode.rowDivider` = the field count) and `memberRow` prefixes the visibility
   glyph (`+`/`-`/`#`/`~`). Relationship ends carry the UML arrowheads (`ClassArrow` *is* an `EdgeEnd`),
   the line dashes for `..` (dependency/realization). Title/row metrics match the renderer + ER.
+- Robustness pass: added `robust.test.ts` — `layoutDiagram` returns `ok` (never throws/rejects) for
+  empty graphs (class/ER with no entities → empty ELK input) and self-loop edges (class/flowchart),
+  the cases most likely to trip ELK. No bug surfaced.

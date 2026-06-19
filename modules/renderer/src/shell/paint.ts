@@ -17,6 +17,8 @@ export interface Canvas2D {
   stroke(): void;
   fill(): void;
   fillText(text: string, x: number, y: number): void;
+  fillRect(x: number, y: number, w: number, h: number): void;
+  measureText(text: string): { readonly width: number };
   roundRect(x: number, y: number, w: number, h: number, radius: number): void;
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
   setLineDash(segments: readonly number[]): void;
@@ -237,6 +239,17 @@ export const paint = (
         const lines = cmd.text.split("\n");
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;
+        if (cmd.plate) {
+          // A background plate behind an edge label, so the routed line/markers don't strike through
+          // it. Measured against the base font (the widest line wins); the box is centred on x.
+          ctx.font = theme.font;
+          const widest = lines.reduce((w, l) => Math.max(w, ctx.measureText(l).width), 0);
+          const padX = 3;
+          const boxW = widest + padX * 2;
+          const boxH = lines.length * lh;
+          ctx.fillStyle = theme.background;
+          ctx.fillRect(cmd.x - boxW / 2, top - lh / 2, boxW, boxH);
+        }
         for (const [i, line] of lines.entries()) {
           if (i === 0) {
             ctx.fillStyle = theme.text;

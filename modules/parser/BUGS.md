@@ -11,3 +11,4 @@ Checked while adding composite states.
 Checked while fixing the empty/truncated-source crash (EOF parse position).
 
 Checked while adding the ER-diagram parser.
+Checked while adding the cross-family malformed-input robustness suite (no crashes found).
