@@ -1,6 +1,23 @@
 # @m/app (playground) — bugs
 
-_None known._
+Open (external review, codex `gpt-5.5`, 2026-06-19):
+
+- ~~**Unhandled icon-decode rejection.**~~ Fixed — `ensureIcons` now catches `img.decode()` failures
+  per icon, logs loudly, skips the glyph (the painter draws box + label without it), and returns the
+  failed keys; `renderFromText` surfaces them in the status bar. The diagram always paints instead of
+  the fire-and-forget render aborting on an unhandled rejection.
+- ~~**Inline editor ignores `viewScale`.**~~ Fixed — `openInlineEditor` maps the scene-space anchor to
+  screen the same way the canvas paints (offset by extent origin, scaled by `viewScale`), so the
+  overlay sits on its target after a zoom/Fit. +1 zoom e2e (offset scales with zoom).
+- ~~**Requirement verb labels aren't editable.**~~ Fixed — `parseRequirementWithSource` now captures
+  each verb's token span into `ReqSource.relationships`, and the inline-editor dispatch lets you edit
+  a requirement relationship's verb (re-typing to another of the seven round-trips; an invalid one
+  fails the parse loudly). The "double-click any … label" claim now holds for requirement too.
+- ~~**Pipeline goldens omit the state family.**~~ Fixed — added flat (`state`) and `state-composite`
+  samples to the pipeline goldens, so composite/`[*]` geometry regressions are now caught.
+
+Delete of brace-bodied entities (ER/class/requirement) is logged under `@m/builder` (dispatch lives
+in `main.ts` `removeNode`, the delete helpers in the builder).
 
 Checked while wiring Delete across C4 and sequence diagrams.
 

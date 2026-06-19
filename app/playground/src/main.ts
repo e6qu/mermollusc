@@ -12,11 +12,14 @@ import {
   deleteActor,
   deleteC4,
   deleteC4Rel,
+  deleteClassEntity,
   deleteClassRel,
   deleteEdge,
+  deleteErEntity,
   deleteErRel,
   deleteMessage,
   deleteNode,
+  deleteRequirementEntity,
   deleteRequirementRel,
   emptySelection,
   group,
@@ -350,8 +353,12 @@ const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
 };
 
 // Resolve every icon referenced by the scene to a drawable image before painting, so the painter
-// never has to deal with a half-loaded glyph. A resolve failure is logged loudly, not swallowed.
-const ensureIcons = async (s: Scene): Promise<void> => {
+// never has to deal with a half-loaded glyph. A resolve failure, or a decode failure (a pack whose
+// markup is invalid SVG — `img.decode()` rejects), is logged loudly and the icon is skipped: the
+// painter draws the box + label without the glyph, and the diagram still renders rather than the whole
+// frame failing on an unhandled rejection. Returns the keys that failed so the caller can surface them.
+const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
+  const failed: string[] = [];
   for (const node of s.nodes) {
     if (node.icon === null) continue;
     const key = `${node.icon.pack}/${node.icon.name}`;
@@ -359,10 +366,17 @@ const ensureIcons = async (s: Scene): Promise<void> => {
     const resolved = findIcon(registry, node.icon.pack, node.icon.name);
     if (!isOk(resolved)) {
       console.error("icon resolve failed:", resolved.error.message);
+      failed.push(key);
       continue;
     }
-    iconImages.set(key, await rasterizeIcon(resolved.value));
+    try {
+      iconImages.set(key, await rasterizeIcon(resolved.value));
+    } catch (e) {
+      console.error("icon decode failed:", key, e instanceof Error ? e.message : String(e));
+      failed.push(key);
+    }
   }
+  return failed;
 };
 
 const paintScene = (): void => {
@@ -388,7 +402,9 @@ const paintScene = (): void => {
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
-  ctx.translate(MARGIN, MARGIN);
+  // Offset by the extent origin so a node dragged to negative coordinates maps into the canvas (the
+  // origin is (0,0) unless something was dragged past the top-left, so this is normally just MARGIN).
+  ctx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
   drawGroupOutlines(shown);
   paint(ctx, cmds, iconImages, active);
   ctx.strokeStyle = "#2563eb";
@@ -902,7 +918,7 @@ const drawMinimap = (): void => {
   miniCtx.fillStyle = active.background;
   miniCtx.fillRect(0, 0, logicalWidth, logicalHeight);
   miniCtx.save();
-  miniCtx.translate(MARGIN, MARGIN);
+  miniCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
   // Faint edges first, then node blocks on top.
   miniCtx.strokeStyle = active.stroke;
   miniCtx.globalAlpha = 0.35;
@@ -1271,7 +1287,12 @@ const renderFromText = async (text: string): Promise<void> => {
       break;
     }
   }
-  await ensureIcons(scene);
+  const failedIcons = await ensureIcons(scene);
+  if (failedIcons.length > 0) {
+    // The diagram still paints (glyph-less); surface the failure rather than leaving it only in the
+    // console, since a missing glyph on the canvas is otherwise easy to miss.
+    setStatus("error", `${failedIcons.length} icon(s) failed to load: ${failedIcons.join(", ")}`);
+  }
   paintScene();
 };
 
@@ -1295,10 +1316,14 @@ const relax = async (): Promise<void> => {
 
 const scenePoint = (ev: MouseEvent) => {
   const r = canvas.getBoundingClientRect();
-  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates.
+  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates. Add the
+  // displayed extent origin (the same offset `paintScene` translates by) so pointer↔scene stays
+  // consistent when content has been dragged to negative coordinates.
+  const ox = lastRender?.scene.extent.origin.x ?? 0;
+  const oy = lastRender?.scene.extent.origin.y ?? 0;
   return point(
-    (ev.clientX - r.left) / viewScale - MARGIN,
-    (ev.clientY - r.top) / viewScale - MARGIN,
+    (ev.clientX - r.left) / viewScale - MARGIN + ox,
+    (ev.clientY - r.top) / viewScale - MARGIN + oy,
   );
 };
 
@@ -1498,10 +1523,15 @@ const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) 
   closeEditor?.(false);
   const cr = canvas.getBoundingClientRect();
   inlineEl.value = value;
-  inlineEl.style.left = `${cr.left + MARGIN + anchor.x}px`;
-  inlineEl.style.top = `${cr.top + MARGIN + anchor.y}px`;
-  inlineEl.style.width = `${Math.max(64, anchor.w)}px`;
-  inlineEl.style.height = `${Math.max(24, anchor.h)}px`;
+  // The anchor is in scene coordinates; map it to screen the same way the canvas paints — offset by
+  // the extent origin and scaled by the current zoom — so the overlay sits on its target after a
+  // zoom/Fit (it previously ignored `viewScale` and drifted off the element).
+  const ox = lastRender?.scene.extent.origin.x ?? 0;
+  const oy = lastRender?.scene.extent.origin.y ?? 0;
+  inlineEl.style.left = `${cr.left + (MARGIN - ox + anchor.x) * viewScale}px`;
+  inlineEl.style.top = `${cr.top + (MARGIN - oy + anchor.y) * viewScale}px`;
+  inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
+  inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   inlineEl.hidden = false;
   inlineEl.focus();
   inlineEl.select();
@@ -1653,11 +1683,12 @@ canvas.addEventListener("dblclick", (ev) => {
         : classSource.relationships.get(brand<string, "ClassRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "requirement" && reqSource !== null) {
-    // Only entity names are editable (relationship verbs are closed keywords, not free text).
+    // Entity names and relationship verbs are both editable (the verb is the edge label); re-typing a
+    // verb to another of the seven round-trips, an invalid one fails the parse loudly.
     const span =
       hit.kind === "node"
         ? reqSource.entities.get(brand<string, "ReqEntityId">(hit.id))
-        : undefined;
+        : reqSource.relationships.get(brand<string, "ReqRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   }
 
@@ -1749,6 +1780,14 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       return deleteC4(text, brand<string, "C4ElementId">(id));
     case "sequence":
       return deleteActor(text, brand<string, "ActorId">(id));
+    // Compartment families have `id { … }` bodies; line-based `deleteNode` would orphan the body +
+    // closing brace, so each removes its whole block + incident relationships.
+    case "er":
+      return deleteErEntity(text, brand<string, "ErEntityId">(id));
+    case "class":
+      return deleteClassEntity(text, brand<string, "ClassEntityId">(id));
+    case "requirement":
+      return deleteRequirementEntity(text, brand<string, "ReqEntityId">(id));
     default:
       return deleteNode(text, brand<string, "NodeId">(id));
   }
@@ -2188,6 +2227,7 @@ exportSvgBtn.addEventListener("click", () => {
   const svg = toSvg(toDisplayList(shown), {
     width: Math.ceil(shown.extent.size.width) + MARGIN * 2,
     height: Math.ceil(shown.extent.size.height) + MARGIN * 2,
+    origin: shown.extent.origin,
     margin: MARGIN,
     theme: activeTheme(),
     icons,

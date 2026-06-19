@@ -62,9 +62,9 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Eight families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER — and
-all are two-way** (double-click → patch the source text). Every family has drag/resize/align,
-connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
+**Ten families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML) — and all are two-way** (double-click → patch the source text). Every
+family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
 simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
@@ -103,7 +103,32 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
    the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*
 
+### External review backlog (codex `gpt-5.5`, 2026-06-19) — ✅ all resolved (PR #59)
+
+A read-only senior review (sources: Mermaid 11.15.0, PlantUML, D2, Graphviz). All eight findings
+(five P1, three P2) are fixed; per-fix detail is in the owning module's `BUGS.md` / `WHAT_WE_DID.md`.
+
+P1 (defects — verified against source):
+1. ✅ **Delete corrupts brace-bodied entities** — family entity-delete (`deleteErEntity` /
+   `deleteClassEntity` / `deleteRequirementEntity`) removes the whole `{ … }` block + incident rels.
+2. ✅ **Drag/resize extent only grew right/down** — `applyOverrides` emits the true (negative-origin)
+   extent; paint, pointer→scene, minimap, and SVG export offset by it.
+3. ✅ **Unhandled icon-decode rejection** — `ensureIcons` catches per-icon, logs, still paints,
+   surfaces failures.
+4. ✅ **Cloud group id collision** — synthetic group ids are now `group:N` (`:` is outside the id space).
+5. ✅ **Malformed `icon "…"` silently nulled** — shared `iconRefOf` → `Result`; parse fails loudly.
+
+P2:
+6. ✅ **Requirement verb labels editable** — verb spans captured in `ReqSource.relationships`.
+7. ✅ **Inline editor honours `viewScale`** — overlay maps scene→screen like the painter.
+8. ✅ **Goldens cover the state family** — flat + composite state samples added.
+
 ### Future bets (not yet scoped)
+
+- **More diagram families (capability parity).** External review flags the biggest gaps vs Mermaid/
+  PlantUML/Graphviz: component / deployment / use-case / activity (software-architecture parity),
+  Gantt / timeline (planning), and pie / mindmap / git-graph. Plus **DOT (Graphviz) import/export**
+  for interoperability — the highest-value format gap.
 
 - **Comprehensive, searchable audit trail.** Record edits/actions (text patches, drags, layout
   regenerates, exports) as a queryable, searchable history — beyond the in-memory undo. Likely a new
@@ -118,6 +143,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 1. Read `AGENTS.md` (hard rules + structure) then this file (architecture, decisions, status, roadmap).
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
+   **Current focus:** the *External review backlog* (Roadmap section) is fully resolved (PR #59). The
+   remaining review item is capability parity — new diagram families + DOT import/export — tracked
+   under *Future bets*.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

@@ -282,3 +282,24 @@
   a `renderSeq` **latest-wins guard** so an out-of-order layout result can't paint over a newer
   diagram. Added `test/integration/scale.test.ts` — a 300-node flowchart through parse→layout→
   display-list→paint→hit-test as a scale regression guard.
+- Ran an external code review (codex `gpt-5.5`, read-only) and recorded its prioritized backlog in
+  `PLAN.md` (+ per-module `BUGS.md`, continuity note). Fixed the first P1: `removeNode` now dispatches
+  ER/class/requirement deletes to the new family entity-delete helpers (whole `{ … }` block + incident
+  relationships) instead of the line-based `deleteNode` that orphaned bodies. +1 e2e (delete a
+  brace-bodied ER entity → block gone, ORDER stays, source still parses).
+- Fixed external-review P1 (unhandled icon-decode rejection): `ensureIcons` catches per-icon
+  `img.decode()` failures (invalid pack SVG), logs loudly, skips the glyph, and returns the failed
+  keys; `renderFromText` surfaces them in the status bar. The render no longer aborts on an unhandled
+  rejection — the diagram always paints (glyph-less for the bad icon).
+- Fixed external-review P1 (negative-coordinate clipping): `paintScene`, `scenePoint` (pointer→scene),
+  the minimap, and the SVG export now offset by the displayed extent origin, so a node dragged past
+  the top-left stays visible, hit-testable, and exportable. The offset is (0,0) unless something is
+  dragged negative, so the common path is unchanged (87 Playwright still green).
+- Fixed external-review P2 (goldens omit state): added flat `state` + `state-composite` samples to the
+  pipeline goldens so composite / `[*]` pseudo-state geometry regressions are caught.
+- Fixed external-review P2 (inline editor ignored `viewScale`): `openInlineEditor` now maps the
+  scene-space anchor to screen exactly as the canvas paints (offset by extent origin, scaled by
+  `viewScale`), so the overlay lands on its target after a zoom/Fit. +1 zoom e2e.
+- Fixed external-review P2 (requirement verb labels not editable): the inline-editor dispatch now edits
+  a requirement relationship's verb (parser captures the verb span in `ReqSource.relationships`), so
+  the "double-click any label" claim holds for requirement too.

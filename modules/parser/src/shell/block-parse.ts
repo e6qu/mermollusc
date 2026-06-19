@@ -12,8 +12,9 @@ import type {
   NodeShape,
   TextSpan,
 } from "@m/contracts";
-import { lexingError, parseError, recognitionError } from "./parse-error.js";
+import { lexingError, parseError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
+import { iconRefOf } from "./icon-ref.js";
 import { blockParser } from "./block-grammar.js";
 import { blockLexer } from "./block-tokens.js";
 
@@ -54,54 +55,53 @@ interface Ref {
   readonly icon: IconRef | null;
 }
 
-// `"<pack>/<name>"` (a quoted-token image) → an icon ref; null unless it's a two-part reference.
-const parseIconRef = (image: string): IconRef | null => {
-  const slash = image.indexOf("/");
-  if (slash <= 1 || slash >= image.length - 2) return null;
-  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
-};
-
-const readNodeRef = (node: CstNode): Ref => {
+const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   const id = imageOf(node.children, "Identifier") ?? "";
-  // The optional `icon "<pack>/<name>"` is a sibling of the shape, on the nodeRef directly.
-  const iconImage = imageOf(node.children, "BlockQuoted");
-  const icon = iconImage === null ? null : parseIconRef(iconImage);
+  // The optional `icon "<pack>/<name>"` is a sibling of the shape, on the nodeRef directly. A
+  // malformed ref fails the parse loudly (located at the token) rather than silently dropping it.
+  const iconTok = childTokens(node.children, "BlockQuoted")[0];
+  let icon: IconRef | null = null;
+  if (iconTok !== undefined) {
+    const ref = iconRefOf(iconTok.image);
+    if (!ref.ok) return err(parseErrorAt(ref.error, iconTok.startOffset, iconTok.image.length));
+    icon = ref.value;
+  }
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return { id, label: id, shape: "rect", explicit: false, labelSpan: null, icon };
+    return ok({ id, label: id, shape: "rect", explicit: false, labelSpan: null, icon });
   }
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
   if (square !== undefined) {
-    return {
+    return ok({
       id,
       label: cleanLabel(square.image),
       shape: "rect",
       explicit: true,
       labelSpan: labelSpan(square),
       icon,
-    };
+    });
   }
   const paren = childTokens(sc, "ParenText")[0];
   if (paren !== undefined) {
-    return {
+    return ok({
       id,
       label: cleanLabel(paren.image),
       shape: "round",
       explicit: true,
       labelSpan: labelSpan(paren),
       icon,
-    };
+    });
   }
   const curly = childTokens(sc, "CurlyText")[0];
-  return {
+  return ok({
     id,
     label: cleanLabel(curly?.image ?? ""),
     shape: "diamond",
     explicit: true,
     labelSpan: curly === undefined ? null : labelSpan(curly),
     icon,
-  };
+  });
 };
 
 const linkKind = (c: Children): EdgeKind => {
@@ -129,7 +129,12 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
 
     const chain = childNodes(stmt.children, "chain")[0];
     if (chain === undefined) continue;
-    const refs = childNodes(chain.children, "nodeRef").map(readNodeRef);
+    const refs: Ref[] = [];
+    for (const refNode of childNodes(chain.children, "nodeRef")) {
+      const ref = readNodeRef(refNode);
+      if (!ref.ok) return err(ref.error); // malformed `icon "…"` → fail the parse loudly
+      refs.push(ref.value);
+    }
     const links = childNodes(chain.children, "link");
 
     for (const ref of refs) {

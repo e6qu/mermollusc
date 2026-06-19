@@ -21,11 +21,14 @@ import {
   deleteActor,
   deleteC4,
   deleteC4Rel,
+  deleteClassEntity,
   deleteClassRel,
   deleteEdge,
+  deleteErEntity,
   deleteErRel,
   deleteMessage,
   deleteNode,
+  deleteRequirementEntity,
   deleteRequirementRel,
   patchSpan,
   relabelNode,
@@ -157,6 +160,61 @@ describe("relabelNode", () => {
     const removed = deleteRequirementRel(next, rqid("a"), rqid("b"));
     expect(removed).not.toContain("a - satisfies -> b");
     expect(removed).toContain("requirement b"); // the entities stay
+  });
+
+  it("deleteErEntity removes a brace-bodied entity (block + closing brace) and incident relationships", () => {
+    const text =
+      "erDiagram\n" +
+      "  CUSTOMER {\n    string name PK\n    string email UK\n  }\n" +
+      "  ORDER {\n    int id PK\n  }\n" +
+      "  CUSTOMER ||--o{ ORDER : places\n";
+    const removed = deleteErEntity(text, erid("CUSTOMER"));
+    // No orphaned body rows, no dangling brace, no incident relationship, and ORDER survives intact.
+    expect(removed).not.toContain("string name PK");
+    expect(removed).not.toContain("string email UK");
+    expect(removed).not.toMatch(/CUSTOMER/);
+    expect(removed).not.toContain("places");
+    expect(removed).toContain("ORDER {");
+    expect(removed).toContain("int id PK");
+    // The result still parses cleanly (no stray `}`).
+    const r = parseErWithSource(removed);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) expect(r.value.ast.entities.map((e) => e.id)).toEqual(["ORDER"]);
+  });
+
+  it("deleteClassEntity removes a class block, its `:` shorthand members, and incident relationships", () => {
+    const text =
+      "classDiagram\n" +
+      "  class Animal {\n    +int age\n  }\n" +
+      "  Animal : +move() void\n" +
+      "  class Duck {\n    +String beak\n  }\n" +
+      "  Animal <|-- Duck\n";
+    const removed = deleteClassEntity(text, clid("Animal"));
+    expect(removed).not.toContain("+int age");
+    expect(removed).not.toContain("+move() void");
+    expect(removed).not.toMatch(/Animal/);
+    expect(removed).toContain("class Duck");
+    expect(removed).toContain("+String beak");
+    const r = parseClassWithSource(removed);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) expect(r.value.ast.entities.map((e) => e.id)).toEqual(["Duck"]);
+  });
+
+  it("deleteRequirementEntity removes a requirement block and incident relationships", () => {
+    const text =
+      "requirementDiagram\n" +
+      "  requirement r {\n    id: 1\n    risk: high\n  }\n" +
+      "  element e {\n    type: sim\n  }\n" +
+      "  e - satisfies -> r\n";
+    const removed = deleteRequirementEntity(text, rqid("r"));
+    expect(removed).not.toContain("risk: high");
+    expect(removed).not.toContain("satisfies");
+    expect(removed).not.toMatch(/requirement r\b/);
+    expect(removed).toContain("element e");
+    expect(removed).toContain("type: sim");
+    const parsed = parseRequirementWithSource(removed);
+    expect(isOk(parsed)).toBe(true);
+    if (isOk(parsed)) expect(parsed.value.ast.entities.map((en) => en.id)).toEqual(["e"]);
   });
 
   it("connectMessage appends a message the sequence parser accepts", () => {

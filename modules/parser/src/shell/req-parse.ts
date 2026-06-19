@@ -6,6 +6,7 @@ import type {
   ReqField,
   ReqKind,
   ReqRel,
+  ReqRelId,
   ReqRelKind,
   RequirementAst,
   ReqSource,
@@ -68,6 +69,7 @@ const buildResult = (cst: CstNode): Result<ParsedRequirement, ParseError> => {
   const entities: ReqEntity[] = [];
   const entitySpans = new Map<ReqEntityId, TextSpan>();
   const relationships: ReqRel[] = [];
+  const relSpans = new Map<ReqRelId, TextSpan>();
 
   for (const stmt of childNodes(cst.children, "reqStatement")) {
     const decl = childNodes(stmt.children, "reqEntityDecl")[0];
@@ -105,17 +107,21 @@ const buildResult = (cst: CstNode): Result<ParsedRequirement, ParseError> => {
     const reversed = childTokens(rel.children, "ReqRevArrow").length > 0;
     const fromTok = reversed ? b : a;
     const toTok = reversed ? a : b;
+    const id = brand<string, "ReqRelId">(`r${relationships.length}`);
     relationships.push({
-      id: brand<string, "ReqRelId">(`r${relationships.length}`),
+      id,
       from: brand<string, "ReqEntityId">(fromTok.image),
       to: brand<string, "ReqEntityId">(toTok.image),
       kind: verbKind,
     });
+    // The verb is the editable span (the canvas shows it as the edge label). Re-typing it to another
+    // of the seven verbs round-trips; an invalid verb fails the parse loudly, like any other token.
+    relSpans.set(id, tokenSpan(verb));
   }
 
   return ok({
     ast: { kind: "requirement", entities, relationships },
-    source: { entities: entitySpans, relationships: new Map() },
+    source: { entities: entitySpans, relationships: relSpans },
   });
 };
 

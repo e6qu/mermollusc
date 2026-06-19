@@ -9,6 +9,9 @@ import { defaultTheme, type Theme } from "./paint.js";
 export interface SvgOptions {
   readonly width: number;
   readonly height: number;
+  // Drawn elements are translated by `margin` minus this scene-space origin — matching the canvas
+  // painter, so content dragged to negative coordinates isn't clipped. Usually `{x:0,y:0}`.
+  readonly origin: { readonly x: number; readonly y: number };
   // Drawn elements are translated by this much (the canvas paints the scene inset by a margin).
   readonly margin: number;
   readonly theme: Theme;
@@ -103,7 +106,7 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
 };
 
 export const toSvg = (cmds: readonly DrawCmd[], opts: SvgOptions = defaultSvgOptions()): string => {
-  const { width, height, margin, theme, icons } = opts;
+  const { width, height, margin, origin, theme, icons } = opts;
   // Edge-end markers (arrowheads, crow's-foot glyphs) are emitted inline per polyline as explicit
   // geometry from the core, so the document needs no <marker> defs.
   const body = cmds
@@ -113,7 +116,7 @@ export const toSvg = (cmds: readonly DrawCmd[], opts: SvgOptions = defaultSvgOpt
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${num(width)}" height="${num(height)}" viewBox="0 0 ${num(width)} ${num(height)}" style="font:${attr(theme.font)}">`,
     `  <rect width="${num(width)}" height="${num(height)}" fill="${theme.background}"/>`,
-    `  <g transform="translate(${num(margin)},${num(margin)})">`,
+    `  <g transform="translate(${num(margin - origin.x)},${num(margin - origin.y)})">`,
     `    ${body}`,
     "  </g>",
     "</svg>",
@@ -124,6 +127,7 @@ export const toSvg = (cmds: readonly DrawCmd[], opts: SvgOptions = defaultSvgOpt
 const defaultSvgOptions = (): SvgOptions => ({
   width: 0,
   height: 0,
+  origin: { x: 0, y: 0 },
   margin: 0,
   theme: defaultTheme,
   icons: new Map(),

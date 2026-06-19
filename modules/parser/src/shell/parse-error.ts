@@ -21,6 +21,14 @@ export const parseError = (errors: readonly string[]): ParseError => ({
   positions: [],
 });
 
+// A semantic failure located at a specific token span (e.g. a malformed `icon "…"` reference), so the
+// host can highlight it like any lexer/parser error.
+export const parseErrorAt = (message: string, offset: number, length: number): ParseError => ({
+  kind: "parse",
+  errors: [message],
+  positions: [{ offset, length: Math.max(1, length) }],
+});
+
 export const lexingError = (errors: readonly ILexingError[]): ParseError => ({
   kind: "parse",
   errors: errors.map((e) => e.message),

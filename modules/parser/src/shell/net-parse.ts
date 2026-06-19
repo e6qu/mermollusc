@@ -11,8 +11,9 @@ import type {
   NodeId,
   TextSpan,
 } from "@m/contracts";
-import { lexingError, recognitionError } from "./parse-error.js";
+import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
+import { iconRefOf } from "./icon-ref.js";
 import { networkParser } from "./net-grammar.js";
 import { netLexer } from "./net-tokens.js";
 
@@ -52,13 +53,6 @@ const innerSpan = (t: IToken): TextSpan => ({
   end: t.startOffset + t.image.length - 1,
 });
 
-// `"<pack>/<name>"` → an icon ref; null if it isn't a well-formed two-part reference.
-const parseIconRef = (image: string): IconRef | null => {
-  const slash = image.indexOf("/");
-  if (slash <= 1 || slash >= image.length - 2) return null;
-  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
-};
-
 const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const root = cst.children;
   const nodeMap = new Map<string, NetworkNode>();
@@ -79,11 +73,19 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
       const hasIcon = childTokens(decl.children, "Icon").length > 0;
       const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
       const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
+      let icon: IconRef | null = null;
+      if (iconToken !== undefined) {
+        const ref = iconRefOf(iconToken.image);
+        if (!ref.ok) {
+          return err(parseErrorAt(ref.error, iconToken.startOffset, iconToken.image.length));
+        }
+        icon = ref.value;
+      }
       nodeMap.set(id, {
         id: nodeId,
         label: labelToken === undefined ? id : unquote(labelToken.image),
         kind,
-        icon: iconToken === undefined ? null : parseIconRef(iconToken.image),
+        icon,
       });
       if (labelToken !== undefined) nodeSpans.set(nodeId, innerSpan(labelToken));
       continue;
