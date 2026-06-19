@@ -91,4 +91,28 @@ describe("toDot", () => {
     expect(toDot(scene, "LR")).toContain("rankdir=LR");
     expect(toDot(scene, null)).not.toContain("rankdir");
   });
+
+  it("re-emits a container node as a cluster subgraph with its members nested", () => {
+    const scene: Scene = {
+      nodes: [
+        { ...node("b", "Backend", "container"), parent: null },
+        { ...node("api", "API", "rect"), parent: snid("b") },
+        { ...node("db", "DB", "rect"), parent: snid("b") },
+        node("web", "Web", "rect"),
+      ],
+      edges: [],
+      wedges: [],
+      extent: rect(0, 0, 100, 100),
+    };
+    const dot = toDot(scene, null);
+    expect(dot).toContain('subgraph "cluster_b" {');
+    expect(dot).toContain('label="Backend"');
+    // members appear after the cluster opens, before its close
+    const open = dot.indexOf('subgraph "cluster_b"');
+    const close = dot.indexOf("}", open);
+    expect(dot.indexOf('"api"')).toBeGreaterThan(open);
+    expect(dot.indexOf('"api"')).toBeLessThan(close);
+    // a node outside the cluster stays at top level
+    expect(dot.indexOf('"web"')).toBeGreaterThan(close);
+  });
 });

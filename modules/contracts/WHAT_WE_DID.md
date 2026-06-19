@@ -61,3 +61,5 @@
   primitive beyond nodes/edges, for radial diagrams. Every node/edge family sets `wedges: []`.
 - Added the **pie** AST (`PieAst`: `title`, `showData`, `slices`) + `PieSliceId` brand, `PieSlice`, and
   a `PieSource` (slice-label spans). Added `PieAst` to `DiagramAst`; re-exported all through both barrels.
+- `StateKind` gained `fork`/`join`/`choice` (Mermaid `<<fork>>`/`<<join>>`/`<<choice>>`); the layout
+  maps them to bar (rect) / diamond shapes.

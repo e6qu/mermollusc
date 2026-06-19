@@ -73,6 +73,14 @@ describe("parseTimeline", () => {
     if (es !== undefined) expect(text.slice(es.start, es.end)).toBe("LinkedIn");
   });
 
+  it("converts `<br>` in period/event text to newlines", () => {
+    const r = parseTimeline("timeline\n  2002<br>Q1 : a long<br/>event\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.periods[0]?.label).toBe("2002\nQ1");
+    expect(r.value.periods[0]?.events[0]?.text).toBe("a long\nevent");
+  });
+
   it("fails loudly on a continuation `:` before any period", () => {
     expect(isOk(parseTimeline("timeline\n  : orphan\n"))).toBe(false);
   });

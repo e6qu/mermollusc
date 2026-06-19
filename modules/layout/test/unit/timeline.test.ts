@@ -81,6 +81,28 @@ describe("layoutTimeline", () => {
     expect(xs[2] ?? 0).toBeGreaterThan(xs[1] ?? 0);
   });
 
+  it("grows a multi-line (`<br>`) cell taller than a single-line one", () => {
+    const multi = layoutTimeline(
+      {
+        kind: "timeline",
+        title: null,
+        periods: [
+          {
+            id: pid("p0"),
+            label: "2002",
+            section: null,
+            events: [{ id: evid("e0"), text: "line one\nline two" }],
+          },
+        ],
+      },
+      heuristicMeasure,
+    );
+    if (!multi.ok) throw new Error(multi.error.message);
+    const ev = multi.value.nodes.find((n) => n.id === "e0");
+    // a two-line event box is taller than the single-line base (32)
+    expect((ev?.bounds.size.height ?? 0) > 32).toBe(true);
+  });
+
   it("emits no section band when no period has a section", () => {
     const flat = layoutTimeline(
       {

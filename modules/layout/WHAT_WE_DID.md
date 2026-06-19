@@ -147,3 +147,5 @@
   their id+tag (was a fixed ~26px dot the label spilled out of), with per-axis pitch sized to the pills
   so neighbours don't collide in LR or TB (no renderer change). **pie legend wraps** into columns when
   a long slice list would run past the disc bottom (column pitch from the widest label). +tests updated.
+- `stateToFlow` maps the new state kinds to shapes (fork/join → rect bar, choice → diamond); timeline
+  cells grow in height for `<br>` multi-line labels (widest line sets the width).

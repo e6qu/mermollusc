@@ -1,7 +1,7 @@
 import { heuristicMeasure, layoutDiagram } from "@m/layout";
 import { parseDiagram, parseDot } from "@m/parser";
 import { toDot } from "@m/renderer";
-import { isOk } from "@m/std";
+import { brand, isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
 
 // Export ↔ import round trip: a diagram laid out to a Scene, serialised to DOT, then re-imported
@@ -35,6 +35,21 @@ describe("DOT export ↔ import round trip", () => {
     expect(back.value.nodes).toHaveLength(3);
     expect(back.value.edges).toHaveLength(3);
     expect(back.value.edges.some((e) => e.label === "loop")).toBe(true);
+  });
+
+  it("round-trips a subgraph as a DOT cluster (flowchart subgraph → cluster → FlowSubgraph)", async () => {
+    const dot = await sceneToDot(
+      "flowchart TD\n  subgraph S [Core]\n    a --> b\n  end\n  b --> c\n",
+    );
+    expect(dot).toContain("subgraph");
+    expect(dot).toContain("cluster_");
+    const back = parseDot(dot);
+    expect(isOk(back)).toBe(true);
+    if (!isOk(back)) return;
+    // the cluster survives the round trip as a FlowSubgraph with its members
+    expect(back.value.subgraphs.length).toBeGreaterThanOrEqual(1);
+    const members = back.value.subgraphs.flatMap((s) => [...s.nodes]);
+    expect(members).toContain(brand<string, "NodeId">("a"));
   });
 
   it("exports a node/edge family that isn't a flowchart (ER) as a DOT graph", async () => {

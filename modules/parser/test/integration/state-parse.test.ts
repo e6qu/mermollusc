@@ -68,6 +68,19 @@ describe("parseState", () => {
     if (t0 !== undefined) expect(text.slice(t0.start, t0.end)).toBe("go");
   });
 
+  it("reads `<<fork>>`/`<<join>>`/`<<choice>>` annotations as state kinds", () => {
+    const text =
+      "stateDiagram-v2\n  state f <<fork>>\n  state j <<join>>\n  state c <<choice>>\n  A --> f\n";
+    const r = parseState(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const kind = (id: string) => r.value.states.find((s) => s.id === id)?.kind;
+    expect(kind("f")).toBe("fork");
+    expect(kind("j")).toBe("join");
+    expect(kind("c")).toBe("choice");
+    expect(r.value.transitions.some((t) => t.to === "f")).toBe(true);
+  });
+
   it("fails loudly on a malformed transition", () => {
     expect(isOk(parseState("stateDiagram-v2\n  A --> \n"))).toBe(false);
   });

@@ -1,4 +1,4 @@
-import type { EdgeEnd, FlowDirection, NodeShape, Scene } from "@m/contracts";
+import type { EdgeEnd, FlowDirection, NodeShape, Scene, SceneNode } from "@m/contracts";
 
 // Serialises a Scene to Graphviz DOT. The Scene is the universal graph IR, so this exports *any*
 // node/edge family (flowchart, state, ER, class, …) to DOT; a pie chart (wedges, no nodes) exports as
@@ -41,11 +41,33 @@ const ARROWTYPE: Record<EdgeEnd, string | null> = {
 export const toDot = (scene: Scene, rankdir: FlowDirection | null): string => {
   const lines: string[] = ["digraph {"];
   if (rankdir !== null) lines.push(`  rankdir=${rankdir};`);
+
+  // Subgraph hierarchy (flowchart subgraphs, imported DOT clusters) lives in the Scene as `container`
+  // nodes whose members carry `parent`. Re-emit a container as a `cluster_*` subgraph (so Graphviz —
+  // and our own re-import — box it) with its members nested inside.
+  const childrenOf = new Map<string, SceneNode[]>();
   for (const node of scene.nodes) {
+    if (node.parent === null) continue;
+    const siblings = childrenOf.get(node.parent);
+    if (siblings === undefined) childrenOf.set(node.parent, [node]);
+    else siblings.push(node);
+  }
+  const emitNode = (node: SceneNode, indent: string): void => {
+    if (node.shape === "container") {
+      lines.push(`${indent}subgraph "cluster_${esc(node.id)}" {`);
+      lines.push(`${indent}  label="${esc(node.label)}";`);
+      for (const child of childrenOf.get(node.id) ?? []) emitNode(child, `${indent}  `);
+      lines.push(`${indent}}`);
+      return;
+    }
     const attrs = [`label="${esc(node.label)}"`, `shape=${SHAPE[node.shape]}`];
     if (ROUNDED.has(node.shape)) attrs.push('style="rounded"');
-    lines.push(`  "${esc(node.id)}" [${attrs.join(", ")}];`);
+    lines.push(`${indent}"${esc(node.id)}" [${attrs.join(", ")}];`);
+  };
+  for (const node of scene.nodes) {
+    if (node.parent === null) emitNode(node, "  ");
   }
+
   for (const edge of scene.edges) {
     const attrs: string[] = [];
     if (edge.label !== null) attrs.push(`label="${esc(edge.label)}"`);

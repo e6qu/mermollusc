@@ -98,3 +98,5 @@
   now just the percentage (the name moved to the pie legend). +2 unit tests (legend label + `<circle>`).
 - `toDot(scene, rankdir)` now carries the source diagram's flow direction into the export as
   `rankdir=…` (null for families without one). Closes the DOT-export direction follow-up. +1 test.
+- `toDot` now re-emits a Scene's `container` nodes as `cluster_*` subgraphs (label + nested members),
+  so a flowchart subgraph / imported DOT cluster round-trips back to a DOT cluster. +1 test.

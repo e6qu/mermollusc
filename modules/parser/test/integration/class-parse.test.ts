@@ -70,4 +70,23 @@ describe("parseClass", () => {
   it("fails loudly on a malformed relationship", () => {
     expect(isOk(parseClass("classDiagram\n  A === B\n"))).toBe(false);
   });
+
+  it("renders generics `~T~` as `<T>` in class names and members (id keeps the raw form)", () => {
+    const text = "classDiagram\n  class List~T~ {\n    +add(item T) void\n    -items List~T~\n  }\n";
+    const r = parseClass(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const e = r.value.entities[0];
+    expect(e?.id).toBe("List~T~"); // raw id (so relationships still match)
+    expect(e?.label).toBe("List<T>"); // display
+    expect(e?.members.some((m) => m.text === "items List<T>")).toBe(true);
+  });
+
+  it("matches a relationship endpoint written with generics", () => {
+    const r = parseClass("classDiagram\n  Box~T~ <|-- IntBox\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.relationships[0]?.from).toBe("Box~T~");
+    expect(r.value.entities.find((e) => e.id === "Box~T~")?.label).toBe("Box<T>");
+  });
 });

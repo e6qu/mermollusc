@@ -52,6 +52,10 @@ const visOf = (ch: string): ClassVisibility | null => {
   }
 };
 
+// Mermaid generics: `List~T~` / `Map~K,V~` → `List<T>` / `Map<K,V>` for display (ids keep the raw
+// `~…~` form so relationship endpoints still match).
+const generics = (s: string): string => s.replace(/~([^~]+)~/g, "<$1>");
+
 // One member line. Stereotype lines (`<<interface>>`) and blanks yield null (skipped). A `()` in the
 // text marks a method; the leading visibility glyph, when present, is split off.
 const memberOf = (raw: string): ClassMember | null => {
@@ -59,7 +63,7 @@ const memberOf = (raw: string): ClassMember | null => {
   if (t === "" || t.startsWith("<<")) return null;
   const head = t.slice(0, 1);
   const visibility = visOf(head);
-  const text = (visibility === null ? t : t.slice(1)).trim();
+  const text = generics((visibility === null ? t : t.slice(1)).trim());
   if (text === "") return null;
   return { visibility, text, kind: text.includes("(") ? "method" : "field" };
 };
@@ -105,7 +109,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const relSpans = new Map<ClassRelId, TextSpan>();
 
   const see = (id: string, span: TextSpan): void => {
-    if (!labels.has(id)) labels.set(id, id);
+    if (!labels.has(id)) labels.set(id, generics(id));
     const key = brand<string, "ClassEntityId">(id);
     if (!entitySpans.has(key)) entitySpans.set(key, span);
   };

@@ -8,7 +8,9 @@ import type {
   ErAst,
   FlowchartAst,
   NodeId,
+  NodeShape,
   RequirementAst,
+  StateKind,
   Scene,
   SceneEdge,
   SceneNode,
@@ -189,17 +191,32 @@ export const layout = async (
   }
 };
 
+// A real state is a rounded box; `[*]` start/end pseudo-states are small circles; `<<fork>>`/`<<join>>`
+// are bars (rects) and `<<choice>>` a diamond.
+const stateShape = (kind: StateKind): NodeShape => {
+  switch (kind) {
+    case "state":
+      return "round";
+    case "choice":
+      return "diamond";
+    case "fork":
+    case "join":
+      return "rect";
+    default:
+      return "circle";
+  }
+};
+
 // A state diagram is a directed graph of boxes + labelled edges — structurally a flowchart — so it
-// lays out through the same ELK path. States become round nodes; the `[*]` start/end pseudo-states
-// become small circles; transitions become arrowed edges. Ids are re-branded into the flowchart id
-// space (a shell-boundary operation).
+// lays out through the same ELK path. Transitions become arrowed edges; ids are re-branded into the
+// flowchart id space (a shell-boundary operation).
 const stateToFlow = (ast: StateAst): FlowchartAst => ({
   kind: "flowchart",
   direction: "TB",
   nodes: ast.states.map((s) => ({
     id: brand<string, "NodeId">(s.id),
     label: s.label,
-    shape: s.kind === "state" ? "round" : "circle",
+    shape: stateShape(s.kind),
   })),
   edges: ast.transitions.map((t) => ({
     id: brand<string, "EdgeId">(t.id),

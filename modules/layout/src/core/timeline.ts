@@ -7,16 +7,24 @@ const MIN_COL_W = 92;
 const COL_GAP = 18;
 const PERIOD_H = 36;
 const EVENT_H = 32;
+const LINE_H = 16; // extra height per `<br>` line beyond the first
 const ROW_GAP = 12;
 const SECTION_H = 26;
 const SECTION_GAP = 10;
 const MARGIN = 16;
 
+// `<br>` becomes a newline in labels (the parser already converted it), so a cell's width is the
+// widest line and its height grows per extra line.
+const lineCount = (text: string): number => text.split("\n").length;
+const widestLine = (text: string, measure: MeasureText): number =>
+  Math.max(0, ...text.split("\n").map((l) => measure(l)));
+const boxHeight = (text: string, base: number): number => base + (lineCount(text) - 1) * LINE_H;
+
 const colWidth = (period: TimelinePeriod, measure: MeasureText): number =>
   Math.max(
     MIN_COL_W,
-    measure(period.label) + 2 * PAD,
-    ...period.events.map((e) => measure(e.text) + 2 * PAD),
+    widestLine(period.label, measure) + 2 * PAD,
+    ...period.events.map((e) => widestLine(e.text, measure) + 2 * PAD),
   );
 
 // Deterministic timeline layout — no ELK. Periods sit in a left→right row joined by a horizontal
@@ -49,9 +57,10 @@ export const layoutTimeline = (
     const w = colWidth(period, measure);
     colX.push(cursor);
     colW.push(w);
+    const pH = boxHeight(period.label, PERIOD_H);
     nodes.push({
       id: brand<string, "SceneNodeId">(period.id),
-      bounds: rect(cursor, periodY, w, PERIOD_H),
+      bounds: rect(cursor, periodY, w, pH),
       label: period.label,
       shape: "round",
       parent: null,
@@ -60,12 +69,15 @@ export const layoutTimeline = (
       rowDivider: null,
       subtitle: null,
     });
+    // Spine passes through the period row at a fixed height, so multi-line periods grow downward
+    // without tilting the axis.
     centers.push({ x: cursor + w / 2, y: periodY + PERIOD_H / 2 });
-    for (const [j, event] of period.events.entries()) {
-      const y = eventsY0 + j * (EVENT_H + ROW_GAP);
+    let ey = Math.max(eventsY0, periodY + pH + ROW_GAP);
+    for (const event of period.events) {
+      const eH = boxHeight(event.text, EVENT_H);
       nodes.push({
         id: brand<string, "SceneNodeId">(event.id),
-        bounds: rect(cursor, y, w, EVENT_H),
+        bounds: rect(cursor, ey, w, eH),
         label: event.text,
         shape: "rect",
         parent: null,
@@ -74,9 +86,10 @@ export const layoutTimeline = (
         rowDivider: null,
         subtitle: null,
       });
-      grow(cursor + w, y + EVENT_H);
+      grow(cursor + w, ey + eH);
+      ey += eH + ROW_GAP;
     }
-    grow(cursor + w, periodY + PERIOD_H);
+    grow(cursor + w, periodY + pH);
     cursor += w + COL_GAP;
   }
 

@@ -45,7 +45,8 @@ class StateParser extends CstParser {
       },
       { ALT: () => this.CONSUME2(StateTok.Identifier) },
     ]);
-    this.OPTION(() => this.SUBRULE(this.block));
+    this.OPTION(() => this.CONSUME(StateTok.Annotation));
+    this.OPTION2(() => this.SUBRULE(this.block));
   });
 
   private readonly block = this.RULE("stateBlock", () => {

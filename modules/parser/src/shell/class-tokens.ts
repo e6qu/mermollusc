@@ -1,10 +1,14 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
 
-// Class names are plain identifiers. Members inside a `{ … }` body are captured as whole lines in a
-// dedicated mode (like the sequence/ER label modes), so member text — visibility marks, types, `()`,
-// even `:` return types — never has to be tokenised piecewise. The `:` shorthand and relationship
-// labels capture to end-of-line in the same way.
-const Identifier = createToken({ name: "ClassIdentifier", pattern: /[A-Za-z_]\w*/ });
+// Class names are identifiers with an optional generic suffix (`List~T~`, `Map~K,V~`) — Mermaid's
+// `~…~` generics. Members inside a `{ … }` body are captured as whole lines in a dedicated mode (like
+// the sequence/ER label modes), so member text — visibility marks, types, `()`, generics, even `:`
+// return types — never has to be tokenised piecewise. The `:` shorthand and relationship labels
+// capture to end-of-line in the same way.
+const Identifier = createToken({
+  name: "ClassIdentifier",
+  pattern: /[A-Za-z_]\w*(?:~[^~\n]+~)?/,
+});
 const ClassDiagram = createToken({
   name: "ClassDiagram",
   pattern: /classDiagram(?:-v2)?/,

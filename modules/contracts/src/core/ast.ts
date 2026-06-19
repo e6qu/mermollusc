@@ -184,9 +184,9 @@ export interface CloudAst {
 
 export type StateId = Brand<string, "StateId">;
 export type StateTransitionId = Brand<string, "StateTransitionId">;
-// A real state, or one of the `[*]` pseudo-states (initial when a transition's source, final when
-// its target). Pseudo-states render as small circles and carry no label.
-export type StateKind = "state" | "start" | "end";
+// A real state, one of the `[*]` pseudo-states (initial when a transition's source, final when its
+// target — small circles, no label), or a `<<fork>>`/`<<join>>` bar or `<<choice>>` diamond.
+export type StateKind = "state" | "start" | "end" | "fork" | "join" | "choice";
 
 export interface StateNode {
   readonly id: StateId;

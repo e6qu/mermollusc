@@ -11,25 +11,28 @@
 - *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
   now parses into `C4Element.description` (null when omitted); the layout renders it as a second
   label line. Boundaries stay 2-arg.
-- State: *(done — composite / nested `state X { … }` with scoped `[*]`)*. Still: fork/join, choice,
-  and notes; distinct final states rather than one merged `[*]` end per scope.
+- State: *(done — composite / nested `state X { … }` with scoped `[*]`; `<<fork>>`/`<<join>>`/
+  `<<choice>>` annotations → fork/join bars + choice diamond)*. Still: notes (`note right of X: …`);
+  distinct final states rather than one merged `[*]` end per scope.
 - ER: *(done)* entity attribute blocks (`ENTITY { type name PK,FK "comment" }`) parse into
   `ErEntity.attributes` (type, name, keys, comment); keys lex as identifiers and are classified in the
   CST→AST step, commas between keys are skipped. Relationships + bare entities already parsed.
 - Class: *(done)* `classDiagram` — member bodies + the `Foo : member` shorthand + the UML relationship
   operators (inheritance/realization/composition/aggregation/association/dependency) + *(done)*
   stereotypes (`<<interface>>`/`<<abstract>>` → `ClassEntity.stereotype`, rendered as a `«…»`
-  subtitle). Still: per-end multiplicity labels (`"1" --> "*"`), generics (`List~T~`), namespaces.
+  subtitle) + *(done)* generics (`List~T~` → `List<T>` for display, raw id preserved). Still: per-end
+  multiplicity labels (`"1" --> "*"`), namespaces.
 - Requirement: *(done)* `requirementDiagram` — requirement/element bodies (`key: value`) + the seven
   relationship verbs (both arrow directions). Still: requirement `id`/`risk`/`verifymethod` enum
   validation (currently free text), and the `style`/`class` styling directives.
 - gitGraph: *(done — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and
   `LR`/`TB`/`BT` directions)*. Still: `cherry-pick`, commit `type: REVERSE`/`HIGHLIGHT` distinct glyphs
   (parsed; only HIGHLIGHT→rect is rendered today), and explicit `gitGraph` config (e.g. `mainBranchName`).
-- timeline: *(done — `title`/`section`/`period : event` with `:`-continuation lines, two-mode lexer)*.
-  Still: `<br>` soft line breaks inside event text; explicit per-section ordering.
-- mindmap: *(done — indentation hierarchy, shapes, icon/class stripped)*. Still: real `::icon()`
-  rendering once an icon pack is wired; a radial layout option (currently a layered LR tree via ELK).
+- timeline: *(done — `title`/`section`/`period : event` with `:`-continuation lines, two-mode lexer;
+  `<br>` soft line breaks → multi-line cells)*. Still: explicit per-section ordering.
+- mindmap: *(done — indentation hierarchy, shapes, icon/class stripped; radial layout engine)*. Still:
+  real `::icon()` rendering once an icon pack is wired; curved (bezier) spokes (needs a renderer curve
+  primitive — deferred).
 - pie: *(done — `pie [showData]`, optional title, `"label" : value` rows, non-positive fails loudly;
   `showData` now renders the raw value in the legend)*.
 - DOT (Graphviz): *(done — import of a `graph`/`digraph` subset → flowchart, incl. `cluster*` subgraphs

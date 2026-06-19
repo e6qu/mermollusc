@@ -168,3 +168,9 @@
   via `parent`); a non-`cluster` subgraph is transparent (its nodes/edges import, no box), matching
   Graphviz. Node membership is fixed at first sighting (DOT scoping). +2 tests; real clustered DOT now
   imports and renders through the flowchart ELK container path.
+- Deferred-backlog batch: **timeline `<br>`** soft line breaks (period/event text → newlines; the
+  layout grows the cell per line); **class generics** `~T~` → `<T>` for display (ids keep the raw form
+  so relationship endpoints still match — the class-name token gained an optional `~…~` suffix);
+  **state `<<fork>>`/`<<join>>`/`<<choice>>`** annotations (a new `StateAnnotation` token + an optional
+  slot in `stateDecl`) set the state's kind; **DOT cluster import** already shipped, now complemented by
+  export. +tests across timeline/class/state/dot.

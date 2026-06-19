@@ -16,6 +16,12 @@ import type { ParseError } from "./parse-error.js";
 import { stateParser } from "./state-grammar.js";
 import { stateLexer } from "./state-tokens.js";
 
+const ANNOTATION_KIND: Record<string, StateKind> = {
+  fork: "fork",
+  join: "join",
+  choice: "choice",
+};
+
 export interface ParsedState {
   readonly ast: StateAst;
   readonly source: StateSource;
@@ -139,6 +145,14 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
           walk(childNodes(block.children, "stateStatement"), id);
         } else {
           seeReal(id, label, scope);
+          // A `<<fork>>`/`<<join>>`/`<<choice>>` annotation overrides the kind (and so the rendered
+          // shape); these carry no label.
+          const ann = childTokens(decl.children, "StateAnnotation")[0];
+          if (ann !== undefined) {
+            const inner = ann.image.replace(/[<>\s]/g, "");
+            const k = ANNOTATION_KIND[inner];
+            if (k !== undefined) kinds.set(id, k);
+          }
           if (quoted !== undefined) stateSpans.set(brand<string, "StateId">(id), innerSpan(quoted));
         }
         continue;
