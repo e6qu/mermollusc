@@ -1,5 +1,17 @@
 # @m/parser — bugs
 
+Resolved (internal audit sweep, 2026-06-20):
+
+- ~~**Requirement: unknown verb silently dropped.**~~ Fixed — `req-parse` now returns a located `err`
+  for an unrecognised relationship verb (was a silent `continue`, contradicting its own comment).
+- ~~**ER: duplicate attribute block overwrote the first.**~~ Fixed — multiple `ENTITY { … }` blocks for
+  one entity now merge (append), like Mermaid.
+- ~~**Block: quoted pipe edge label kept its quotes.**~~ Fixed — uses `cleanLabel`, matching node labels
+  and the recorded span.
+- ~~**DOT: `style` value compared case-sensitively.**~~ Fixed — lowercased before matching.
+- ~~**Mindmap: relabel span found the wrong occurrence**~~ when an id repeated the label text — the
+  search now starts at the shape delimiter.
+
 Open (external review, codex `gpt-5.5`, 2026-06-19):
 
 - ~~**Cloud group id collision.**~~ Fixed — synthetic cloud group ids are now `group:N`; the `:` is

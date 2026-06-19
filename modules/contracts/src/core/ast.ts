@@ -441,8 +441,8 @@ export type PieSliceId = Brand<string, "PieSliceId">;
 export interface PieSlice {
   readonly id: PieSliceId;
   readonly label: string;
-  // A positive number (the smart constructor / parser rejects zero and negatives). Slices are shares
-  // of the total, not percentages — the renderer derives the percentage.
+  // A positive number (the parser rejects zero and negatives). Slices are shares of the total, not
+  // percentages — the renderer derives the percentage.
   readonly value: number;
 }
 

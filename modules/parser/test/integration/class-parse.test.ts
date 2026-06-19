@@ -64,6 +64,7 @@ describe("parseClass", () => {
     ]);
     expect(r.value.source.entities.get(eid("Animal"))).toBeDefined();
     const span = r.value.source.relationships.get(rid("r0"));
+    expect(span).toBeDefined();
     if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("eats");
   });
 

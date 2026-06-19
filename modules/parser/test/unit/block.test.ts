@@ -91,4 +91,16 @@ describe("parseBlockWithSource", () => {
     if (!isOk(r)) return;
     expect(r.value.source.blocks.get(nid("a"))).toBeUndefined();
   });
+
+  it("strips quotes from a quoted pipe edge label (matching node labels + the edge span)", () => {
+    const text = 'block-beta\n  a -->|"go"| b\n';
+    const r = parseBlockWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.edges[0]?.label).toBe("go");
+    const span = r.value.source.edges.get(eid("e0"));
+    expect(span).toBeDefined();
+    // the span covers the inner text (no quotes), consistent with the stored label
+    if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("go");
+  });
 });

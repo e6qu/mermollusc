@@ -335,3 +335,10 @@
   `rankdir`. The round-trip integration test threads direction through too.
 - The DOT example now includes a `subgraph cluster_core { … }` so the imported cluster shows as a
   labelled container box (DOT clusters → `FlowSubgraph` → ELK container). Verified by screenshot.
+- Audit-sweep fixes: Delete/Backspace no longer hijacks a focused text field (icon-filter / inline
+  rename) to delete canvas nodes; a **missing icon** keeps the `ok` status + counts (warning appended)
+  instead of an `error` that greyed out the correctly-rendered canvas; the **inline rename overlay**
+  repositions on stage scroll/resize (was pinned to one-time viewport coords) and stops Enter/Escape
+  from also clearing the selection; **PNG/PDF export** re-paints at a fixed device scale (zoom-
+  independent, crisp, chrome-free) instead of copying the zoomed live canvas. +2 e2e; +6 "renders X"
+  e2e hardened (assert `#kind` + no parse-error, not just a non-zero canvas).

@@ -4,6 +4,9 @@ _None known._
 
 ## Resolved
 
+- ~~**ELK edge route truncated to `sections[0]`.**~~ Fixed (audit sweep, 2026-06-20) — the adapter now
+  concatenates all of an edge's `sections`, so a container-crossing edge keeps its full route.
+
 - ~~**gitGraph commit labels overflow the commit dot.**~~ Fixed — a commit is now a rounded **pill
   sized to its id+tag** (not a fixed ~26px dot), so the label always sits inside, and the per-axis
   pitch is sized to fit the pills so neighbours never collide in any orientation. No renderer change

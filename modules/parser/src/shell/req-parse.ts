@@ -12,7 +12,7 @@ import type {
   ReqSource,
   TextSpan,
 } from "@m/contracts";
-import { lexingError, recognitionError } from "./parse-error.js";
+import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { reqParser } from "./req-grammar.js";
 import { reqLexer } from "./req-tokens.js";
@@ -102,7 +102,15 @@ const buildResult = (cst: CstNode): Result<ParsedRequirement, ParseError> => {
     const b = ids[2];
     if (a === undefined || verb === undefined || b === undefined) continue;
     const verbKind = relKindOf(verb.image);
-    if (verbKind === null) continue;
+    if (verbKind === null) {
+      return err(
+        parseErrorAt(
+          `requirement: unknown relationship verb "${verb.image}" (expected one of contains/copies/derives/satisfies/verifies/refines/traces)`,
+          verb.startOffset,
+          verb.image.length,
+        ),
+      );
+    }
     // `a - verb -> b` is a→b; the reversed `a <- verb - b` is b→a (arrow points back at a).
     const reversed = childTokens(rel.children, "ReqRevArrow").length > 0;
     const fromTok = reversed ? b : a;

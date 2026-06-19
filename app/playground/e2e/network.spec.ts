@@ -7,6 +7,10 @@ const canvasWidth = (page: Page) =>
 test("renders a network diagram (kinds + undirected links) from the textarea", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -16,5 +20,7 @@ test("renders a network diagram (kinds + undirected links) from the textarea", a
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#kind")).toHaveText("network");
+  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

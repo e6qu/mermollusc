@@ -1,5 +1,17 @@
 # @m/app (playground) — bugs
 
+Resolved (internal audit sweep, 2026-06-20):
+
+- ~~**Delete/Backspace hijacked focused text fields.**~~ Fixed — the global delete handler now also
+  bails when an `<input>`/`<textarea>` (icon-filter, inline rename) has focus, so editing text there no
+  longer silently deletes selected canvas nodes.
+- ~~**A missing icon greyed out the whole (correct) canvas.**~~ Fixed — a failed glyph keeps the `ok`
+  status + node/edge counts with an appended warning, instead of an `error` that set `data-stale`.
+- ~~**Inline rename overlay drifted on scroll/resize.**~~ Fixed — it repositions on stage scroll +
+  window resize while open, and stops Enter/Escape from also clearing the canvas selection.
+- ~~**PNG/PDF export resolution tracked the on-screen zoom.**~~ Fixed — export re-paints at a fixed
+  device scale (chrome-free), independent of zoom, matching the SVG export.
+
 Open (external review, codex `gpt-5.5`, 2026-06-19):
 
 - ~~**Unhandled icon-decode rejection.**~~ Fixed — `ensureIcons` now catches `img.decode()` failures

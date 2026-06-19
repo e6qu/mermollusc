@@ -213,7 +213,7 @@ describe("toSvg", () => {
       icons: new Map([["p/n", "data:image/svg+xml,<svg/>"]]),
     });
     expect(withIcon).toContain("<image");
-    expect(withIcon).toContain("p/n".length > 0 ? "href=" : "");
+    expect(withIcon).toContain('href="data:image/svg+xml,');
   });
 
   it("renders a pie wedge as a filled <path> sector", () => {

@@ -167,7 +167,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
         from: brand<string, "NodeId">(from.id),
         to: brand<string, "NodeId">(to.id),
         kind: linkKind(link.children),
-        label: pipe === undefined ? null : pipe.image.trim(),
+        label: pipe === undefined ? null : cleanLabel(pipe.image),
       });
       if (pipe !== undefined) edgeSpans.set(edgeId, labelSpan(pipe));
     }

@@ -7,6 +7,10 @@ const canvasWidth = (page: Page) =>
 test("renders a flowchart with stadium and circle shapes end to end", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -14,5 +18,7 @@ test("renders a flowchart with stadium and circle shapes end to end", async ({ p
   await setSource(page, "flowchart TD\n  A([Begin]) --> B((Hub))\n  B --> C[Done]\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#kind")).toHaveText("flowchart");
+  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

@@ -1,6 +1,6 @@
 // Sanctioned boundary: untyped external icon-pack data (a parsed JSON file or HTTP body) enters
 // only through `decode()` and leaves as a branded `IconPack` or a loud error. Vendor cloud packs
-// (AWS/Azure/GCP) are loaded this way at runtime — never bundled/redistributed (AGENTS §5).
+// (AWS/Azure/GCP) are loaded this way at runtime — never bundled/redistributed.
 
 import { decode, type DecodeError, map, type Result } from "@m/std";
 import { z } from "zod";
