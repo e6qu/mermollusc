@@ -33,6 +33,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "class",
     text: "classDiagram\n  class Animal {\n    +int age\n    +move() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
   },
+  {
+    name: "requirement",
+    text: "requirementDiagram\n  requirement req {\n    id: 1\n    risk: high\n  }\n  element ent {\n    type: simulation\n  }\n  ent - satisfies -> req\n",
+  },
 ];
 
 const r = (n: number): number => Math.round(n);

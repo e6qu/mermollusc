@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class** (ER with crow's-foot cardinality + attribute compartments; class with UML heads + field/method compartments); `make check` + Playwright (84 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows); `make check` + Playwright (86 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -17,7 +17,7 @@
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
   out of the app and the surface stays swappable.
-- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the nine
+- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the ten
   families; the kind badge shows the active family; Connect/Delete dispatch per family, Add/Relax
   disable off-flowchart, and Regenerate stays live for all.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
@@ -28,7 +28,7 @@
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
 - `main.ts`: source editor (CodeMirror) ↔ canvas.
-  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all nine families);
+  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all ten families);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
   - double-click rename → an **inline editor overlay** (positioned over the element; Enter/blur
@@ -37,7 +37,7 @@
     cloud group/leaf/link labels) — **canvas → text two-way for all families (incl. state)**;
   - structural edits: **Connect** (two selected nodes → family-specific edge/relation/message) and
     **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
-    all nine families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
+    all ten families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
   - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors
     open at the visible label location.
   - group outlines are selectable: clicking an outline selects all leaf nodes in that group, enabling
@@ -92,7 +92,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 84 flows — adds class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 86 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

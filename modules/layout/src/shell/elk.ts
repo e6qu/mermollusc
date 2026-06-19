@@ -6,6 +6,7 @@ import type {
   ErAst,
   FlowchartAst,
   NodeId,
+  RequirementAst,
   Scene,
   SceneEdge,
   SceneNode,
@@ -407,6 +408,92 @@ const layoutClass = async (
   }
 };
 
+// A requirement/element node's rows: a `«kind»` tag, then one `key: value` row per body field. The
+// tag sits in its own compartment (an inner divider before the fields) when there are any.
+const reqRows = (e: RequirementAst["entities"][number]): readonly string[] => [
+  `«${e.kind}»`,
+  ...e.fields.map((f) => `${f.key}: ${f.value}`),
+];
+
+// Requirement diagram: compartment boxes (like ER/class) for requirements + elements, joined by the
+// seven SysML verbs. Each relationship renders as an open arrow labelled with its verb — solid for
+// `contains`, dashed for the rest (derive/satisfy/verify/refine/trace/copy).
+const layoutRequirement = async (
+  ast: RequirementAst,
+  measure: MeasureText,
+): Promise<Result<Scene, LayoutError>> => {
+  const rowsById = new Map(ast.entities.map((e) => [e.id as string, reqRows(e)]));
+  const graph: LayoutGraph = {
+    id: "root",
+    config: { direction: "DOWN", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
+    children: ast.entities.map((e) => {
+      const rows = rowsById.get(e.id) ?? [];
+      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), measure(e.name));
+      return {
+        kind: "leaf",
+        id: brand<string, "NodeId">(e.id),
+        width: Math.max(CLASS_MIN_W, widest + CLASS_PAD),
+        height: CLASS_TITLE_H + rows.length * CLASS_ROW_H,
+        position: null,
+      };
+    }),
+    edges: ast.relationships.map((r) => ({
+      id: brand<string, "EdgeId">(r.id),
+      sources: [brand<string, "NodeId">(r.from)],
+      targets: [brand<string, "NodeId">(r.to)],
+    })),
+  };
+  try {
+    const raw = await elk.layout(toElkInput(graph));
+    const decoded = decode(ResultZ, raw);
+    if (!decoded.ok) {
+      return err({
+        kind: "layout",
+        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
+      });
+    }
+    const positioned = toPositioned(decoded.value);
+    const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
+    const relById = new Map(ast.relationships.map((r) => [r.id as string, r]));
+    const nodes: SceneNode[] = [];
+    for (const e of ast.entities) {
+      const p = posById.get(e.id);
+      if (p === undefined) {
+        return err({ kind: "layout", message: `requirement: entity ${e.id} was not positioned` });
+      }
+      const rows = rowsById.get(e.id) ?? [];
+      nodes.push({
+        id: brand<string, "SceneNodeId">(e.id),
+        bounds: rect(p.x, p.y, p.width, p.height),
+        label: e.name,
+        shape: "rect",
+        parent: null,
+        icon: null,
+        rows,
+        rowDivider: rows.length > 1 ? 1 : null,
+      });
+    }
+    const edges: SceneEdge[] = [];
+    for (const pe of positioned.edges) {
+      const rel = relById.get(pe.id);
+      if (rel === undefined) continue;
+      edges.push({
+        id: brand<string, "SceneEdgeId">(pe.id),
+        from: brand<string, "SceneNodeId">(rel.from),
+        to: brand<string, "SceneNodeId">(rel.to),
+        waypoints: pe.points.map((q) => point(q.x, q.y)),
+        label: rel.kind,
+        stroke: rel.kind === "contains" ? "solid" : "dashed",
+        fromEnd: "none",
+        toEnd: "arrowOpen",
+      });
+    }
+    return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
+  } catch (e) {
+    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
+  }
+};
+
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
 export const layoutDiagram = async (
@@ -432,5 +519,7 @@ export const layoutDiagram = async (
       return layoutEr(ast, measure);
     case "class":
       return layoutClass(ast, measure);
+    case "requirement":
+      return layoutRequirement(ast, measure);
   }
 };

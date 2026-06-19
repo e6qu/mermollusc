@@ -56,6 +56,14 @@ export type {
   ClassArrow,
   ClassRel,
   ClassAst,
+  ReqEntityId,
+  ReqRelId,
+  ReqKind,
+  ReqRelKind,
+  ReqField,
+  ReqEntity,
+  ReqRel,
+  RequirementAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -82,4 +90,5 @@ export type {
   StateSource,
   ErSource,
   ClassSource,
+  ReqSource,
 } from "./source.js";

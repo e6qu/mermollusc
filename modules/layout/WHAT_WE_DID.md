@@ -93,3 +93,7 @@
 - Robustness pass: added `robust.test.ts` — `layoutDiagram` returns `ok` (never throws/rejects) for
   empty graphs (class/ER with no entities → empty ELK input) and self-loop edges (class/flowchart),
   the cases most likely to trip ELK. No bug surfaced.
+- Added `layoutRequirement` (mirrors `layoutClass`): requirement/element compartment boxes sized to
+  their `«kind»` tag + `key: value` field rows (the tag sits in its own compartment via `rowDivider`),
+  joined by verb-labelled edges — an open arrow (`arrowOpen`), solid for `contains` and dashed for the
+  other six verbs.

@@ -6,6 +6,7 @@ import {
   connectClass,
   connectEr,
   connectMessage,
+  connectRequirement,
   connectUndirected,
   decodeOverlay,
   deleteActor,
@@ -16,6 +17,7 @@ import {
   deleteErRel,
   deleteMessage,
   deleteNode,
+  deleteRequirementRel,
   emptySelection,
   group,
   hitTest,
@@ -41,6 +43,7 @@ import type {
   ClassSource,
   CloudSource,
   ErSource,
+  ReqSource,
   DiagramAst,
   GroupId,
   GroupMember,
@@ -63,6 +66,7 @@ import {
   parseClassWithSource,
   parseCloudWithSource,
   parseErWithSource,
+  parseRequirementWithSource,
   parseDiagram,
   parseNetworkWithSource,
   parseSequenceWithSource,
@@ -178,6 +182,7 @@ let cloudSource: CloudSource | null = null;
 let stateSource: StateSource | null = null;
 let erSource: ErSource | null = null;
 let classSource: ClassSource | null = null;
+let reqSource: ReqSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1139,6 +1144,10 @@ const EXAMPLES = new Map<string, string>([
     "class",
     "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n    +move() void\n  }\n  class Duck {\n    +String beak\n    +swim() void\n  }\n  class Fish {\n    -int depth\n    +swim() void\n  }\n  Animal <|-- Duck\n  Animal <|-- Fish\n  Animal *-- Habitat\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
   ],
+  [
+    "requirement",
+    "requirementDiagram\n  requirement user_req {\n    id: 1\n    text: the user shall log in.\n    risk: high\n    verifymethod: test\n  }\n  functionalRequirement login_req {\n    id: 1.1\n    text: validate credentials.\n    risk: medium\n    verifymethod: test\n  }\n  element login_form {\n    type: simulation\n  }\n  user_req - contains -> login_req\n  login_form - satisfies -> login_req\n  login_form - verifies -> user_req\n",
+  ],
 ]);
 
 const renderFromText = async (text: string): Promise<void> => {
@@ -1202,6 +1211,7 @@ const renderFromText = async (text: string): Promise<void> => {
   stateSource = null;
   erSource = null;
   classSource = null;
+  reqSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1246,6 +1256,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "class": {
       const withSource = parseClassWithSource(text);
       classSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "requirement": {
+      const withSource = parseRequirementWithSource(text);
+      reqSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1630,6 +1645,13 @@ canvas.addEventListener("dblclick", (ev) => {
         ? classSource.entities.get(brand<string, "ClassEntityId">(hit.id))
         : classSource.relationships.get(brand<string, "ClassRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "requirement" && reqSource !== null) {
+    // Only entity names are editable (relationship verbs are closed keywords, not free text).
+    const span =
+      hit.kind === "node"
+        ? reqSource.entities.get(brand<string, "ReqEntityId">(hit.id))
+        : undefined;
+    if (span !== undefined) pending = patchAt(span);
   }
 
   if (pending === null) return;
@@ -1697,6 +1719,12 @@ const appendEdge = (
         brand<string, "ClassEntityId">(first),
         brand<string, "ClassEntityId">(second),
       );
+    case "requirement":
+      return connectRequirement(
+        text,
+        brand<string, "ReqEntityId">(first),
+        brand<string, "ReqEntityId">(second),
+      );
     default:
       return connect(
         text,
@@ -1737,6 +1765,12 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
         text,
         brand<string, "ClassEntityId">(from),
         brand<string, "ClassEntityId">(to),
+      );
+    case "requirement":
+      return deleteRequirementRel(
+        text,
+        brand<string, "ReqEntityId">(from),
+        brand<string, "ReqEntityId">(to),
       );
     default:
       return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));

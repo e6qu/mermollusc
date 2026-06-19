@@ -109,6 +109,26 @@ exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out requirement to a stable display list 1`] = `
+[
+  "polyline 88,82 88,142 dashed=true from=l0p0c0 to=l2p0c0",
+  "box 24,142 128x90 r0",
+  "label "req" 88,157 center",
+  "polyline 24,172 152,172 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "«requirement»" 32,182 left",
+  "label "id: 1" 32,202 left",
+  "label "risk: high" 32,222 left",
+  "polyline 24,192 152,192 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 12,12 152x70 r0",
+  "label "ent" 88,27 center",
+  "polyline 12,42 164,42 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "«element»" 20,52 left",
+  "label "type: simulation" 20,72 left",
+  "polyline 12,62 164,62 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "satisfies" 77,112 center",
+]
+`;
+
 exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
 [
   "polyline 32,40 32,190 dashed=true from=l0p0c0 to=l0p0c0",

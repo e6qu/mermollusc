@@ -68,3 +68,6 @@
   inheritance/composition/etc.) and `deleteClassRel` (removes the first class relationship line
   between two classes, keyed on the UML operator) so class diagrams get canvas Connect/Delete. Also
   re-added `rowDivider: null` to the migrated fixtures. +1 integration case.
+- Added `connectRequirement` (appends `from - satisfies -> to`, a default verb the user re-types) and
+  `deleteRequirementRel` (removes the first `a - verb -> b` line between two entities) so requirement
+  diagrams get canvas Connect/Delete. +1 integration case.

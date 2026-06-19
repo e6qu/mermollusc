@@ -100,3 +100,9 @@
   asserts `parseDiagram` **never throws** (always returns a `Result`) and parses every family's
   empty-body header — locking in the fail-loudly contract for header-only, truncated relationships,
   unclosed `{` blocks, self-references, 5k-char tokens, and unicode/emoji labels. No bug surfaced.
+- Added a **requirement diagram** parser (`requirementDiagram`): entity declarations
+  `requirement foo { key: value … }` / `element bar { … }` (body `key: value` lines captured whole in
+  a body mode, split on the first `:`), and relationship lines `a - verb -> b` (or reversed
+  `a <- verb - b`) where the verb is classified to one of the seven `ReqRelKind`s and the arrow
+  direction sets from/to. The kind keyword is one `ReqKindKw` token (longest-alternative-first regex).
+  +4 integration tests.
