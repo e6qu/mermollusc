@@ -18,3 +18,6 @@
 - *(done)* The ER/class/requirement compartment layouts share one `layoutCompartments` engine
   (`CompartmentBox`/`CompartmentEdge` specs + per-family metrics) instead of three copies of the ELK
   boilerplate. A future compartment family is now a small AST→spec mapper.
+- gitGraph: *(done — deterministic lane layout, LR/TB/BT)*. Follow-up: offset commit labels beside the
+  dot (a renderer-level change) so they don't overflow the small circle; orthogonal/curved branch+merge
+  connectors instead of straight diagonals.

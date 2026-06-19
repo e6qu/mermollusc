@@ -9,6 +9,7 @@ export { parseState, parseStateWithSource } from "./shell/index.js";
 export { parseEr, parseErWithSource } from "./shell/index.js";
 export { parseClass, parseClassWithSource } from "./shell/index.js";
 export { parseRequirement, parseRequirementWithSource } from "./shell/index.js";
+export { parseGitGraph, parseGitGraphWithSource } from "./shell/index.js";
 export { parseDiagram } from "./shell/index.js";
 export type {
   ParseError,
@@ -23,4 +24,5 @@ export type {
   ParsedEr,
   ParsedClass,
   ParsedRequirement,
+  ParsedGitGraph,
 } from "./shell/index.js";

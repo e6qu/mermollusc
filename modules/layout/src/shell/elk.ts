@@ -20,6 +20,7 @@ import {
   layoutBlock,
   layoutC4,
   layoutCloud,
+  layoutGitGraph,
   layoutNetwork,
   layoutSequence,
   toElkGraph,
@@ -472,5 +473,7 @@ export const layoutDiagram = async (
       return layoutClass(ast, measure);
     case "requirement":
       return layoutRequirement(ast, measure);
+    case "gitGraph":
+      return layoutGitGraph(ast, measure);
   }
 };

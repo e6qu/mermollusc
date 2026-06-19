@@ -64,6 +64,13 @@ export type {
   ReqEntity,
   ReqRel,
   RequirementAst,
+  GitCommitId,
+  GitBranchName,
+  GitDirection,
+  GitCommitType,
+  GitCommit,
+  GitBranch,
+  GitGraphAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -91,4 +98,5 @@ export type {
   ErSource,
   ClassSource,
   ReqSource,
+  GitGraphSource,
 } from "./source.js";

@@ -109,3 +109,10 @@
   Node), so `elk.layout` is genuinely off the main thread — the heavy graph computation never blocks
   rendering/interaction. (Noted not to wrap it in a second Worker: nesting the inlined worker breaks
   under bundlers.)
+- Added `layoutGitGraph` (`core/gitgraph.ts`): a deterministic git-graph engine (no ELK), wired into
+  `layoutDiagram`'s `gitGraph` case. Commits march along the main axis in creation order; each branch
+  owns a cross-axis lane (`main` = lane 0). `LR` (Mermaid default) runs commits left→right with lanes
+  stacked top→bottom; `TB`/`BT` swap the axes (BT also flips the commit axis so history grows upward).
+  Commits are circle nodes (`HIGHLIGHT` → rect), branch names round head nodes; one edge per parent so
+  branch points fan out and merges fan back in. Fails loudly on a commit referencing an undeclared
+  branch. +6 unit tests.

@@ -5,6 +5,7 @@ import { parseC4 } from "./c4-parse.js";
 import { parseClass } from "./class-parse.js";
 import { parseCloud } from "./cloud-parse.js";
 import { parseEr } from "./er-parse.js";
+import { parseGitGraph } from "./git-parse.js";
 import { parseNetwork } from "./net-parse.js";
 import { parse } from "./parse.js";
 import { parseRequirement } from "./req-parse.js";
@@ -28,5 +29,6 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   if (header.startsWith("block")) return parseBlock(text);
   if (header.startsWith("network")) return parseNetwork(text);
   if (header.startsWith("cloud")) return parseCloud(text);
+  if (header.startsWith("gitGraph")) return parseGitGraph(text);
   return parse(text);
 };
