@@ -30,18 +30,19 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 [
-  "polyline 62,82 62,142 dashed=false from=l0p1c0 to=l0p0c0",
-  "polyline 102,82 102,92 212,92 212,142 dashed=false from=l0p1c0 to=l0p0c0",
-  "box 22,12 120x70 r0",
-  "label "Animal" 82,27 center",
-  "polyline 22,42 142,42 dashed=false from=l0p0c0 to=l0p0c0",
-  "label "+int age" 30,52 left",
-  "label "+move() void" 30,72 left",
-  "polyline 22,62 142,62 dashed=false from=l0p0c0 to=l0p0c0",
-  "box 12,142 100x30 r0",
-  "label "Duck" 62,157 center",
-  "box 162,142 100x30 r0",
-  "label "Leg" 212,157 center",
+  "polyline 62,98 62,158 dashed=false from=l0p1c0 to=l0p0c0",
+  "polyline 102,98 102,108 212,108 212,158 dashed=false from=l0p1c0 to=l0p0c0",
+  "box 22,12 120x86 r0",
+  "label "«abstract»" 82,22 center",
+  "label "Animal" 82,43 center",
+  "polyline 22,58 142,58 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "+int age" 30,68 left",
+  "label "+move() void" 30,88 left",
+  "polyline 22,78 142,78 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 12,158 100x30 r0",
+  "label "Duck" 62,173 center",
+  "box 162,158 100x30 r0",
+  "label "Leg" 212,173 center",
 ]
 `;
 

@@ -17,9 +17,9 @@
   `ErEntity.attributes` (type, name, keys, comment); keys lex as identifiers and are classified in the
   CST→AST step, commas between keys are skipped. Relationships + bare entities already parsed.
 - Class: *(done)* `classDiagram` — member bodies + the `Foo : member` shorthand + the UML relationship
-  operators (inheritance/realization/composition/aggregation/association/dependency). Still: class
-  stereotypes (`<<interface>>`, currently skipped), per-end multiplicity labels (`"1" --> "*"`),
-  generics (`List~T~`), and namespaces.
+  operators (inheritance/realization/composition/aggregation/association/dependency) + *(done)*
+  stereotypes (`<<interface>>`/`<<abstract>>` → `ClassEntity.stereotype`, rendered as a `«…»`
+  subtitle). Still: per-end multiplicity labels (`"1" --> "*"`), generics (`List~T~`), namespaces.
 - Requirement: *(done)* `requirementDiagram` — requirement/element bodies (`key: value`) + the seven
   relationship verbs (both arrow directions). Still: requirement `id`/`risk`/`verifymethod` enum
   validation (currently free text), and the `style`/`class` styling directives.

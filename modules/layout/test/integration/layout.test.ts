@@ -203,12 +203,13 @@ describe("layout", () => {
         {
           id: cid("Animal"),
           label: "Animal",
+          stereotype: "abstract",
           members: [
             { visibility: "public", text: "int age", kind: "field" },
             { visibility: "private", text: "name() String", kind: "method" },
           ],
         },
-        { id: cid("Duck"), label: "Duck", members: [] },
+        { id: cid("Duck"), label: "Duck", stereotype: null, members: [] },
       ],
       relationships: [
         {
@@ -230,6 +231,9 @@ describe("layout", () => {
     expect(animal?.rows).toEqual(["+int age", "-name() String"]);
     expect(animal?.rowDivider).toBe(1);
     expect(laid.value.nodes.find((n) => n.id === "Duck")?.rows).toBeNull();
+    // The stereotype becomes a guillemet subtitle; a plain class has none.
+    expect(animal?.subtitle).toBe("«abstract»");
+    expect(laid.value.nodes.find((n) => n.id === "Duck")?.subtitle).toBeNull();
     // The hollow inheritance triangle sits at the base class (the `from` end).
     expect(laid.value.edges[0]?.fromEnd).toBe("triangle");
     expect(laid.value.edges[0]?.label).toBe("extends");

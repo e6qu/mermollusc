@@ -56,6 +56,7 @@ export const layoutSequence = (
       icon: null,
       rows: null,
       rowDivider: null,
+      subtitle: null,
     });
     edges.push({
       id: brand<string, "SceneEdgeId">(`lifeline:${actor.id}`),

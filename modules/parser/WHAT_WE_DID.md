@@ -106,3 +106,5 @@
   `a <- verb - b`) where the verb is classified to one of the seven `ReqRelKind`s and the arrow
   direction sets from/to. The kind keyword is one `ReqKindKw` token (longest-alternative-first regex).
   +4 integration tests.
+- Class stereotypes: a `<<interface>>` / `<<abstract>>` line in a class body now parses into
+  `ClassEntity.stereotype` (the inner guillemet text; previously skipped). +1 integration assertion.

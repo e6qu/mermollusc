@@ -9,7 +9,8 @@
   `ReqRelKind` verb); `DiagramAst` discriminated union; branded ids, closed unions.
 - SceneGraph IR: `SceneNode`/`SceneEdge`/`Scene` over `@m/std` geometry, with node `shape`, containment
   via `parent`, compartment rows via `SceneNode.rows` (`string[] | null`) + a field/method split via
-  `rowDivider` (`number | null`), and per-end edge decorations via `SceneEdge.fromEnd`/`toEnd` (the
+  `rowDivider` (`number | null`) + an above-title `subtitle` (`string | null`, a class stereotype),
+  and per-end edge decorations via `SceneEdge.fromEnd`/`toEnd` (the
   `EdgeEnd` union: `none`/`arrow`/`arrowOpen`/`triangle`/`diamondFilled`/`diamondHollow` + the four
   crow's-foot cardinalities).
 - `LayoutOverrides`: sidecar manual geometry (scene node → position/size/pinned).

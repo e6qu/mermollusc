@@ -187,6 +187,9 @@ const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
 const ROW_TITLE_H = 30;
 const ROW_H = 20;
 const ROW_INSET = 8;
+// Extra title-band height for a `SceneNode.subtitle` (a class `«stereotype»`); mirrors the layout's
+// CLASS_SUBTITLE_H so the divider and rows still land on the boundaries the box was sized for.
+const SUBTITLE_H = 16;
 
 const nodeCmds = (node: SceneNode): DrawCmd[] => {
   const { origin, size } = node.bounds;
@@ -233,32 +236,45 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     radius: length(cornerRadius(node.shape, size.width, size.height)),
   } satisfies DrawCmd;
   if (node.rows !== null) {
-    // A compartment box (ER entity / UML class): title in the top band, a divider, then one
-    // left-aligned row per member. A class also gets an inner divider at `rowDivider` (field/method).
-    const cmds: DrawCmd[] = [
-      box,
+    // A compartment box (ER entity / UML class): an optional `«stereotype»` subtitle, the title, a
+    // divider, then one left-aligned row per member. A class also gets an inner divider at
+    // `rowDivider` (field/method). The subtitle widens the title band so it doesn't crowd the name.
+    const subH = node.subtitle === null ? 0 : SUBTITLE_H;
+    const titleBand = ROW_TITLE_H + subH;
+    const cmds: DrawCmd[] = [box];
+    if (node.subtitle !== null) {
+      cmds.push({
+        kind: "label",
+        x: cx,
+        y: coordinate(origin.y + SUBTITLE_H / 2 + 2),
+        text: node.subtitle,
+        align: "center",
+        plate: false,
+      });
+    }
+    cmds.push(
       {
         kind: "label",
         x: cx,
-        y: coordinate(origin.y + ROW_TITLE_H / 2),
+        y: coordinate(origin.y + subH + ROW_TITLE_H / 2),
         text: node.label,
         align: "center",
         plate: false,
       },
-      dividerAt(origin.x, origin.y + ROW_TITLE_H, size.width),
-    ];
+      dividerAt(origin.x, origin.y + titleBand, size.width),
+    );
     for (const [i, row] of node.rows.entries()) {
       cmds.push({
         kind: "label",
         x: coordinate(origin.x + ROW_INSET),
-        y: coordinate(origin.y + ROW_TITLE_H + ROW_H * i + ROW_H / 2),
+        y: coordinate(origin.y + titleBand + ROW_H * i + ROW_H / 2),
         text: row,
         align: "left",
         plate: false,
       });
     }
     if (node.rowDivider !== null && node.rowDivider > 0 && node.rowDivider < node.rows.length) {
-      cmds.push(dividerAt(origin.x, origin.y + ROW_TITLE_H + ROW_H * node.rowDivider, size.width));
+      cmds.push(dividerAt(origin.x, origin.y + titleBand + ROW_H * node.rowDivider, size.width));
     }
     return cmds;
   }

@@ -76,3 +76,6 @@
   heads (arrowhead, composition diamond) stay solid, matching how sketch leaves shape fills alone.
   Verified compartment (ER/class) boxes already sketch correctly. +2 integration assertions
   (compartment box wobbles; sketch markers stroke strictly more than crisp).
+- Compartment subtitle: a `SceneNode.subtitle` (a class `«stereotype»`) renders as a centred line
+  above the title, widening the title band by `SUBTITLE_H` (matches the layout) so the divider and
+  rows still land correctly. +1 unit assertion (subtitle above title, divider lowered).

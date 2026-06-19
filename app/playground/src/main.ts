@@ -1142,7 +1142,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "class",
-    "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n    +move() void\n  }\n  class Duck {\n    +String beak\n    +swim() void\n  }\n  class Fish {\n    -int depth\n    +swim() void\n  }\n  Animal <|-- Duck\n  Animal <|-- Fish\n  Animal *-- Habitat\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
+    "classDiagram\n  class Animal {\n    <<abstract>>\n    +String name\n    -int age\n    +isMammal() bool\n    +move() void\n  }\n  class Swimmer {\n    <<interface>>\n    +swim() void\n  }\n  class Duck {\n    +String beak\n  }\n  Animal <|-- Duck\n  Swimmer <|.. Duck\n  Animal *-- Habitat\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
   ],
   [
     "requirement",

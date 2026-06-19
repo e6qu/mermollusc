@@ -93,10 +93,13 @@ const rightArrow = (s: string): ClassArrow => {
   }
 };
 const REL = /^(<\||<|\*|o)?(--|\.\.)(\|>|>|\*|o)?$/;
+// A `<<interface>>` / `<<abstract>>` stereotype line inside a class body; captures the inner text.
+const STEREOTYPE = /^<<\s*(.+?)\s*>>$/;
 
 const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const labels = new Map<string, string>(); // class id → label, first-mention order
   const membersById = new Map<string, ClassMember[]>();
+  const stereoById = new Map<string, string>(); // class id → `<<stereotype>>` inner text
   const entitySpans = new Map<ClassEntityId, TextSpan>();
   const relationships: ClassRel[] = [];
   const relSpans = new Map<ClassRelId, TextSpan>();
@@ -121,14 +124,16 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
       see(name.image, tokenSpan(name));
       const block = childNodes(decl.children, "classBlock")[0];
       if (block !== undefined) {
-        const members = childTokens(block.children, "ClassMemberText").reduce<ClassMember[]>(
-          (acc, t) => {
-            const m = memberOf(t.image);
-            if (m !== null) acc.push(m);
-            return acc;
-          },
-          [],
-        );
+        const members: ClassMember[] = [];
+        for (const t of childTokens(block.children, "ClassMemberText")) {
+          const stereo = STEREOTYPE.exec(t.image.trim());
+          if (stereo !== null) {
+            stereoById.set(name.image, stereo[1] ?? "");
+            continue;
+          }
+          const m = memberOf(t.image);
+          if (m !== null) members.push(m);
+        }
         addMembers(name.image, members);
       }
       continue;
@@ -172,6 +177,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const entities: ClassEntity[] = [...labels].map(([id, label]) => ({
     id: brand<string, "ClassEntityId">(id),
     label,
+    stereotype: stereoById.get(id) ?? null,
     members: membersById.get(id) ?? [],
   }));
   return ok({

@@ -51,6 +51,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       icon: b.icon,
       rows: null,
       rowDivider: null,
+      subtitle: null,
     };
   });
 

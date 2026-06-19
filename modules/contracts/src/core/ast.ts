@@ -270,6 +270,9 @@ export interface ClassMember {
 export interface ClassEntity {
   readonly id: ClassEntityId;
   readonly label: string;
+  // A `<<interface>>` / `<<abstract>>` / `<<enumeration>>` annotation (the text between the guillemets);
+  // null when the class has none.
+  readonly stereotype: string | null;
   readonly members: readonly ClassMember[];
 }
 

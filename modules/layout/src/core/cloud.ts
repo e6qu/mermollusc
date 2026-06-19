@@ -125,6 +125,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       icon: el.icon,
       rows: null,
       rowDivider: null,
+      subtitle: null,
     });
   }
 

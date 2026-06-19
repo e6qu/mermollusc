@@ -318,7 +318,7 @@ const FLOWS: readonly Flow[] = [
     drive: async (page) => {
       await setSource(
         page,
-        "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  class Duck {\n    +String beak\n    +swim() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
+        "classDiagram\n  class Animal {\n    <<abstract>>\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  class Swimmer {\n    <<interface>>\n    +swim() void\n  }\n  class Duck {\n    +String beak\n  }\n  Animal <|-- Duck\n  Swimmer <|.. Duck\n  Animal *-- Leg\n  Duck ..> Food : eats\n",
       );
     },
   },
@@ -328,7 +328,7 @@ const FLOWS: readonly Flow[] = [
     drive: async (page) => {
       await setSource(
         page,
-        "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
+        "classDiagram\n  class Animal {\n    <<abstract>>\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
       );
       await page.locator("#theme").click();
       await settled(page);

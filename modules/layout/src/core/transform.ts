@@ -126,6 +126,7 @@ export const toScene = (
         icon: null,
         rows: null,
         rowDivider: null,
+        subtitle: null,
       });
       continue;
     }
@@ -140,6 +141,7 @@ export const toScene = (
       icon: null,
       rows: null,
       rowDivider: null,
+      subtitle: null,
     });
   }
 
