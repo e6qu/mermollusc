@@ -1189,6 +1189,10 @@ const EXAMPLES = new Map<string, string>([
     "pie",
     'pie showData\n  title Favourite pets\n  "Dogs" : 386\n  "Cats" : 247\n  "Rabbits" : 89\n  "Birds" : 52\n',
   ],
+  [
+    "dot",
+    'digraph G {\n  rankdir=LR\n  start [shape=box]\n  start -> parse -> layout -> render\n  layout -> parse [label="relax"]\n  render [shape=diamond]\n}\n',
+  ],
 ]);
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a

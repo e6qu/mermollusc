@@ -153,3 +153,12 @@
   collects slices in source order and **fails loudly on a non-positive value** (zero reaches the parser;
   a leading `-` isn't a numeric literal, so the lexer already rejects negatives). `parsePieWithSource`
   records each label span (`PieSource`). +5 tests; `parseDiagram` routes `pie`; added to robustness.
+- Added **DOT (Graphviz) import** (`dot-{tokens,grammar,parse}.ts`): `parseDot` parses a `[strict]
+  (graph|digraph) [id] { … }` subset — node statements, edge statements incl. `a -> b -> c` chains,
+  `node`/`graph`/`edge` default-attr statements, `ID = ID` graph attrs — and produces a **`FlowchartAst`**
+  (not a new family), so it renders through the existing flowchart pipeline with no downstream changes.
+  Maps `shape`→`NodeShape`, `rankdir`→`FlowDirection`, edge `style`→`EdgeKind`; `digraph` edges get
+  arrowheads, `graph` (`--`) edges don't. The lexer skips DOT's free-form whitespace + `//`/`#`/`/* */`
+  comments. `parseDiagram` routes `digraph`/`strict`, and `graph` only when its header line has `{` (so
+  Mermaid's `graph TD` decision-node `{…}` isn't mistaken for DOT). Subgraphs/ports/HTML labels are out
+  of scope (fail loudly). +9 tests; added to the robustness suite.

@@ -28,8 +28,13 @@
   per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class, or
-  requirement parser.
+  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class,
+  requirement, gitGraph, timeline, mindmap, or pie parser — or to **DOT import** (`digraph`/`strict`,
+  and `graph` only when its header line has `{`, so Mermaid's `graph TD` isn't stolen).
+- `parseDot(text)` → `Result<FlowchartAst, ParseError>`: Graphviz DOT import — a `[strict]
+  (graph|digraph) { … }` subset (node/edge statements, `a -> b -> c` chains, default-attr statements,
+  `rankdir`/`label`/`shape`/`style`) imported into the flowchart model. Not a new family; subgraphs/
+  ports/HTML labels are out of scope (fail loudly).
 - `parseState(text)` / `parseStateWithSource(text)` → `StateAst` (+ `StateSource`): `stateDiagram-v2`
   subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**

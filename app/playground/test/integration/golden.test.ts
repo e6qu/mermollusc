@@ -61,6 +61,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "pie",
     text: 'pie\n  title Pets\n  "Dogs" : 75\n  "Cats" : 25\n',
   },
+  {
+    name: "dot",
+    text: 'digraph { rankdir=LR\n  a [shape=box]\n  a -> b -> c\n  b [label="middle"]\n}\n',
+  },
 ];
 
 const r = (n: number): number => Math.round(n);

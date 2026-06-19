@@ -320,3 +320,6 @@
   generic `parseDiagram` + `layoutDiagram` path (wedges need no per-family source-map); it's render-only
   (a chart — wedges aren't hit-testable nodes), so there's no relabel/drag wiring. +1 golden, +3 e2e
   (render, example loads, non-positive value lints). The golden `normalize` learned the `wedge` cmd.
+- Wired **DOT import**: a "DOT (Graphviz)" Examples entry (+`index.html` option). DOT text is imported
+  to a flowchart by `parseDiagram`, so it renders through the generic path and the kind badge reads
+  "flowchart". +3 e2e (render, example loads, malformed edge lints), +1 pipeline golden.

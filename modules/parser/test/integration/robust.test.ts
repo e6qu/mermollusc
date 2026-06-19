@@ -19,7 +19,12 @@ const ODD_INPUTS: readonly string[] = [
   "timeline\n",
   "mindmap\n",
   "pie\n",
+  "digraph {}\n",
   // Truncated / dangling relationships.
+  "digraph { a ->",
+  "digraph { a -> b",
+  "graph { a -- }",
+  "digraph { subgraph cluster { a } }",
   'pie\n  "A" : 0\n',
   'pie\n  "A" :\n',
   "pie showData\n",
