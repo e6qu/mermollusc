@@ -27,12 +27,17 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   }
 
   const TWO_PI = Math.PI * 2;
-  const swatchX = discSpan + LEGEND_GAP + SWATCH_R;
+  const legendText = (label: string, value: number): string =>
+    ast.showData ? `${label}  ${value}` : label;
+  const maxLabelW = Math.max(0, ...ast.slices.map((s) => measure(legendText(s.label, s.value))));
+  // Wrap the legend into columns so a long list doesn't run off the bottom past the disc.
+  const maxRows = Math.max(1, Math.floor((discSpan - 2 * MARGIN) / ROW_H));
+  const colPitch = 2 * SWATCH_R + LABEL_GAP + maxLabelW + LEGEND_GAP;
+  const legendX0 = discSpan + LEGEND_GAP + SWATCH_R;
+
   const slices: SceneWedge[] = [];
   const legend: SceneWedge[] = [];
   let angle = -Math.PI / 2; // 12 o'clock
-  let maxLabelW = 0;
-
   for (const [i, slice] of ast.slices.entries()) {
     const fraction = slice.value / total;
     const startAngle = angle;
@@ -49,22 +54,24 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
       percent,
       colorIndex: i,
     });
-    const legendText = ast.showData ? `${slice.label}  ${slice.value}` : slice.label;
-    maxLabelW = Math.max(maxLabelW, measure(legendText));
+    const col = Math.floor(i / maxRows);
+    const row = i % maxRows;
     legend.push({
-      center: point(swatchX, MARGIN + SWATCH_R + i * ROW_H),
+      center: point(legendX0 + col * colPitch, MARGIN + SWATCH_R + row * ROW_H),
       radius: SWATCH_R,
       startAngle: 0,
       endAngle: TWO_PI,
-      label: legendText,
+      label: legendText(slice.label, slice.value),
       value: slice.value,
       percent,
       colorIndex: i,
     });
   }
 
-  const legendRight = swatchX + SWATCH_R + LABEL_GAP + maxLabelW;
-  const legendBottom = MARGIN + ast.slices.length * ROW_H;
+  const columns = Math.max(1, Math.ceil(ast.slices.length / maxRows));
+  const rows = Math.min(ast.slices.length, maxRows);
+  const legendRight = legendX0 + (columns - 1) * colPitch + SWATCH_R + LABEL_GAP + maxLabelW;
+  const legendBottom = MARGIN + rows * ROW_H;
   const width = Math.max(discSpan, legendRight + MARGIN);
   const height = Math.max(discSpan, legendBottom + MARGIN);
 

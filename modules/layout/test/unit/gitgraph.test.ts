@@ -78,8 +78,10 @@ describe("layoutGitGraph", () => {
     expect(oy("c2")).toBe(oy("c0"));
   });
 
-  it("draws commit dots as circles and a highlight commit as a rect", () => {
-    expect(node("c0")?.shape).toBe("circle");
+  it("draws commits as rounded pills (sized to the label) and a highlight commit as a rect", () => {
+    expect(node("c0")?.shape).toBe("round");
+    // the pill is wide enough to hold its label, not a fixed tiny dot
+    expect((node("c0")?.bounds.size.width ?? 0) > 24).toBe(true);
     const hl = layoutGitGraph(
       {
         ...ast,

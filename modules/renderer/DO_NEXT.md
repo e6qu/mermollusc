@@ -23,5 +23,5 @@
   draw identical glyphs. The same mechanism would serve class-diagram UML arrowheads. ER attribute
   rows render as compartment boxes (`SceneNode.rows`: title band + divider + left-aligned rows).
 - State-diagram start/end markers could reuse `EndMarker` (a filled start / ringed final head).
-- DOT export: *(done — `toDot(scene)` Graphviz backend)*. Follow-up: carry the diagram direction
-  (`rankdir`) into the export (the Scene drops it today); optional clustering from `SceneNode.parent`.
+- DOT export: *(done — `toDot(scene, rankdir)` Graphviz backend; the source diagram's direction is
+  carried into the export as `rankdir`)*. Follow-up: optional clustering from `SceneNode.parent`.

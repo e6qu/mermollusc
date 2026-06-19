@@ -66,6 +66,27 @@ describe("layoutPie", () => {
     expect(labels).toEqual(["Dogs  75", "Cats  25"]);
   });
 
+  it("wraps the legend into a second column when there are too many slices for one", () => {
+    const many: PieAst = {
+      kind: "pie",
+      title: null,
+      showData: false,
+      slices: Array.from({ length: 20 }, (_, i) => ({
+        id: sid(`s${i}`),
+        label: `slice ${i}`,
+        value: i + 1,
+      })),
+    };
+    const laid = layoutPie(many, heuristicMeasure);
+    if (!laid.ok) throw new Error(laid.error.message);
+    const swatches = laid.value.wedges.filter(isLegend);
+    const xs = new Set(swatches.map((w) => Math.round(w.center.x)));
+    // more than one distinct column x ⇒ the legend wrapped
+    expect(xs.size).toBeGreaterThan(1);
+    // and the legend no longer runs far past the disc bottom
+    expect(laid.value.extent.size.height).toBeLessThan(2 * (150 + 24) + 26);
+  });
+
   it("returns an empty (but valid) scene for a title-only pie", () => {
     const empty = layoutPie(
       { kind: "pie", title: "Empty", showData: false, slices: [] },

@@ -37,7 +37,7 @@ describe("toDot", () => {
       wedges: [],
       extent: rect(0, 0, 100, 100),
     };
-    const dot = toDot(scene);
+    const dot = toDot(scene, null);
     expect(dot.startsWith("digraph {")).toBe(true);
     expect(dot).toContain('"a" [label="Start", shape=box];');
     expect(dot).toContain('"b" [label="End", shape=box, style="rounded"];');
@@ -64,7 +64,7 @@ describe("toDot", () => {
       wedges: [],
       extent: rect(0, 0, 100, 100),
     };
-    const dot = toDot(scene);
+    const dot = toDot(scene, null);
     expect(dot).toContain('style="dashed"');
     expect(dot).toContain("arrowhead=onormal");
   });
@@ -76,13 +76,19 @@ describe("toDot", () => {
       wedges: [],
       extent: rect(0, 0, 100, 100),
     };
-    const dot = toDot(scene);
+    const dot = toDot(scene, null);
     expect(dot).toContain('"a\\"x"');
     expect(dot).toContain("two\\nlines");
   });
 
   it("exports an empty graph for a node-less scene (e.g. a pie)", () => {
     const scene: Scene = { nodes: [], edges: [], wedges: [], extent: rect(0, 0, 10, 10) };
-    expect(toDot(scene)).toBe("digraph {\n}\n");
+    expect(toDot(scene, null)).toBe("digraph {\n}\n");
+  });
+
+  it("emits rankdir when a direction is given, and omits it for null", () => {
+    const scene: Scene = { nodes: [], edges: [], wedges: [], extent: rect(0, 0, 10, 10) };
+    expect(toDot(scene, "LR")).toContain("rankdir=LR");
+    expect(toDot(scene, null)).not.toContain("rankdir");
   });
 });

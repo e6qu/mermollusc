@@ -96,3 +96,5 @@
   vertex; SVG uses `<circle>` since an arc can't close a full turn) and `toDisplayList` places its label
   to the right, left-aligned. A partial wedge (a pie slice) is unchanged except its on-slice label is
   now just the percentage (the name moved to the pie legend). +2 unit tests (legend label + `<circle>`).
+- `toDot(scene, rankdir)` now carries the source diagram's flow direction into the export as
+  `rankdir=…` (null for families without one). Closes the DOT-export direction follow-up. +1 test.
