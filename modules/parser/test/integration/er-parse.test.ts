@@ -75,6 +75,15 @@ describe("parseEr", () => {
     expect(r.value.entities.find((e) => e.id === "ORDER")?.attributes).toEqual([]);
   });
 
+  it("merges multiple attribute blocks for the same entity (does not overwrite)", () => {
+    const text = "erDiagram\n  A {\n    string x\n  }\n  A {\n    int y\n  }\n";
+    const r = parseEr(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const a = r.value.entities.find((e) => e.id === "A");
+    expect(a?.attributes.map((at) => at.name)).toEqual(["x", "y"]);
+  });
+
   it("fails loudly on a malformed relationship", () => {
     expect(isOk(parseEr("erDiagram\n  A -- B\n"))).toBe(false);
   });

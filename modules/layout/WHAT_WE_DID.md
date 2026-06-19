@@ -152,3 +152,5 @@
 - mindmap spokes + gitGraph branch/merge connectors now set `SceneEdge.curved`; `layoutClass` surfaces
   a relationship's multiplicity as the edge's `fromLabel`/`toLabel`; `stateToFlow` turns each state
   note into a rect node joined to its target by an arrowless connector (ELK places it adjacent).
+- Audit-sweep fix: the ELK adapter now concatenates **all** of an edge's `sections` (was taking only
+  `sections[0]`, truncating a container-crossing edge's route).

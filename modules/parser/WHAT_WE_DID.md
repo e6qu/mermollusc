@@ -178,3 +178,10 @@
   quoted strings around the operator → `ClassRel.fromMult`/`toMult` (positioned by offset vs the
   operator). state **notes** (`note right of`/`left of`/`over X : text`): new note keyword tokens + a
   `noteStmt` rule → `StateAst.notes`. +tests; both added to the robustness suite.
+- Audit-sweep fixes: **requirement** parser now **fails loudly** on an unknown relationship verb (was a
+  silent `continue` that contradicted its own comment); **ER** merges multiple `ENTITY { … }` blocks
+  for one entity instead of overwriting (silent data loss); **block** strips quotes from a quoted pipe
+  edge label (was keeping them, desyncing label vs span); **DOT** lowercases the `style` value before
+  matching; **mindmap** relabel-span search starts at the shape delimiter so an id that repeats the
+  label text doesn't point the span at the wrong occurrence. +tests (incl. the req "fails loudly" test,
+  which previously exercised a lexer error rather than the verb path).

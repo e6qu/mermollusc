@@ -161,11 +161,13 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
     height: r.height,
     nodes,
     edges: (r.edges ?? []).map((e) => {
-      const section = e.sections?.[0];
-      const points =
-        section === undefined
-          ? []
-          : [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
+      // An edge crossing a container boundary is split into multiple `sections`; concatenate them all
+      // so the full route survives (taking only `sections[0]` truncated such edges).
+      const points = (e.sections ?? []).flatMap((s) => [
+        s.startPoint,
+        ...(s.bendPoints ?? []),
+        s.endPoint,
+      ]);
       return { id: brand<string, "EdgeId">(e.id), points };
     }),
   };

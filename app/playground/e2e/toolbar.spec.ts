@@ -6,6 +6,10 @@ const canvasWidth = (page: Page) =>
 test("drag then relax then regenerate runs without errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
 
   await page.goto("/");
   const canvas = page.locator("#stage");
@@ -26,5 +30,7 @@ test("drag then relax then regenerate runs without errors", async ({ page }) => 
   await page.locator("#regenerate").click();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
+  await expect(page.locator("#kind")).toHaveText("flowchart");
+  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

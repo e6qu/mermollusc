@@ -1240,10 +1240,8 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   applyKind(diagram.kind);
   const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
-  setStatus(
-    "ok",
-    `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`,
-  );
+  const statusMsg = `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`;
+  setStatus("ok", statusMsg);
   // Enrich the canvas's screen-reader text with the actual node labels (capped so a huge diagram
   // doesn't produce an unwieldy string).
   const labels = laid.value.nodes
@@ -1350,9 +1348,13 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   const failedIcons = await ensureIcons(scene);
   if (failedIcons.length > 0) {
-    // The diagram still paints (glyph-less); surface the failure rather than leaving it only in the
-    // console, since a missing glyph on the canvas is otherwise easy to miss.
-    setStatus("error", `${failedIcons.length} icon(s) failed to load: ${failedIcons.join(", ")}`);
+    // The diagram rendered fine (just glyph-less), so keep the `ok` level — surfacing the missing
+    // glyph as a warning appended to the node/edge counts, rather than an `error` that would grey out
+    // the whole (correct) canvas and hide the counts.
+    setStatus(
+      "ok",
+      `${statusMsg} · ⚠ ${failedIcons.length} icon(s) failed: ${failedIcons.join(", ")}`,
+    );
   }
   paintScene();
 };
@@ -1582,33 +1584,45 @@ let closeEditor: ((apply: boolean) => void) | null = null;
 
 const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) => void): void => {
   closeEditor?.(false);
-  const cr = canvas.getBoundingClientRect();
   inlineEl.value = value;
   // The anchor is in scene coordinates; map it to screen the same way the canvas paints — offset by
   // the extent origin and scaled by the current zoom — so the overlay sits on its target after a
-  // zoom/Fit (it previously ignored `viewScale` and drifted off the element).
-  const ox = lastRender?.scene.extent.origin.x ?? 0;
-  const oy = lastRender?.scene.extent.origin.y ?? 0;
-  inlineEl.style.left = `${cr.left + (MARGIN - ox + anchor.x) * viewScale}px`;
-  inlineEl.style.top = `${cr.top + (MARGIN - oy + anchor.y) * viewScale}px`;
-  inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
-  inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
+  // zoom/Fit (it previously ignored `viewScale` and drifted off the element). Recomputed on scroll/
+  // resize while open, since the stage scrolls and the canvas rect is viewport-relative.
+  const place = (): void => {
+    const cr = canvas.getBoundingClientRect();
+    const ox = lastRender?.scene.extent.origin.x ?? 0;
+    const oy = lastRender?.scene.extent.origin.y ?? 0;
+    inlineEl.style.left = `${cr.left + (MARGIN - ox + anchor.x) * viewScale}px`;
+    inlineEl.style.top = `${cr.top + (MARGIN - oy + anchor.y) * viewScale}px`;
+    inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
+    inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
+  };
+  place();
+  // `true` capture so a scroll on the stage container (not just window) repositions the overlay.
+  window.addEventListener("scroll", place, true);
+  window.addEventListener("resize", place);
   inlineEl.hidden = false;
   inlineEl.focus();
   inlineEl.select();
   closeEditor = (apply) => {
     closeEditor = null;
+    window.removeEventListener("scroll", place, true);
+    window.removeEventListener("resize", place);
     inlineEl.hidden = true;
     inlineEl.onkeydown = null;
     inlineEl.onblur = null;
     if (apply) commit(inlineEl.value);
   };
   inlineEl.onkeydown = (e) => {
+    // Stop Enter/Escape from also reaching the window handler (which would clear the selection).
     if (e.key === "Enter") {
       e.preventDefault();
+      e.stopPropagation();
       closeEditor?.(true);
     } else if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
       closeEditor?.(false);
     }
   };
@@ -1914,6 +1928,10 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
 window.addEventListener("keydown", (ev) => {
   if (ev.key !== "Delete" && ev.key !== "Backspace") return;
   if (editor.hasFocus()) return;
+  // Also bail when a plain text field has focus (the icon-picker filter, the inline rename overlay),
+  // so editing its text never silently deletes selected canvas nodes.
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
   if (ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
@@ -2174,14 +2192,26 @@ iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
 // drawn), so an export composites onto a background-filled offscreen canvas at device resolution —
 // otherwise the output would have a transparent ground.
 const compositeCanvas = (): HTMLCanvasElement | null => {
+  if (scene === null) return null;
+  // Re-paint at a fixed device scale (independent of the on-screen zoom) so the exported image is
+  // always full-resolution — previously it copied the live canvas, so exporting at 10%/400% zoom
+  // produced a tiny/huge image. Editor chrome (selection, handles, marquee) is omitted, matching the
+  // SVG export. Mirrors the SVG path's zoom-independence.
+  const shown = applyOverrides(scene, overrides);
+  const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
+  const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
+  const dpr = window.devicePixelRatio || 1;
   const out = document.createElement("canvas");
-  out.width = canvas.width;
-  out.height = canvas.height;
+  out.width = Math.round(logicalWidth * dpr);
+  out.height = Math.round(logicalHeight * dpr);
   const octx = out.getContext("2d");
   if (octx === null) return null;
-  octx.fillStyle = activeTheme().background;
-  octx.fillRect(0, 0, out.width, out.height);
-  octx.drawImage(canvas, 0, 0);
+  const active = activeTheme();
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.fillStyle = active.background;
+  octx.fillRect(0, 0, logicalWidth, logicalHeight);
+  octx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
+  paint(octx, toDisplayList(shown), iconImages, active);
   return out;
 };
 

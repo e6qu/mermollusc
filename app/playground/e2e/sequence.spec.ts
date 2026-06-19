@@ -7,6 +7,10 @@ const canvasWidth = (page: Page) =>
 test("renders a sequence diagram from the textarea", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -14,5 +18,7 @@ test("renders a sequence diagram from the textarea", async ({ page }) => {
   await setSource(page, "sequenceDiagram\n  A->>B: Hello\n  B-->>A: Hi there\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#kind")).toHaveText("sequence");
+  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

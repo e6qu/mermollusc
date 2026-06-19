@@ -82,7 +82,7 @@ const attrsOf = (attrList: CstNode | undefined): ReadonlyMap<string, string> => 
 };
 
 const edgeKindOf = (attrs: ReadonlyMap<string, string>, directed: boolean): EdgeKind => {
-  const style = attrs.get("style");
+  const style = attrs.get("style")?.toLowerCase();
   if (style === "dashed" || style === "dotted") return directed ? "dotted" : "open";
   if (style === "bold") return "thick";
   return directed ? "arrow" : "open";

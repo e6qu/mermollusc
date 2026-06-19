@@ -68,7 +68,14 @@ const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
     const top = stack[stack.length - 1];
     const parent = top === undefined ? null : top.id;
     nodes.push({ id, label, shape, parent, level: stack.length });
-    const idx = label === "" ? -1 : tok.image.indexOf(label);
+    // Locate the label inside the line for its relabel span. A shaped node's text sits after the
+    // opening delimiter, so search from there — otherwise an id/prefix that repeats the label text
+    // (e.g. `aa(aa)`) would point the span at the wrong occurrence.
+    const delim = [tok.image.indexOf("("), tok.image.indexOf("["), tok.image.indexOf("{")].filter(
+      (i) => i >= 0,
+    );
+    const searchFrom = delim.length > 0 ? Math.min(...delim) : 0;
+    const idx = label === "" ? -1 : tok.image.indexOf(label, searchFrom);
     if (idx >= 0)
       spans.set(id, { start: tok.startOffset + idx, end: tok.startOffset + idx + label.length });
     stack.push({ col, id });

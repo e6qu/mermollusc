@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@m/std";
 
-// Every pack carries provenance (AGENTS.md §0.5): where it came from, its license, and a pinned
-// version/commit. The icon set is name → SVG markup.
+// Every pack carries provenance: where it came from, its license, and a pinned version/commit. The
+// icon set is name → SVG markup.
 export interface IconPackMeta {
   readonly id: string;
   readonly license: string;

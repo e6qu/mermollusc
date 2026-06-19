@@ -83,4 +83,16 @@ describe("parseRequirement", () => {
   it("fails loudly on a malformed relationship", () => {
     expect(isOk(parseRequirement("requirementDiagram\n  a = b\n"))).toBe(false);
   });
+
+  it("fails loudly (with a located error) on an unknown relationship verb", () => {
+    // `satisfis` is a typo for `satisfies`; the verb lexes as a plain identifier, so this exercises
+    // the verb-classification path, not the lexer.
+    const text = "requirementDiagram\n  ent - satisfis -> req\n";
+    const r = parseRequirement(text);
+    expect(isOk(r)).toBe(false);
+    if (isOk(r)) return;
+    const pos = r.error.positions[0];
+    expect(pos).toBeDefined();
+    if (pos !== undefined) expect(text.slice(pos.offset, pos.offset + pos.length)).toBe("satisfis");
+  });
 });

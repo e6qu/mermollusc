@@ -122,7 +122,8 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
         if (a !== null) acc.push(a);
         return acc;
       }, []);
-      attrsById.set(left.id, rows);
+      // Mermaid merges multiple `ENTITY { … }` blocks for the same entity; append rather than replace.
+      attrsById.set(left.id, [...(attrsById.get(left.id) ?? []), ...rows]);
     }
     const relTok = childTokens(stmt.children, "ErRelationship")[0];
     if (relTok === undefined) continue; // bare entity declaration or attribute block
