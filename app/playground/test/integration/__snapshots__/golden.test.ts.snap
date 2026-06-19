@@ -129,20 +129,20 @@ exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
 [
-  "polyline 68,39 108,39 dashed=false from=l0p0c0 to=l0p0c0",
-  "polyline 196,32 236,32 dashed=false from=l0p0c0 to=l0p0c0",
-  "polyline 196,45 206,45 206,112 236,112 dashed=false from=l0p0c0 to=l0p0c0",
-  "polyline 68,57 78,57 78,119 108,119 dashed=false from=l0p0c0 to=l0p0c0",
-  "box 12,20 56x56 r28",
-  "label "Root" 40,48 center",
-  "box 108,19 88x40 r8",
-  "label "Branch A" 152,39 center",
-  "box 236,12 72x40 r8",
-  "label "Leaf 1" 272,32 center",
-  "box 236,92 72x40 r8",
-  "label "Leaf 2" 272,112 center",
-  "box 108,99 88x40 r8",
-  "label "Branch B" 152,119 center",
+  "polyline 359,171 284,301 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 284,301 509,431 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 284,301 59,171 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 359,171 434,41 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 332,154 54x34 r17",
+  "label "Root" 359,171 center",
+  "box 241,284 86x34 r8",
+  "label "Branch A" 284,301 center",
+  "box 474,414 70x34 r8",
+  "label "Leaf 1" 509,431 center",
+  "box 24,154 70x34 r8",
+  "label "Leaf 2" 59,171 center",
+  "box 391,24 86x34 r8",
+  "label "Branch B" 434,41 center",
 ]
 `;
 

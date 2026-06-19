@@ -144,9 +144,9 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 - ✅ **mindmap** — indentation-defined hierarchy, the shapes (`[square]`/`(rounded)`/`((circle))`/
   `{{hexagon}}`/plain), and `::icon()`/`:::class` decorations (parsed + stripped — no icon pack). A
   single-mode lexer skips leading whitespace so each line's `startColumn` *is* its indentation; the
-  CST→AST step rebuilds the tree from those columns. Lays out through the ELK path (like `stateToFlow`):
-  `mindmapToFlow` maps nodes to shaped flowchart nodes and parent→child links to arrowless (`open`)
-  edges, so ELK's layered tree handles it — **zero renderer changes**. Inline node relabel.
+  CST→AST step rebuilds the tree from those columns. Lays out with a dedicated **radial** engine
+  (`layoutMindmap`): root at the centre, subtrees fanning into leaf-weighted angular sectors, depth →
+  radius — **zero renderer changes** (arrowless spokes). Inline node relabel.
 - ✅ **pie** — `pie [showData]`, optional `title`, and `"label" : value` rows (a two-mode lexer reads
   the unquoted title; non-positive values fail loudly). The **one family that needed a new SceneGraph
   primitive**: `Scene` gained a `wedges` array and the renderer a `wedge` `DrawCmd` (canvas arc + SVG

@@ -23,8 +23,9 @@
   connectors instead of straight diagonals.
 - timeline: *(done — column layout with a period spine, stacked events, section bands)*. Follow-up:
   alternate event cards above/below the spine (Mermaid-style) once a family-aware renderer pass exists.
-- mindmap: *(done — layered LR tree via the flowchart ELK path)*. Follow-up: a radial/balanced layout
-  (Mermaid-style) once a dedicated mindmap engine is worth it.
+- mindmap: *(done — dedicated **radial** engine `layoutMindmap`: leaf-weighted angular sectors, depth →
+  radius, forest rings a virtual hub)*. Follow-up: curved (bezier) spokes; collision-avoidance for very
+  wide labels at the same radius.
 - pie: *(done — radial wedge layout, slices clockwise from 12 o'clock; **side legend** with colour-disc
   swatches + `showData` raw values; on-slice label is just the percentage)*. Follow-up: wrap/scroll the
   legend for very many slices; an optional donut (inner radius).

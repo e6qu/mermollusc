@@ -161,7 +161,7 @@ describe("layout", () => {
     expect(laid.value.edges).toHaveLength(1);
   });
 
-  it("layoutDiagram lays out a mindmap as an arrowless tree through the ELK path", async () => {
+  it("layoutDiagram lays out a mindmap as an arrowless radial tree", async () => {
     const mm: MindmapAst = {
       kind: "mindmap",
       nodes: [
