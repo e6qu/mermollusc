@@ -149,3 +149,6 @@
   a long slice list would run past the disc bottom (column pitch from the widest label). +tests updated.
 - `stateToFlow` maps the new state kinds to shapes (fork/join → rect bar, choice → diamond); timeline
   cells grow in height for `<br>` multi-line labels (widest line sets the width).
+- mindmap spokes + gitGraph branch/merge connectors now set `SceneEdge.curved`; `layoutClass` surfaces
+  a relationship's multiplicity as the edge's `fromLabel`/`toLabel`; `stateToFlow` turns each state
+  note into a rect node joined to its target by an arrowless connector (ELK places it adjacent).

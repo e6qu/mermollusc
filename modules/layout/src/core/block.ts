@@ -69,6 +69,9 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: e.label,
       fromEnd: "none",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
       ...EDGE_STYLE[e.kind],
     });
   }

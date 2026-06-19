@@ -100,3 +100,7 @@
   `rankdir=…` (null for families without one). Closes the DOT-export direction follow-up. +1 test.
 - `toDot` now re-emits a Scene's `container` nodes as `cluster_*` subgraphs (label + nested members),
   so a flowchart subgraph / imported DOT cluster round-trips back to a DOT cluster. +1 test.
+- Added a **curve primitive**: the polyline `DrawCmd` gained a `curved` flag; a curved 2-point edge
+  draws as a cubic bezier bowed along its dominant axis (shared `bezierControls` helper → identical in
+  the canvas painter and the SVG `<path>` backend). `toDisplayList` also emits **per-end labels** from
+  `SceneEdge.fromLabel`/`toLabel` (class multiplicity), anchored just inside each endpoint. +tests.

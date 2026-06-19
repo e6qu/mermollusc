@@ -22,6 +22,7 @@ class RecordingCtx implements Canvas2D {
   lineTo(): void {
     this.calls.push("lineTo");
   }
+  bezierCurveTo(): void {}
   closePath(): void {
     this.calls.push("closePath");
   }

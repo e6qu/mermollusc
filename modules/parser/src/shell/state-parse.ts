@@ -6,6 +6,7 @@ import type {
   StateId,
   StateKind,
   StateNode,
+  StateNote,
   StateSource,
   StateTransition,
   StateTransitionId,
@@ -72,6 +73,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const stateSpans = new Map<StateId, TextSpan>();
   const transitions: StateTransition[] = [];
   const transitionSpans = new Map<StateTransitionId, TextSpan>();
+  const notes: StateNote[] = [];
 
   const addMember = (composite: string | null, id: string): void => {
     if (composite === null) return; // top-level membership is implicit (absence from any composite)
@@ -157,6 +159,19 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
         }
         continue;
       }
+      const note = childNodes(stmt.children, "noteStmt")[0];
+      if (note !== undefined) {
+        const target = childTokens(note.children, "StateIdentifier")[0];
+        const text = childTokens(note.children, "StateLabelText")[0];
+        if (target !== undefined && text !== undefined) {
+          notes.push({
+            id: brand<string, "StateId">(`__note_${notes.length}`),
+            target: brand<string, "StateId">(target.image),
+            text: text.image.trim(),
+          });
+        }
+        continue;
+      }
       const line = childNodes(stmt.children, "stateLine")[0];
       if (line !== undefined) walkLine(line, scope);
     }
@@ -181,7 +196,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
     states: [...(memberOf.get(id) ?? new Set<string>())].map((m) => brand<string, "StateId">(m)),
   }));
   return ok({
-    ast: { kind: "state", states, transitions, composites },
+    ast: { kind: "state", states, transitions, composites, notes },
     source: { states: stateSpans, transitions: transitionSpans },
   });
 };

@@ -24,5 +24,7 @@
   rows render as compartment boxes (`SceneNode.rows`: title band + divider + left-aligned rows).
 - State-diagram start/end markers could reuse `EndMarker` (a filled start / ringed final head).
 - DOT export: *(done — `toDot(scene, rankdir)` Graphviz backend; carries `rankdir`; `container` nodes
-  re-emit as `cluster_*` subgraphs)*. Follow-up: a renderer curve primitive (would enable mindmap
-  bezier spokes + curved branch/merge connectors).
+  re-emit as `cluster_*` subgraphs)*.
+- curve primitive: *(done — polyline `curved` flag → cubic bezier in canvas + SVG; powers mindmap
+  spokes and gitGraph connectors; per-end labels via `fromLabel`/`toLabel`)*. Follow-up: smoothing for
+  multi-point (routed) edges, not just the 2-point case.

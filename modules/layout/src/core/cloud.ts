@@ -148,6 +148,9 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       stroke: "solid",
       fromEnd: "none",
       toEnd: "none",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     });
   }
 

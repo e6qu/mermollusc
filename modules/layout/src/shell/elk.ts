@@ -213,18 +213,35 @@ const stateShape = (kind: StateKind): NodeShape => {
 const stateToFlow = (ast: StateAst): FlowchartAst => ({
   kind: "flowchart",
   direction: "TB",
-  nodes: ast.states.map((s) => ({
-    id: brand<string, "NodeId">(s.id),
-    label: s.label,
-    shape: stateShape(s.kind),
-  })),
-  edges: ast.transitions.map((t) => ({
-    id: brand<string, "EdgeId">(t.id),
-    from: brand<string, "NodeId">(t.from),
-    to: brand<string, "NodeId">(t.to),
-    kind: "arrow",
-    label: t.label,
-  })),
+  nodes: [
+    ...ast.states.map((s) => ({
+      id: brand<string, "NodeId">(s.id),
+      label: s.label,
+      shape: stateShape(s.kind),
+    })),
+    // Each note is a plain rect; an arrowless connector to its target makes ELK place it adjacent.
+    ...ast.notes.map((n) => ({
+      id: brand<string, "NodeId">(n.id),
+      label: n.text,
+      shape: "rect" as const,
+    })),
+  ],
+  edges: [
+    ...ast.transitions.map((t) => ({
+      id: brand<string, "EdgeId">(t.id),
+      from: brand<string, "NodeId">(t.from),
+      to: brand<string, "NodeId">(t.to),
+      kind: "arrow" as const,
+      label: t.label,
+    })),
+    ...ast.notes.map((n) => ({
+      id: brand<string, "EdgeId">(`note-edge:${n.id}`),
+      from: brand<string, "NodeId">(n.target),
+      to: brand<string, "NodeId">(n.id),
+      kind: "open" as const,
+      label: null,
+    })),
+  ],
   // Composite states map onto flowchart subgraphs — ELK nests them as containers, same machinery.
   subgraphs: ast.composites.map((c) => ({
     id: brand<string, "NodeId">(c.id),
@@ -268,6 +285,9 @@ interface CompartmentEdge {
   readonly stroke: EdgeStroke;
   readonly fromEnd: EdgeEnd;
   readonly toEnd: EdgeEnd;
+  readonly curved: boolean;
+  readonly fromLabel: string | null;
+  readonly toLabel: string | null;
 }
 
 const layoutCompartments = async (
@@ -343,6 +363,9 @@ const layoutCompartments = async (
         stroke: e.stroke,
         fromEnd: e.fromEnd,
         toEnd: e.toEnd,
+        curved: e.curved,
+        fromLabel: e.fromLabel,
+        toLabel: e.toLabel,
       });
     }
     return ok({
@@ -377,6 +400,9 @@ const layoutEr = (ast: ErAst, measure: MeasureText): Promise<Result<Scene, Layou
       stroke: r.identifying ? "solid" : "dashed",
       fromEnd: r.fromCard,
       toEnd: r.toCard,
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     })),
     measure,
   );
@@ -425,6 +451,9 @@ const layoutClass = (ast: ClassAst, measure: MeasureText): Promise<Result<Scene,
       stroke: r.dashed ? "dashed" : "solid",
       fromEnd: r.fromArrow,
       toEnd: r.toArrow,
+      curved: false,
+      fromLabel: r.fromMult === "" ? null : r.fromMult,
+      toLabel: r.toMult === "" ? null : r.toMult,
     })),
     measure,
   );
@@ -463,6 +492,9 @@ const layoutRequirement = (
       stroke: r.kind === "contains" ? "solid" : "dashed",
       fromEnd: "none",
       toEnd: "arrowOpen",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     })),
     measure,
   );

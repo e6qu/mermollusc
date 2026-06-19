@@ -81,6 +81,18 @@ describe("parseState", () => {
     expect(r.value.transitions.some((t) => t.to === "f")).toBe(true);
   });
 
+  it("captures `note right of`/`left of`/`over` annotations", () => {
+    const text =
+      "stateDiagram-v2\n  A --> B\n  note right of A : starts here\n  note over B : the end\n";
+    const r = parseState(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.notes.map((n) => [n.target, n.text])).toEqual([
+      ["A", "starts here"],
+      ["B", "the end"],
+    ]);
+  });
+
   it("fails loudly on a malformed transition", () => {
     expect(isOk(parseState("stateDiagram-v2\n  A --> \n"))).toBe(false);
   });

@@ -134,6 +134,9 @@ export const layoutTimeline = (
         stroke: "solid",
         fromEnd: "none",
         toEnd: "none",
+        curved: false,
+        fromLabel: null,
+        toLabel: null,
       });
     }
   }

@@ -1,4 +1,4 @@
-import { wedgeColor } from "../core/index.js";
+import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { defaultTheme, type Theme } from "./paint.js";
 
@@ -68,8 +68,16 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       return `<polygon points="${pts}" fill="${theme.nodeFill}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
     }
     case "polyline": {
-      const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
       const dash = cmd.dashed ? ' stroke-dasharray="6 4"' : "";
+      const a = cmd.points[0];
+      const b = cmd.points[cmd.points.length - 1];
+      // A curved 2-point connector — a bezier path, matching the canvas painter; no markers.
+      if (cmd.curved && cmd.points.length === 2 && a !== undefined && b !== undefined) {
+        const [c1, c2] = bezierControls(a, b);
+        const d = `M ${num(a.x)} ${num(a.y)} C ${num(c1.x)} ${num(c1.y)}, ${num(c2.x)} ${num(c2.y)}, ${num(b.x)} ${num(b.y)}`;
+        return `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
+      }
+      const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
       const line = `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
       return `${line}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}`;
     }

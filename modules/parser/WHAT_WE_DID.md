@@ -174,3 +174,7 @@
   **state `<<fork>>`/`<<join>>`/`<<choice>>`** annotations (a new `StateAnnotation` token + an optional
   slot in `stateDecl`) set the state's kind; **DOT cluster import** already shipped, now complemented by
   export. +tests across timeline/class/state/dot.
+- class **per-end multiplicity** (`Customer "1" --> "*" Order`): the relationship rule takes optional
+  quoted strings around the operator → `ClassRel.fromMult`/`toMult` (positioned by offset vs the
+  operator). state **notes** (`note right of`/`left of`/`over X : text`): new note keyword tokens + a
+  `noteStmt` rule → `StateAst.notes`. +tests; both added to the robustness suite.

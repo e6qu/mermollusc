@@ -29,8 +29,25 @@ class StateParser extends CstParser {
   );
 
   private readonly statement = this.RULE("stateStatement", () =>
-    this.OR([{ ALT: () => this.SUBRULE(this.stateDecl) }, { ALT: () => this.SUBRULE(this.line) }]),
+    this.OR([
+      { ALT: () => this.SUBRULE(this.stateDecl) },
+      { ALT: () => this.SUBRULE(this.noteStmt) },
+      { ALT: () => this.SUBRULE(this.line) },
+    ]),
   );
+
+  // `note right of X : text` / `note left of X : text` / `note over X : text`
+  private readonly noteStmt = this.RULE("noteStmt", () => {
+    this.CONSUME(StateTok.Note);
+    this.OR([
+      { ALT: () => this.CONSUME(StateTok.RightOf) },
+      { ALT: () => this.CONSUME(StateTok.LeftOf) },
+      { ALT: () => this.CONSUME(StateTok.Over) },
+    ]);
+    this.CONSUME(StateTok.Identifier);
+    this.CONSUME(StateTok.Colon);
+    this.CONSUME(StateTok.LabelText);
+  });
 
   // `state id`, `state "Long label" as id`, optionally a `{ … }` composite block on either.
   private readonly stateDecl = this.RULE("stateDecl", () => {

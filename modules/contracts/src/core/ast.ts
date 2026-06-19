@@ -210,11 +210,20 @@ export interface StateComposite {
   readonly states: readonly StateId[];
 }
 
+// A `note right of X : …` / `note left of X : …` / `note over X : …` annotation. `id` is its own
+// node id (in the `StateId` space); `target` is the state it annotates.
+export interface StateNote {
+  readonly id: StateId;
+  readonly target: StateId;
+  readonly text: string;
+}
+
 export interface StateAst {
   readonly kind: "state";
   readonly states: readonly StateNode[];
   readonly transitions: readonly StateTransition[];
   readonly composites: readonly StateComposite[];
+  readonly notes: readonly StateNote[];
 }
 
 export type ErEntityId = Brand<string, "ErEntityId">;
@@ -289,6 +298,9 @@ export interface ClassRel {
   readonly toArrow: ClassArrow;
   readonly dashed: boolean; // `..` dependency/realization vs `--` association/inheritance/composition
   readonly label: string; // the `: text`, "" when omitted
+  // Per-end multiplicity (`Customer "1" --> "*" Order`); "" when omitted.
+  readonly fromMult: string;
+  readonly toMult: string;
 }
 
 export interface ClassAst {

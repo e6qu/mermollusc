@@ -67,6 +67,9 @@ export const layoutSequence = (
       stroke: "dashed",
       fromEnd: "none",
       toEnd: "none",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     });
     centerX.set(actor.id, cx);
     cursor += width + ACTOR_GAP;
@@ -96,6 +99,9 @@ export const layoutSequence = (
       stroke: style.stroke,
       fromEnd: "none",
       toEnd: style.toEnd,
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     });
   }
 

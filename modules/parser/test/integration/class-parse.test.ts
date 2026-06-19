@@ -82,6 +82,22 @@ describe("parseClass", () => {
     expect(e?.members.some((m) => m.text === "items List<T>")).toBe(true);
   });
 
+  it("captures per-end multiplicity", () => {
+    const r = parseClass('classDiagram\n  Customer "1" --> "*" Order : places\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const rel = r.value.relationships[0];
+    expect(rel).toMatchObject({ from: "Customer", to: "Order", fromMult: "1", toMult: "*" });
+    expect(rel?.label).toBe("places");
+  });
+
+  it("leaves multiplicity empty when only one end has it", () => {
+    const r = parseClass('classDiagram\n  A --> "0..1" B\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.relationships[0]).toMatchObject({ fromMult: "", toMult: "0..1" });
+  });
+
   it("matches a relationship endpoint written with generics", () => {
     const r = parseClass("classDiagram\n  Box~T~ <|-- IntBox\n");
     expect(isOk(r)).toBe(true);

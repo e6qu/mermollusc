@@ -21,6 +21,9 @@ const scene: Scene = {
       stroke: "solid",
       fromEnd: "none",
       toEnd: "arrow",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
     },
   ],
   wedges: [],
@@ -179,6 +182,9 @@ describe("toDisplayList", () => {
             stroke: "solid",
             fromEnd: "none",
             toEnd: end,
+            curved: false,
+            fromLabel: null,
+            toLabel: null,
           },
         ],
         wedges: [],
@@ -215,6 +221,9 @@ describe("toDisplayList", () => {
             stroke: "solid",
             fromEnd: end,
             toEnd: "none",
+            curved: false,
+            fromLabel: null,
+            toLabel: null,
           },
         ],
         wedges: [],
@@ -247,6 +256,9 @@ describe("toDisplayList", () => {
           stroke: "solid",
           fromEnd: "one",
           toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
         },
       ],
       wedges: [],
@@ -263,6 +275,34 @@ describe("toDisplayList", () => {
     const anchor = edgeLabelAnchor([point(0, 0), point(100, 0), point(100, 100)]);
     expect(anchor.x).toBe(100);
     expect(anchor.y).toBe(11);
+  });
+
+  it("passes the curved flag onto the polyline and emits per-end labels", () => {
+    const s: Scene = {
+      nodes: [],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(100, 60)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "none",
+          curved: true,
+          fromLabel: "1",
+          toLabel: "*",
+        },
+      ],
+      wedges: [],
+      extent: rect(0, 0, 120, 80),
+    };
+    const cmds = toDisplayList(s);
+    const poly = cmds.find((c) => c.kind === "polyline");
+    expect(poly?.kind === "polyline" ? poly.curved : false).toBe(true);
+    const labels = cmds.filter((c) => c.kind === "label" && (c.text === "1" || c.text === "*"));
+    expect(labels).toHaveLength(2);
   });
 
   it("emits a wedge command plus a percentage label for each pie slice", () => {

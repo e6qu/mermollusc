@@ -156,6 +156,9 @@ export const layoutMindmap = (
       stroke: "solid",
       fromEnd: "none",
       toEnd: "none",
+      curved: true,
+      fromLabel: null,
+      toLabel: null,
     });
   }
 
