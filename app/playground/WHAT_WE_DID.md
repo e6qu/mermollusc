@@ -345,3 +345,16 @@
 - Perf: pointer-move repaints (drag/resize/marquee) are coalesced to one paint per animation frame via
   `requestPaint` (rAF) — a burst of pointer events no longer rebuilds the display list + repaints the
   canvas + minimap each time. One-shot paints still call `paintScene` directly.
+- Collaborative editor **Phase 0 — the document-model seam** (no infra). Extracted the sidecar
+  overlay (manual node positions/sizes + element groups + groupSeq + undo/redo history + persistence)
+  out of `main.ts`'s module-level state into an `OverlayDoc` interface (`src/document-model.ts`);
+  `createLocalDocument` is the single-user implementation, holding the state in closure vars and
+  writing through an injected `save` sink (localStorage today). `main.ts` now reads the overlay via
+  `doc.overrides()`/`doc.groups()` and mutates it via `doc.moveNode`/`resizeNode`/`groupNodes`/
+  `ungroupAt`/`setGroupLocked`/`setGroupLabel`/`pruneGroupsTo`/`clearOverrides`/`replace`, with
+  `record`/`undo`/`redo`/`clearHistory`/`persist` for history + save. Pure, behavior-neutral refactor
+  (typecheck + lint + format clean; all 105 Playwright specs green; launch screenshot verified). The
+  seam mirrors the existing `Editor` seam for source text, and is the plug-in point for a future
+  Yjs-backed CRDT implementation (the `save` sink becomes a broadcast) — no call sites change. Full
+  phased plan recorded in `docs/collab-editor-plan.md` and the root `PLAN.md` Future bets (Phase 0
+  done; Phases 1–3 + 5 decision points pending sign-off).

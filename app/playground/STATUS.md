@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows); `make check` + Playwright (86 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows); `make check` + Playwright (105 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -17,6 +17,13 @@
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
   out of the app and the surface stays swappable.
+- **Overlay document model** (`src/document-model.ts`): the sidecar overlay (manual node
+  positions/sizes + element groups) and its undo/redo history live behind an `OverlayDoc` interface;
+  `createLocalDocument` is the single-user, localStorage-backed implementation. `main.ts` reads and
+  mutates the overlay only through `doc`. This is the **Phase 0 seam** of the collaborative-editor
+  plan ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)): a future CRDT backend is a
+  second `OverlayDoc` implementation, dropped in without touching call sites — the source-text
+  counterpart of the `Editor` seam.
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fourteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
