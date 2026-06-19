@@ -6,7 +6,8 @@
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
   `edgeLabelAnchor` at the midpoint *along the routed polyline* — perpendicular-nudged, so a bent
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
-  glyph above the label — for nodes carrying a `SceneNode.icon`).
+  glyph above the label — for nodes carrying a `SceneNode.icon`). Emitted in three layers — edge
+  lines + markers, then nodes, then edge labels — so nodes occlude crossing links while labels stay on top.
 - **Edge-end markers:** the polyline `DrawCmd` carries a `fromMarker`/`toMarker` `EndMarker`,
   precomputed from `SceneEdge.fromEnd`/`toEnd` — backend-agnostic geometry: stroked `lines` (the
   open-arrow V, the `|` bars, the three-prong "many" fan), `polygons` (`{ points, fill }` — `solid`

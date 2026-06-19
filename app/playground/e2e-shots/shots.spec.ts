@@ -125,8 +125,7 @@ const FLOWS: readonly Flow[] = [
     name: "10-parse-error",
     about: "invalid source → the error surface (not just a stale canvas)",
     drive: async (page) => {
-      await settled(page);
-      await page.locator("#src").fill("flowchart TD\n  A[Start --> ??? broken |\n");
+      await setSource(page, "flowchart TD\n  A[Start --> ??? broken |\n");
       await page.waitForTimeout(150);
     },
   },

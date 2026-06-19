@@ -333,9 +333,13 @@ export const edgeLabelAnchor = (
     : { x: coordinate(first.x), y: coordinate(first.y) };
 };
 
+// Three layers, back to front: edge lines + end markers, then nodes, then edge labels. Edges under
+// nodes means a straight centre-to-centre link (network/cloud/block) is cleanly occluded by any node
+// it crosses, rather than slicing visibly across the box; edge labels ride on top (with their plate)
+// so they stay readable even when an edge passes close to a node.
 export const toDisplayList = (scene: Scene): DrawCmd[] => {
-  const cmds: DrawCmd[] = [];
-  for (const node of scene.nodes) cmds.push(...nodeCmds(node));
+  const edges: DrawCmd[] = [];
+  const labels: DrawCmd[] = [];
   for (const edge of scene.edges) {
     const pts = edge.waypoints;
     if (pts.length < 2) continue;
@@ -351,7 +355,7 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       last === undefined || prev === undefined
         ? EMPTY_MARKER
         : endMarker(edge.toEnd, last, awayUnit(prev, last));
-    cmds.push({
+    edges.push({
       kind: "polyline",
       points: pts,
       dashed: edge.stroke === "dashed",
@@ -360,7 +364,7 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
     });
     if (edge.label !== null) {
       const anchor = edgeLabelAnchor(pts);
-      cmds.push({
+      labels.push({
         kind: "label",
         x: anchor.x,
         y: anchor.y,
@@ -370,5 +374,6 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       });
     }
   }
-  return cmds;
+  const nodes = scene.nodes.flatMap(nodeCmds);
+  return [...edges, ...nodes, ...labels];
 };

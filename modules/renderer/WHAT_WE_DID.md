@@ -66,3 +66,8 @@
   (added `measureText`/`fillRect` to the `Canvas2D` structural type) and fills a background box; `toSvg`
   emits a background `<rect>` sized from an em estimate. Node/title/row labels keep `plate: false`
   (they sit on a filled box already). +1 unit assertion (edge vs node label plating).
+- Polish: `toDisplayList` now emits **three layers** — edge lines + end markers, then nodes, then
+  edge labels — instead of all-nodes-then-all-edges. A straight centre-to-centre link (network/cloud/
+  block) that passes a node is now cleanly occluded by the box instead of slicing across it; ELK
+  families are unaffected (edges already route to the boundary, so arrowheads stay visible), and edge
+  labels ride on top so their plate stays readable. +1 unit assertion (layer order).

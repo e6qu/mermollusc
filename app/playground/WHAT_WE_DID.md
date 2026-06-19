@@ -261,3 +261,7 @@
 - Robustness/polish pass: edge labels now render on a background plate (renderer-led), so a label
   between two close nodes (e.g. an ER verb) stays legible instead of being crossed by the line +
   markers. No app code change beyond the canvas mock gaining `measureText`/`fillRect`.
+- Polish pass 2: renderer now layers edges under nodes (so a straight link can't slice across an
+  intervening box) — the pipeline goldens were regenerated to the new draw order. Fixed the last
+  stale `#src.fill()` in the `make shots` instrument (the `10-parse-error` flow), so the full shot
+  gallery regenerates again.
