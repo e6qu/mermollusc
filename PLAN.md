@@ -173,13 +173,18 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 - **More software-architecture families:** component / deployment / use-case / activity (PlantUML
   parity), Gantt (planning).
 
-- **Comprehensive, searchable audit trail.** Record edits/actions (text patches, drags, layout
-  regenerates, exports) as a queryable, searchable history — beyond the in-memory undo. Likely a new
-  module + a persistence/back-end seam; today everything is client-only and ephemeral.
-- **Multi-tenancy.** Per-tenant isolation of diagrams/registries/settings (and, with the audit trail,
-  per-tenant history). Implies an account/workspace boundary and a server side the app doesn't have
-  yet. Note: this conflicts with the current purely-client, no-backend architecture — a deliberate
-  expansion to decide on later.
+- **Real-time collaborative editor (CRDT).** Multi-user live editing — scoped in
+  [`docs/collab-editor-plan.md`](docs/collab-editor-plan.md): a Yjs-based shared **source text +
+  overlay** (the diagram stays *derived locally*, so the pure core is reused and CRDT payloads stay
+  tiny), presence/awareness, local-first low latency, and a server-authoritative sync service. This
+  **subsumes the audit-trail and multi-tenancy bets below** (the Yjs update log is the audit trail;
+  rooms + server-side RBAC give tenant isolation). Enterprise-ready, but a large infra commitment and a
+  deliberate departure from the current client-only design — needs sign-off on the decision points in
+  the doc before building.
+- **Comprehensive, searchable audit trail.** (Folded into the collaborative-editor plan — the CRDT
+  update log is a who/changed-what/when record.) Could still ship standalone, client-side, sooner.
+- **Multi-tenancy.** (Folded into the collaborative-editor plan — rooms + server-side RBAC + per-tenant
+  storage.) A deliberate expansion away from the purely-client architecture.
 
 ## How to resume (fresh session / after compaction)
 

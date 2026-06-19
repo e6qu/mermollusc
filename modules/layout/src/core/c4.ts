@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   C4Ast,
   C4Element,
@@ -90,11 +91,11 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       return err({ kind: "layout", message: `c4: element ${el.id} has no box (dangling parent?)` });
     }
     nodes.push({
-      id: brand<string, "SceneNodeId">(el.id),
+      id: sceneNodeId(el.id),
       bounds: rect(b.x, b.y, b.w, b.h),
       label: sceneLabel(el),
       shape: shapeOf(el.kind),
-      parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
+      parent: el.parent === null ? null : sceneNodeId(el.parent),
       icon: null,
       rows: null,
       rowDivider: null,
@@ -113,9 +114,9 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       });
     }
     edges.push({
-      id: brand<string, "SceneEdgeId">(rel.id),
-      from: brand<string, "SceneNodeId">(rel.from),
-      to: brand<string, "SceneNodeId">(rel.to),
+      id: sceneEdgeId(rel.id),
+      from: sceneNodeId(rel.from),
+      to: sceneNodeId(rel.to),
       waypoints: [
         point(from.x + from.w / 2, from.y + from.h / 2),
         point(to.x + to.w / 2, to.y + to.h / 2),

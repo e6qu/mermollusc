@@ -1,4 +1,5 @@
-import { brand, ok, point, rect, type Result } from "@m/std";
+import { ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type { Scene, SceneEdge, SceneNode, TimelineAst, TimelinePeriod } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 
@@ -59,7 +60,7 @@ export const layoutTimeline = (
     colW.push(w);
     const pH = boxHeight(period.label, PERIOD_H);
     nodes.push({
-      id: brand<string, "SceneNodeId">(period.id),
+      id: sceneNodeId(period.id),
       bounds: rect(cursor, periodY, w, pH),
       label: period.label,
       shape: "round",
@@ -76,7 +77,7 @@ export const layoutTimeline = (
     for (const event of period.events) {
       const eH = boxHeight(event.text, EVENT_H);
       nodes.push({
-        id: brand<string, "SceneNodeId">(event.id),
+        id: sceneNodeId(event.id),
         bounds: rect(cursor, ey, w, eH),
         label: event.text,
         shape: "rect",
@@ -105,7 +106,7 @@ export const layoutTimeline = (
       const rightW = colW[end] ?? 0;
       const bandW = rightX + rightW - left;
       nodes.push({
-        id: brand<string, "SceneNodeId">(`section:${run}`),
+        id: sceneNodeId(`section:${run}`),
         bounds: rect(left, sectionY, bandW, SECTION_H),
         label: name,
         shape: "container",
@@ -126,9 +127,9 @@ export const layoutTimeline = (
     const last = ast.periods[ast.periods.length - 1];
     if (first !== undefined && last !== undefined) {
       edges.push({
-        id: brand<string, "SceneEdgeId">("spine"),
-        from: brand<string, "SceneNodeId">(first.id),
-        to: brand<string, "SceneNodeId">(last.id),
+        id: sceneEdgeId("spine"),
+        from: sceneNodeId(first.id),
+        to: sceneNodeId(last.id),
         waypoints: centers.map((c) => point(c.x, c.y)),
         label: null,
         stroke: "solid",

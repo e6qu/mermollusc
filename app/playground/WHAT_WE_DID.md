@@ -342,3 +342,6 @@
   from also clearing the selection; **PNG/PDF export** re-paints at a fixed device scale (zoom-
   independent, crisp, chrome-free) instead of copying the zoomed live canvas. +2 e2e; +6 "renders X"
   e2e hardened (assert `#kind` + no parse-error, not just a non-zero canvas).
+- Perf: pointer-move repaints (drag/resize/marquee) are coalesced to one paint per animation frame via
+  `requestPaint` (rAF) — a burst of pointer events no longer rebuilds the display list + repaints the
+  canvas + minimap each time. One-shot paints still call `paintScene` directly.

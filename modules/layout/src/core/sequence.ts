@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   ActorId,
   EdgeEnd,
@@ -48,7 +49,7 @@ export const layoutSequence = (
     const width = actorWidth(actor.label, measure);
     const cx = cursor + width / 2;
     nodes.push({
-      id: brand<string, "SceneNodeId">(actor.id),
+      id: sceneNodeId(actor.id),
       bounds: rect(cursor, 0, width, ACTOR_HEIGHT),
       label: actor.label,
       shape: "rect",
@@ -59,9 +60,9 @@ export const layoutSequence = (
       subtitle: null,
     });
     edges.push({
-      id: brand<string, "SceneEdgeId">(`lifeline:${actor.id}`),
-      from: brand<string, "SceneNodeId">(actor.id),
-      to: brand<string, "SceneNodeId">(actor.id),
+      id: sceneEdgeId(`lifeline:${actor.id}`),
+      from: sceneNodeId(actor.id),
+      to: sceneNodeId(actor.id),
       waypoints: [point(cx, ACTOR_HEIGHT), point(cx, bottomY)],
       label: null,
       stroke: "dashed",
@@ -91,9 +92,9 @@ export const layoutSequence = (
     }
     const style = MESSAGE_STYLE[message.kind];
     edges.push({
-      id: brand<string, "SceneEdgeId">(message.id),
-      from: brand<string, "SceneNodeId">(message.from),
-      to: brand<string, "SceneNodeId">(message.to),
+      id: sceneEdgeId(message.id),
+      from: sceneNodeId(message.from),
+      to: sceneNodeId(message.to),
       waypoints: [point(fromX, y), point(toX, y)],
       label: message.text === "" ? null : message.text,
       stroke: style.stroke,

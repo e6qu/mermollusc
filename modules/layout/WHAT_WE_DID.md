@@ -154,3 +154,7 @@
   note into a rect node joined to its target by an arrowless connector (ELK places it adjacent).
 - Audit-sweep fix: the ELK adapter now concatenates **all** of an edge's `sections` (was taking only
   `sections[0]`, truncating a container-crossing edge's route).
+- Style coherence: the nine layout cores now mint Scene ids via `sceneNodeId`/`sceneEdgeId` (from
+  `@m/contracts`) rather than raw `brand<…>`, so `src/core` is free of the cast (guard-enforced).
+- Perf: `transform.toElkGraph` indexes subgraphs by parent once (a Map) instead of re-filtering the
+  whole subgraph list at every nesting level (was O(S²)).

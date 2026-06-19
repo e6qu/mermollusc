@@ -1,4 +1,5 @@
-import { brand, ok, point, rect, type Result } from "@m/std";
+import { ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   MindmapAst,
   MindmapNode,
@@ -129,7 +130,7 @@ export const layoutMindmap = (
     const cy = p.y + dy;
     centerOf.set(node.id, { x: cx, y: cy });
     nodes.push({
-      id: brand<string, "SceneNodeId">(node.id),
+      id: sceneNodeId(node.id),
       bounds: rect(cx - w / 2, cy - h / 2, w, h),
       label: node.label,
       shape: SHAPE[node.shape],
@@ -148,9 +149,9 @@ export const layoutMindmap = (
     const to = centerOf.get(node.id);
     if (from === undefined || to === undefined) continue;
     edges.push({
-      id: brand<string, "SceneEdgeId">(`mm:${node.id}`),
-      from: brand<string, "SceneNodeId">(node.parent),
-      to: brand<string, "SceneNodeId">(node.id),
+      id: sceneEdgeId(`mm:${node.id}`),
+      from: sceneNodeId(node.parent),
+      to: sceneNodeId(node.id),
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: null,
       stroke: "solid",

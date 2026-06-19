@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type { NetworkAst, NodeId, Scene, SceneEdge, SceneNode } from "@m/contracts";
 import { ARCH_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
@@ -31,7 +32,7 @@ export const layoutNetwork = (
     const y = row * (NODE_HEIGHT + GAP);
     centers.set(n.id, { x: x + cellWidth / 2, y: y + NODE_HEIGHT / 2 });
     return {
-      id: brand<string, "SceneNodeId">(n.id),
+      id: sceneNodeId(n.id),
       bounds: rect(x, y, cellWidth, NODE_HEIGHT),
       label: n.label,
       shape: "rect",
@@ -56,9 +57,9 @@ export const layoutNetwork = (
       });
     }
     edges.push({
-      id: brand<string, "SceneEdgeId">(link.id),
-      from: brand<string, "SceneNodeId">(link.from),
-      to: brand<string, "SceneNodeId">(link.to),
+      id: sceneEdgeId(link.id),
+      from: sceneNodeId(link.from),
+      to: sceneNodeId(link.to),
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: link.label,
       stroke: "solid",
