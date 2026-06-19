@@ -23,6 +23,7 @@ import {
   layoutGitGraph,
   layoutNetwork,
   layoutSequence,
+  layoutTimeline,
   toElkGraph,
   toScene,
 } from "../core/index.js";
@@ -475,5 +476,7 @@ export const layoutDiagram = async (
       return layoutRequirement(ast, measure);
     case "gitGraph":
       return layoutGitGraph(ast, measure);
+    case "timeline":
+      return layoutTimeline(ast, measure);
   }
 };

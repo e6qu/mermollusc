@@ -9,6 +9,8 @@ import type {
   ClassRelId,
   EdgeId,
   GitCommitId,
+  TimelineEventId,
+  TimelinePeriodId,
   ReqEntityId,
   ReqRelId,
   ErEntityId,
@@ -93,6 +95,13 @@ export interface ReqSource {
 // with an auto-generated id (no `id:`) have no entry; branch names and tags aren't editable inline.
 export interface GitGraphSource {
   readonly commits: ReadonlyMap<GitCommitId, TextSpan>;
+}
+
+// Editable text spans for a timeline: each period's text and each event's text. Section names aren't
+// editable inline (the map covers periods + events only).
+export interface TimelineSource {
+  readonly periods: ReadonlyMap<TimelinePeriodId, TextSpan>;
+  readonly events: ReadonlyMap<TimelineEventId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

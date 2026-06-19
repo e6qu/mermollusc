@@ -71,6 +71,11 @@ export type {
   GitCommit,
   GitBranch,
   GitGraphAst,
+  TimelinePeriodId,
+  TimelineEventId,
+  TimelineEvent,
+  TimelinePeriod,
+  TimelineAst,
   DiagramAst,
 } from "./ast.js";
 export type {
@@ -99,4 +104,5 @@ export type {
   ClassSource,
   ReqSource,
   GitGraphSource,
+  TimelineSource,
 } from "./source.js";

@@ -210,3 +210,27 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
   "label "resume" 25,86 center",
 ]
 `;
+
+exports[`pipeline goldens > lays out timeline to a stable display list 1`] = `
+[
+  "polyline 62,70 172,70 282,70 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 16,52 92x36 r8",
+  "label "2002" 62,70 center",
+  "box 16,100 92x32 r0",
+  "label "LinkedIn" 62,116 center",
+  "box 126,52 92x36 r8",
+  "label "2004" 172,70 center",
+  "box 126,100 92x32 r0",
+  "label "Facebook" 172,116 center",
+  "box 126,144 92x32 r0",
+  "label "Google" 172,160 center",
+  "box 236,52 92x36 r8",
+  "label "2006" 282,70 center",
+  "box 236,100 92x32 r0",
+  "label "Twitter" 282,116 center",
+  "box 16,16 202x26 r4",
+  "label "Early" 117,28 center",
+  "box 236,16 92x26 r4",
+  "label "Growth" 282,28 center",
+]
+`;

@@ -12,6 +12,7 @@ import { parseRequirement } from "./req-parse.js";
 import type { ParseError } from "./parse.js";
 import { parseSequence } from "./seq-parse.js";
 import { parseState } from "./state-parse.js";
+import { parseTimeline } from "./timeline-parse.js";
 
 // Sniffs the first meaningful line (skipping blanks and `%%` comments) to pick the family.
 export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
@@ -30,5 +31,6 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   if (header.startsWith("network")) return parseNetwork(text);
   if (header.startsWith("cloud")) return parseCloud(text);
   if (header.startsWith("gitGraph")) return parseGitGraph(text);
+  if (header.startsWith("timeline")) return parseTimeline(text);
   return parse(text);
 };

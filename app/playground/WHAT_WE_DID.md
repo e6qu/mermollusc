@@ -309,3 +309,7 @@
   commits carry no span). gitGraph is render + inline relabel — the flowchart-only Add/Connect/Delete
   controls stay disabled for it. +1 golden sample, +3 e2e specs (render, example loads, malformed merge
   surfaces a lint error).
+- Wired the **timeline** family end-to-end: imported `parseTimelineWithSource` + `TimelineSource`, added
+  a `timelineSource` var, a "Timeline" Examples entry (+`index.html` option), the `renderFromText`
+  source-map case, and an inline-relabel branch (periods + events editable; section bands and the spine
+  carry no span). +1 golden sample, +3 e2e specs (render, example loads, orphan-continuation lint).

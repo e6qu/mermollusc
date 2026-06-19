@@ -49,3 +49,7 @@
   `parents`/`tag`/`commitType`/`merge`) plus `GitCommitId`/`GitBranchName`/`GitDirection`/
   `GitCommitType` brands and a `GitGraphSource` (explicit-commit-id spans for inline relabel). Added
   `GitGraphAst` to the `DiagramAst` union and re-exported all of it through both barrels.
+- Added the **timeline** AST (`TimelineAst`: optional `title`, `periods` each with a `section` name +
+  `events`) plus `TimelinePeriodId`/`TimelineEventId` brands, `TimelineEvent`/`TimelinePeriod`, and a
+  `TimelineSource` (period + event text spans). Added `TimelineAst` to `DiagramAst`; re-exported through
+  both barrels.

@@ -10,6 +10,8 @@ Open (cosmetic):
 
 Checked while adding the gitGraph lane layout.
 
+Checked while adding the timeline column layout.
+
 Checked while making the pure layouts total-by-Result (no silent positional fallbacks).
 
 Checked while adding the optional C4 element description.

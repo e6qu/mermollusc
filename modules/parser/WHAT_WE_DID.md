@@ -130,3 +130,12 @@
   Checkout/merge of an unknown branch and a self-merge fail loudly with a located error.
   `parseGitGraphWithSource` captures explicit-id spans (`GitGraphSource`) for inline relabel. +8 tests;
   `parseDiagram` routes `gitGraph` headers; added to the robustness suite.
+- Added a **timeline** parser (`timeline-{tokens,grammar,parse}.ts`): `title`, `section` groupings, and
+  `period : event : event` lines, with events also attaching via `:`-continuation lines. A two-mode
+  lexer (a `start` mode for the line head, a `body` mode for the colon-separated text after it) keeps
+  `timeline`/`title`/`section` as keywords only at the line head while period/event text holds spaces
+  and arbitrary words (a period like `titles released` stays free text via the keyword `\b`).
+  `buildResult` carries the current `section` onto each period, attaches continuation events to the
+  previous period (a `:` before any period fails loudly), and reads `title`/`section` values straight
+  from the source slice so colons in them survive. `parseTimelineWithSource` records trimmed period +
+  event spans (`TimelineSource`). +8 tests; `parseDiagram` routes `timeline`; added to robustness suite.

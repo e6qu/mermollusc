@@ -21,4 +21,6 @@ export { parseRequirement, parseRequirementWithSource } from "./req-parse.js";
 export type { ParsedRequirement } from "./req-parse.js";
 export { parseGitGraph, parseGitGraphWithSource } from "./git-parse.js";
 export type { ParsedGitGraph } from "./git-parse.js";
+export { parseTimeline, parseTimelineWithSource } from "./timeline-parse.js";
+export type { ParsedTimeline } from "./timeline-parse.js";
 export { parseDiagram } from "./diagram.js";
