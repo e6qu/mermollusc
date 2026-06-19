@@ -53,3 +53,6 @@
   `events`) plus `TimelinePeriodId`/`TimelineEventId` brands, `TimelineEvent`/`TimelinePeriod`, and a
   `TimelineSource` (period + event text spans). Added `TimelineAst` to `DiagramAst`; re-exported through
   both barrels.
+- Added the **mindmap** AST (`MindmapAst`: `nodes` in pre-order, each with `shape`, indentation-derived
+  `parent`, and `level`) plus a `MindmapNodeId` brand, the `MindmapShape` union, and a `MindmapSource`
+  (node-label spans). Added `MindmapAst` to `DiagramAst`; re-exported through both barrels.

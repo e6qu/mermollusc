@@ -9,6 +9,7 @@ import type {
   ClassRelId,
   EdgeId,
   GitCommitId,
+  MindmapNodeId,
   TimelineEventId,
   TimelinePeriodId,
   ReqEntityId,
@@ -102,6 +103,12 @@ export interface GitGraphSource {
 export interface TimelineSource {
   readonly periods: ReadonlyMap<TimelinePeriodId, TextSpan>;
   readonly events: ReadonlyMap<TimelineEventId, TextSpan>;
+}
+
+// Editable text spans for a mindmap: each node's label (the inner text of a shaped node, or the whole
+// text of a plain one). Nodes with an empty label have no entry.
+export interface MindmapSource {
+  readonly nodes: ReadonlyMap<MindmapNodeId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

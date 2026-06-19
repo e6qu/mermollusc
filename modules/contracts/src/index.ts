@@ -76,6 +76,10 @@ export type {
   TimelineEvent,
   TimelinePeriod,
   TimelineAst,
+  MindmapNodeId,
+  MindmapShape,
+  MindmapNode,
+  MindmapAst,
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
@@ -105,4 +109,5 @@ export type {
   ReqSource,
   GitGraphSource,
   TimelineSource,
+  MindmapSource,
 } from "./core/index.js";

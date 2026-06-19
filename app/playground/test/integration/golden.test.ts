@@ -53,6 +53,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "timeline",
     text: "timeline\n  title History\n  section Early\n    2002 : LinkedIn\n    2004 : Facebook : Google\n  section Growth\n    2006 : Twitter\n",
   },
+  {
+    name: "mindmap",
+    text: "mindmap\n  root((Root))\n    Branch A\n      Leaf 1\n      Leaf 2\n    Branch B\n",
+  },
 ];
 
 const r = (n: number): number => Math.round(n);

@@ -23,4 +23,6 @@ export { parseGitGraph, parseGitGraphWithSource } from "./git-parse.js";
 export type { ParsedGitGraph } from "./git-parse.js";
 export { parseTimeline, parseTimelineWithSource } from "./timeline-parse.js";
 export type { ParsedTimeline } from "./timeline-parse.js";
+export { parseMindmap, parseMindmapWithSource } from "./mindmap-parse.js";
+export type { ParsedMindmap } from "./mindmap-parse.js";
 export { parseDiagram } from "./diagram.js";

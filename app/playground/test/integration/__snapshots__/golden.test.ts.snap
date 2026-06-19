@@ -114,6 +114,25 @@ exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
+[
+  "polyline 68,39 108,39 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 196,32 236,32 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 196,45 206,45 206,112 236,112 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 68,57 78,57 78,119 108,119 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 12,20 56x56 r28",
+  "label "Root" 40,48 center",
+  "box 108,19 88x40 r8",
+  "label "Branch A" 152,39 center",
+  "box 236,12 72x40 r8",
+  "label "Leaf 1" 272,32 center",
+  "box 236,92 72x40 r8",
+  "label "Leaf 2" 272,112 center",
+  "box 108,99 88x40 r8",
+  "label "Branch B" 152,119 center",
+]
+`;
+
 exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
   "polyline 44,24 172,24 dashed=false from=l0p0c0 to=l0p0c0",

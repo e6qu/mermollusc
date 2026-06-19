@@ -28,3 +28,5 @@
   (parsed; only HIGHLIGHT→rect is rendered today), and explicit `gitGraph` config (e.g. `mainBranchName`).
 - timeline: *(done — `title`/`section`/`period : event` with `:`-continuation lines, two-mode lexer)*.
   Still: `<br>` soft line breaks inside event text; explicit per-section ordering.
+- mindmap: *(done — indentation hierarchy, shapes, icon/class stripped)*. Still: real `::icon()`
+  rendering once an icon pack is wired; a radial layout option (currently a layered LR tree via ELK).

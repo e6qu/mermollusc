@@ -139,3 +139,11 @@
   previous period (a `:` before any period fails loudly), and reads `title`/`section` values straight
   from the source slice so colons in them survive. `parseTimelineWithSource` records trimmed period +
   event spans (`TimelineSource`). +8 tests; `parseDiagram` routes `timeline`; added to robustness suite.
+- Added a **mindmap** parser (`mindmap-{tokens,grammar,parse}.ts`): indentation-defined hierarchy, the
+  shapes (`[square]`/`(rounded)`/`((circle))`/`{{hexagon}}`/plain), and `::icon()`/`:::class`
+  decorations (parsed then stripped — no icon pack here). Chevrotain doesn't model indentation, so the
+  lexer skips leading whitespace and captures each line as one `LineText` whose `startColumn` *is* its
+  indentation; `buildResult` rebuilds the tree with an indentation stack (pop ancestors at the same or
+  deeper column, the nearest strictly-shallower node is the parent), reads the shape from the delimiter,
+  and records each node's label span (`MindmapSource`). +6 tests; `parseDiagram` routes `mindmap`; added
+  to the robustness suite.

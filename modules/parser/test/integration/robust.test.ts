@@ -17,7 +17,11 @@ const ODD_INPUTS: readonly string[] = [
   "classDiagram\n",
   "gitGraph\n",
   "timeline\n",
+  "mindmap\n",
   // Truncated / dangling relationships.
+  "mindmap\n      OnlyDeepNoRoot\n",
+  "mindmap\n  a((unclosed\n",
+  "mindmap\n  x :::class ::icon(fa fa-x)\n",
   "gitGraph\n  merge\n",
   "gitGraph\n  checkout\n",
   "gitGraph\n  branch\n",
@@ -66,6 +70,7 @@ describe("parseDiagram robustness", () => {
       "sequenceDiagram\n",
       "gitGraph\n",
       "timeline\n",
+      "mindmap\n",
     ];
     for (const text of headers) {
       const r = parseDiagram(text);

@@ -7,7 +7,10 @@ import type {
   EdgeStroke,
   ErAst,
   FlowchartAst,
+  MindmapAst,
+  MindmapShape,
   NodeId,
+  NodeShape,
   RequirementAst,
   Scene,
   SceneEdge,
@@ -213,6 +216,41 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
     parent: c.parent === null ? null : brand<string, "NodeId">(c.parent),
     nodes: c.states.map((s) => brand<string, "NodeId">(s)),
   })),
+});
+
+const MINDMAP_SHAPE: Record<MindmapShape, NodeShape> = {
+  default: "round",
+  rounded: "round",
+  square: "rect",
+  circle: "circle",
+  hexagon: "diamond", // the SceneGraph has no hexagon; a diamond is the nearest "special" shape
+};
+
+// A mindmap is a tree of nodes joined by parent→child links, so it lays out through the same ELK path
+// as a flowchart: each node maps to a shaped node, each non-root to an arrowless (`open`) edge from its
+// parent. `LR` makes the root sit at the left with branches fanning rightward.
+const mindmapToFlow = (ast: MindmapAst): FlowchartAst => ({
+  kind: "flowchart",
+  direction: "LR",
+  nodes: ast.nodes.map((n) => ({
+    id: brand<string, "NodeId">(n.id),
+    label: n.label,
+    shape: MINDMAP_SHAPE[n.shape],
+  })),
+  edges: ast.nodes.flatMap((n) => {
+    const parent = n.parent;
+    if (parent === null) return [];
+    return [
+      {
+        id: brand<string, "EdgeId">(`mm:${n.id}`),
+        from: brand<string, "NodeId">(parent),
+        to: brand<string, "NodeId">(n.id),
+        kind: "open" as const,
+        label: null,
+      },
+    ];
+  }),
+  subgraphs: [],
 });
 
 // One attribute per row, e.g. `string name PK "the customer's name"`.
@@ -478,5 +516,7 @@ export const layoutDiagram = async (
       return layoutGitGraph(ast, measure);
     case "timeline":
       return layoutTimeline(ast, measure);
+    case "mindmap":
+      return layout(mindmapToFlow(ast), new Map(), measure);
   }
 };

@@ -35,9 +35,12 @@
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
-  (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
-  `layoutRequirement`); the rest (sequence, C4, block, network, cloud, **gitGraph**, **timeline**) →
-  pure layouts.
+  (async; state via `stateToFlow`, **mindmap** via `mindmapToFlow`, ER via `layoutEr`, class via
+  `layoutClass`, requirement via `layoutRequirement`); the rest (sequence, C4, block, network, cloud,
+  **gitGraph**, **timeline**) → pure layouts.
+- **mindmap (`mindmapToFlow`):** a tree, laid out through the flowchart ELK path — nodes become shaped
+  flowchart nodes (hexagon → diamond), parent→child links become arrowless (`open`) edges, `LR` so the
+  root sits at the left with branches fanning right.
 - **gitGraph (`layoutGitGraph`):** deterministic lane layout — commits in creation order along the main
   axis, one lane per branch on the cross axis (`LR` default; `TB`/`BT` swap/flip the axes); commits are
   circle nodes (`HIGHLIGHT` → rect), branch names round head nodes, one edge per parent (fork out at a

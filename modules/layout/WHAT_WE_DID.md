@@ -122,3 +122,8 @@
   sharing a section) gets a labelled `container` band above the row. Periods are rounded header nodes,
   events plain rects — all existing SceneGraph primitives, so no renderer change. Columns are sized to
   their widest label, so timeline labels (unlike gitGraph dots) sit inside their boxes. +5 unit tests.
+- Added `mindmapToFlow` + a `mindmap` case in `layoutDiagram`: a mindmap is a tree, so (like
+  `stateToFlow`) it lays out through the flowchart ELK path. Nodes map to shaped flowchart nodes
+  (`MindmapShape` → `NodeShape`; hexagon approximated by a diamond), parent→child links to arrowless
+  (`open`) edges, direction `LR` (root at left, branches fanning right). No dedicated engine and no
+  renderer change — ELK's layered tree does the work. Covered in the layout integration test.

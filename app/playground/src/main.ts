@@ -50,6 +50,7 @@ import type {
   DiagramAst,
   GitGraphSource,
   TimelineSource,
+  MindmapSource,
   GroupId,
   GroupMember,
   Groups,
@@ -78,6 +79,7 @@ import {
   parseSequenceWithSource,
   parseStateWithSource,
   parseTimelineWithSource,
+  parseMindmapWithSource,
   parseWithSource,
 } from "@m/parser";
 import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
@@ -192,6 +194,7 @@ let classSource: ClassSource | null = null;
 let reqSource: ReqSource | null = null;
 let gitSource: GitGraphSource | null = null;
 let timelineSource: TimelineSource | null = null;
+let mindmapSource: MindmapSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1178,6 +1181,10 @@ const EXAMPLES = new Map<string, string>([
     "timeline",
     "timeline\n  title History of Social Media\n  section Early\n    2002 : LinkedIn\n    2004 : Facebook : Google\n  section Growth\n    2005 : YouTube\n    2006 : Twitter\n    2010 : Instagram : Pinterest\n",
   ],
+  [
+    "mindmap",
+    "mindmap\n  root((mermollusc))\n    Origins\n      Mermaid\n      PlantUML\n    Families\n      Flowchart\n      Sequence\n      Timeline\n    Output\n      Canvas\n      SVG\n",
+  ],
 ]);
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
@@ -1251,6 +1258,7 @@ const renderFromText = async (text: string): Promise<void> => {
   reqSource = null;
   gitSource = null;
   timelineSource = null;
+  mindmapSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1310,6 +1318,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "timeline": {
       const withSource = parseTimelineWithSource(text);
       timelineSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "mindmap": {
+      const withSource = parseMindmapWithSource(text);
+      mindmapSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1732,6 +1745,14 @@ canvas.addEventListener("dblclick", (ev) => {
     const span =
       timelineSource.periods.get(brand<string, "TimelinePeriodId">(hit.id)) ??
       timelineSource.events.get(brand<string, "TimelineEventId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
+  } else if (
+    hit !== null &&
+    ast.kind === "mindmap" &&
+    mindmapSource !== null &&
+    hit.kind === "node"
+  ) {
+    const span = mindmapSource.nodes.get(brand<string, "MindmapNodeId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   }
 
