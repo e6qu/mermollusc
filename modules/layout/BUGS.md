@@ -1,6 +1,14 @@
 # @m/layout — bugs
 
-_None known._
+Open (cosmetic):
+
+- **gitGraph commit labels overflow the commit dot.** The renderer centres a node's label on the node;
+  a commit dot is a fixed ~26px circle, so an id/tag label wider than the dot spills over its outline
+  (Mermaid draws the label beside/below the dot). The graph stays correct and legible — this is a
+  styling gap, not a geometry bug. The real fix (label offset for small dots) is a renderer-level,
+  family-aware change, deliberately deferred to keep the gitGraph family renderer-agnostic.
+
+Checked while adding the gitGraph lane layout.
 
 Checked while making the pure layouts total-by-Result (no silent positional fallbacks).
 

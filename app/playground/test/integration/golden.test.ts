@@ -45,6 +45,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "requirement",
     text: "requirementDiagram\n  requirement req {\n    id: 1\n    risk: high\n  }\n  element ent {\n    type: simulation\n  }\n  ent - satisfies -> req\n",
   },
+  {
+    name: "gitGraph",
+    text: 'gitGraph\n  commit id: "init"\n  branch develop\n  commit id: "work"\n  checkout main\n  commit id: "fix"\n  merge develop tag: "v1"\n',
+  },
 ];
 
 const r = (n: number): number => Math.round(n);

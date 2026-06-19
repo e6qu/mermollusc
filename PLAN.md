@@ -62,10 +62,12 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Ten families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
-class (UML), requirement (SysML) — and all are two-way** (double-click → patch the source text). Every
-family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
-simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
+**Eleven families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML), and gitGraph — and the first ten are two-way** (double-click → patch
+the source text); gitGraph is render + inline commit-id relabel. Every node/edge family has
+drag/resize/align, connect, and delete; flowchart also has relax/regenerate and add. Network nodes show
+built-in glyphs; cloud nodes show **vendored simple-icons brand marks** (CC0, pinned). Icons-in-nodes is
+wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
@@ -123,12 +125,24 @@ P2:
 7. ✅ **Inline editor honours `viewScale`** — overlay maps scene→screen like the painter.
 8. ✅ **Goldens cover the state family** — flat + composite state samples added.
 
+### Capability parity (Mermaid families) — in progress
+
+Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical slice (contracts AST
++ source spans → parser trio → layout engine → app wiring + example → parser/layout/e2e/golden tests).
+
+- ✅ **gitGraph** — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and the
+  `LR`/`TB`/`BT` header directions. A deterministic lane layout (no ELK): commits march along the main
+  axis in creation order, each branch owns a cross-axis lane, parent edges fan out at branches and back
+  in at merges. Fits the node/edge SceneGraph with **zero renderer changes** (commits are circle nodes,
+  `HIGHLIGHT` a rect; branch names are round head nodes). Inline relabel of explicit commit ids.
+- ⏳ Next: **timeline**, **mindmap** (both node/edge-fit), then **pie** (the one family that needs a new
+  Scene/renderer primitive — wedges — so it lands as its own dedicated PR).
+
 ### Future bets (not yet scoped)
 
-- **More diagram families (capability parity).** External review flags the biggest gaps vs Mermaid/
-  PlantUML/Graphviz: component / deployment / use-case / activity (software-architecture parity),
-  Gantt / timeline (planning), and pie / mindmap / git-graph. Plus **DOT (Graphviz) import/export**
-  for interoperability — the highest-value format gap.
+- **DOT (Graphviz) import/export** for interoperability — the highest-value format gap.
+- **More software-architecture families:** component / deployment / use-case / activity (PlantUML
+  parity), Gantt (planning).
 
 - **Comprehensive, searchable audit trail.** Record edits/actions (text patches, drags, layout
   regenerates, exports) as a queryable, searchable history — beyond the in-memory undo. Likely a new
@@ -143,9 +157,9 @@ P2:
 1. Read `AGENTS.md` (hard rules + structure) then this file (architecture, decisions, status, roadmap).
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
-   **Current focus:** the *External review backlog* (Roadmap section) is fully resolved (PR #59). The
-   remaining review item is capability parity — new diagram families + DOT import/export — tracked
-   under *Future bets*.
+   **Current focus:** capability parity — adding the Mermaid families we lacked, one PR at a time
+   (see *Capability parity* above). **gitGraph** is done; timeline / mindmap / pie are next. The earlier
+   *External review backlog* is fully resolved (PR #59).
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

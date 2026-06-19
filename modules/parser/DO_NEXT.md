@@ -23,3 +23,6 @@
 - Requirement: *(done)* `requirementDiagram` — requirement/element bodies (`key: value`) + the seven
   relationship verbs (both arrow directions). Still: requirement `id`/`risk`/`verifymethod` enum
   validation (currently free text), and the `style`/`class` styling directives.
+- gitGraph: *(done — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and
+  `LR`/`TB`/`BT` directions)*. Still: `cherry-pick`, commit `type: REVERSE`/`HIGHLIGHT` distinct glyphs
+  (parsed; only HIGHLIGHT→rect is rendered today), and explicit `gitGraph` config (e.g. `mainBranchName`).

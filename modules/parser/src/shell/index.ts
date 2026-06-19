@@ -19,4 +19,6 @@ export { parseClass, parseClassWithSource } from "./class-parse.js";
 export type { ParsedClass } from "./class-parse.js";
 export { parseRequirement, parseRequirementWithSource } from "./req-parse.js";
 export type { ParsedRequirement } from "./req-parse.js";
+export { parseGitGraph, parseGitGraphWithSource } from "./git-parse.js";
+export type { ParsedGitGraph } from "./git-parse.js";
 export { parseDiagram } from "./diagram.js";

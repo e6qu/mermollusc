@@ -303,3 +303,9 @@
 - Fixed external-review P2 (requirement verb labels not editable): the inline-editor dispatch now edits
   a requirement relationship's verb (parser captures the verb span in `ReqSource.relationships`), so
   the "double-click any label" claim holds for requirement too.
+- Wired the **gitGraph** family end-to-end: imported `parseGitGraphWithSource` + `GitGraphSource`,
+  added a `gitSource` var, a "Git graph" Examples entry (+`index.html` option), the `renderFromText`
+  source-map case, and an inline-relabel branch (explicit commit ids only; branch heads / auto-id
+  commits carry no span). gitGraph is render + inline relabel — the flowchart-only Add/Connect/Delete
+  controls stay disabled for it. +1 golden sample, +3 e2e specs (render, example loads, malformed merge
+  surfaces a lint error).

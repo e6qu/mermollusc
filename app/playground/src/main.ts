@@ -48,6 +48,7 @@ import type {
   ErSource,
   ReqSource,
   DiagramAst,
+  GitGraphSource,
   GroupId,
   GroupMember,
   Groups,
@@ -69,6 +70,7 @@ import {
   parseClassWithSource,
   parseCloudWithSource,
   parseErWithSource,
+  parseGitGraphWithSource,
   parseRequirementWithSource,
   parseDiagram,
   parseNetworkWithSource,
@@ -186,6 +188,7 @@ let stateSource: StateSource | null = null;
 let erSource: ErSource | null = null;
 let classSource: ClassSource | null = null;
 let reqSource: ReqSource | null = null;
+let gitSource: GitGraphSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1164,6 +1167,10 @@ const EXAMPLES = new Map<string, string>([
     "requirement",
     "requirementDiagram\n  requirement user_req {\n    id: 1\n    text: the user shall log in.\n    risk: high\n    verifymethod: test\n  }\n  functionalRequirement login_req {\n    id: 1.1\n    text: validate credentials.\n    risk: medium\n    verifymethod: test\n  }\n  element login_form {\n    type: simulation\n  }\n  user_req - contains -> login_req\n  login_form - satisfies -> login_req\n  login_form - verifies -> user_req\n",
   ],
+  [
+    "gitGraph",
+    'gitGraph\n  commit id: "init"\n  commit id: "setup"\n  branch develop\n  commit id: "feature-a"\n  commit id: "feature-b"\n  checkout main\n  commit id: "hotfix"\n  merge develop tag: "v1.0"\n  commit id: "release"\n',
+  ],
 ]);
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
@@ -1235,6 +1242,7 @@ const renderFromText = async (text: string): Promise<void> => {
   erSource = null;
   classSource = null;
   reqSource = null;
+  gitSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1284,6 +1292,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "requirement": {
       const withSource = parseRequirementWithSource(text);
       reqSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "gitGraph": {
+      const withSource = parseGitGraphWithSource(text);
+      gitSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1689,6 +1702,12 @@ canvas.addEventListener("dblclick", (ev) => {
       hit.kind === "node"
         ? reqSource.entities.get(brand<string, "ReqEntityId">(hit.id))
         : reqSource.relationships.get(brand<string, "ReqRelId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "gitGraph" && gitSource !== null) {
+    // Only a commit with an explicit `id: "…"` is relabel-able; branch heads and auto-id commits
+    // carry no span, so they simply don't open the editor.
+    const span =
+      hit.kind === "node" ? gitSource.commits.get(brand<string, "GitCommitId">(hit.id)) : undefined;
     if (span !== undefined) pending = patchAt(span);
   }
 

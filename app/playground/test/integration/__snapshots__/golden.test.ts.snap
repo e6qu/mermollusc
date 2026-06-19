@@ -93,6 +93,27 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
+[
+  "polyline 116,42 200,112 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 116,42 284,42 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 284,42 368,42 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 200,112 368,42 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 16,29 72x26 r8",
+  "label "main" 52,42 center",
+  "box 16,99 72x26 r8",
+  "label "develop" 52,112 center",
+  "box 103,29 26x26 r13",
+  "label "init" 116,42 center",
+  "box 187,99 26x26 r13",
+  "label "work" 200,112 center",
+  "box 271,29 26x26 r13",
+  "label "fix" 284,42 center",
+  "box 355,29 26x26 r13",
+  "label "c3 [v1]" 368,42 center",
+]
+`;
+
 exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
   "polyline 44,24 172,24 dashed=false from=l0p0c0 to=l0p0c0",

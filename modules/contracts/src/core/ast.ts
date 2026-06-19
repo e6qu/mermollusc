@@ -345,6 +345,39 @@ export interface RequirementAst {
   readonly relationships: readonly ReqRel[];
 }
 
+export type GitCommitId = Brand<string, "GitCommitId">;
+export type GitBranchName = Brand<string, "GitBranchName">;
+// Layout direction from the header (`gitGraph LR:` etc.); `LR` is Mermaid's default.
+export type GitDirection = "LR" | "TB" | "BT";
+// A commit's visual style. `normal`/`reverse` draw as a circle, `highlight` as a filled rect — the
+// closest the SceneGraph's `NodeShape` set gets to Mermaid's three commit styles.
+export type GitCommitType = "normal" | "reverse" | "highlight";
+
+export interface GitCommit {
+  readonly id: GitCommitId;
+  // The lane (branch) this commit sits on — the branch that was current when it was created.
+  readonly branch: GitBranchName;
+  // Resolved parents: one for an ordinary commit (the previous tip of its branch), two for a merge
+  // (the current branch's tip plus the merged branch's tip), zero for the very first commit.
+  readonly parents: readonly GitCommitId[];
+  readonly tag: string | null;
+  readonly commitType: GitCommitType;
+  readonly merge: boolean;
+}
+
+export interface GitBranch {
+  readonly name: GitBranchName;
+  // Lane index in declaration order (`main` is 0); sets the cross-axis position.
+  readonly order: number;
+}
+
+export interface GitGraphAst {
+  readonly kind: "gitGraph";
+  readonly direction: GitDirection;
+  readonly branches: readonly GitBranch[];
+  readonly commits: readonly GitCommit[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -356,4 +389,5 @@ export type DiagramAst =
   | StateAst
   | ErAst
   | ClassAst
-  | RequirementAst;
+  | RequirementAst
+  | GitGraphAst;

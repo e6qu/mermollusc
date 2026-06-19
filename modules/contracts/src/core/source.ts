@@ -8,6 +8,7 @@ import type {
   ClassEntityId,
   ClassRelId,
   EdgeId,
+  GitCommitId,
   ReqEntityId,
   ReqRelId,
   ErEntityId,
@@ -86,6 +87,12 @@ export interface ClassSource {
 export interface ReqSource {
   readonly entities: ReadonlyMap<ReqEntityId, TextSpan>;
   readonly relationships: ReadonlyMap<ReqRelId, TextSpan>;
+}
+
+// Editable text spans for a git graph: the inner label of each commit's explicit `id: "…"`. Commits
+// with an auto-generated id (no `id:`) have no entry; branch names and tags aren't editable inline.
+export interface GitGraphSource {
+  readonly commits: ReadonlyMap<GitCommitId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

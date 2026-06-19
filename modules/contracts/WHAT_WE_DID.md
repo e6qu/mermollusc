@@ -45,3 +45,7 @@
 - Added `ClassEntity.stereotype` (`string | null`) for a class `«interface»`/`«abstract»` annotation,
   and a general `SceneNode.subtitle` (`string | null`) — a small line drawn above a compartment box's
   title (widening the title band) — to render it.
+- Added the **gitGraph** AST (`GitGraphAst`: `direction`, `branches`, resolved `commits` with
+  `parents`/`tag`/`commitType`/`merge`) plus `GitCommitId`/`GitBranchName`/`GitDirection`/
+  `GitCommitType` brands and a `GitGraphSource` (explicit-commit-id spans for inline relabel). Added
+  `GitGraphAst` to the `DiagramAst` union and re-exported all of it through both barrels.

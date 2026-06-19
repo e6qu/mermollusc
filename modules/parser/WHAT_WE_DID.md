@@ -120,3 +120,13 @@
 - Fixed external-review P2 (requirement verb not editable): `parseRequirementWithSource` now captures
   each relationship verb's token span into `ReqSource.relationships`, enabling inline edit of the verb
   (round-trips to another of the seven; invalid fails the parse loudly). +1 unit test.
+- Added a **gitGraph** parser (`git-tokens.ts`/`git-grammar.ts`/`git-parse.ts`): an optional
+  `LR`/`TB`/`BT` header direction, then `commit`/`branch`/`checkout`/`switch`/`merge` commands with
+  `id:`/`tag:`/`type:` (NORMAL/REVERSE/HIGHLIGHT) attributes. `buildResult` interprets the command
+  stream into a resolved commit graph: it tracks the current branch (Mermaid's `branch` creates **and**
+  checks out), seeds `main` as lane 0, resolves each commit's parents (previous tip on its branch; two
+  parents for a merge — current tip + merged tip), and mints ids (explicit `id:` must be unique — a
+  duplicate fails loudly; absent ones get the first free `cN`, so synthetics never shadow explicits).
+  Checkout/merge of an unknown branch and a self-merge fail loudly with a located error.
+  `parseGitGraphWithSource` captures explicit-id spans (`GitGraphSource`) for inline relabel. +8 tests;
+  `parseDiagram` routes `gitGraph` headers; added to the robustness suite.

@@ -36,7 +36,11 @@
   per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
   (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
-  `layoutRequirement`); the rest → pure layouts.
+  `layoutRequirement`); the rest (sequence, C4, block, network, cloud, **gitGraph**) → pure layouts.
+- **gitGraph (`layoutGitGraph`):** deterministic lane layout — commits in creation order along the main
+  axis, one lane per branch on the cross axis (`LR` default; `TB`/`BT` swap/flip the axes); commits are
+  circle nodes (`HIGHLIGHT` → rect), branch names round head nodes, one edge per parent (fork out at a
+  `branch`, fan in at a `merge`).
 - **Compartment families (ER, class, requirement)** share one engine, `layoutCompartments`: each
   family maps its AST to `CompartmentBox`/`CompartmentEdge` specs + a metrics record (direction, title/
   row/subtitle heights, padding, min width), and the engine sizes each box to its rows (a flowchart

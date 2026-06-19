@@ -17,7 +17,7 @@
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
   out of the app and the surface stays swappable.
-- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the ten
+- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the eleven
   families; the kind badge shows the active family; Connect/Delete dispatch per family, Add/Relax
   disable off-flowchart, and Regenerate stays live for all.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
@@ -28,7 +28,8 @@
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
 - `main.ts`: source editor (CodeMirror) ↔ canvas.
-  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all ten families);
+  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all eleven families; gitGraph is
+    render + inline commit-id relabel, no structural edit);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node
     (sidecar override);
   - double-click rename → an **inline editor overlay** (positioned over the element; Enter/blur
