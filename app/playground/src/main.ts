@@ -1150,7 +1150,13 @@ const EXAMPLES = new Map<string, string>([
   ],
 ]);
 
+// Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
+// later render can overtake an earlier one. `renderSeq` tags each render; a stale result (one whose
+// tag is no longer current) is dropped instead of painting over a newer diagram.
+let renderSeq = 0;
+
 const renderFromText = async (text: string): Promise<void> => {
+  const mySeq = ++renderSeq;
   localStorage.setItem(SOURCE_KEY, text);
   const parsed = parseDiagram(text);
   if (!isOk(parsed)) {
@@ -1167,6 +1173,7 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   const diagram = parsed.value;
   const laid = await layoutDiagram(diagram, measureLabel);
+  if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
     setStatus("error", `layout error — ${laid.error.message}`);

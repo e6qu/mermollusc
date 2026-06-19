@@ -105,3 +105,7 @@
   driven by `CompartmentBox`/`CompartmentEdge` specs + a per-family metrics record. The three are now
   thin AST→spec mappers. Behaviour-preserving: the per-family metrics keep each family's exact box
   sizing, so every pipeline golden is byte-identical (verified by running goldens without `-u`).
+- Documented that `elk.bundled.js` runs ELK in an inlined Web Worker in the browser (inline under
+  Node), so `elk.layout` is genuinely off the main thread — the heavy graph computation never blocks
+  rendering/interaction. (Noted not to wrap it in a second Worker: nesting the inlined worker breaks
+  under bundlers.)

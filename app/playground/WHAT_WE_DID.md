@@ -275,3 +275,10 @@
 - Class stereotypes (`<<interface>>`/`<<abstract>>`) now render as a `«…»` subtitle above the class
   name (parser + layout + renderer); enriched the `class` example + `26-class`/`27-class-dark` shots
   to show them. No app code change.
+- Performance/scale pass. Profiled the pipeline at 200–600 nodes: parse ~3ms, display-list + paint
+  ~0.1ms each, hit-test ~0.01ms — all negligible; ELK layout (~30–100ms) is the only heavy step and
+  **already runs off the main thread** (`elk.bundled.js` inlines a Web Worker), so the UI isn't
+  blocked by computation. Because layout is async, fast edits can have several renders in flight; added
+  a `renderSeq` **latest-wins guard** so an out-of-order layout result can't paint over a newer
+  diagram. Added `test/integration/scale.test.ts` — a 300-node flowchart through parse→layout→
+  display-list→paint→hit-test as a scale regression guard.
