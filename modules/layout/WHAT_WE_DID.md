@@ -132,3 +132,8 @@
   angle `-π/2`); output is a `Scene` with only `wedges` (no nodes/edges). An empty / title-only pie
   returns a valid empty scene rather than dividing by zero. +5 unit tests. All other layouts now emit
   `wedges: []`.
+- Polished `layoutPie`: each slice now also emits a **legend** entry — a full-circle wedge (the renderer
+  draws it as a colour-disc swatch with its label to the right) stacked in a column beside the disc. The
+  legend label carries the slice name plus the raw value when **`showData`** (previously parsed but
+  never rendered); the on-slice label dropped to just the percentage, so thin slices stay readable. The
+  extent grows to fit the legend (measured label widths). +6 unit tests (slice/legend split, showData).

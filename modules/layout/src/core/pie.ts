@@ -4,40 +4,74 @@ import type { LayoutError, MeasureText } from "./graph.js";
 
 const RADIUS = 150;
 const MARGIN = 24;
+const SWATCH_R = 7; // legend colour-disc radius
+const LEGEND_GAP = 28; // between the pie's right edge and the legend column
+const ROW_H = 26; // legend row pitch
+const LABEL_GAP = 8; // swatch → legend-label gap (mirrors the renderer's LEGEND_LABEL_GAP)
 
 // Deterministic pie layout — no ELK. Slices are sized by their share of the total and laid clockwise
-// from 12 o'clock (canvas angle `-π/2`). Angles are stored in canvas convention (radians from +x,
-// clockwise) so the renderer draws them without re-deriving anything. No nodes/edges — only wedges.
-export const layoutPie = (ast: PieAst, _measure: MeasureText): Result<Scene, LayoutError> => {
+// from 12 o'clock (canvas angle `-π/2`); angles are stored in canvas convention so the renderer draws
+// them directly. Each slice also gets a **legend** entry to the right: a full-circle wedge (the
+// renderer draws that as a colour-disc swatch with its label to the right). The legend label carries
+// the slice name, plus the raw value when `showData`. The on-slice label (the renderer adds it) is
+// just the percentage, so even thin slices stay readable. No nodes/edges — only wedges.
+export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, LayoutError> => {
   const total = ast.slices.reduce((sum, s) => sum + s.value, 0);
   const center = point(MARGIN + RADIUS, MARGIN + RADIUS);
-  const extent = rect(0, 0, 2 * (MARGIN + RADIUS), 2 * (MARGIN + RADIUS));
+  const discSpan = 2 * (MARGIN + RADIUS);
 
   // An empty pie (header only) or an all-zero total has nothing to draw; return an empty scene rather
-  // than dividing by zero. The parser already rejects non-positive slice values, so a positive total
-  // is the normal case.
+  // than dividing by zero. The parser already rejects non-positive slice values.
   if (total <= 0) {
-    return ok({ nodes: [], edges: [], wedges: [], extent });
+    return ok({ nodes: [], edges: [], wedges: [], extent: rect(0, 0, discSpan, discSpan) });
   }
 
   const TWO_PI = Math.PI * 2;
+  const swatchX = discSpan + LEGEND_GAP + SWATCH_R;
+  const slices: SceneWedge[] = [];
+  const legend: SceneWedge[] = [];
   let angle = -Math.PI / 2; // 12 o'clock
-  const wedges: SceneWedge[] = ast.slices.map((slice, i) => {
+  let maxLabelW = 0;
+
+  for (const [i, slice] of ast.slices.entries()) {
     const fraction = slice.value / total;
     const startAngle = angle;
     const endAngle = angle + fraction * TWO_PI;
     angle = endAngle;
-    return {
+    const percent = fraction * 100;
+    slices.push({
       center,
       radius: RADIUS,
       startAngle,
       endAngle,
       label: slice.label,
       value: slice.value,
-      percent: fraction * 100,
+      percent,
       colorIndex: i,
-    };
-  });
+    });
+    const legendText = ast.showData ? `${slice.label}  ${slice.value}` : slice.label;
+    maxLabelW = Math.max(maxLabelW, measure(legendText));
+    legend.push({
+      center: point(swatchX, MARGIN + SWATCH_R + i * ROW_H),
+      radius: SWATCH_R,
+      startAngle: 0,
+      endAngle: TWO_PI,
+      label: legendText,
+      value: slice.value,
+      percent,
+      colorIndex: i,
+    });
+  }
 
-  return ok({ nodes: [], edges: [], wedges, extent });
+  const legendRight = swatchX + SWATCH_R + LABEL_GAP + maxLabelW;
+  const legendBottom = MARGIN + ast.slices.length * ROW_H;
+  const width = Math.max(discSpan, legendRight + MARGIN);
+  const height = Math.max(discSpan, legendBottom + MARGIN);
+
+  return ok({
+    nodes: [],
+    edges: [],
+    wedges: [...slices, ...legend],
+    extent: rect(0, 0, width, height),
+  });
 };

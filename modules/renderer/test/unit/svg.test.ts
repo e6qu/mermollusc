@@ -235,6 +235,37 @@ describe("toSvg", () => {
     });
     expect(svg).toContain("<path");
     expect(svg).toContain(" A 80 80 0 "); // an arc of the wedge radius
-    expect(svg).toContain("Half 50%");
+    expect(svg).toContain("50%");
+  });
+
+  it("renders a full-circle wedge (legend swatch) as a <circle>", () => {
+    const swatchScene: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(40, 40),
+          radius: 7,
+          startAngle: 0,
+          endAngle: Math.PI * 2,
+          label: "Dogs",
+          value: 75,
+          percent: 75,
+          colorIndex: 0,
+        },
+      ],
+      extent: rect(0, 0, 200, 60),
+    };
+    const svg = toSvg(toDisplayList(swatchScene), {
+      width: 248,
+      height: 108,
+      origin: { x: 0, y: 0 },
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(svg).toContain("<circle");
+    expect(svg).toContain('r="7"');
+    expect(svg).toContain("Dogs");
   });
 });

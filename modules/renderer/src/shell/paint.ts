@@ -274,13 +274,15 @@ export const paint = (
         break;
       }
       case "wedge": {
+        // A full-circle sweep is a legend swatch: a plain disc (no centre vertex / closing radius).
+        const full = cmd.endAngle - cmd.startAngle >= Math.PI * 2 - 1e-6;
         ctx.fillStyle = wedgeColor(cmd.colorIndex);
         ctx.strokeStyle = theme.background;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(cmd.cx, cmd.cy);
+        if (!full) ctx.moveTo(cmd.cx, cmd.cy);
         ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
-        ctx.closePath();
+        if (!full) ctx.closePath();
         ctx.fill();
         ctx.stroke();
         ctx.lineWidth = 1.5;

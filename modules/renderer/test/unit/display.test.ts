@@ -287,6 +287,34 @@ describe("toDisplayList", () => {
     const wedge = cmds.find((c) => c.kind === "wedge");
     const label = cmds.find((c) => c.kind === "label");
     expect(wedge?.kind === "wedge" ? wedge.colorIndex : -1).toBe(0);
-    expect(label?.kind === "label" ? label.text : "").toBe("Half 50%");
+    // A partial slice's on-slice label is just the percentage (centred); the name lives in the legend.
+    expect(label?.kind === "label" ? label.text : "").toBe("50%");
+    expect(label?.kind === "label" ? label.align : "").toBe("center");
+  });
+
+  it("renders a full-circle wedge as a legend swatch with its label to the right", () => {
+    const s: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(50, 50),
+          radius: 7,
+          startAngle: 0,
+          endAngle: Math.PI * 2,
+          label: "Dogs  75",
+          value: 75,
+          percent: 75,
+          colorIndex: 2,
+        },
+      ],
+      extent: rect(0, 0, 200, 200),
+    };
+    const label = toDisplayList(s).find((c) => c.kind === "label");
+    if (label?.kind !== "label") throw new Error("no label");
+    // left-aligned, to the right of the swatch (centre.x + radius + gap), showing the full legend text
+    expect(label.text).toBe("Dogs  75");
+    expect(label.align).toBe("left");
+    expect(label.x).toBeGreaterThan(50 + 7);
   });
 });
