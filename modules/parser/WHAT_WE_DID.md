@@ -162,3 +162,9 @@
   comments. `parseDiagram` routes `digraph`/`strict`, and `graph` only when its header line has `{` (so
   Mermaid's `graph TD` decision-node `{…}` isn't mistaken for DOT). Subgraphs/ports/HTML labels are out
   of scope (fail loudly). +9 tests; added to the robustness suite.
+- DOT import now handles **subgraphs/clusters**: the grammar gained a recursive `subgraph [id] { … }` /
+  anonymous `{ … }` statement, and `buildResult` walks it with an enclosing-cluster context. A
+  `cluster*`-prefixed subgraph becomes a `FlowSubgraph` (a box — label from its `label=` attr, nested
+  via `parent`); a non-`cluster` subgraph is transparent (its nodes/edges import, no box), matching
+  Graphviz. Node membership is fixed at first sighting (DOT scoping). +2 tests; real clustered DOT now
+  imports and renders through the flowchart ELK container path.

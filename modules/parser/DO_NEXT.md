@@ -32,5 +32,6 @@
   rendering once an icon pack is wired; a radial layout option (currently a layered LR tree via ELK).
 - pie: *(done — `pie [showData]`, optional title, `"label" : value` rows, non-positive fails loudly;
   `showData` now renders the raw value in the legend)*.
-- DOT (Graphviz): *(done — import of a `graph`/`digraph` subset into the flowchart model)*. Still:
-  **DOT export** (a diagram → DOT text); subgraph/cluster import → `FlowSubgraph`; HTML-label handling.
+- DOT (Graphviz): *(done — import of a `graph`/`digraph` subset → flowchart, incl. `cluster*` subgraphs
+  → `FlowSubgraph`; export via `toDot` with `rankdir`)*. Still: HTML-label handling; DOT-export of
+  clusters (from `FlowSubgraph`); ports.

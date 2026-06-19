@@ -333,3 +333,5 @@
 - DOT export now carries the diagram's direction: `renderFromText` tracks `lastDirection` (the parsed
   AST's `direction`, when it has one) and passes it to `toDot`, so an exported flowchart/DOT keeps its
   `rankdir`. The round-trip integration test threads direction through too.
+- The DOT example now includes a `subgraph cluster_core { … }` so the imported cluster shows as a
+  labelled container box (DOT clusters → `FlowSubgraph` → ELK container). Verified by screenshot.

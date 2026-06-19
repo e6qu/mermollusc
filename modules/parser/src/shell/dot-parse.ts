@@ -5,6 +5,7 @@ import type {
   FlowDirection,
   FlowEdge,
   FlowNode,
+  FlowSubgraph,
   FlowchartAst,
   NodeShape,
 } from "@m/contracts";
@@ -92,90 +93,141 @@ interface NodeData {
   shape: NodeShape;
 }
 
+// A `cluster*` subgraph being assembled into a `FlowSubgraph` (label/membership filled as we walk).
+interface ClusterRec {
+  readonly id: string;
+  label: string;
+  readonly parent: string | null;
+  readonly nodes: string[];
+}
+
 const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
-  const root = cst.children;
-  const directed = childTokens(root, "Digraph").length > 0;
+  const directed = childTokens(cst.children, "Digraph").length > 0;
   let direction: FlowDirection = "TB";
   let defaultShape: NodeShape = "round";
   const nodes = new Map<string, NodeData>();
   const edges: FlowEdge[] = [];
+  const clusters: ClusterRec[] = [];
+  let anon = 0;
 
-  const ensureNode = (id: string): void => {
-    if (!nodes.has(id)) nodes.set(id, { label: id, shape: defaultShape });
+  // First sighting of a node fixes its cluster membership (DOT scoping); later references don't move it.
+  const ensureNode = (id: string, cluster: ClusterRec | null): void => {
+    if (nodes.has(id)) return;
+    nodes.set(id, { label: id, shape: defaultShape });
+    if (cluster !== null) cluster.nodes.push(id);
   };
 
-  for (const stmt of childNodes(root, "stmt")) {
-    const attrStmt = childNodes(stmt.children, "attrStmt")[0];
-    if (attrStmt !== undefined) {
-      const attrs = attrsOf(childNodes(attrStmt.children, "attrList")[0]);
-      if (childTokens(attrStmt.children, "NodeKw").length > 0) {
-        defaultShape = shapeOf(attrs.get("shape")) ?? defaultShape;
-      } else if (childTokens(attrStmt.children, "Graph").length > 0) {
-        const rd = attrs.get("rankdir");
-        if (rd !== undefined) direction = dirOf(rd) ?? direction;
+  // Walks a statement list within an enclosing cluster (null at the top level), recursing into nested
+  // subgraphs. Graphviz only boxes `cluster`-prefixed subgraphs; others are transparent (their nodes
+  // belong to the enclosing cluster, matching how the layout would group them).
+  const walk = (stmts: readonly CstNode[], cluster: ClusterRec | null): void => {
+    for (const stmt of stmts) {
+      const sub = childNodes(stmt.children, "subgraphStmt")[0];
+      if (sub !== undefined) {
+        const idNode = childNodes(sub.children, "id")[0];
+        const sgId = idNode === undefined ? `__anon${anon++}` : idText(idNode);
+        const inner = childNodes(sub.children, "stmt");
+        if (sgId.toLowerCase().startsWith("cluster")) {
+          const rec: ClusterRec = {
+            id: sgId,
+            label: "",
+            parent: cluster === null ? null : cluster.id,
+            nodes: [],
+          };
+          clusters.push(rec);
+          walk(inner, rec);
+        } else {
+          walk(inner, cluster);
+        }
+        continue;
       }
-      continue;
-    }
 
-    const idStmt = childNodes(stmt.children, "idStmt")[0];
-    if (idStmt === undefined) continue;
-    const ids = childNodes(idStmt.children, "id");
-    const head = ids[0];
-    if (head === undefined) continue;
-    const headText = idText(head);
-    const hasEq = childTokens(idStmt.children, "Eq").length > 0;
-    const edgeRHS = childNodes(idStmt.children, "edgeRHS")[0];
-    const attrs = attrsOf(childNodes(idStmt.children, "attrList")[0]);
-
-    if (hasEq) {
-      // A top-level `name = value` graph attribute (e.g. `rankdir=LR`); only direction is honoured.
-      const value = ids[1];
-      if (headText.toLowerCase() === "rankdir" && value !== undefined) {
-        direction = dirOf(idText(value)) ?? direction;
+      const attrStmt = childNodes(stmt.children, "attrStmt")[0];
+      if (attrStmt !== undefined) {
+        const attrs = attrsOf(childNodes(attrStmt.children, "attrList")[0]);
+        if (childTokens(attrStmt.children, "NodeKw").length > 0) {
+          defaultShape = shapeOf(attrs.get("shape")) ?? defaultShape;
+        } else if (childTokens(attrStmt.children, "Graph").length > 0) {
+          const rd = attrs.get("rankdir");
+          if (rd !== undefined) direction = dirOf(rd) ?? direction;
+          const lbl = attrs.get("label");
+          if (lbl !== undefined && cluster !== null) cluster.label = lbl;
+        }
+        continue;
       }
-      continue;
-    }
 
-    if (edgeRHS !== undefined) {
-      const chain = [headText, ...childNodes(edgeRHS.children, "id").map(idText)];
-      for (const id of chain) ensureNode(id);
-      const kind = edgeKindOf(attrs, directed);
-      const label = attrs.get("label") ?? null;
-      for (let i = 0; i + 1 < chain.length; i++) {
-        const from = chain[i];
-        const to = chain[i + 1];
-        if (from === undefined || to === undefined) continue;
-        edges.push({
-          id: brand<string, "EdgeId">(`e${edges.length}`),
-          from: brand<string, "NodeId">(from),
-          to: brand<string, "NodeId">(to),
-          kind,
-          label,
-        });
+      const idStmt = childNodes(stmt.children, "idStmt")[0];
+      if (idStmt === undefined) continue;
+      const ids = childNodes(idStmt.children, "id");
+      const head = ids[0];
+      if (head === undefined) continue;
+      const headText = idText(head);
+      const hasEq = childTokens(idStmt.children, "Eq").length > 0;
+      const edgeRHS = childNodes(idStmt.children, "edgeRHS")[0];
+      const attrs = attrsOf(childNodes(idStmt.children, "attrList")[0]);
+
+      if (hasEq) {
+        // `name = value`: `rankdir` sets the flow direction; `label` inside a cluster names it.
+        const value = ids[1];
+        const key = headText.toLowerCase();
+        if (key === "rankdir" && value !== undefined) {
+          direction = dirOf(idText(value)) ?? direction;
+        } else if (key === "label" && value !== undefined && cluster !== null) {
+          cluster.label = idText(value);
+        }
+        continue;
       }
-      continue;
-    }
 
-    // A node statement: create it (if new) and apply any explicit label/shape.
-    ensureNode(headText);
-    const data = nodes.get(headText);
-    if (data !== undefined) {
-      data.label = attrs.get("label") ?? data.label;
-      data.shape = shapeOf(attrs.get("shape")) ?? data.shape;
+      if (edgeRHS !== undefined) {
+        const chain = [headText, ...childNodes(edgeRHS.children, "id").map(idText)];
+        for (const id of chain) ensureNode(id, cluster);
+        const kind = edgeKindOf(attrs, directed);
+        const label = attrs.get("label") ?? null;
+        for (let i = 0; i + 1 < chain.length; i++) {
+          const from = chain[i];
+          const to = chain[i + 1];
+          if (from === undefined || to === undefined) continue;
+          edges.push({
+            id: brand<string, "EdgeId">(`e${edges.length}`),
+            from: brand<string, "NodeId">(from),
+            to: brand<string, "NodeId">(to),
+            kind,
+            label,
+          });
+        }
+        continue;
+      }
+
+      // A node statement: create it (if new) and apply any explicit label/shape.
+      ensureNode(headText, cluster);
+      const data = nodes.get(headText);
+      if (data !== undefined) {
+        data.label = attrs.get("label") ?? data.label;
+        data.shape = shapeOf(attrs.get("shape")) ?? data.shape;
+      }
     }
-  }
+  };
+
+  walk(childNodes(cst.children, "stmt"), null);
 
   const flowNodes: FlowNode[] = [...nodes.entries()].map(([id, n]) => ({
     id: brand<string, "NodeId">(id),
     label: n.label,
     shape: n.shape,
   }));
+  const subgraphs: FlowSubgraph[] = clusters.map((c) => ({
+    id: brand<string, "NodeId">(c.id),
+    label: c.label === "" ? c.id : c.label,
+    parent: c.parent === null ? null : brand<string, "NodeId">(c.parent),
+    nodes: c.nodes.map((n) => brand<string, "NodeId">(n)),
+  }));
 
-  return ok({ kind: "flowchart", direction, nodes: flowNodes, edges, subgraphs: [] });
+  return ok({ kind: "flowchart", direction, nodes: flowNodes, edges, subgraphs });
 };
 
 // Imports a Graphviz DOT graph as a flowchart AST, so it renders + lays out through the existing
-// flowchart pipeline. A subset: subgraphs/clusters, ports, and HTML labels are unsupported (loud).
+// flowchart pipeline. A subset: `cluster*` subgraphs become flowchart subgraphs (boxes); ports and
+// HTML labels are unsupported (and a non-`cluster` subgraph is transparent — layout grouping only).
 export const parseDot = (text: string): Result<FlowchartAst, ParseError> => {
   const lexed = dotLexer.tokenize(text);
   if (lexed.errors.length > 0) {
