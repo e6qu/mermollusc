@@ -1,9 +1,25 @@
 # Collaborative editor — design & scoping (CRDT)
 
-Status: **plan only** (not yet built). This scopes a real-time, multi-user, **enterprise-ready**
-collaborative editor for mermollusc, with low latency and no performance compromises. It is a
-deliberate expansion beyond today's purely-client, no-backend architecture (see *Future bets* in the
-root `PLAN.md`), so it needs sign-off on the decision points in §10 before any implementation.
+Status: **Phase 0 done; decisions signed off; Phase 1 ready to start.** This scopes a real-time,
+multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
+performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
+architecture (see *Future bets* in the root `PLAN.md`).
+
+**Phase 0 (the document-model seam) is built** — the overlay sits behind `OverlayDoc`
+(`app/playground/src/document-model.ts`) and the source text behind `Editor`, so the collaborative
+path plugs in as alternate implementations without touching call sites.
+
+**The §10 decision points are now signed off** (2026-06-20):
+
+| # | Decision | Chosen |
+|---|----------|--------|
+| 1 | CRDT engine | **Yjs** |
+| 2 | Sync model | **Server-authoritative WebSocket** |
+| 3 | Persistence / hosting | **Self-hosted: Postgres (update log) + S3 (snapshots) + Redis (fan-out)** |
+| 4 | Auth / tenancy | **OIDC via the existing IdP**; tenant = org; region-pinned storage. *(Open: confirm which IdP — Okta / Entra / Auth0 / Keycloak.)* |
+| 5 | Server stack | **Extend a Node Yjs server (Hocuspocus)** for Phases 1–2; revisit Go/Rust only if Phase 3 fan-out demands it |
+
+The rest of this doc records the design these decisions resolve.
 
 ---
 
@@ -46,7 +62,7 @@ collaboration changes *how the source/overlay get to the core*, not the core its
 
 ## 3. CRDT choice
 
-**Recommend [Yjs](https://yjs.dev).** Mature, fast, compact binary deltas, a first-class CodeMirror 6
+**Decided: [Yjs](https://yjs.dev)** (§10.1). Mature, fast, compact binary deltas, a first-class CodeMirror 6
 binding (`y-codemirror.next`), a built-in **awareness** protocol for presence, an `UndoManager` with
 per-origin (per-user) scoping, and pluggable persistence + transport. Alternatives considered:
 
@@ -90,25 +106,26 @@ after merge — the invariant holds without coordination.
   bindings, awareness, and the offline buffer behind a small API. The CRDT/network lives at the
   **shell** boundary; the functional core stays pure and collaboration-unaware. DAG: `collab` depends
   on `contracts` (overlay/source types); the **app** wires it. Existing `core`/`shell` split preserved.
-- **Sync server (new service)** — a WebSocket relay (extend `y-websocket`, or a custom Go/Node service)
-  that is **server-authoritative** for enterprise: it authenticates the connection, authorizes the room
-  (RBAC), relays/merges updates, persists them, and emits audit + metrics. Not the static app — a
-  separate deployable.
-- **Phase-0 seam** — first extract today's local `source`/`overrides`/`groups` vars behind a
-  **document-model interface** the app reads/writes through. With that seam, the local single-user path
-  and the collaborative path are two implementations; collab becomes pluggable without rewriting the app.
+- **Sync server (new service)** — a **server-authoritative** WebSocket relay built by extending a Node
+  Yjs server (**Hocuspocus**, §10.5): it authenticates the connection, authorizes the room (RBAC),
+  relays/merges updates, persists them, and emits audit + metrics. Not the static app — a separate
+  deployable.
+- **Phase-0 seam — built.** Today's local `source` sits behind `Editor` and `overrides`/`groups`
+  behind `OverlayDoc` (`app/playground/src/document-model.ts`), each read/written through its
+  interface. The local single-user path and the collaborative path are now two implementations; collab
+  plugs in without rewriting the app.
 
 ## 6. Transport & persistence
 
-- **Transport: server-authoritative WebSocket** (not pure WebRTC p2p). Enterprises need the server in
-  the loop for access control, audit, and persistence. Binary Yjs sync protocol (compact deltas);
-  awareness on the same socket.
-- **Persistence**: the Yjs **update log + periodic snapshots** in a durable store (Postgres-backed, or
-  `y-leveldb`/S3 for snapshots), per-tenant isolated, backed up, with retention policy. The update log
-  doubles as the **audit trail** (who/what/when) — subsuming that Future-bet.
-- **Scale**: one doc = one room; horizontal-scale server instances with a **Redis (or NATS) pub/sub**
-  fan-out so clients on different instances converge; shard rooms by doc id. Snapshot compaction to cap
-  log growth.
+- **Transport: server-authoritative WebSocket** (§10.2; not pure WebRTC p2p). Enterprises need the
+  server in the loop for access control, audit, and persistence. Binary Yjs sync protocol (compact
+  deltas); awareness on the same socket.
+- **Persistence (§10.3): self-hosted Postgres + S3 + Redis.** The Yjs **update log** lives in Postgres
+  (per-tenant isolated, backed up, with a retention policy) and doubles as the **audit trail**
+  (who/what/when); periodic **snapshots** go to S3. Chosen over a managed Yjs service for
+  data-residency/compliance control and no per-seat cost.
+- **Scale**: one doc = one room; horizontal-scale server instances with **Redis pub/sub** fan-out so
+  clients on different instances converge; shard rooms by doc id. Snapshot compaction caps log growth.
 
 ## 7. Latency & performance (the "no compromises" part)
 
@@ -124,7 +141,7 @@ after merge — the invariant holds without coordination.
 
 ## 8. Enterprise requirements
 
-- **AuthN**: OIDC/SAML SSO at the connection handshake.
+- **AuthN**: **OIDC via the existing IdP** at the connection handshake (§10.4; specific provider TBD).
 - **AuthZ**: per-document roles (owner/editor/viewer) enforced **server-side** before relaying any
   update; per-**tenant** isolation (subsumes the *Multi-tenancy* Future-bet).
 - **Audit**: the update log is an immutable who/changed-what/when record; export for compliance.
@@ -137,21 +154,34 @@ after merge — the invariant holds without coordination.
 
 ## 9. Phasing
 
-- **Phase 0 — the seam (no infra).** Extract source/overrides/groups behind a document-model interface
-  in the app. Pure refactor; ships value (cleaner state ownership) with zero backend.
-- **Phase 1 — proof of merge.** Yjs in-memory + dev `y-websocket`; text + overlay CRDT + presence;
-  local-first + reconnect. Validate the "derive locally, share only source+overlay" model end-to-end.
+- **Phase 0 — the seam (no infra). ✅ DONE.** `source` behind `Editor`, `overrides`/`groups` behind
+  `OverlayDoc` (`app/playground/src/document-model.ts`). Pure refactor; shipped cleaner state
+  ownership with zero backend.
+- **Phase 1 — proof of merge (next).** Yjs in-memory + dev Hocuspocus/`y-websocket`; text + overlay
+  CRDT + presence; local-first + reconnect. Validate the "derive locally, share only source+overlay"
+  model end-to-end.
 - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 
-## 10. Decision points (need sign-off before building)
+## 10. Decisions (signed off 2026-06-20)
 
-1. **CRDT**: Yjs (recommended) vs Loro (if first-class history/time-travel matters).
-2. **Sync model**: server-authoritative WebSocket (recommended for enterprise) vs WebRTC p2p.
-3. **Persistence backend**: managed (e.g. a hosted Yjs service) vs self-hosted (Postgres/S3 + Redis).
-4. **Auth provider / tenancy model**: which IdP; tenant = org boundary; storage residency policy.
-5. **Server stack**: extend `y-websocket` (Node) vs a custom service (Go/Rust) for the relay/persistence.
+1. **CRDT → Yjs.** Mature, first-class CodeMirror 6 binding, built-in awareness for presence, and an
+   `UndoManager` with per-origin scoping that maps directly onto per-user undo. (Loro stays the
+   fallback if first-class history/time-travel later becomes a headline feature.)
+2. **Sync model → server-authoritative WebSocket.** The server stays in the loop to enforce RBAC,
+   own the audit log, and persist — none of which WebRTC p2p can do server-side. Binary Yjs sync
+   protocol + awareness on one socket.
+3. **Persistence → self-hosted: Postgres + S3 + Redis.** Update log in Postgres (doubles as the audit
+   trail), periodic snapshots in S3, Redis pub/sub for cross-instance fan-out. Chosen over a managed
+   Yjs service for data-residency/compliance control and no per-seat cost — accepting the larger ops
+   commitment.
+4. **Auth / tenancy → OIDC via the existing IdP.** Tenant = org boundary; per-tenant region-pinned
+   storage. **Open item:** confirm the specific IdP (Okta / Entra / Auth0 / Keycloak) before Phase 2.
+5. **Server stack → extend a Node Yjs server (Hocuspocus).** Reuses the Yjs ecosystem and its
+   auth/persistence/Redis hooks; the relay is IO-bound, so Node suffices for Phases 1–2. Revisit a
+   custom Go/Rust relay only if fan-out becomes the Phase 3 bottleneck. (Exact Hocuspocus API/version
+   to be verified against current docs at build time, per the repo's no-memory-claims rule.)
 
 ## 11. Risks & open questions
 

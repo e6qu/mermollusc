@@ -181,16 +181,18 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   rooms + server-side RBAC give tenant isolation). Enterprise-ready, but a large infra commitment and a
   deliberate departure from the current client-only design.
 
-  **Phased roadmap** (see the doc §9 for detail; §10 lists the 5 decision points — CRDT choice,
-  sync model, persistence backend, auth/tenancy, server stack — that need sign-off before Phase 1):
+  **Decisions signed off (2026-06-20, doc §10):** Yjs · server-authoritative WebSocket · self-hosted
+  Postgres + S3 + Redis · OIDC via the existing IdP (specific provider TBD) · extend a Node Yjs server
+  (Hocuspocus). **Phased roadmap** (doc §9):
   - **Phase 0 — the seam (no infra). ✅ DONE.** Overlay state (overrides + groups + history)
     extracted behind the `OverlayDoc` document-model interface in the app
     (`app/playground/src/document-model.ts`), with `createLocalDocument` as the single-user
     implementation; the source text has the symmetric seam in `Editor` (`editor.ts`). Pure refactor,
     zero backend — collab now plugs in as a second `OverlayDoc` implementation without touching call
     sites.
-  - **Phase 1 — proof of merge.** Yjs in-memory + dev `y-websocket`; text + overlay CRDT + presence;
-    local-first + reconnect. Validates the "derive locally, share only source+overlay" model.
+  - **Phase 1 — proof of merge (next).** Yjs in-memory + dev Hocuspocus/`y-websocket`; text + overlay
+    CRDT + presence; local-first + reconnect. Validates the "derive locally, share only
+    source+overlay" model. (Open before Phase 2: confirm the specific OIDC IdP.)
   - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
   - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
     observability/SLOs, offline buffer, compaction, compliance hooks.
