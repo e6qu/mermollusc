@@ -330,3 +330,6 @@
 - Let the top-bar actions **wrap** (`flex-wrap`) instead of overflowing the viewport: adding the DOT
   export button pushed the single-row toolbar past 1280px, sending Share/Load-icons off-screen (and
   destabilising zoom-centred e2e). Controls now reflow to a second right-aligned row at narrow widths.
+- DOT export now carries the diagram's direction: `renderFromText` tracks `lastDirection` (the parsed
+  AST's `direction`, when it has one) and passes it to `toDot`, so an exported flowchart/DOT keeps its
+  `rankdir`. The round-trip integration test threads direction through too.

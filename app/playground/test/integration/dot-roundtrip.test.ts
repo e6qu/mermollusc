@@ -12,7 +12,8 @@ const sceneToDot = async (text: string): Promise<string> => {
   if (!isOk(parsed)) throw new Error("parse failed");
   const laid = await layoutDiagram(parsed.value, heuristicMeasure);
   if (!isOk(laid)) throw new Error("layout failed");
-  return toDot(laid.value);
+  const rankdir = "direction" in parsed.value ? parsed.value.direction : null;
+  return toDot(laid.value, rankdir);
 };
 
 describe("DOT export ↔ import round trip", () => {

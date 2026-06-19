@@ -35,12 +35,12 @@
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
-  (async; state via `stateToFlow`, **mindmap** via `mindmapToFlow`, ER via `layoutEr`, class via
-  `layoutClass`, requirement via `layoutRequirement`); the rest (sequence, C4, block, network, cloud,
-  **gitGraph**, **timeline**) → pure layouts.
-- **mindmap (`mindmapToFlow`):** a tree, laid out through the flowchart ELK path — nodes become shaped
-  flowchart nodes (hexagon → diamond), parent→child links become arrowless (`open`) edges, `LR` so the
-  root sits at the left with branches fanning right.
+  (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
+  `layoutRequirement`); the rest (sequence, C4, block, network, cloud, **gitGraph**, **timeline**,
+  **mindmap**, **pie**) → pure layouts.
+- **mindmap (`layoutMindmap`):** a deterministic **radial** layout (no ELK) — the root sits at the
+  centre and each subtree fans into an angular sector sized by its leaf count, depth → radius; a forest
+  rings its roots around a virtual hub. Nodes are shaped (hexagon → diamond), edges arrowless spokes.
 - **pie (`layoutPie`):** a deterministic radial layout — slices sized by share of the total, laid
   clockwise from 12 o'clock. Output is a `Scene` carrying only `wedges` (the new SceneGraph primitive);
   no nodes/edges.

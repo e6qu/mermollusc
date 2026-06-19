@@ -18,13 +18,14 @@
 - *(done)* The ER/class/requirement compartment layouts share one `layoutCompartments` engine
   (`CompartmentBox`/`CompartmentEdge` specs + per-family metrics) instead of three copies of the ELK
   boilerplate. A future compartment family is now a small AST→spec mapper.
-- gitGraph: *(done — deterministic lane layout, LR/TB/BT)*. Follow-up: offset commit labels beside the
-  dot (a renderer-level change) so they don't overflow the small circle; orthogonal/curved branch+merge
-  connectors instead of straight diagonals.
+- gitGraph: *(done — deterministic lane layout, LR/TB/BT; commits are now label-sized rounded pills, so
+  labels never overflow)*. Follow-up: orthogonal/curved branch+merge connectors instead of straight
+  diagonals.
 - timeline: *(done — column layout with a period spine, stacked events, section bands)*. Follow-up:
   alternate event cards above/below the spine (Mermaid-style) once a family-aware renderer pass exists.
-- mindmap: *(done — layered LR tree via the flowchart ELK path)*. Follow-up: a radial/balanced layout
-  (Mermaid-style) once a dedicated mindmap engine is worth it.
+- mindmap: *(done — dedicated **radial** engine `layoutMindmap`: leaf-weighted angular sectors, depth →
+  radius, forest rings a virtual hub)*. Follow-up: curved (bezier) spokes; collision-avoidance for very
+  wide labels at the same radius.
 - pie: *(done — radial wedge layout, slices clockwise from 12 o'clock; **side legend** with colour-disc
-  swatches + `showData` raw values; on-slice label is just the percentage)*. Follow-up: wrap/scroll the
-  legend for very many slices; an optional donut (inner radius).
+  swatches + `showData` raw values; on-slice label is just the percentage; the legend **wraps into
+  columns** when it would run past the disc)*. Follow-up: an optional donut (inner radius).

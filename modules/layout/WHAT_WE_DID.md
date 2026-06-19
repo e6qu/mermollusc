@@ -137,3 +137,13 @@
   legend label carries the slice name plus the raw value when **`showData`** (previously parsed but
   never rendered); the on-slice label dropped to just the percentage, so thin slices stay readable. The
   extent grows to fit the legend (measured label widths). +6 unit tests (slice/legend split, showData).
+- Replaced the mindmap's layered-tree-via-ELK rendering with a dedicated **radial** engine
+  (`core/mindmap.ts`, `layoutMindmap`): the root sits at the centre and each subtree fans into an
+  angular sector sized by its leaf count (dense branches get more room), depth → radius; a forest
+  (>1 root) rings its roots around a virtual hub. Nodes are sized to their labels and shaped
+  (hexagon → diamond), edges are arrowless parent→child spokes. Positions are computed centred on the
+  origin then shifted into a positive extent. Dropped the `mindmapToFlow` ELK adapter. +5 unit tests.
+- Polish round: **fixed the gitGraph label-overflow bug** — commits are now rounded pills sized to
+  their id+tag (was a fixed ~26px dot the label spilled out of), with per-axis pitch sized to the pills
+  so neighbours don't collide in LR or TB (no renderer change). **pie legend wraps** into columns when
+  a long slice list would run past the disc bottom (column pitch from the widest label). +tests updated.

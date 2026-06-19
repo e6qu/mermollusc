@@ -1,4 +1,4 @@
-import type { EdgeEnd, NodeShape, Scene } from "@m/contracts";
+import type { EdgeEnd, FlowDirection, NodeShape, Scene } from "@m/contracts";
 
 // Serialises a Scene to Graphviz DOT. The Scene is the universal graph IR, so this exports *any*
 // node/edge family (flowchart, state, ER, class, …) to DOT; a pie chart (wedges, no nodes) exports as
@@ -36,8 +36,11 @@ const ARROWTYPE: Record<EdgeEnd, string | null> = {
   zeroOrMany: "ocrow",
 };
 
-export const toDot = (scene: Scene): string => {
+// `rankdir` carries the source diagram's flow direction (`TB`/`BT`/`LR`/`RL` are valid Graphviz
+// rankdir values); pass null for a family with no inherent direction (pie, sequence, …).
+export const toDot = (scene: Scene, rankdir: FlowDirection | null): string => {
   const lines: string[] = ["digraph {"];
+  if (rankdir !== null) lines.push(`  rankdir=${rankdir};`);
   for (const node of scene.nodes) {
     const attrs = [`label="${esc(node.label)}"`, `shape=${SHAPE[node.shape]}`];
     if (ROUNDED.has(node.shape)) attrs.push('style="rounded"');

@@ -48,6 +48,7 @@ import type {
   ErSource,
   ReqSource,
   DiagramAst,
+  FlowDirection,
   GitGraphSource,
   TimelineSource,
   MindmapSource,
@@ -205,6 +206,8 @@ let reqSource: ReqSource | null = null;
 let gitSource: GitGraphSource | null = null;
 let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
+// The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
+let lastDirection: FlowDirection | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1227,6 +1230,7 @@ const renderFromText = async (text: string): Promise<void> => {
     return;
   }
   const diagram = parsed.value;
+  lastDirection = "direction" in diagram ? diagram.direction : null;
   const laid = await layoutDiagram(diagram, measureLabel);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
@@ -2325,7 +2329,7 @@ exportDotBtn.addEventListener("click", () => {
     setStatus("error", "nothing to export yet");
     return;
   }
-  const dot = toDot(applyOverrides(scene, overrides));
+  const dot = toDot(applyOverrides(scene, overrides), lastDirection);
   downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
   setStatus("ok", "exported mermollusc.dot");
 });
