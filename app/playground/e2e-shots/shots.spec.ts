@@ -322,6 +322,31 @@ const FLOWS: readonly Flow[] = [
       );
     },
   },
+  {
+    name: "27-class-dark",
+    about: "class diagram in dark theme — compartments + UML heads on the dark surface",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
+      );
+      await page.locator("#theme").click();
+      await settled(page);
+    },
+  },
+  {
+    name: "28-er-sketch",
+    about: "ER diagram in sketch mode — hand-drawn compartments + crow's-foot",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n  }\n  CUSTOMER ||--o{ ORDER : places\n",
+      );
+      await page.locator("#sketch").click();
+      await settled(page);
+      await page.waitForTimeout(250);
+    },
+  },
 ];
 
 for (const flow of FLOWS) {
