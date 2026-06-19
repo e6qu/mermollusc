@@ -353,8 +353,12 @@ const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
 };
 
 // Resolve every icon referenced by the scene to a drawable image before painting, so the painter
-// never has to deal with a half-loaded glyph. A resolve failure is logged loudly, not swallowed.
-const ensureIcons = async (s: Scene): Promise<void> => {
+// never has to deal with a half-loaded glyph. A resolve failure, or a decode failure (a pack whose
+// markup is invalid SVG — `img.decode()` rejects), is logged loudly and the icon is skipped: the
+// painter draws the box + label without the glyph, and the diagram still renders rather than the whole
+// frame failing on an unhandled rejection. Returns the keys that failed so the caller can surface them.
+const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
+  const failed: string[] = [];
   for (const node of s.nodes) {
     if (node.icon === null) continue;
     const key = `${node.icon.pack}/${node.icon.name}`;
@@ -362,10 +366,17 @@ const ensureIcons = async (s: Scene): Promise<void> => {
     const resolved = findIcon(registry, node.icon.pack, node.icon.name);
     if (!isOk(resolved)) {
       console.error("icon resolve failed:", resolved.error.message);
+      failed.push(key);
       continue;
     }
-    iconImages.set(key, await rasterizeIcon(resolved.value));
+    try {
+      iconImages.set(key, await rasterizeIcon(resolved.value));
+    } catch (e) {
+      console.error("icon decode failed:", key, e instanceof Error ? e.message : String(e));
+      failed.push(key);
+    }
   }
+  return failed;
 };
 
 const paintScene = (): void => {
@@ -1274,7 +1285,12 @@ const renderFromText = async (text: string): Promise<void> => {
       break;
     }
   }
-  await ensureIcons(scene);
+  const failedIcons = await ensureIcons(scene);
+  if (failedIcons.length > 0) {
+    // The diagram still paints (glyph-less); surface the failure rather than leaving it only in the
+    // console, since a missing glyph on the canvas is otherwise easy to miss.
+    setStatus("error", `${failedIcons.length} icon(s) failed to load: ${failedIcons.join(", ")}`);
+  }
   paintScene();
 };
 

@@ -2,10 +2,10 @@
 
 Open (external review, codex `gpt-5.5`, 2026-06-19):
 
-- **Unhandled icon-decode rejection.** `ensureIcons` calls `img.decode()` on rasterised pack SVGs; a
-  pack that decodes as JSON but holds invalid SVG markup rejects, and `renderFromText` is invoked as
-  `void`, so the failure is unhandled and the diagram may not paint. Make rasterise return `Result`,
-  catch per-icon, surface status, still paint. *(P1, open.)*
+- ~~**Unhandled icon-decode rejection.**~~ Fixed — `ensureIcons` now catches `img.decode()` failures
+  per icon, logs loudly, skips the glyph (the painter draws box + label without it), and returns the
+  failed keys; `renderFromText` surfaces them in the status bar. The diagram always paints instead of
+  the fire-and-forget render aborting on an unhandled rejection.
 - **Inline editor ignores `viewScale`.** After zoom in/out or Fit, the `#inline-edit` overlay opens at
   unscaled scene coordinates, off the target node/edge label. Scale the anchor by `viewScale`
   (account for canvas rect + scroll). *(P2, open.)*

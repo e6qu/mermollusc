@@ -287,3 +287,7 @@
   ER/class/requirement deletes to the new family entity-delete helpers (whole `{ … }` block + incident
   relationships) instead of the line-based `deleteNode` that orphaned bodies. +1 e2e (delete a
   brace-bodied ER entity → block gone, ORDER stays, source still parses).
+- Fixed external-review P1 (unhandled icon-decode rejection): `ensureIcons` catches per-icon
+  `img.decode()` failures (invalid pack SVG), logs loudly, skips the glyph, and returns the failed
+  keys; `renderFromText` surfaces them in the status bar. The render no longer aborts on an unhandled
+  rejection — the diagram always paints (glyph-less for the bad icon).
