@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   CloudAst,
   CloudNodeKind,
@@ -117,11 +118,11 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       });
     }
     nodes.push({
-      id: brand<string, "SceneNodeId">(el.id),
+      id: sceneNodeId(el.id),
       bounds: rect(b.x, b.y, b.w, b.h),
       label: el.label,
       shape: el.group ? "container" : "rect",
-      parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
+      parent: el.parent === null ? null : sceneNodeId(el.parent),
       icon: el.icon,
       rows: null,
       rowDivider: null,
@@ -137,9 +138,9 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       return err({ kind: "layout", message: `cloud: link ${link.id} references an unknown node` });
     }
     edges.push({
-      id: brand<string, "SceneEdgeId">(link.id),
-      from: brand<string, "SceneNodeId">(link.from),
-      to: brand<string, "SceneNodeId">(link.to),
+      id: sceneEdgeId(link.id),
+      from: sceneNodeId(link.from),
+      to: sceneNodeId(link.to),
       waypoints: [
         point(from.x + from.w / 2, from.y + from.h / 2),
         point(to.x + to.w / 2, to.y + to.h / 2),

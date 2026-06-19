@@ -132,6 +132,15 @@ for (const file of tsFiles(coreDir)) {
     ) {
       return "optional `?:` (use null / required field / default param)";
     }
+    // The `brand` cast is the shell-only escape hatch; core mints branded ids through a smart
+    // constructor (e.g. `sceneNodeId(...)`) so the cast stays in src/shell.
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "brand"
+    ) {
+      return "raw `brand<…>` in core (use a smart constructor — e.g. sceneNodeId()/sceneEdgeId(); the cast lives in src/shell)";
+    }
     return null;
   });
 }

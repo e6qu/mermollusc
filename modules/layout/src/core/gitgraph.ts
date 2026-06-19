@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   GitBranchName,
   GitCommit,
@@ -79,7 +80,7 @@ export const layoutGitGraph = (
     const x = vertical ? c.x - headW / 2 : MARGIN;
     const y = vertical ? MARGIN : c.y - HEAD_H / 2;
     nodes.push({
-      id: brand<string, "SceneNodeId">(`branch:${b.name}`),
+      id: sceneNodeId(`branch:${b.name}`),
       bounds: rect(x, y, headW, HEAD_H),
       label: b.name,
       shape: "round",
@@ -105,7 +106,7 @@ export const layoutGitGraph = (
     center.set(commit.id, c);
     const w = pillW(commit);
     nodes.push({
-      id: brand<string, "SceneNodeId">(commit.id),
+      id: sceneNodeId(commit.id),
       bounds: rect(c.x - w / 2, c.y - COMMIT_H / 2, w, COMMIT_H),
       label: commitLabel(commit),
       shape: commitShape(commit),
@@ -126,9 +127,9 @@ export const layoutGitGraph = (
       // A parent always precedes its child in creation order, so its centre is known; skip defensively.
       if (from === undefined) continue;
       edges.push({
-        id: brand<string, "SceneEdgeId">(`${parent}->${commit.id}`),
-        from: brand<string, "SceneNodeId">(parent),
-        to: brand<string, "SceneNodeId">(commit.id),
+        id: sceneEdgeId(`${parent}->${commit.id}`),
+        from: sceneNodeId(parent),
+        to: sceneNodeId(commit.id),
         waypoints: [point(from.x, from.y), point(to.x, to.y)],
         label: null,
         stroke: "solid",

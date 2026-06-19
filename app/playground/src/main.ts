@@ -474,6 +474,20 @@ const paintScene = (): void => {
   drawMinimap();
 };
 
+// Coalesces repaints to one per animation frame. Pointer-move events (drag/resize/marquee) can fire
+// many times per frame; without this each would rebuild the display list + repaint the whole canvas +
+// minimap. `requestPaint` collapses a burst into a single paint, so interaction stays smooth on large
+// diagrams. One-shot paints (toggles, re-render) call `paintScene` directly.
+let paintQueued = false;
+const requestPaint = (): void => {
+  if (paintQueued) return;
+  paintQueued = true;
+  requestAnimationFrame(() => {
+    paintQueued = false;
+    paintScene();
+  });
+};
+
 const GROUP_PAD = 10;
 const GROUP_HIT_TOLERANCE = 6;
 const GROUP_TITLE_HEIGHT = 24;
@@ -1499,13 +1513,13 @@ canvas.addEventListener("pointermove", (ev) => {
       point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
       size(w, h),
     );
-    paintScene();
+    requestPaint();
     return;
   }
   if (marquee !== null) {
     const at = scenePoint(ev);
     marquee = { ...marquee, x1: at.x, y1: at.y };
-    paintScene();
+    requestPaint();
     return;
   }
   if (pan !== null) {
@@ -1525,7 +1539,7 @@ canvas.addEventListener("pointermove", (ev) => {
     const o = drag.origin.get(id);
     if (o !== undefined) overrides = moveNode(overrides, id, point(o.x + dx, o.y + dy));
   }
-  paintScene();
+  requestPaint();
 });
 
 canvas.addEventListener("pointerup", (ev) => {

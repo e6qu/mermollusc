@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   BlockAst,
   EdgeEnd,
@@ -43,7 +44,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     const y = row * (NODE_HEIGHT + GAP);
     centers.set(b.id, { x: x + cellWidth / 2, y: y + NODE_HEIGHT / 2 });
     return {
-      id: brand<string, "SceneNodeId">(b.id),
+      id: sceneNodeId(b.id),
       bounds: rect(x, y, cellWidth, NODE_HEIGHT),
       label: b.label,
       shape: b.shape,
@@ -63,9 +64,9 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       return err({ kind: "layout", message: `block: edge ${e.id} references an unknown block` });
     }
     edges.push({
-      id: brand<string, "SceneEdgeId">(e.id),
-      from: brand<string, "SceneNodeId">(e.from),
-      to: brand<string, "SceneNodeId">(e.to),
+      id: sceneEdgeId(e.id),
+      from: sceneNodeId(e.from),
+      to: sceneNodeId(e.to),
       waypoints: [point(from.x, from.y), point(to.x, to.y)],
       label: e.label,
       fromEnd: "none",

@@ -1,4 +1,5 @@
-import { brand, err, ok, point, rect, type Point, type Result } from "@m/std";
+import { err, ok, point, rect, type Point, type Result } from "@m/std";
+import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   EdgeEnd,
   EdgeId,
@@ -72,6 +73,15 @@ export const toElkGraph = (
     };
   };
 
+  // Index subgraphs by parent once, so building the nesting tree is linear rather than re-filtering
+  // the whole subgraph list at every level (the parent key is null at the top, or an enclosing id).
+  const childSubgraphs = new Map<NodeId | null, FlowSubgraph[]>();
+  for (const s of ast.subgraphs) {
+    const siblings = childSubgraphs.get(s.parent);
+    if (siblings === undefined) childSubgraphs.set(s.parent, [s]);
+    else siblings.push(s);
+  }
+
   // A subgraph becomes a container whose children are its member leaves plus nested subgraph
   // containers; ELK sizes it to fit them.
   const container = (sg: FlowSubgraph): ContainerNode => ({
@@ -82,7 +92,7 @@ export const toElkGraph = (
         const n = nodeById.get(id);
         return n === undefined ? [] : [leaf(n)];
       }),
-      ...ast.subgraphs.filter((s) => s.parent === sg.id).map(container),
+      ...(childSubgraphs.get(sg.id) ?? []).map(container),
     ],
   });
 
@@ -97,7 +107,7 @@ export const toElkGraph = (
     },
     children: [
       ...ast.nodes.filter((n) => !memberIds.has(n.id)).map(leaf),
-      ...ast.subgraphs.filter((s) => s.parent === null).map(container),
+      ...(childSubgraphs.get(null) ?? []).map(container),
     ],
     edges: ast.edges.map((e) => ({ id: e.id, sources: [e.from], targets: [e.to] })),
   };
@@ -113,12 +123,12 @@ export const toScene = (
 
   const nodes: SceneNode[] = [];
   for (const pn of positioned.nodes) {
-    const parent = pn.parent === null ? null : brand<string, "SceneNodeId">(pn.parent);
+    const parent = pn.parent === null ? null : sceneNodeId(pn.parent);
     const sub = subgraphById.get(pn.id);
     if (sub !== undefined) {
       // A subgraph container: drawn as an outlined box with its title near the top.
       nodes.push({
-        id: brand<string, "SceneNodeId">(pn.id),
+        id: sceneNodeId(pn.id),
         bounds: rect(pn.x, pn.y, pn.width, pn.height),
         label: sub.label,
         shape: "container",
@@ -133,7 +143,7 @@ export const toScene = (
     const fn = nodeById.get(pn.id);
     if (fn === undefined) return err({ kind: "layout", message: `node ${pn.id} missing from AST` });
     nodes.push({
-      id: brand<string, "SceneNodeId">(pn.id),
+      id: sceneNodeId(pn.id),
       bounds: rect(pn.x, pn.y, pn.width, pn.height),
       label: fn.label,
       shape: fn.shape,
@@ -151,9 +161,9 @@ export const toScene = (
     if (astEdge === undefined)
       return err({ kind: "layout", message: `edge ${pe.id} missing from AST` });
     edges.push({
-      id: brand<string, "SceneEdgeId">(pe.id),
-      from: brand<string, "SceneNodeId">(astEdge.from),
-      to: brand<string, "SceneNodeId">(astEdge.to),
+      id: sceneEdgeId(pe.id),
+      from: sceneNodeId(astEdge.from),
+      to: sceneNodeId(astEdge.to),
       waypoints: pe.points.map((p) => point(p.x, p.y)),
       label: astEdge.label,
       fromEnd: "none",

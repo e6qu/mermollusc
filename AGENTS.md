@@ -85,12 +85,17 @@ The five doc files, by purpose:
 ## 3. Type policy & the two sanctioned boundaries
 
 - Functional core: **zero** `any` / `unknown` / `as` / authored `undefined` / optional `?:` /
-  string-or-number-keyed dicts. Enforced by Biome (`noExplicitAny`) plus `tools/guard-types.mjs`
+  string-or-number-keyed dicts, **and no raw `brand<…>`** (mint branded values through a smart
+  constructor instead — see below). Enforced by Biome (`noExplicitAny`) plus `tools/guard-types.mjs`
   (TS compiler API), which also bans wildcard imports/exports and type/lint suppressions across
   `src`. `make lint` runs both.
 - Exactly two unsafe operations exist, **only in `src/shell/`**, each a named, commented helper:
-  - `brand<T, B>(value)` — the single sanctioned `as` cast, to mint a branded value after its
-    smart constructor has validated it.
+  - `brand<T, B>(value)` — the single sanctioned `as` cast, to mint a branded value. It is **shell-only**;
+    cores never call it. Each branded type gets a **smart constructor** in some module's `src/shell`
+    (validating where it can, e.g. `coordinate`/`length`; a plain typed wrapper where the value is an
+    opaque handle, e.g. `sceneNodeId`/`sceneEdgeId` in `@m/contracts`). Cores import and call the
+    constructor, so the `as` stays out of `src/core` (the guard rejects `brand<…>` there). New branded
+    types follow the same pattern: add a constructor next to `brand`, don't cast in core.
   - `decode(schema, input)` — the I/O-boundary validator (Zod). Untyped external input
     (user text, icon JSON, the elkjs result surface) enters only through a decoder that
     returns branded types or a `Result` error. The core never sees raw input.

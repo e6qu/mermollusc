@@ -66,3 +66,6 @@
 - `SceneEdge` gained `curved` (draw as a bowed bezier — mindmap spokes / gitGraph connectors) and
   `fromLabel`/`toLabel` (small per-end labels — class multiplicity). `ClassRel` gained `fromMult`/
   `toMult`; `StateAst` gained `notes` (`StateNote` = id/target/text).
+- Added `sceneNodeId`/`sceneEdgeId` smart constructors in `src/shell` (the first runtime code in the
+  types-only `contracts`), so layout cores mint Scene ids through them instead of raw `brand<…>`. Keeps
+  the sanctioned `as` cast in a shell; `tools/guard-types.mjs` now bans raw `brand<…>` in `src/core`.

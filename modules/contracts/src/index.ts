@@ -117,3 +117,4 @@ export type {
   MindmapSource,
   PieSource,
 } from "./core/index.js";
+export { sceneNodeId, sceneEdgeId } from "./shell/index.js";
