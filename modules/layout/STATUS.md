@@ -34,8 +34,9 @@
   element whose `parent` is dangling/cyclic so it was never placed) instead of silently placing it at
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
-- `layoutDiagram(ast)` routes by family: flowchart, **state, ER, and class** → ELK (async; state via a
-  `stateToFlow` adapter, ER via `layoutEr`, class via `layoutClass`); the rest → pure layouts.
+- `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
+  (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
+  `layoutRequirement`); the rest → pure layouts.
 - **ER (`layoutEr`):** builds the ELK graph directly (not via `toElkGraph`) because each entity box
   must be sized for its attribute rows before layout — height `ER_TITLE_H + rows·ER_ROW_H`, width the
   widest measured row/label. Scene entities carry their `rows`; relationship ends carry the cardinality
@@ -44,7 +45,10 @@
 - **Class (`layoutClass`):** like `layoutEr` — boxes sized to fit members (fields then methods, split
   by `SceneNode.rowDivider` = field count); `memberRow` prefixes the visibility glyph. Relationship
   ends carry the UML arrowheads (`ClassArrow` *is* an `EdgeEnd`); dashed line for `..`.
-- tests: 29 unit + 8 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- **Requirement (`layoutRequirement`):** compartment boxes with a `«kind»` tag (its own compartment via
+  `rowDivider`) + `key: value` field rows; verb-labelled open-arrow edges, solid for `contains` /
+  dashed for the rest.
+- tests: 29 unit + 13 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; property-based: block/network grids **and the ELK flowchart path**

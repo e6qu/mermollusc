@@ -3,6 +3,7 @@ import {
   parseC4WithSource,
   parseClassWithSource,
   parseErWithSource,
+  parseRequirementWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
   parseWithSource,
@@ -15,6 +16,7 @@ import {
   connectClass,
   connectEr,
   connectMessage,
+  connectRequirement,
   connectUndirected,
   deleteActor,
   deleteC4,
@@ -24,6 +26,7 @@ import {
   deleteErRel,
   deleteMessage,
   deleteNode,
+  deleteRequirementRel,
   patchSpan,
   relabelNode,
 } from "../../src/core/patch.js";
@@ -33,6 +36,7 @@ const cid = (s: string) => brand<string, "C4ElementId">(s);
 const aid = (s: string) => brand<string, "ActorId">(s);
 const erid = (s: string) => brand<string, "ErEntityId">(s);
 const clid = (s: string) => brand<string, "ClassEntityId">(s);
+const rqid = (s: string) => brand<string, "ReqEntityId">(s);
 
 const sourceOf = (text: string) => {
   const r = parseWithSource(text);
@@ -136,6 +140,23 @@ describe("relabelNode", () => {
     const removed = deleteClassRel(next, clid("A"), clid("B"));
     expect(removed).not.toContain("A --> B"); // the added relationship is gone
     expect(removed).toContain("Animal <|-- Duck"); // the original stays
+  });
+
+  it("connectRequirement appends a relationship the requirement parser accepts, and deleteRequirementRel removes it", () => {
+    const next = connectRequirement(
+      "requirementDiagram\n  element a { type: x }\n  requirement b { id: 1 }\n",
+      rqid("a"),
+      rqid("b"),
+    );
+    expect(next).toContain("a - satisfies -> b");
+    const r = parseRequirementWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.relationships.some((rel) => rel.from === "a" && rel.to === "b")).toBe(true);
+
+    const removed = deleteRequirementRel(next, rqid("a"), rqid("b"));
+    expect(removed).not.toContain("a - satisfies -> b");
+    expect(removed).toContain("requirement b"); // the entities stay
   });
 
   it("connectMessage appends a message the sequence parser accepts", () => {

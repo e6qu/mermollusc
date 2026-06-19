@@ -17,4 +17,6 @@ export { parseEr, parseErWithSource } from "./er-parse.js";
 export type { ParsedEr } from "./er-parse.js";
 export { parseClass, parseClassWithSource } from "./class-parse.js";
 export type { ParsedClass } from "./class-parse.js";
+export { parseRequirement, parseRequirementWithSource } from "./req-parse.js";
+export type { ParsedRequirement } from "./req-parse.js";
 export { parseDiagram } from "./diagram.js";

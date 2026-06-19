@@ -38,3 +38,7 @@
 - Extended `EdgeEnd` with the UML heads (`arrowOpen`, `triangle`, `diamondFilled`, `diamondHollow`);
   `ClassArrow` is a subset so it assigns straight onto a `SceneEdge` end. Added `SceneNode.rowDivider`
   (`number | null`) for a UML class's field/method compartment split.
+- Added the `RequirementAst` family (SysML requirement diagrams) — `ReqEntity` (`ReqKind` = the six
+  requirement types or `element`, with `ReqField[]` key/value body lines), `ReqRel` (`ReqRelKind` =
+  the seven verbs contains/copies/derives/satisfies/verifies/refines/traces) — plus `ReqSource`, and
+  added `RequirementAst` to `DiagramAst`. No new scene fields needed (reuses `rows`/`rowDivider`).

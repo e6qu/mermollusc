@@ -7,6 +7,7 @@ import { parseCloud } from "./cloud-parse.js";
 import { parseEr } from "./er-parse.js";
 import { parseNetwork } from "./net-parse.js";
 import { parse } from "./parse.js";
+import { parseRequirement } from "./req-parse.js";
 import type { ParseError } from "./parse.js";
 import { parseSequence } from "./seq-parse.js";
 import { parseState } from "./state-parse.js";
@@ -20,6 +21,7 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
       .find((line) => line.length > 0 && !line.startsWith("%%")) ?? "";
   if (header.startsWith("stateDiagram")) return parseState(text);
   if (header.startsWith("classDiagram")) return parseClass(text);
+  if (header.startsWith("requirementDiagram")) return parseRequirement(text);
   if (header.startsWith("erDiagram")) return parseEr(text);
   if (header.startsWith("sequenceDiagram")) return parseSequence(text);
   if (header.startsWith("C4")) return parseC4(text);

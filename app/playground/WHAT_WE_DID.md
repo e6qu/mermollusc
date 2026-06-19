@@ -268,3 +268,7 @@
 - Polish pass 3: added review shots for the newer families in non-default themes (`27-class-dark`,
   `28-er-sketch`) — confirmed compartments + UML/crow's-foot markers render correctly in dark and
   sketch. Drove a renderer fix so sketch-mode edge markers wobble with the edge.
+- Wired the **requirement diagram** family (the 10th): Examples entry + `<option>`, parse→source
+  dispatch (`parseRequirementWithSource` → `reqSource`), relabel (entity names only — verbs are
+  keywords), Connect (`connectRequirement`), Delete (`deleteRequirementRel`). Added a requirement
+  pipeline golden, a `29-requirement` shots flow, and a requirement e2e. 86 Playwright green.

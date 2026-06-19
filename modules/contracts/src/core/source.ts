@@ -8,6 +8,8 @@ import type {
   ClassEntityId,
   ClassRelId,
   EdgeId,
+  ReqEntityId,
+  ReqRelId,
   ErEntityId,
   ErRelId,
   MessageId,
@@ -77,6 +79,13 @@ export interface ErSource {
 export interface ClassSource {
   readonly entities: ReadonlyMap<ClassEntityId, TextSpan>;
   readonly relationships: ReadonlyMap<ClassRelId, TextSpan>;
+}
+
+// Editable text spans for a requirement diagram: each entity's name. Relationship verbs are closed
+// keywords (not free text), so they carry no editable span — the map is present but empty.
+export interface ReqSource {
+  readonly entities: ReadonlyMap<ReqEntityId, TextSpan>;
+  readonly relationships: ReadonlyMap<ReqRelId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

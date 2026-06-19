@@ -20,3 +20,6 @@
   operators (inheritance/realization/composition/aggregation/association/dependency). Still: class
   stereotypes (`<<interface>>`, currently skipped), per-end multiplicity labels (`"1" --> "*"`),
   generics (`List~T~`), and namespaces.
+- Requirement: *(done)* `requirementDiagram` — requirement/element bodies (`key: value`) + the seven
+  relationship verbs (both arrow directions). Still: requirement `id`/`risk`/`verifymethod` enum
+  validation (currently free text), and the `style`/`class` styling directives.

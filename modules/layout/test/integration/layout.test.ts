@@ -1,5 +1,13 @@
 import { brand, isOk, point } from "@m/std";
-import type { ClassAst, ErAst, FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
+import type {
+  ClassAst,
+  ErAst,
+  FlowchartAst,
+  NodeId,
+  RequirementAst,
+  SequenceAst,
+  StateAst,
+} from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout, layoutDiagram } from "../../src/shell/elk.js";
@@ -225,5 +233,48 @@ describe("layout", () => {
     // The hollow inheritance triangle sits at the base class (the `from` end).
     expect(laid.value.edges[0]?.fromEnd).toBe("triangle");
     expect(laid.value.edges[0]?.label).toBe("extends");
+  });
+
+  it("layoutDiagram lays out a requirement diagram: «kind» tag, field rows, verb-labelled arrows", async () => {
+    const reqAst: RequirementAst = {
+      kind: "requirement",
+      entities: [
+        {
+          id: brand<string, "ReqEntityId">("test_req"),
+          name: "test_req",
+          kind: "requirement",
+          fields: [
+            { key: "id", value: "1" },
+            { key: "risk", value: "high" },
+          ],
+        },
+        {
+          id: brand<string, "ReqEntityId">("test_entity"),
+          name: "test_entity",
+          kind: "element",
+          fields: [],
+        },
+      ],
+      relationships: [
+        {
+          id: brand<string, "ReqRelId">("r0"),
+          from: brand<string, "ReqEntityId">("test_entity"),
+          to: brand<string, "ReqEntityId">("test_req"),
+          kind: "satisfies",
+        },
+      ],
+    };
+    const laid = await layoutDiagram(reqAst, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    const req = laid.value.nodes.find((n) => n.id === "test_req");
+    // «kind» tag in its own compartment (divider at row 1), then the fields.
+    expect(req?.rows).toEqual(["«requirement»", "id: 1", "risk: high"]);
+    expect(req?.rowDivider).toBe(1);
+    // An element with no fields: just the «element» tag, no inner divider.
+    expect(laid.value.nodes.find((n) => n.id === "test_entity")?.rows).toEqual(["«element»"]);
+    expect(laid.value.nodes.find((n) => n.id === "test_entity")?.rowDivider).toBeNull();
+    // The relationship renders as an open arrow labelled with its verb.
+    expect(laid.value.edges[0]).toMatchObject({ label: "satisfies", toEnd: "arrowOpen" });
   });
 });

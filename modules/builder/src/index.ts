@@ -25,6 +25,7 @@ export {
   connectMessage,
   connectEr,
   connectClass,
+  connectRequirement,
   deleteNode,
   deleteEdge,
   deleteC4,
@@ -33,6 +34,7 @@ export {
   deleteMessage,
   deleteErRel,
   deleteClassRel,
+  deleteRequirementRel,
 } from "./core/index.js";
 export type { PatchError } from "./core/index.js";
 export { serializeOverlay, decodeOverlay } from "./shell/index.js";

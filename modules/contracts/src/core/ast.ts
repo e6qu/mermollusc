@@ -294,6 +294,54 @@ export interface ClassAst {
   readonly relationships: readonly ClassRel[];
 }
 
+export type ReqEntityId = Brand<string, "ReqEntityId">;
+export type ReqRelId = Brand<string, "ReqRelId">;
+// The keyword introducing a node: one of the six SysML requirement types, or a plain `element`.
+export type ReqKind =
+  | "requirement"
+  | "functionalRequirement"
+  | "performanceRequirement"
+  | "interfaceRequirement"
+  | "physicalRequirement"
+  | "designConstraint"
+  | "element";
+// The seven SysML requirement relationship verbs.
+export type ReqRelKind =
+  | "contains"
+  | "copies"
+  | "derives"
+  | "satisfies"
+  | "verifies"
+  | "refines"
+  | "traces";
+
+// A `key: value` body line (`id`/`text`/`risk`/`verifymethod` for a requirement; `type`/`docref` for
+// an element). Kept as parsed key + value so the renderer can show them as compartment rows.
+export interface ReqField {
+  readonly key: string;
+  readonly value: string;
+}
+
+export interface ReqEntity {
+  readonly id: ReqEntityId;
+  readonly name: string;
+  readonly kind: ReqKind;
+  readonly fields: readonly ReqField[];
+}
+
+export interface ReqRel {
+  readonly id: ReqRelId;
+  readonly from: ReqEntityId;
+  readonly to: ReqEntityId;
+  readonly kind: ReqRelKind;
+}
+
+export interface RequirementAst {
+  readonly kind: "requirement";
+  readonly entities: readonly ReqEntity[];
+  readonly relationships: readonly ReqRel[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -304,4 +352,5 @@ export type DiagramAst =
   | CloudAst
   | StateAst
   | ErAst
-  | ClassAst;
+  | ClassAst
+  | RequirementAst;

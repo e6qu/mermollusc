@@ -5,6 +5,7 @@ import type {
   ClassEntityId,
   EdgeKind,
   ErEntityId,
+  ReqEntityId,
   NodeId,
   NodeShape,
   SourceMap,
@@ -96,6 +97,26 @@ export const deleteClassRel = (text: string, from: ClassEntityId, to: ClassEntit
   const lines = text.split("\n");
   const idx = lines.findIndex((line) => {
     const m = CLASS_REL.exec(line);
+    return m !== null && m[1] === from && m[2] === to;
+  });
+  if (idx === -1) return text;
+  lines.splice(idx, 1);
+  return lines.join("\n");
+};
+
+// A requirement relationship (`from - satisfies -> to`) — a default verb the user can re-type into
+// any of the seven (contains/copies/derives/verifies/refines/traces) in the text.
+export const connectRequirement = (text: string, from: ReqEntityId, to: ReqEntityId): string =>
+  `${withTrailingNewline(text)}  ${from} - satisfies -> ${to}\n`;
+
+// The forward `a - verb -> b` form that `connectRequirement` writes (a→b).
+const REQ_REL = /^\s*(\S+)\s*-\s*\w+\s*->\s*(\S+)/;
+
+// Remove the first requirement relationship line between two entities (by their ids).
+export const deleteRequirementRel = (text: string, from: ReqEntityId, to: ReqEntityId): string => {
+  const lines = text.split("\n");
+  const idx = lines.findIndex((line) => {
+    const m = REQ_REL.exec(line);
     return m !== null && m[1] === from && m[2] === to;
   });
   if (idx === -1) return text;

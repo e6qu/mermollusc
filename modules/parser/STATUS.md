@@ -28,7 +28,8 @@
   per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, or class parser.
+  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class, or
+  requirement parser.
 - `parseState(text)` / `parseStateWithSource(text)` → `StateAst` (+ `StateSource`): `stateDiagram-v2`
   subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
@@ -47,6 +48,11 @@
   relationship lines whose operator (`<|--`/`--|>`/`*--`/`o--`/`-->`/`..>`/`..|>`/`--`) splits into
   `fromArrow`/`toArrow` (`ClassArrow`) + a dashed flag. Members carry visibility (`+`/`-`/`#`/`~`) and
   a field/method `kind`. (Stereotypes + multiplicity labels are future work.)
+- `parseRequirement(text)` / `parseRequirementWithSource(text)` → `RequirementAst` (+ `ReqSource`:
+  entity-name spans): `requirementDiagram` subset — `requirement foo { key: value … }` /
+  `element bar { … }` declarations (the six requirement types + `element`; body lines split on the
+  first `:`), and relationship lines `a - verb -> b` / `a <- verb - b` (verb ∈ the seven `ReqRelKind`s,
+  arrow direction sets from/to).
 - `ParseError` carries `errors: string[]` **and `positions: ErrorPosition[]`** (`{ offset, length }`,
   built by the shared `lexingError`/`recognitionError`/`parseError` helpers in `parse-error.ts`) so a
   host can highlight the offending range; line/column are left to the host to derive from the text.

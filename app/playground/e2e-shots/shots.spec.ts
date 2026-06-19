@@ -347,6 +347,16 @@ const FLOWS: readonly Flow[] = [
       await page.waitForTimeout(250);
     },
   },
+  {
+    name: "29-requirement",
+    about: "requirement diagram: «kind» tag + field compartments, verb-labelled relationships",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "requirementDiagram\n  requirement user_req {\n    id: 1\n    text: shall log in.\n    risk: high\n  }\n  element login_form {\n    type: simulation\n  }\n  login_form - satisfies -> user_req\n",
+      );
+    },
+  },
 ];
 
 for (const flow of FLOWS) {
