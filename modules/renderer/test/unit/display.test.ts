@@ -43,6 +43,14 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "polyline")).toHaveLength(1);
   });
 
+  it("plates edge labels (so the line can't strike through) but not node labels", () => {
+    const byText = (t: string) => cmds.find((c) => c.kind === "label" && c.text === t);
+    const edgeLabel = byText("go");
+    const nodeLabel = byText("A");
+    expect(edgeLabel?.kind === "label" ? edgeLabel.plate : null).toBe(true);
+    expect(nodeLabel?.kind === "label" ? nodeLabel.plate : null).toBe(false);
+  });
+
   it("emits an icon command (with the ref) for a node that carries an icon", () => {
     const withIcon: Scene = {
       nodes: [

@@ -17,3 +17,4 @@ Checked while routing state diagrams through the ELK layout path.
 Checked while routing composite states through flowchart subgraphs.
 
 Checked while routing ER diagrams through the ELK path.
+Checked while adding the empty-graph / self-loop layout robustness suite (no crashes found).

@@ -60,3 +60,9 @@
   mode. Rendered the class field/method **inner divider** via `SceneNode.rowDivider`. +2 integration
   assertions (canvas hollow head + divider, SVG background-filled polygon) and +1 unit (each UML
   head's geometry). Raised the coverage ratchet again.
+- Polish: **edge labels now draw on a background plate** (a `plate` flag on the label `DrawCmd`, true
+  for edge labels) so the routed line + end markers no longer strike through the text — a legibility
+  win on short edges (e.g. an ER verb between two close entities). `paint` measures the widest line
+  (added `measureText`/`fillRect` to the `Canvas2D` structural type) and fills a background box; `toSvg`
+  emits a background `<rect>` sized from an em estimate. Node/title/row labels keep `plate: false`
+  (they sit on a filled box already). +1 unit assertion (edge vs node label plating).
