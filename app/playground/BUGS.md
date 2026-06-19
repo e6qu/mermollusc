@@ -12,8 +12,8 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
 - **Requirement verb labels aren't editable** despite the "double-click any … label" claim
   (`ReqSource.relationships` is intentionally empty). Capture verb spans + cycle the seven verbs, or
   drop the claim for requirement. *(P2, open.)*
-- **Pipeline goldens omit the state family** — composite/`[*]` geometry regressions go uncaught. Add
-  flat + composite state samples. *(P2, open.)*
+- ~~**Pipeline goldens omit the state family.**~~ Fixed — added flat (`state`) and `state-composite`
+  samples to the pipeline goldens, so composite/`[*]` geometry regressions are now caught.
 
 Delete of brace-bodied entities (ER/class/requirement) is logged under `@m/builder` (dispatch lives
 in `main.ts` `removeNode`, the delete helpers in the builder).

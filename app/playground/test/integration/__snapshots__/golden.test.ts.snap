@@ -144,3 +144,48 @@ exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
   "label "Hi there" 93,149 center",
 ]
 `;
+
+exports[`pipeline goldens > lays out state to a stable display list 1`] = `
+[
+  "polyline 52,60 52,100 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 52,140 52,180 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 52,220 52,260 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 52,300 52,340 dashed=false from=l0p0c0 to=l0p1c0",
+  "box 28,12 48x48 r24",
+  "label "" 52,36 center",
+  "box 24,100 56x40 r8",
+  "label "Idle" 52,120 center",
+  "box 12,180 80x40 r8",
+  "label "Loading" 52,200 center",
+  "box 20,260 64x40 r8",
+  "label "Ready" 52,280 center",
+  "box 28,340 48x48 r24",
+  "label "" 52,364 center",
+  "label "fetch" 41,160 center",
+  "label "ok" 41,240 center",
+]
+`;
+
+exports[`pipeline goldens > lays out state-composite to a stable display list 1`] = `
+[
+  "polyline 94,60 94,100 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 128,76 128,86 76,86 76,96 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 56,96 56,86 60,86 60,76 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 36,76 36,96 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 94,248 94,288 dashed=false from=l0p0c0 to=l0p1c0",
+  "box 70,12 48x48 r24",
+  "label "" 94,36 center",
+  "box 70,288 48x48 r24",
+  "label "" 94,312 center",
+  "box 12,100 164x148 r4",
+  "label "Active" 94,112 center",
+  "box 116,128 48x48 r24",
+  "label "" 140,152 center",
+  "box 28,196 80x40 r8",
+  "label "Running" 68,216 center",
+  "box 24,136 72x40 r8",
+  "label "Paused" 60,156 center",
+  "label "pause" 58,97 center",
+  "label "resume" 25,86 center",
+]
+`;

@@ -295,3 +295,5 @@
   the minimap, and the SVG export now offset by the displayed extent origin, so a node dragged past
   the top-left stays visible, hit-testable, and exportable. The offset is (0,0) unless something is
   dragged negative, so the common path is unchanged (87 Playwright still green).
+- Fixed external-review P2 (goldens omit state): added flat `state` + `state-composite` samples to the
+  pipeline goldens so composite / `[*]` pseudo-state geometry regressions are caught.

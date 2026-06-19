@@ -18,6 +18,14 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
   },
   { name: "block", text: 'block-beta\n  columns 2\n  a["Web"]\n  b["API"]\n  c["DB"]\n  a --> b\n  b --> c\n' },
   {
+    name: "state",
+    text: "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Loading : fetch\n  Loading --> Ready : ok\n  Ready --> [*]\n",
+  },
+  {
+    name: "state-composite",
+    text: "stateDiagram-v2\n  [*] --> Active\n  state Active {\n    [*] --> Running\n    Running --> Paused : pause\n    Paused --> Running : resume\n  }\n  Active --> [*]\n",
+  },
+  {
     name: "network",
     text: 'network\n  cloud net "Internet"\n  router r1 "Edge"\n  server web "Web"\n  net -- r1\n  r1 -- web : "eth0"\n',
   },
