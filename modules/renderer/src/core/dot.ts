@@ -1,0 +1,61 @@
+import type { EdgeEnd, NodeShape, Scene } from "@m/contracts";
+
+// Serialises a Scene to Graphviz DOT. The Scene is the universal graph IR, so this exports *any*
+// node/edge family (flowchart, state, ER, class, …) to DOT; a pie chart (wedges, no nodes) exports as
+// an empty graph. The reverse of `parseDot`. Geometry (waypoints, positions) is dropped — DOT is
+// abstract — but labels, shapes, dashed strokes, and arrow ends are preserved.
+
+// `"`, `\`, and newlines must be escaped inside a DOT quoted id/label.
+const esc = (s: string): string =>
+  s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+
+const SHAPE: Record<NodeShape, string> = {
+  rect: "box",
+  round: "box",
+  stadium: "box",
+  circle: "circle",
+  diamond: "diamond",
+  container: "box",
+};
+
+// `round`/`stadium` map onto a rounded box (DOT has no stadium); the rest map to a native DOT shape.
+const ROUNDED = new Set<NodeShape>(["round", "stadium"]);
+
+// One Scene edge end → the nearest Graphviz arrowtype. `arrow` is DOT's default `normal`, so it needs
+// no attribute (null). The `o`-prefixed types are the hollow/open variants (Graphviz arrow modifiers).
+const ARROWTYPE: Record<EdgeEnd, string | null> = {
+  none: "none",
+  arrow: null,
+  arrowOpen: "vee",
+  triangle: "onormal",
+  diamondFilled: "diamond",
+  diamondHollow: "odiamond",
+  one: "tee",
+  zeroOrOne: "otee",
+  oneOrMany: "crow",
+  zeroOrMany: "ocrow",
+};
+
+export const toDot = (scene: Scene): string => {
+  const lines: string[] = ["digraph {"];
+  for (const node of scene.nodes) {
+    const attrs = [`label="${esc(node.label)}"`, `shape=${SHAPE[node.shape]}`];
+    if (ROUNDED.has(node.shape)) attrs.push('style="rounded"');
+    lines.push(`  "${esc(node.id)}" [${attrs.join(", ")}];`);
+  }
+  for (const edge of scene.edges) {
+    const attrs: string[] = [];
+    if (edge.label !== null) attrs.push(`label="${esc(edge.label)}"`);
+    if (edge.stroke === "dashed") attrs.push('style="dashed"');
+    const head = ARROWTYPE[edge.toEnd];
+    if (head !== null) attrs.push(`arrowhead=${head}`);
+    if (edge.fromEnd !== "none") {
+      attrs.push("dir=both");
+      attrs.push(`arrowtail=${ARROWTYPE[edge.fromEnd] ?? "normal"}`);
+    }
+    const tail = attrs.length === 0 ? "" : ` [${attrs.join(", ")}]`;
+    lines.push(`  "${esc(edge.from)}" -> "${esc(edge.to)}"${tail};`);
+  }
+  lines.push("}", "");
+  return lines.join("\n");
+};

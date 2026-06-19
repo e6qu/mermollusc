@@ -154,7 +154,7 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   clockwise from 12 o'clock; slice labels show name + percentage. Render-only (a chart, not an editable
   node/edge diagram), so no drag/relabel.
 
-### Interoperability — DOT (Graphviz)
+### Interoperability — DOT (Graphviz) — ✅ round-trip
 
 - ✅ **DOT import** — `parseDot` imports a Graphviz `[strict] (graph|digraph) { … }` (node/edge
   statements, `a -> b -> c` chains, `node`/`graph` default-attr statements, `rankdir`, `label`/`shape`/
@@ -162,7 +162,10 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   pipeline with no contracts/layout/renderer changes. `parseDiagram` routes `digraph`/`strict`, and
   `graph` only when its header line carries `{` (so Mermaid's `graph TD` — whose `{` is a decision-node
   label — isn't stolen). Subgraphs/clusters, ports, and HTML labels are out of scope (fail loudly).
-- ⏳ **DOT export** — the reverse (a diagram → DOT text), next.
+- ✅ **DOT export** — `toDot(scene)` (renderer core) serialises the **Scene** — the universal graph IR
+  — so *any* node/edge family exports to DOT (a pie, having no nodes, exports as an empty graph). Maps
+  `NodeShape`→DOT shape and each `EdgeEnd`→a Graphviz arrowtype; the app's **DOT** export button
+  downloads `mermollusc.dot`. An export↔import round-trip test (app) pins consistency.
 
 ### Future bets (not yet scoped)
 
@@ -183,8 +186,8 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
    **Current focus:** capability parity (Mermaid families) is **done** (gitGraph, timeline, mindmap,
-   pie). Interop **DOT import** landed too (see *Interoperability* above); **DOT export** is next, then
-   the *Future bets*. The earlier *External review backlog* is resolved (#59).
+   pie), and DOT **round-trip** interop (import + export) too. Next candidates are the *Future bets*
+   (more software-architecture families; Gantt; audit trail). The *External review backlog* is resolved.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

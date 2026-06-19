@@ -102,7 +102,8 @@
         text-transform: uppercase;
         color: var(--ink-soft);
       }
-      .topbar-actions { display: flex; align-items: center; gap: 10px; }
+      /* Wrap rather than overflow the viewport once enough controls (export formats etc.) are present. */
+      .topbar-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
       .zoom { display: inline-flex; align-items: center; gap: 2px; }
       .zoom button { padding: 7px 9px; }
       .zoom #zoom-reset { min-width: 52px; font-variant-numeric: tabular-nums; }
@@ -128,7 +129,7 @@
       /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
       #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
       #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
-      #export-png::before, #export-pdf::before, #export-svg::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
+      #export-png::before, #export-pdf::before, #export-svg::before, #export-dot::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
       #share-link::before { content: "↗"; margin-right: 7px; color: var(--accent); }
 
       .select-field, .filebtn {
@@ -449,6 +450,8 @@
             title="Download the current diagram as a one-page PDF">PDF</button>
           <button id="export-svg" type="button"
             title="Download the current diagram as a vector SVG">SVG</button>
+          <button id="export-dot" type="button"
+            title="Download the current diagram as a Graphviz DOT file">DOT</button>
           <button id="share-link" type="button"
             title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
           <label class="filebtn"

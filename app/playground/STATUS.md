@@ -85,7 +85,8 @@
 - Source persistence: the editor text is saved to `localStorage` (via `renderFromText`, which every
   text change funnels through) so a reload restores the in-progress diagram; a fresh context starts
   on the sample.
-- **Export** PNG (`#export-png`), PDF (`#export-pdf`), SVG (`#export-svg`). PNG/PDF composite the
+- **Export** PNG (`#export-png`), PDF (`#export-pdf`), SVG (`#export-svg`), **DOT** (`#export-dot` —
+  `toDot` of the displayed scene → `mermollusc.dot`, the reverse of DOT import). PNG/PDF composite the
   active theme background under the canvas (whose pixels are otherwise transparent) onto an offscreen
   canvas at device resolution: PNG via `toBlob`; PDF wraps the canvas-as-JPEG in a **hand-rolled
   minimal one-page PDF** (DCTDecode image XObject, MediaBox in CSS px so the device-res JPEG is

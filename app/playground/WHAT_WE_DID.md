@@ -323,3 +323,10 @@
 - Wired **DOT import**: a "DOT (Graphviz)" Examples entry (+`index.html` option). DOT text is imported
   to a flowchart by `parseDiagram`, so it renders through the generic path and the kind badge reads
   "flowchart". +3 e2e (render, example loads, malformed edge lints), +1 pipeline golden.
+- Wired **DOT export**: a **DOT** toolbar button downloads `mermollusc.dot` via `toDot(applyOverrides(
+  scene, overrides))` (the displayed scene, so a dragged layout exports as positioned). +1 e2e (the
+  download fires with the right filename) and an export↔import **round-trip** integration test
+  (flowchart + DOT + a non-flowchart ER family all survive Scene → DOT → `parseDot`).
+- Let the top-bar actions **wrap** (`flex-wrap`) instead of overflowing the viewport: adding the DOT
+  export button pushed the single-row toolbar past 1280px, sending Share/Load-icons off-screen (and
+  destabilising zoom-centred e2e). Controls now reflow to a second right-aligned row at narrow widths.

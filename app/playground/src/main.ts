@@ -82,7 +82,15 @@ import {
   parseMindmapWithSource,
   parseWithSource,
 } from "@m/parser";
-import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList, toSvg } from "@m/renderer";
+import {
+  darkTheme,
+  defaultTheme,
+  edgeLabelAnchor,
+  paint,
+  toDisplayList,
+  toDot,
+  toSvg,
+} from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point, size } from "@m/std";
 import { createEditor, type Editor } from "./editor.js";
@@ -127,6 +135,7 @@ const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
 const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
+const exportDotBtn = document.querySelector<HTMLButtonElement>("#export-dot");
 const shareBtn = document.querySelector<HTMLButtonElement>("#share-link");
 const zoomInBtn = document.querySelector<HTMLButtonElement>("#zoom-in");
 const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
@@ -173,6 +182,7 @@ if (
   exportBtn === null ||
   exportPdfBtn === null ||
   exportSvgBtn === null ||
+  exportDotBtn === null ||
   shareBtn === null
 ) {
   throw new Error("playground: missing toolbar controls");
@@ -2306,6 +2316,18 @@ exportSvgBtn.addEventListener("click", () => {
   });
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "mermollusc.svg");
   setStatus("ok", "exported mermollusc.svg");
+});
+
+// DOT export: the Scene is the universal graph IR, so any node/edge family exports to Graphviz DOT
+// (a pie chart, having no nodes, exports as an empty graph). The reverse of the DOT import path.
+exportDotBtn.addEventListener("click", () => {
+  if (scene === null) {
+    setStatus("error", "nothing to export yet");
+    return;
+  }
+  const dot = toDot(applyOverrides(scene, overrides));
+  downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
+  setStatus("ok", "exported mermollusc.dot");
 });
 
 // Share: encode the current source in the URL hash (so the link reproduces the diagram) and copy it
