@@ -124,6 +124,12 @@ const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme): void => {
   ctx.strokeStyle = theme.stroke;
   ctx.setLineDash([]);
   for (const [a, b] of marker.lines) {
+    // In sketch mode the line segments (crow's-foot prongs, cardinality bars, the open-arrow V)
+    // wobble to match the hand-drawn edge they sit on; filled heads stay solid (like the edge fills).
+    if (theme.sketch) {
+      sketchLine(ctx, a.x, a.y, b.x, b.y, seedOf(a.x, a.y, b.x));
+      continue;
+    }
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);

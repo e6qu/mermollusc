@@ -34,9 +34,10 @@
   supplied `pack/name`→href map). Pure string output; renders
   the crisp shapes (no sketch jitter). Backs the app's "SVG" export.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
-- **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges become wobbly, double-stroked
-  hand-drawn outlines via a seeded LCG jitter — deterministic, no fill, using only the structural
-  `Canvas2D` (no rough.js dep, so the mock-based tests still hold). Dashed edges/end markers stay crisp.
+- **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges — and edge-marker line segments
+  (crow's-foot prongs, bars, open-arrow V) — become wobbly, double-stroked hand-drawn outlines via a
+  seeded LCG jitter — deterministic, no fill, using only the structural `Canvas2D` (no rough.js dep,
+  so the mock-based tests still hold). Dashed edges and filled marker heads stay crisp/solid.
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
   only, the default `paint` path is always used.

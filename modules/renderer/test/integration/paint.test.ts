@@ -133,6 +133,12 @@ describe("paint", () => {
     expect(ctx.calls).toContain("fillText:int id PK");
     // The dashed edge stroke plus the bar/prong segments all go through stroke().
     expect(ctx.calls.filter((c) => c === "stroke").length).toBeGreaterThanOrEqual(3);
+    // Sketch mode wobbles the marker line segments too (multi-pass), so it strokes strictly more.
+    const sketchy = new RecordingCtx();
+    paint(sketchy, toDisplayList(er), new Map(), { ...defaultTheme, sketch: true });
+    expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(
+      ctx.calls.filter((c) => c === "stroke").length,
+    );
   });
 
   it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {
@@ -221,6 +227,30 @@ describe("paint", () => {
     expect(ctx.font).toBe("11px monospace");
     // For a node-only scene the label is the last draw, so the final fill is the text colour.
     expect(ctx.fillStyle).toBe("#000003");
+  });
+
+  it("sketch theme wobbles compartment (ER/class) boxes too — no crisp roundRect", () => {
+    const comp: Scene = {
+      nodes: [
+        {
+          id: snid("CUSTOMER"),
+          bounds: rect(0, 0, 120, 70),
+          label: "CUSTOMER",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          rows: ["string name PK", "int age"],
+        },
+      ],
+      edges: [],
+      extent: rect(0, 0, 120, 70),
+    };
+    const sketchy = new RecordingCtx();
+    paint(sketchy, toDisplayList(comp), new Map(), { ...defaultTheme, sketch: true });
+    expect(sketchy.calls.filter((c) => c === "roundRect")).toHaveLength(0);
+    expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(4);
+    expect(sketchy.calls).toContain("fillText:string name PK");
   });
 
   it("sketch theme draws wobbly outlines (no roundRect) instead of crisp shapes", () => {

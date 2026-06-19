@@ -71,3 +71,8 @@
   block) that passes a node is now cleanly occluded by the box instead of slicing across it; ELK
   families are unaffected (edges already route to the boundary, so arrowheads stay visible), and edge
   labels ride on top so their plate stays readable. +1 unit assertion (layer order).
+- Sketch-mode consistency: edge-end **marker line segments** (crow's-foot prongs, cardinality bars,
+  the open-arrow V) now wobble with the hand-drawn edge they sit on, instead of staying crisp; filled
+  heads (arrowhead, composition diamond) stay solid, matching how sketch leaves shape fills alone.
+  Verified compartment (ER/class) boxes already sketch correctly. +2 integration assertions
+  (compartment box wobbles; sketch markers stroke strictly more than crisp).

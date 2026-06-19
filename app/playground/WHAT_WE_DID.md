@@ -265,3 +265,6 @@
   intervening box) — the pipeline goldens were regenerated to the new draw order. Fixed the last
   stale `#src.fill()` in the `make shots` instrument (the `10-parse-error` flow), so the full shot
   gallery regenerates again.
+- Polish pass 3: added review shots for the newer families in non-default themes (`27-class-dark`,
+  `28-er-sketch`) — confirmed compartments + UML/crow's-foot markers render correctly in dark and
+  sketch. Drove a renderer fix so sketch-mode edge markers wobble with the edge.
