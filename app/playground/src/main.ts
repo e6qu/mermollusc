@@ -1204,7 +1204,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "dot",
-    'digraph G {\n  rankdir=LR\n  start [shape=box]\n  start -> parse -> layout -> render\n  layout -> parse [label="relax"]\n  render [shape=diamond]\n}\n',
+    'digraph G {\n  rankdir=LR\n  start [shape=box]\n  start -> parse\n  subgraph cluster_core {\n    label="core"\n    parse -> layout -> render\n  }\n  layout -> parse [label="relax"]\n  render [shape=diamond]\n}\n',
   ],
 ]);
 

@@ -63,6 +63,39 @@ describe("parseDot", () => {
     expect(r.value.nodes.map((n) => n.label)).toEqual(["node one", "node two"]);
   });
 
+  it("imports a `cluster` subgraph as a flowchart subgraph (box) with members + label", () => {
+    const r = parseDot(
+      'digraph {\n  subgraph cluster_0 {\n    label="Backend"\n    api -> db\n  }\n  web -> api\n}',
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.subgraphs).toHaveLength(1);
+    const sg = r.value.subgraphs[0];
+    expect(sg?.label).toBe("Backend");
+    // api and db were first seen inside the cluster; web (declared outside) is not a member.
+    expect([...(sg?.nodes ?? [])].sort()).toEqual([nid("api"), nid("db")]);
+    expect(r.value.edges).toHaveLength(2);
+  });
+
+  it("nests `cluster` subgraphs via parent and treats a non-cluster subgraph as transparent", () => {
+    const nested = parseDot(
+      "digraph {\n  subgraph cluster_a {\n    subgraph cluster_b { x }\n  }\n}",
+    );
+    expect(isOk(nested)).toBe(true);
+    if (!isOk(nested)) return;
+    expect(nested.value.subgraphs.map((s) => [s.id, s.parent])).toEqual([
+      [nid("cluster_a"), null],
+      [nid("cluster_b"), nid("cluster_a")],
+    ]);
+
+    // A plain (non-cluster) subgraph makes no box, but its nodes/edges still import.
+    const plain = parseDot("digraph {\n  subgraph { a -> b }\n}");
+    expect(isOk(plain)).toBe(true);
+    if (!isOk(plain)) return;
+    expect(plain.value.subgraphs).toHaveLength(0);
+    expect(plain.value.nodes.map((n) => n.id).sort()).toEqual([nid("a"), nid("b")]);
+  });
+
   it("fails loudly on an unterminated graph", () => {
     expect(isOk(parseDot("digraph { a -> b"))).toBe(false);
   });

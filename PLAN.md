@@ -161,7 +161,8 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   `style` attrs) as a **`FlowchartAst`**, so it renders + lays out through the existing flowchart ELK
   pipeline with no contracts/layout/renderer changes. `parseDiagram` routes `digraph`/`strict`, and
   `graph` only when its header line carries `{` (so Mermaid's `graph TD` — whose `{` is a decision-node
-  label — isn't stolen). Subgraphs/clusters, ports, and HTML labels are out of scope (fail loudly).
+  label — isn't stolen). Nested `subgraph` blocks import too: `cluster*` ones become `FlowSubgraph`
+  boxes (label + nesting), others are transparent. Ports and HTML labels are out of scope.
 - ✅ **DOT export** — `toDot(scene)` (renderer core) serialises the **Scene** — the universal graph IR
   — so *any* node/edge family exports to DOT (a pie, having no nodes, exports as an empty graph). Maps
   `NodeShape`→DOT shape and each `EdgeEnd`→a Graphviz arrowtype; the app's **DOT** export button

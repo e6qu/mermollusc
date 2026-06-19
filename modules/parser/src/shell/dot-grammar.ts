@@ -2,9 +2,10 @@ import { CstParser } from "chevrotain";
 import { DotTok, dotAllTokens } from "./dot-tokens.js";
 
 // A DOT subset: `[strict] (graph|digraph) [id] { … }` with node statements, edge statements (incl.
-// `a -> b -> c` chains), default `node`/`edge`/`graph` attr statements, and `ID = ID` graph attributes.
-// Subgraphs/clusters and ports are out of scope (they fail loudly). After an id, the next token tells
-// node from edge from graph-attribute: `=` → attribute, `->`/`--` → edge, `[`/nothing → node.
+// `a -> b -> c` chains), default `node`/`edge`/`graph` attr statements, `ID = ID` graph attributes, and
+// nested `subgraph [id] { … }` / anonymous `{ … }` blocks. Ports and HTML labels are out of scope.
+// After an id, the next token tells node from edge from graph-attribute: `=` → attribute, `->`/`--` →
+// edge, `[`/nothing → node.
 class DotParser extends CstParser {
   constructor() {
     super(dotAllTokens);
@@ -32,8 +33,23 @@ class DotParser extends CstParser {
   );
 
   private readonly stmt = this.RULE("stmt", () => {
-    this.OR([{ ALT: () => this.SUBRULE(this.attrStmt) }, { ALT: () => this.SUBRULE(this.idStmt) }]);
+    this.OR([
+      { ALT: () => this.SUBRULE(this.attrStmt) },
+      { ALT: () => this.SUBRULE(this.subgraphStmt) },
+      { ALT: () => this.SUBRULE(this.idStmt) },
+    ]);
     this.OPTION(() => this.CONSUME(DotTok.Semi));
+  });
+
+  // `subgraph [id] { … }` or a bare anonymous `{ … }`. Recurses through `stmt`.
+  private readonly subgraphStmt = this.RULE("subgraphStmt", () => {
+    this.OPTION(() => {
+      this.CONSUME(DotTok.Subgraph);
+      this.OPTION2(() => this.SUBRULE(this.id));
+    });
+    this.CONSUME(DotTok.LBrace);
+    this.MANY(() => this.SUBRULE(this.stmt));
+    this.CONSUME(DotTok.RBrace);
   });
 
   private readonly attrStmt = this.RULE("attrStmt", () => {

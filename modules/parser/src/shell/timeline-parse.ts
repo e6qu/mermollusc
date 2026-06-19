@@ -32,6 +32,10 @@ const trimmedSpan = (t: IToken): TextSpan => {
   return { start: t.startOffset + lead, end: t.startOffset + t.image.length - trail };
 };
 
+// Mermaid uses `<br>` for a manual line break inside a period/event label; map it to a newline (the
+// renderer stacks newline-separated lines, and the timeline layout grows the cell per line).
+const softBreaks = (s: string): string => s.replace(/<br\s*\/?>/gi, "\n");
+
 // The text of a `title`/`section` line: everything after the keyword to the line end, read straight
 // from the source so any colons in the value survive (the lexer would otherwise split on them).
 const lineValue = (text: string, keyword: IToken): string => {
@@ -64,10 +68,10 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedTimeline, ParseEr
   const eventsOf = (line: Children): TimelineEvent[] => {
     const out: TimelineEvent[] = [];
     for (const tok of childTokens(line, "BodyText")) {
-      const t = tok.image.trim();
-      if (t === "") continue;
+      const trimmed = tok.image.trim();
+      if (trimmed === "") continue;
       const id = brand<string, "TimelineEventId">(`e${eventSeq++}`);
-      out.push({ id, text: t });
+      out.push({ id, text: softBreaks(trimmed) });
       eventSpans.set(id, trimmedSpan(tok));
     }
     return out;
@@ -98,7 +102,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedTimeline, ParseEr
       const id = brand<string, "TimelinePeriodId">(`p${periods.length}`);
       periods.push({
         id,
-        label: periodTok.image.trim(),
+        label: softBreaks(periodTok.image.trim()),
         section,
         events: eventsOf(periodLine.children),
       });
