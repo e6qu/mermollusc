@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseRequirement, parseRequirementWithSource } from "../../src/shell/req-parse.js";
 
 const eid = (s: string) => brand<string, "ReqEntityId">(s);
+const rid = (s: string) => brand<string, "ReqRelId">(s);
 
 describe("parseRequirement", () => {
   it("parses requirement + element bodies into key/value fields", () => {
@@ -67,6 +68,16 @@ describe("parseRequirement", () => {
     const span = r.value.source.entities.get(eid("foo"));
     expect(span).toBeDefined();
     if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("foo");
+  });
+
+  it("records the relationship verb span so it can be edited inline", () => {
+    const text = "requirementDiagram\n  e - satisfies -> r\n";
+    const r = parseRequirementWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const span = r.value.source.relationships.get(rid("r0"));
+    expect(span).toBeDefined();
+    if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("satisfies");
   });
 
   it("fails loudly on a malformed relationship", () => {

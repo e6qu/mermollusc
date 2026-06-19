@@ -9,9 +9,10 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
 - ~~**Inline editor ignores `viewScale`.**~~ Fixed — `openInlineEditor` maps the scene-space anchor to
   screen the same way the canvas paints (offset by extent origin, scaled by `viewScale`), so the
   overlay sits on its target after a zoom/Fit. +1 zoom e2e (offset scales with zoom).
-- **Requirement verb labels aren't editable** despite the "double-click any … label" claim
-  (`ReqSource.relationships` is intentionally empty). Capture verb spans + cycle the seven verbs, or
-  drop the claim for requirement. *(P2, open.)*
+- ~~**Requirement verb labels aren't editable.**~~ Fixed — `parseRequirementWithSource` now captures
+  each verb's token span into `ReqSource.relationships`, and the inline-editor dispatch lets you edit
+  a requirement relationship's verb (re-typing to another of the seven round-trips; an invalid one
+  fails the parse loudly). The "double-click any … label" claim now holds for requirement too.
 - ~~**Pipeline goldens omit the state family.**~~ Fixed — added flat (`state`) and `state-composite`
   samples to the pipeline goldens, so composite/`[*]` geometry regressions are now caught.
 

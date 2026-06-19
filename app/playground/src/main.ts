@@ -1683,11 +1683,12 @@ canvas.addEventListener("dblclick", (ev) => {
         : classSource.relationships.get(brand<string, "ClassRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "requirement" && reqSource !== null) {
-    // Only entity names are editable (relationship verbs are closed keywords, not free text).
+    // Entity names and relationship verbs are both editable (the verb is the edge label); re-typing a
+    // verb to another of the seven round-trips, an invalid one fails the parse loudly.
     const span =
       hit.kind === "node"
         ? reqSource.entities.get(brand<string, "ReqEntityId">(hit.id))
-        : undefined;
+        : reqSource.relationships.get(brand<string, "ReqRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   }
 

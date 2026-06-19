@@ -117,3 +117,6 @@
   now fail the parse with a token-located error (new `parseErrorAt` helper) instead of dropping a bad
   `icon "…"` ref to `null` and rendering a default glyph — honouring the fail-loudly contract. Flipped
   the three "ignores malformed icon" unit tests to assert the loud failure.
+- Fixed external-review P2 (requirement verb not editable): `parseRequirementWithSource` now captures
+  each relationship verb's token span into `ReqSource.relationships`, enabling inline edit of the verb
+  (round-trips to another of the seven; invalid fails the parse loudly). +1 unit test.

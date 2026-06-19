@@ -300,3 +300,6 @@
 - Fixed external-review P2 (inline editor ignored `viewScale`): `openInlineEditor` now maps the
   scene-space anchor to screen exactly as the canvas paints (offset by extent origin, scaled by
   `viewScale`), so the overlay lands on its target after a zoom/Fit. +1 zoom e2e.
+- Fixed external-review P2 (requirement verb labels not editable): the inline-editor dispatch now edits
+  a requirement relationship's verb (parser captures the verb span in `ReqSource.relationships`), so
+  the "double-click any label" claim holds for requirement too.
