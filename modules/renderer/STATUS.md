@@ -39,6 +39,10 @@
   end markers, label → `<text>` (`text-anchor` per `LabelAlign`), icon → `<image href>` from a
   supplied `pack/name`→href map). Pure string output; renders
   the crisp shapes (no sketch jitter). Backs the app's "SVG" export.
+- core: `toDot(scene)` — a **Graphviz DOT** text backend over the Scene itself (not the display list),
+  so any node/edge family exports to DOT: nodes → `"id" [label, shape]`, edges → `"from" -> "to"
+  [label, arrowhead]` with `NodeShape`/`EdgeEnd` mapped to DOT shapes/arrowtypes. The reverse of the
+  parser's DOT import; backs the app's "DOT" export.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
 - **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges — and edge-marker line segments
   (crow's-foot prongs, bars, open-arrow V) — become wobbly, double-stroked hand-drawn outlines via a

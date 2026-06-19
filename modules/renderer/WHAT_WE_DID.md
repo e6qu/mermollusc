@@ -87,3 +87,8 @@
   palette (`wedgeColor`) so a slice is identical in both. `toDisplayList` emits a wedge + a centred
   percentage label (on a plate) per `scene.wedges` entry; the existing node/edge families are untouched
   (their `wedges` array is empty). +2 unit tests (display list + SVG path).
+- Added **DOT export** (`core/dot.ts`): `toDot(scene)` serialises the Scene (the universal graph IR) to
+  Graphviz DOT text — the reverse of the parser's DOT import, and usable for *any* node/edge family. It
+  maps `NodeShape`→DOT shape (`round`/`stadium`→a rounded box) and each `EdgeEnd`→a Graphviz arrowtype
+  (`none`/`vee`/`onormal`/`diamond`/`odiamond`/crow's-foot `tee`/`crow` etc.), carries dashed strokes
+  and labels, escapes ids/labels, and emits an empty `digraph {}` for a node-less (pie) scene. +4 tests.
