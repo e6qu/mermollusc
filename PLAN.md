@@ -173,14 +173,27 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 - **More software-architecture families:** component / deployment / use-case / activity (PlantUML
   parity), Gantt (planning).
 
-- **Real-time collaborative editor (CRDT).** Multi-user live editing — scoped in
+- **Real-time collaborative editor (CRDT).** Multi-user live editing — fully scoped in
   [`docs/collab-editor-plan.md`](docs/collab-editor-plan.md): a Yjs-based shared **source text +
   overlay** (the diagram stays *derived locally*, so the pure core is reused and CRDT payloads stay
   tiny), presence/awareness, local-first low latency, and a server-authoritative sync service. This
   **subsumes the audit-trail and multi-tenancy bets below** (the Yjs update log is the audit trail;
   rooms + server-side RBAC give tenant isolation). Enterprise-ready, but a large infra commitment and a
-  deliberate departure from the current client-only design — needs sign-off on the decision points in
-  the doc before building.
+  deliberate departure from the current client-only design.
+
+  **Phased roadmap** (see the doc §9 for detail; §10 lists the 5 decision points — CRDT choice,
+  sync model, persistence backend, auth/tenancy, server stack — that need sign-off before Phase 1):
+  - **Phase 0 — the seam (no infra). ✅ DONE.** Overlay state (overrides + groups + history)
+    extracted behind the `OverlayDoc` document-model interface in the app
+    (`app/playground/src/document-model.ts`), with `createLocalDocument` as the single-user
+    implementation; the source text has the symmetric seam in `Editor` (`editor.ts`). Pure refactor,
+    zero backend — collab now plugs in as a second `OverlayDoc` implementation without touching call
+    sites.
+  - **Phase 1 — proof of merge.** Yjs in-memory + dev `y-websocket`; text + overlay CRDT + presence;
+    local-first + reconnect. Validates the "derive locally, share only source+overlay" model.
+  - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
+  - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
+    observability/SLOs, offline buffer, compaction, compliance hooks.
 - **Comprehensive, searchable audit trail.** (Folded into the collaborative-editor plan — the CRDT
   update log is a who/changed-what/when record.) Could still ship standalone, client-side, sooner.
 - **Multi-tenancy.** (Folded into the collaborative-editor plan — rooms + server-side RBAC + per-tenant
@@ -192,8 +205,10 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
    **Current focus:** capability parity (Mermaid families) is **done** (gitGraph, timeline, mindmap,
-   pie), and DOT **round-trip** interop (import + export) too. Next candidates are the *Future bets*
-   (more software-architecture families; Gantt; audit trail). The *External review backlog* is resolved.
+   pie), and DOT **round-trip** interop (import + export) too. The **collaborative-editor Phase 0 seam**
+   is **done** (the `OverlayDoc` document model in the app — see Future bets). Next candidates: the
+   collab decision points + Phase 1 (needs sign-off), more software-architecture families, or Gantt.
+   The *External review backlog* is resolved.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

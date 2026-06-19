@@ -22,22 +22,14 @@ import {
   deleteRequirementEntity,
   deleteRequirementRel,
   emptySelection,
-  group,
   hitTest,
   leafNodes,
-  moveNode,
   patchSpan,
   pathLocked,
-  pruneGroups,
   relabelNode,
-  resizeNode,
   selectOnly,
-  serializeOverlay,
-  setGroupLabel,
-  setLocked,
   toggle,
   topGroupOfNode,
-  ungroup,
 } from "@m/builder";
 import type { Selection } from "@m/builder";
 import type {
@@ -54,8 +46,6 @@ import type {
   MindmapSource,
   GroupId,
   GroupMember,
-  Groups,
-  LayoutOverrides,
   NetworkSource,
   NodeId,
   Scene,
@@ -95,6 +85,7 @@ import {
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point, size } from "@m/std";
 import { createEditor, type Editor } from "./editor.js";
+import { createLocalDocument, type OverlayDoc } from "./document-model.js";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -208,10 +199,6 @@ let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
-let overrides: LayoutOverrides = new Map();
-// Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
-let groups: Groups = new Map();
-let groupSeq = 0;
 // On-screen zoom of the diagram sheet. 1 = the canvas is drawn at scene scale (the identity the
 // hit-test math and e2e specs assume); only the zoom controls / ctrl-wheel change it.
 let viewScale = 1;
@@ -281,53 +268,32 @@ const SOURCE_KEY = "mermollusc-source";
 // The sidecar overlay (manual node positions + element groups) persists alongside the source, keyed
 // by scene-node id — a reload re-parses the same source to the same ids, so the overlay re-applies.
 const OVERLAY_KEY = "mermollusc-overlay";
-const persistOverlay = (): void => {
-  localStorage.setItem(OVERLAY_KEY, serializeOverlay(overrides, groups));
-};
+
+// The overlay document owns overrides + groups + their undo/redo history. It starts empty; the
+// persisted overlay (when the source isn't a share-link) is decoded and loaded via `doc.replace`
+// below, before the first render. `save` is the only IO it touches — a localStorage write today,
+// the seam where a collaborative backend would broadcast instead.
+const doc: OverlayDoc = createLocalDocument({
+  initialOverrides: new Map(),
+  initialGroups: new Map(),
+  save: (serialized) => localStorage.setItem(OVERLAY_KEY, serialized),
+});
 
 // Undo/redo for sidecar overlay actions (drag, group/ungroup/lock, group label, regenerate) — the
-// canvas counterpart to CodeMirror's text history (which owns the source text). `recordOverlay`
-// snapshots the *pre-mutation* overlay; undo swaps that snapshot with the present state, redo
-// reverses it. A text edit clears the stacks, since the saved positions belong to the old diagram.
-interface OverlaySnapshot {
-  readonly overrides: LayoutOverrides;
-  readonly groups: Groups;
-}
-const HISTORY_LIMIT = 100;
-let undoStack: OverlaySnapshot[] = [];
-let redoStack: OverlaySnapshot[] = [];
-const snapshotOverlay = (): OverlaySnapshot => ({
-  overrides: new Map(overrides),
-  groups: new Map(groups),
-});
-const recordOverlay = (): void => {
-  undoStack.push(snapshotOverlay());
-  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-  redoStack = [];
-};
-const clearOverlayHistory = (): void => {
-  undoStack = [];
-  redoStack = [];
-};
-const restoreOverlay = (snapshot: OverlaySnapshot): void => {
-  overrides = new Map(snapshot.overrides);
-  groups = new Map(snapshot.groups);
+// canvas counterpart to CodeMirror's text history (which owns the source text). The history itself
+// lives in the document model; these wrappers add the canvas side effects (repaint + button sync)
+// the doc deliberately stays out of, so undo/redo of a state the doc restored shows on screen.
+const applyRestored = (): void => {
   nudging = false; // a fresh nudge run after undo/redo starts its own undo entry
-  persistOverlay();
+  doc.persist();
   paintScene();
   updateGroupButtons();
 };
 const undoOverlay = (): void => {
-  const prev = undoStack.pop();
-  if (prev === undefined) return;
-  redoStack.push(snapshotOverlay());
-  restoreOverlay(prev);
+  if (doc.undo()) applyRestored();
 };
 const redoOverlay = (): void => {
-  const next = redoStack.pop();
-  if (next === undefined) return;
-  undoStack.push(snapshotOverlay());
-  restoreOverlay(next);
+  if (doc.redo()) applyRestored();
 };
 
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
@@ -403,7 +369,7 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 
 const paintScene = (): void => {
   if (scene === null) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   // Logical sheet size in scene px (+ margin); the on-screen box is this scaled by the zoom.
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
@@ -502,12 +468,12 @@ interface GroupBox {
 const groupBoxes = (shown: Scene): readonly GroupBox[] => {
   const boundsById = new Map(shown.nodes.map((node) => [node.id, node.bounds]));
   const boxes: GroupBox[] = [];
-  for (const g of groups.values()) {
+  for (const g of doc.groups().values()) {
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
-    for (const id of leafNodes(groups, g.id)) {
+    for (const id of leafNodes(doc.groups(), g.id)) {
       const b = boundsById.get(id);
       if (b === undefined) continue;
       minX = Math.min(minX, b.origin.x);
@@ -565,13 +531,13 @@ const groupAt = (shown: Scene, at: Point): GroupId | null => {
 };
 
 const selectGroup = (id: GroupId): void => {
-  const leaves = leafNodes(groups, id);
+  const leaves = leafNodes(doc.groups(), id);
   selection = { nodes: new Set(leaves), edges: new Set() };
   selectionOrder = [...leaves];
 };
 
 const toggleGroupSelection = (id: GroupId): void => {
-  const leaves = leafNodes(groups, id);
+  const leaves = leafNodes(doc.groups(), id);
   const nodes = new Set(selection.nodes);
   const allSelected = leaves.every((leaf) => nodes.has(leaf));
   if (allSelected) {
@@ -590,10 +556,10 @@ const toggleGroupSelection = (id: GroupId): void => {
 // Draw each group as a rounded outline around its members' bounding box (drawn behind the nodes).
 // Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
 const drawGroupOutlines = (shown: Scene): void => {
-  if (groups.size === 0) return;
+  if (doc.groups().size === 0) return;
   const dark = theme === darkTheme;
   for (const box of groupBoxes(shown)) {
-    const g = groups.get(box.id);
+    const g = doc.groups().get(box.id);
     if (g === undefined) continue;
     const accent = g.locked ? (dark ? "#f0894e" : "#d2602c") : dark ? "#4cc2c4" : "#0f6f74";
     ctx.save();
@@ -631,7 +597,7 @@ const drawGroupOutlines = (shown: Scene): void => {
 // The top-level group of the first selected node, or null — what Ungroup/Lock act on.
 const selectedTopGroup = (): GroupId | null => {
   for (const id of selection.nodes) {
-    const top = topGroupOfNode(groups, id);
+    const top = topGroupOfNode(doc.groups(), id);
     if (top !== null) return top;
   }
   return null;
@@ -642,8 +608,8 @@ const selectedTopGroup = (): GroupId | null => {
 const movableUnitCount = (): number => {
   const seen = new Set<string>();
   for (const id of selection.nodes) {
-    if (pathLocked(groups, id)) continue;
-    const top = topGroupOfNode(groups, id);
+    if (pathLocked(doc.groups(), id)) continue;
+    const top = topGroupOfNode(doc.groups(), id);
     seen.add(top === null ? `n:${id}` : `g:${top}`);
   }
   return seen.size;
@@ -654,7 +620,7 @@ const movableUnitCount = (): number => {
 const singleResizableNodeId = (): SceneNodeId | null => {
   if (selection.nodes.size !== 1) return null;
   const [only] = selection.nodes;
-  if (only === undefined || pathLocked(groups, only)) return null;
+  if (only === undefined || pathLocked(doc.groups(), only)) return null;
   return only;
 };
 
@@ -690,14 +656,14 @@ const resizeAnchorAt = (
 const updateGroupButtons = (): void => {
   const units = new Set<string>();
   for (const id of selection.nodes) {
-    const top = topGroupOfNode(groups, id);
+    const top = topGroupOfNode(doc.groups(), id);
     units.add(top === null ? `n:${id}` : `g:${top}`);
   }
   groupBtn.disabled = units.size < 2;
   const top = selectedTopGroup();
   ungroupBtn.disabled = top === null;
   lockBtn.disabled = top === null;
-  lockBtn.textContent = top !== null && groups.get(top)?.locked === true ? "Unlock" : "Lock";
+  lockBtn.textContent = top !== null && doc.groups().get(top)?.locked === true ? "Unlock" : "Lock";
   // Arrange acts on ≥2 movable units (distribute on ≥3); close the popover if it no longer applies.
   const movable = movableUnitCount();
   arrangeBtn.disabled = movable < 2;
@@ -723,12 +689,12 @@ const selectedUnitBoxes = (shown: Scene): UnitBox[] => {
   const seen = new Set<string>();
   const units: UnitBox[] = [];
   for (const id of selection.nodes) {
-    if (pathLocked(groups, id)) continue;
-    const top = topGroupOfNode(groups, id);
+    if (pathLocked(doc.groups(), id)) continue;
+    const top = topGroupOfNode(doc.groups(), id);
     const key = top === null ? `n:${id}` : `g:${top}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const leaves = top === null ? [id] : leafNodes(groups, top);
+    const leaves = top === null ? [id] : leafNodes(doc.groups(), top);
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
@@ -822,19 +788,19 @@ const arrangeDeltas = (
 
 const applyArrange = (kind: AlignKind): void => {
   if (scene === null) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const units = selectedUnitBoxes(shown);
   const need = kind === "distH" || kind === "distV" ? 3 : 2;
   if (units.length < need) return;
   const deltas = arrangeDeltas(kind, units);
   if (deltas.size === 0) return;
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
-  recordOverlay();
+  doc.record();
   for (const [id, d] of deltas) {
     const at = origin.get(id);
-    if (at !== undefined) overrides = moveNode(overrides, id, point(at.x + d.dx, at.y + d.dy));
+    if (at !== undefined) doc.moveNode(id, point(at.x + d.dx, at.y + d.dy));
   }
-  persistOverlay();
+  doc.persist();
   paintScene();
 };
 
@@ -878,7 +844,7 @@ const groupSelection = (): void => {
   const units: GroupMember[] = [];
   const seen = new Set<string>();
   for (const id of selectionOrder) {
-    const top = topGroupOfNode(groups, id);
+    const top = topGroupOfNode(doc.groups(), id);
     const member: GroupMember = top === null ? { kind: "node", id } : { kind: "group", id: top };
     const key = `${member.kind}:${member.id}`;
     if (seen.has(key)) continue;
@@ -886,31 +852,31 @@ const groupSelection = (): void => {
     units.push(member);
   }
   if (units.length < 2) return;
-  recordOverlay();
-  groups = group(groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
+  doc.record();
+  doc.groupNodes(units);
   updateGroupButtons();
-  persistOverlay();
+  doc.persist();
   paintScene();
 };
 
 const ungroupSelection = (): void => {
   const top = selectedTopGroup();
   if (top === null) return;
-  recordOverlay();
-  groups = ungroup(groups, top);
+  doc.record();
+  doc.ungroupAt(top);
   updateGroupButtons();
-  persistOverlay();
+  doc.persist();
   paintScene();
 };
 
 const toggleLockSelection = (): void => {
   const top = selectedTopGroup();
-  const g = top === null ? undefined : groups.get(top);
+  const g = top === null ? undefined : doc.groups().get(top);
   if (top === null || g === undefined) return;
-  recordOverlay();
-  groups = setLocked(groups, top, !g.locked);
+  doc.record();
+  doc.setGroupLocked(top, !g.locked);
   updateGroupButtons();
-  persistOverlay();
+  doc.persist();
   paintScene();
 };
 
@@ -1028,7 +994,7 @@ const setScale = (s: number): void => {
 // Fit the whole sheet inside the visible stage, never upscaling past 100%.
 const fitView = (): void => {
   if (scene === null) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
   const pad = 24;
@@ -1273,10 +1239,8 @@ const renderFromText = async (text: string): Promise<void> => {
   scene = laid.value;
   // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
   // resurrect onto reused ids later. (Overrides are cleared on edit; groups otherwise persist.)
-  const prunedGroups = pruneGroups(groups, new Set(laid.value.nodes.map((n) => n.id)));
-  if (prunedGroups !== groups) {
-    groups = prunedGroups;
-    persistOverlay();
+  if (doc.pruneGroupsTo(new Set(laid.value.nodes.map((n) => n.id)))) {
+    doc.persist();
     updateGroupButtons();
   }
   // Capture source spans for canvas→text edits — one family is live at a time.
@@ -1376,7 +1340,7 @@ const renderFromText = async (text: string): Promise<void> => {
 // Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
 const relax = async (): Promise<void> => {
   if (ast === null || ast.kind !== "flowchart" || scene === null) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
@@ -1386,8 +1350,8 @@ const relax = async (): Promise<void> => {
     return;
   }
   scene = laid.value;
-  overrides = new Map();
-  persistOverlay();
+  doc.clearOverrides();
+  doc.persist();
   paintScene();
 };
 
@@ -1407,7 +1371,7 @@ const scenePoint = (ev: MouseEvent) => {
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit =
@@ -1465,12 +1429,12 @@ canvas.addEventListener("pointerdown", (ev) => {
 
   // A plain click on a node drags it; if it's in a group, the whole group moves — unless the group
   // is locked, in which case it's selectable (for Ungroup/Lock) but not draggable. Empty canvas pans.
-  if (hit !== null && hit.kind === "node" && !pathLocked(groups, hit.id)) {
+  if (hit !== null && hit.kind === "node" && !pathLocked(doc.groups(), hit.id)) {
     const moveIds = new Set<SceneNodeId>();
     for (const id of selection.nodes) {
-      const top = topGroupOfNode(groups, id);
+      const top = topGroupOfNode(doc.groups(), id);
       if (top === null) moveIds.add(id);
-      else for (const leaf of leafNodes(groups, top)) moveIds.add(leaf);
+      else for (const leaf of leafNodes(doc.groups(), top)) moveIds.add(leaf);
     }
     const origin = new Map<SceneNodeId, Point>();
     for (const node of shown.nodes) {
@@ -1498,7 +1462,7 @@ canvas.addEventListener("pointermove", (ev) => {
   if (resize !== null) {
     const at = scenePoint(ev);
     if (!resizeRecorded) {
-      recordOverlay();
+      doc.record();
       resizeRecorded = true;
     }
     const rawW = at.x - resize.anchorX;
@@ -1507,8 +1471,7 @@ canvas.addEventListener("pointermove", (ev) => {
     const h = Math.max(RESIZE_MIN_H, Math.abs(rawH));
     const cornerX = resize.anchorX + (rawW >= 0 ? w : -w);
     const cornerY = resize.anchorY + (rawH >= 0 ? h : -h);
-    overrides = resizeNode(
-      overrides,
+    doc.resizeNode(
       resize.id,
       point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
       size(w, h),
@@ -1532,12 +1495,12 @@ canvas.addEventListener("pointermove", (ev) => {
   const dx = at.x - drag.pointerX;
   const dy = at.y - drag.pointerY;
   if (!dragRecorded && (dx !== 0 || dy !== 0)) {
-    recordOverlay();
+    doc.record();
     dragRecorded = true;
   }
   for (const id of drag.ids) {
     const o = drag.origin.get(id);
-    if (o !== undefined) overrides = moveNode(overrides, id, point(o.x + dx, o.y + dy));
+    if (o !== undefined) doc.moveNode(id, point(o.x + dx, o.y + dy));
   }
   requestPaint();
 });
@@ -1546,7 +1509,7 @@ canvas.addEventListener("pointerup", (ev) => {
   if (resize !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     resize = null;
-    persistOverlay();
+    doc.persist();
     return;
   }
   if (marquee !== null) {
@@ -1554,7 +1517,7 @@ canvas.addEventListener("pointerup", (ev) => {
     const box = marquee;
     marquee = null;
     if (scene !== null) {
-      const shown = applyOverrides(scene, overrides);
+      const shown = applyOverrides(scene, doc.overrides());
       const minX = Math.min(box.x0, box.x1);
       const maxX = Math.max(box.x0, box.x1);
       const minY = Math.min(box.y0, box.y1);
@@ -1586,7 +1549,7 @@ canvas.addEventListener("pointerup", (ev) => {
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;
-    persistOverlay();
+    doc.persist();
   }
 });
 
@@ -1664,7 +1627,7 @@ const anchorFor = (
 // Two-way edit: rename what was double-clicked and write the patch back into the source text.
 canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit =
@@ -1688,16 +1651,16 @@ canvas.addEventListener("dblclick", (ev) => {
 
   if (groupHit !== null) {
     const box = groupBoxes(shown).find((g) => g.id === groupHit);
-    const g = groups.get(groupHit);
+    const g = doc.groups().get(groupHit);
     if (box !== undefined && g !== undefined) {
       anchor = { x: box.x + 16, y: box.y, w: Math.max(96, box.w - 32), h: 24 };
       pending = {
         text: g.label,
         commit: (next) => {
           if (next === g.label) return;
-          recordOverlay();
-          groups = setGroupLabel(groups, groupHit, next);
-          persistOverlay();
+          doc.record();
+          doc.setGroupLabel(groupHit, next);
+          doc.persist();
           paintScene();
         },
       };
@@ -1995,10 +1958,10 @@ window.addEventListener("keydown", (ev) => {
 const movableSelectionLeaves = (): SceneNodeId[] => {
   const ids = new Set<SceneNodeId>();
   for (const id of selection.nodes) {
-    if (pathLocked(groups, id)) continue;
-    const top = topGroupOfNode(groups, id);
+    if (pathLocked(doc.groups(), id)) continue;
+    const top = topGroupOfNode(doc.groups(), id);
     if (top === null) ids.add(id);
-    else for (const leaf of leafNodes(groups, top)) ids.add(leaf);
+    else for (const leaf of leafNodes(doc.groups(), top)) ids.add(leaf);
   }
   return [...ids];
 };
@@ -2009,17 +1972,17 @@ const nudgeSelection = (dx: number, dy: number): void => {
   if (scene === null) return;
   const ids = movableSelectionLeaves();
   if (ids.length === 0) return;
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
   if (!nudging) {
-    recordOverlay();
+    doc.record();
     nudging = true;
   }
   for (const id of ids) {
     const at = origin.get(id);
-    if (at !== undefined) overrides = moveNode(overrides, id, point(at.x + dx, at.y + dy));
+    if (at !== undefined) doc.moveNode(id, point(at.x + dx, at.y + dy));
   }
-  persistOverlay();
+  doc.persist();
   paintScene();
 };
 
@@ -2062,9 +2025,9 @@ relaxBtn.addEventListener("click", () => {
 // Regenerate: drop manual positions and lay out cleanly from the text. Undoable — so a regenerate
 // that throws away a hand-tuned layout can be taken back (the groups are kept either way).
 regenBtn.addEventListener("click", () => {
-  if (overrides.size > 0) recordOverlay();
-  overrides = new Map();
-  persistOverlay();
+  if (doc.overrides().size > 0) doc.record();
+  doc.clearOverrides();
+  doc.persist();
   void renderFromText(editor.value());
 });
 
@@ -2088,9 +2051,9 @@ exampleEl.addEventListener("change", () => {
   const text = EXAMPLES.get(exampleEl.value);
   exampleEl.value = "";
   if (text === undefined) return;
-  overrides = new Map();
-  clearOverlayHistory(); // a different diagram — the old positions/history no longer apply
-  persistOverlay();
+  doc.clearOverrides();
+  doc.clearHistory(); // a different diagram — the old positions/history no longer apply
+  doc.persist();
   editor.setValue(text);
   void renderFromText(text);
 });
@@ -2141,8 +2104,8 @@ loadPackEl.addEventListener("change", () => {
 // packs added via "Load icons". The glyph previews reuse the SVG→data-URL path (no innerHTML).
 const insertIconRef = (packId: string, name: string): void => {
   editor.insertAtCursor(` icon "${packId}/${name}"`);
-  overrides = new Map();
-  persistOverlay();
+  doc.clearOverrides();
+  doc.persist();
   void renderFromText(editor.value());
 };
 
@@ -2211,7 +2174,7 @@ const compositeCanvas = (): HTMLCanvasElement | null => {
   // always full-resolution — previously it copied the live canvas, so exporting at 10%/400% zoom
   // produced a tiny/huge image. Editor chrome (selection, handles, marquee) is omitted, matching the
   // SVG export. Mirrors the SVG path's zoom-independence.
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
   const dpr = window.devicePixelRatio || 1;
@@ -2344,7 +2307,7 @@ exportSvgBtn.addEventListener("click", () => {
     setStatus("error", "nothing to export yet");
     return;
   }
-  const shown = applyOverrides(scene, overrides);
+  const shown = applyOverrides(scene, doc.overrides());
   const icons = new Map<string, string>();
   for (const node of shown.nodes) {
     if (node.icon === null) continue;
@@ -2373,7 +2336,7 @@ exportDotBtn.addEventListener("click", () => {
     setStatus("error", "nothing to export yet");
     return;
   }
-  const dot = toDot(applyOverrides(scene, overrides), lastDirection);
+  const dot = toDot(applyOverrides(scene, doc.overrides()), lastDirection);
   downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
   setStatus("ok", "exported mermollusc.dot");
 });
@@ -2420,8 +2383,7 @@ if (fromHash === null) {
     try {
       const decoded = decodeOverlay(JSON.parse(rawOverlay));
       if (isOk(decoded)) {
-        overrides = decoded.value.overrides;
-        groups = decoded.value.groups;
+        doc.replace(decoded.value.overrides, decoded.value.groups);
       } else {
         console.error("ignoring invalid overlay:", decoded.error.issues.join("; "));
       }
@@ -2433,9 +2395,9 @@ if (fromHash === null) {
 // Editing the text by hand drops manual layout (positions no longer match) and re-renders. The
 // editor is created here, last, because its change callback closes over `renderFromText`.
 editor = createEditor(editorMount, initialSource, (text) => {
-  overrides = new Map();
-  clearOverlayHistory(); // the text (and thus the diagram) changed — old positions/history are stale
-  persistOverlay();
+  doc.clearOverrides();
+  doc.clearHistory(); // the text (and thus the diagram) changed — old positions/history are stale
+  doc.persist();
   void renderFromText(text);
 });
 void renderFromText(initialSource);

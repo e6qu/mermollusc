@@ -1,5 +1,20 @@
 # @m/app (playground) — do next
 
+- *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
+  state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
+  interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed
+  implementation, and `main.ts` reads/mutates the overlay only through that seam. This mirrors how the
+  source text already sits behind the `Editor` interface (`src/editor.ts`). Pure refactor —
+  behavior-neutral (all 105 Playwright specs green). A future collaborative backend plugs in as a
+  second `OverlayDoc` implementation (Yjs-backed, edits broadcast via the injected `save` sink)
+  **without touching call sites**. Full phased plan in [`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)
+  and the root `PLAN.md` Future bets; this is **Phase 0 of 4**.
+  - **Phase 1 (next, needs sign-off):** Yjs in-memory + dev `y-websocket`; text + overlay CRDT +
+    presence; local-first + reconnect. Blocked on the 5 decision points in the doc §10 (CRDT choice,
+    sync model, persistence backend, auth/tenancy, server stack).
+  - **Phase 2:** persistence (update log + snapshots), auth handshake, rooms + RBAC.
+  - **Phase 3:** pub/sub fan-out, per-tenant isolation, audit export, observability/SLOs, offline
+    buffer, compaction, compliance hooks.
 - *(done)* Swapped the textarea for **CodeMirror 6**: family-aware syntax highlighting, and the
   parser's `line:col` parse error is mirrored inline as a lint diagnostic (gutter marker + underline
   + hover message) on top of the existing click-to-locate. `main.ts` talks to a small `Editor`
