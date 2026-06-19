@@ -34,14 +34,17 @@
   element whose `parent` is dangling/cyclic so it was never placed) instead of silently placing it at
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
-- `layoutDiagram(ast)` routes by family: flowchart, **state, and ER** → ELK (async; state via a
-  `stateToFlow` adapter, ER via a dedicated `layoutEr`); the rest → pure layouts.
+- `layoutDiagram(ast)` routes by family: flowchart, **state, ER, and class** → ELK (async; state via a
+  `stateToFlow` adapter, ER via `layoutEr`, class via `layoutClass`); the rest → pure layouts.
 - **ER (`layoutEr`):** builds the ELK graph directly (not via `toElkGraph`) because each entity box
   must be sized for its attribute rows before layout — height `ER_TITLE_H + rows·ER_ROW_H`, width the
   widest measured row/label. Scene entities carry their `rows`; relationship ends carry the cardinality
   on `fromEnd`/`toEnd` (`ErCardinality` *is* an `EdgeEnd`), solid for identifying / dashed for
   non-identifying, the verb as the plain label.
-- tests: 29 unit + 7 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- **Class (`layoutClass`):** like `layoutEr` — boxes sized to fit members (fields then methods, split
+  by `SceneNode.rowDivider` = field count); `memberRow` prefixes the visibility glyph. Relationship
+  ends carry the UML arrowheads (`ClassArrow` *is* an `EdgeEnd`); dashed line for `..`.
+- tests: 29 unit + 8 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; property-based: block/network grids **and the ELK flowchart path**

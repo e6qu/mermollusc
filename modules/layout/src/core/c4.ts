@@ -97,6 +97,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       parent: el.parent === null ? null : brand<string, "SceneNodeId">(el.parent),
       icon: null,
       rows: null,
+      rowDivider: null,
     });
   }
 

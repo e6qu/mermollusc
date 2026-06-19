@@ -90,3 +90,9 @@
   skipped comma; `block`/`attribute` grammar rules; the CST→AST step reads type + name + key
   identifiers (classified to `PK`/`FK`/`UK`) + an optional quoted comment into `ErEntity.attributes`.
   +1 integration test.
+- Added a **class diagram** parser (`classDiagram`): class declarations with an optional `{ … }`
+  member body (members captured as whole lines in a dedicated lexer mode, like the label modes), the
+  `Foo : +member` shorthand, and relationship lines whose operator (`<|--`, `--|>`, `*--`, `o--`,
+  `-->`, `..>`, `..|>`, `--`) is lexed whole and split into `fromArrow`/`toArrow` (`ClassArrow`) + a
+  dashed flag (heads `<|`/`|>` triangle, `*`/`o` diamonds, `<`/`>` open arrow). Members split the
+  visibility glyph from the text and detect `()` → method. +4 integration tests.

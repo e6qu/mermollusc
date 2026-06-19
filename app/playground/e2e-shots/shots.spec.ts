@@ -313,6 +313,16 @@ const FLOWS: readonly Flow[] = [
       );
     },
   },
+  {
+    name: "26-class",
+    about: "UML class diagram: field/method compartments and inheritance/composition/aggregation heads",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  class Duck {\n    +String beak\n    +swim() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
+      );
+    },
+  },
 ];
 
 for (const flow of FLOWS) {

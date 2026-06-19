@@ -1,6 +1,7 @@
 import { brand, isOk } from "@m/std";
 import {
   parseC4WithSource,
+  parseClassWithSource,
   parseErWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
@@ -11,12 +12,14 @@ import {
   addNode,
   connect,
   connectC4,
+  connectClass,
   connectEr,
   connectMessage,
   connectUndirected,
   deleteActor,
   deleteC4,
   deleteC4Rel,
+  deleteClassRel,
   deleteEdge,
   deleteErRel,
   deleteMessage,
@@ -29,6 +32,7 @@ const nid = (s: string) => brand<string, "NodeId">(s);
 const cid = (s: string) => brand<string, "C4ElementId">(s);
 const aid = (s: string) => brand<string, "ActorId">(s);
 const erid = (s: string) => brand<string, "ErEntityId">(s);
+const clid = (s: string) => brand<string, "ClassEntityId">(s);
 
 const sourceOf = (text: string) => {
   const r = parseWithSource(text);
@@ -119,6 +123,19 @@ describe("relabelNode", () => {
     const removed = deleteErRel(next, erid("A"), erid("B"));
     expect(removed).not.toContain("A ||--o{ B"); // the added relationship is gone
     expect(removed).toContain("CUSTOMER ||--o{ ORDER"); // the original stays
+  });
+
+  it("connectClass appends a relationship the class parser accepts, and deleteClassRel removes it", () => {
+    const next = connectClass("classDiagram\n  Animal <|-- Duck\n", clid("A"), clid("B"));
+    expect(next).toContain("A --> B");
+    const r = parseClassWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.relationships.some((rel) => rel.from === "A" && rel.to === "B")).toBe(true);
+
+    const removed = deleteClassRel(next, clid("A"), clid("B"));
+    expect(removed).not.toContain("A --> B"); // the added relationship is gone
+    expect(removed).toContain("Animal <|-- Duck"); // the original stays
   });
 
   it("connectMessage appends a message the sequence parser accepts", () => {

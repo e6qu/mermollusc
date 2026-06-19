@@ -3,6 +3,7 @@ import {
   applyOverrides,
   connect,
   connectC4,
+  connectClass,
   connectEr,
   connectMessage,
   connectUndirected,
@@ -10,6 +11,7 @@ import {
   deleteActor,
   deleteC4,
   deleteC4Rel,
+  deleteClassRel,
   deleteEdge,
   deleteErRel,
   deleteMessage,
@@ -36,6 +38,7 @@ import type { Selection } from "@m/builder";
 import type {
   BlockSource,
   C4Source,
+  ClassSource,
   CloudSource,
   ErSource,
   DiagramAst,
@@ -57,6 +60,7 @@ import { layout, layoutDiagram } from "@m/layout";
 import {
   parseBlockWithSource,
   parseC4WithSource,
+  parseClassWithSource,
   parseCloudWithSource,
   parseErWithSource,
   parseDiagram,
@@ -173,6 +177,7 @@ let netSource: NetworkSource | null = null;
 let cloudSource: CloudSource | null = null;
 let stateSource: StateSource | null = null;
 let erSource: ErSource | null = null;
+let classSource: ClassSource | null = null;
 let overrides: LayoutOverrides = new Map();
 // Sidecar element groups (never in the diagram text). `groupSeq` mints fresh ids.
 let groups: Groups = new Map();
@@ -1130,6 +1135,10 @@ const EXAMPLES = new Map<string, string>([
     "er",
     "erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n    int loyalty_points\n  }\n  ORDER {\n    int id PK\n    string status\n    date placed_at\n  }\n  LINE_ITEM {\n    int qty\n    int product_id FK\n  }\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : in\n",
   ],
+  [
+    "class",
+    "classDiagram\n  class Animal {\n    +String name\n    -int age\n    +isMammal() bool\n    +move() void\n  }\n  class Duck {\n    +String beak\n    +swim() void\n  }\n  class Fish {\n    -int depth\n    +swim() void\n  }\n  Animal <|-- Duck\n  Animal <|-- Fish\n  Animal *-- Habitat\n  Duck o-- Pond\n  Duck ..> Food : eats\n",
+  ],
 ]);
 
 const renderFromText = async (text: string): Promise<void> => {
@@ -1192,6 +1201,7 @@ const renderFromText = async (text: string): Promise<void> => {
   cloudSource = null;
   stateSource = null;
   erSource = null;
+  classSource = null;
   switch (diagram.kind) {
     case "flowchart": {
       const withSource = parseWithSource(text);
@@ -1231,6 +1241,11 @@ const renderFromText = async (text: string): Promise<void> => {
     case "er": {
       const withSource = parseErWithSource(text);
       erSource = isOk(withSource) ? withSource.value.source : null;
+      break;
+    }
+    case "class": {
+      const withSource = parseClassWithSource(text);
+      classSource = isOk(withSource) ? withSource.value.source : null;
       break;
     }
   }
@@ -1609,6 +1624,12 @@ canvas.addEventListener("dblclick", (ev) => {
         ? erSource.entities.get(brand<string, "ErEntityId">(hit.id))
         : erSource.relationships.get(brand<string, "ErRelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "class" && classSource !== null) {
+    const span =
+      hit.kind === "node"
+        ? classSource.entities.get(brand<string, "ClassEntityId">(hit.id))
+        : classSource.relationships.get(brand<string, "ClassRelId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
   }
 
   if (pending === null) return;
@@ -1670,6 +1691,12 @@ const appendEdge = (
         brand<string, "ErEntityId">(first),
         brand<string, "ErEntityId">(second),
       );
+    case "class":
+      return connectClass(
+        text,
+        brand<string, "ClassEntityId">(first),
+        brand<string, "ClassEntityId">(second),
+      );
     default:
       return connect(
         text,
@@ -1705,6 +1732,12 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
       return deleteMessage(text, brand<string, "ActorId">(from), brand<string, "ActorId">(to));
     case "er":
       return deleteErRel(text, brand<string, "ErEntityId">(from), brand<string, "ErEntityId">(to));
+    case "class":
+      return deleteClassRel(
+        text,
+        brand<string, "ClassEntityId">(from),
+        brand<string, "ClassEntityId">(to),
+      );
     default:
       return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));
   }

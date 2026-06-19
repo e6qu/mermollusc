@@ -40,6 +40,7 @@ export const layoutNetwork = (
       // name in the built-in arch pack.
       icon: n.icon ?? { pack: ARCH_PACK, name: n.kind },
       rows: null,
+      rowDivider: null,
     };
   });
 

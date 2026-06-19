@@ -50,6 +50,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       parent: null,
       icon: b.icon,
       rows: null,
+      rowDivider: null,
     };
   });
 

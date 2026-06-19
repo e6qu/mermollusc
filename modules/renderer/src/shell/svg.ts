@@ -29,9 +29,14 @@ const markerToSvg = (marker: EndMarker, theme: Theme): string => {
       `<circle cx="${num(marker.circle.center.x)}" cy="${num(marker.circle.center.y)}" r="${num(marker.circle.radius)}" fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"/>`,
     );
   }
-  if (marker.triangle !== null) {
-    const pts = marker.triangle.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
-    parts.push(`<polygon points="${pts}" fill="${theme.stroke}"/>`);
+  for (const poly of marker.polygons) {
+    const pts = poly.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
+    // `solid` fills with stroke; `hollow` fills with background + a stroked outline (UML open heads).
+    const style =
+      poly.fill === "solid"
+        ? `fill="${theme.stroke}"`
+        : `fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"`;
+    parts.push(`<polygon points="${pts}" ${style}/>`);
   }
   return parts.join("");
 };

@@ -6,13 +6,24 @@ const ICON_SIZE = 20;
 
 export type LabelAlign = "center" | "left";
 
-// The drawn form of one edge end (crow's-foot cardinality or an arrowhead), pre-computed in the core
-// as backend-agnostic primitives so the canvas painter and the SVG backend render identical glyphs:
-// `lines` are stroked segments (bars, crow's-foot prongs), `triangle` a filled arrowhead, `circle` a
-// stroked "zero" ring. All in absolute scene coordinates. Every field is present (null when unused).
+// A marker polygon's fill: `solid` fills with the stroke colour (a filled arrowhead / UML composition
+// diamond); `hollow` fills with the background and outlines in stroke (an inheritance triangle / UML
+// aggregation diamond), so it reads as an open shape over whatever it overlaps.
+export type MarkerFill = "solid" | "hollow";
+
+export interface MarkerPolygon {
+  readonly points: readonly Point[];
+  readonly fill: MarkerFill;
+}
+
+// The drawn form of one edge end (an arrowhead, a UML class head, or a crow's-foot cardinality),
+// pre-computed in the core as backend-agnostic primitives so the canvas painter and the SVG backend
+// render identical glyphs: `lines` are stroked segments (bars, crow's-foot prongs, an open-arrow V),
+// `polygons` are filled/hollow heads (arrowhead, triangle, diamonds), `circle` a hollow "zero" ring.
+// All in absolute scene coordinates. Every field is present (empty/null when unused).
 export interface EndMarker {
   readonly lines: readonly (readonly [Point, Point])[];
-  readonly triangle: readonly Point[] | null;
+  readonly polygons: readonly MarkerPolygon[];
   readonly circle: { readonly center: Point; readonly radius: number } | null;
 }
 
@@ -54,18 +65,22 @@ export type DrawCmd =
       readonly align: LabelAlign;
     };
 
-const EMPTY_MARKER: EndMarker = { lines: [], triangle: null, circle: null };
+const EMPTY_MARKER: EndMarker = { lines: [], polygons: [], circle: null };
 
 const ARROW_LEN = 9;
 const ARROW_HALF = 3.6;
+const TRIANGLE_LEN = 14;
+const TRIANGLE_HALF = 8;
+const DIAMOND_LEN = 18;
+const DIAMOND_HALF = 6;
 const MARKER_LEN = 15;
 const MARKER_HALF = 6;
 const CIRCLE_R = 4.5;
 
-// Geometry of one edge end. `nodePt` sits on the entity boundary; `away` is the unit vector pointing
+// Geometry of one edge end. `nodePt` sits on the node boundary; `away` is the unit vector pointing
 // back along the edge (away from that node). Markers are laid out at increasing distances from the
-// node: a filled arrowhead, perpendicular bars (each `|` = "exactly one"), a crow's-foot fan (three
-// prongs = "many"), and a ring (the "zero / optional" circle).
+// node: arrowheads/UML heads (filled or open), perpendicular bars (each `|` = "exactly one"), a
+// crow's-foot fan (three prongs = "many"), and a ring (the "zero / optional" circle).
 const endMarker = (end: EdgeEnd, nodePt: Point, away: Point): EndMarker => {
   const px = -away.y;
   const py = away.x;
@@ -83,25 +98,56 @@ const endMarker = (end: EdgeEnd, nodePt: Point, away: Point): EndMarker => {
       [apex, at(0, -MARKER_HALF)],
     ];
   };
+  const head = (len: number, half: number, fill: MarkerFill): EndMarker => ({
+    lines: [],
+    polygons: [{ points: [at(len, half), nodePt, at(len, -half)], fill }],
+    circle: null,
+  });
+  const diamond = (fill: MarkerFill): EndMarker => ({
+    lines: [],
+    polygons: [
+      {
+        points: [
+          nodePt,
+          at(DIAMOND_LEN / 2, DIAMOND_HALF),
+          at(DIAMOND_LEN, 0),
+          at(DIAMOND_LEN / 2, -DIAMOND_HALF),
+        ],
+        fill,
+      },
+    ],
+    circle: null,
+  });
   switch (end) {
     case "none":
       return EMPTY_MARKER;
     case "arrow":
+      return head(ARROW_LEN, ARROW_HALF, "solid");
+    case "arrowOpen":
       return {
-        lines: [],
-        triangle: [at(ARROW_LEN, ARROW_HALF), nodePt, at(ARROW_LEN, -ARROW_HALF)],
+        lines: [
+          [at(ARROW_LEN, ARROW_HALF), nodePt],
+          [at(ARROW_LEN, -ARROW_HALF), nodePt],
+        ],
+        polygons: [],
         circle: null,
       };
+    case "triangle":
+      return head(TRIANGLE_LEN, TRIANGLE_HALF, "hollow");
+    case "diamondFilled":
+      return diamond("solid");
+    case "diamondHollow":
+      return diamond("hollow");
     case "one":
-      return { lines: [bar(8), bar(14)], triangle: null, circle: null };
+      return { lines: [bar(8), bar(14)], polygons: [], circle: null };
     case "zeroOrOne":
-      return { lines: [bar(9)], triangle: null, circle: { center: at(18, 0), radius: CIRCLE_R } };
+      return { lines: [bar(9)], polygons: [], circle: { center: at(18, 0), radius: CIRCLE_R } };
     case "oneOrMany":
-      return { lines: [bar(MARKER_LEN + 6), ...foot()], triangle: null, circle: null };
+      return { lines: [bar(MARKER_LEN + 6), ...foot()], polygons: [], circle: null };
     case "zeroOrMany":
       return {
         lines: foot(),
-        triangle: null,
+        polygons: [],
         circle: { center: at(MARKER_LEN + 6, 0), radius: CIRCLE_R },
       };
   }
@@ -176,7 +222,8 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     radius: length(cornerRadius(node.shape, size.width, size.height)),
   } satisfies DrawCmd;
   if (node.rows !== null) {
-    // An ER entity: title in the top band, a divider, then one left-aligned row per attribute.
+    // A compartment box (ER entity / UML class): title in the top band, a divider, then one
+    // left-aligned row per member. A class also gets an inner divider at `rowDivider` (field/method).
     const cmds: DrawCmd[] = [
       box,
       {
@@ -196,6 +243,9 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         text: row,
         align: "left",
       });
+    }
+    if (node.rowDivider !== null && node.rowDivider > 0 && node.rowDivider < node.rows.length) {
+      cmds.push(dividerAt(origin.x, origin.y + ROW_TITLE_H + ROW_H * node.rowDivider, size.width));
     }
     return cmds;
   }

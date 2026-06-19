@@ -8,12 +8,14 @@
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
   glyph above the label — for nodes carrying a `SceneNode.icon`).
 - **Edge-end markers:** the polyline `DrawCmd` carries a `fromMarker`/`toMarker` `EndMarker`,
-  precomputed from `SceneEdge.fromEnd`/`toEnd` — backend-agnostic geometry: stroked `lines` (a single
-  bar `|` per "one", a three-prong fan for "many"), a filled `triangle` (arrowhead), and a stroked
-  `circle` (the optional "zero" ring). This renders ER crow's-foot cardinality and would serve UML
-  arrowheads; `paint` and `toSvg` draw identical glyphs from the same primitives.
-- **ER attribute compartments:** a `SceneNode.rows` node draws a title band, a divider, and one
-  left-aligned attribute row each (the `label` `DrawCmd` carries a `LabelAlign` of `center`/`left`).
+  precomputed from `SceneEdge.fromEnd`/`toEnd` — backend-agnostic geometry: stroked `lines` (the
+  open-arrow V, the `|` bars, the three-prong "many" fan), `polygons` (`{ points, fill }` — `solid`
+  arrowhead / composition diamond, `hollow` inheritance triangle / aggregation diamond), and a stroked
+  `circle` (the "zero" ring). This renders ER crow's-foot cardinality **and** UML class heads;
+  `paint` and `toSvg` draw identical glyphs from the same primitives.
+- **Compartment boxes:** a `SceneNode.rows` node (ER entity / UML class) draws a title band, a
+  divider, and one left-aligned row each (the `label` `DrawCmd` carries a `LabelAlign`); a non-null
+  `rowDivider` adds a second divider at that row index — the UML class field/method split.
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.

@@ -24,6 +24,7 @@ export {
   connectC4,
   connectMessage,
   connectEr,
+  connectClass,
   deleteNode,
   deleteEdge,
   deleteC4,
@@ -31,5 +32,6 @@ export {
   deleteActor,
   deleteMessage,
   deleteErRel,
+  deleteClassRel,
 } from "./patch.js";
 export type { PatchError } from "./patch.js";

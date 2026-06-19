@@ -85,3 +85,8 @@
   row/label. Scene edges now carry the cardinality on `fromEnd`/`toEnd` (the `ErCardinality` strings
   *are* `EdgeEnd` values — no mapping) and entities carry their `rows`; the verb is the plain edge
   label. Migrated every family's node/edge producers to `SceneNode.rows` + `SceneEdge.fromEnd/toEnd`.
+- Added `layoutClass` (UML class diagrams), mirroring `layoutEr` — entity boxes sized to fit their
+  members and laid out through ELK directly. Members are split into fields then methods (two
+  compartments via `SceneNode.rowDivider` = the field count) and `memberRow` prefixes the visibility
+  glyph (`+`/`-`/`#`/`~`). Relationship ends carry the UML arrowheads (`ClassArrow` *is* an `EdgeEnd`),
+  the line dashes for `..` (dependency/realization). Title/row metrics match the renderer + ER.

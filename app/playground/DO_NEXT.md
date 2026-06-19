@@ -36,3 +36,7 @@
   machinery would also serve a future class-diagram family.
 - Fixed the `make shots` instrument to drive the source through the `window.__editor` handle (it
   still used `#src.fill()`, which broke after the CodeMirror migration).
+- *(done)* UML class diagram family: field/method compartments + inheritance/composition/aggregation/
+  association/dependency heads (reusing the `EndMarker` machinery). The `class` example shows them, a
+  `26-class` shots flow captures it. Connect/Delete/relabel work on classes + relationships. Still
+  (parser-led): class stereotypes (`<<interface>>`), per-end multiplicity labels, generics.

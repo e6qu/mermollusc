@@ -254,3 +254,7 @@
   an ER pipeline golden, a `25-er` shots flow, and a third ER e2e (attribute block renders cleanly).
   Fixed the `make shots` instrument — its `setSource` still used `#src.fill()`, stale since the
   CodeMirror migration — to drive `window.__editor`. 82 Playwright green.
+- Wired the **class diagram** family (the 9th): Examples entry + `<option>`, parse→source dispatch
+  (`parseClassWithSource` → `classSource`), relabel (class names + relationship labels via
+  `ClassSource`), Connect (`connectClass` → `-->`), Delete (`deleteClassRel`). Added a class pipeline
+  golden, a `26-class` shots flow, and a class e2e (render + example). 84 Playwright green.

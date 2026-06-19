@@ -253,6 +253,47 @@ export interface ErAst {
   readonly relationships: readonly ErRelationship[];
 }
 
+export type ClassEntityId = Brand<string, "ClassEntityId">;
+export type ClassRelId = Brand<string, "ClassRelId">;
+// UML visibility marker on a member: `+` public, `-` private, `#` protected, `~` package; null when
+// the member text carried no marker.
+export type ClassVisibility = "public" | "private" | "protected" | "package";
+export type ClassMemberKind = "field" | "method";
+
+export interface ClassMember {
+  readonly visibility: ClassVisibility | null;
+  // The member text minus the visibility marker, as written (`int age`, `area() double`).
+  readonly text: string;
+  readonly kind: ClassMemberKind; // `method` when the text has a `()`, else `field`
+}
+
+export interface ClassEntity {
+  readonly id: ClassEntityId;
+  readonly label: string;
+  readonly members: readonly ClassMember[];
+}
+
+// One end's UML arrowhead. A subset of `EdgeEnd` (same string values), so it assigns straight onto a
+// `SceneEdge` end: `triangle` (inheritance/realization), `diamondFilled` (composition),
+// `diamondHollow` (aggregation), `arrowOpen` (association/dependency), `none`.
+export type ClassArrow = "none" | "arrowOpen" | "triangle" | "diamondFilled" | "diamondHollow";
+
+export interface ClassRel {
+  readonly id: ClassRelId;
+  readonly from: ClassEntityId;
+  readonly to: ClassEntityId;
+  readonly fromArrow: ClassArrow;
+  readonly toArrow: ClassArrow;
+  readonly dashed: boolean; // `..` dependency/realization vs `--` association/inheritance/composition
+  readonly label: string; // the `: text`, "" when omitted
+}
+
+export interface ClassAst {
+  readonly kind: "class";
+  readonly entities: readonly ClassEntity[];
+  readonly relationships: readonly ClassRel[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -262,4 +303,5 @@ export type DiagramAst =
   | NetworkAst
   | CloudAst
   | StateAst
-  | ErAst;
+  | ErAst
+  | ClassAst;

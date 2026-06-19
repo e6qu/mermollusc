@@ -125,6 +125,7 @@ export const toScene = (
         parent,
         icon: null,
         rows: null,
+        rowDivider: null,
       });
       continue;
     }
@@ -138,6 +139,7 @@ export const toScene = (
       parent,
       icon: null,
       rows: null,
+      rowDivider: null,
     });
   }
 

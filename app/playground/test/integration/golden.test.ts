@@ -29,6 +29,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "er",
     text: 'erDiagram\n  CUSTOMER {\n    string name PK\n    int age\n  }\n  CUSTOMER ||--o{ ORDER : places\n',
   },
+  {
+    name: "class",
+    text: "classDiagram\n  class Animal {\n    +int age\n    +move() void\n  }\n  Animal <|-- Duck\n  Animal *-- Leg\n",
+  },
 ];
 
 const r = (n: number): number => Math.round(n);
@@ -42,7 +46,7 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `diamond ${r(c.cx)},${r(c.cy)} ${r(c.width)}x${r(c.height)}`;
       case "polyline": {
         const m = (mk: (typeof c)["toMarker"]): string =>
-          `l${mk.lines.length}t${mk.triangle === null ? 0 : 1}c${mk.circle === null ? 0 : 1}`;
+          `l${mk.lines.length}p${mk.polygons.length}c${mk.circle === null ? 0 : 1}`;
         return `polyline ${c.points.map((p) => `${r(p.x)},${r(p.y)}`).join(" ")} dashed=${c.dashed} from=${m(c.fromMarker)} to=${m(c.toMarker)}`;
       }
       case "icon":

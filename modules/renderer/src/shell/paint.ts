@@ -114,10 +114,12 @@ const sketchRect = (ctx: Canvas2D, x: number, y: number, w: number, h: number, s
   sketchLine(ctx, x, y + h, x, y, s + 3);
 };
 
-// Render a pre-computed edge-end marker (crow's-foot bars/prongs, an arrowhead, an optional ring).
-// Geometry is fixed in the core; the painter only strokes/fills the primitives.
-const drawMarker = (ctx: Canvas2D, marker: EndMarker, stroke: string): void => {
-  ctx.strokeStyle = stroke;
+// Render a pre-computed edge-end marker (crow's-foot bars/prongs, arrowheads, UML triangle/diamond
+// heads, an optional ring). Geometry is fixed in the core; the painter only strokes/fills primitives.
+// A `solid` polygon fills with the stroke colour; a `hollow` one fills with the background and is
+// outlined, so an inheritance triangle / aggregation diamond reads as open over whatever it overlaps.
+const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme): void => {
+  ctx.strokeStyle = theme.stroke;
   ctx.setLineDash([]);
   for (const [a, b] of marker.lines) {
     ctx.beginPath();
@@ -126,21 +128,22 @@ const drawMarker = (ctx: Canvas2D, marker: EndMarker, stroke: string): void => {
     ctx.stroke();
   }
   if (marker.circle !== null) {
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = theme.background;
     ctx.beginPath();
     ctx.arc(marker.circle.center.x, marker.circle.center.y, marker.circle.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
-  if (marker.triangle !== null) {
-    const [p0, ...rest] = marker.triangle;
-    if (p0 === undefined) return;
-    ctx.fillStyle = stroke;
+  for (const poly of marker.polygons) {
+    const [p0, ...rest] = poly.points;
+    if (p0 === undefined) continue;
+    ctx.fillStyle = poly.fill === "solid" ? theme.stroke : theme.background;
     ctx.beginPath();
     ctx.moveTo(p0.x, p0.y);
     for (const p of rest) ctx.lineTo(p.x, p.y);
     ctx.closePath();
     ctx.fill();
+    if (poly.fill === "hollow") ctx.stroke();
   }
 };
 
@@ -205,8 +208,8 @@ export const paint = (
             sketchLine(ctx, prev.x, prev.y, p.x, p.y, seed++);
             prev = p;
           }
-          drawMarker(ctx, cmd.fromMarker, theme.stroke);
-          drawMarker(ctx, cmd.toMarker, theme.stroke);
+          drawMarker(ctx, cmd.fromMarker, theme);
+          drawMarker(ctx, cmd.toMarker, theme);
           break;
         }
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
@@ -215,8 +218,8 @@ export const paint = (
         for (const p of rest) ctx.lineTo(p.x, p.y);
         ctx.stroke();
         ctx.setLineDash([]);
-        drawMarker(ctx, cmd.fromMarker, theme.stroke);
-        drawMarker(ctx, cmd.toMarker, theme.stroke);
+        drawMarker(ctx, cmd.fromMarker, theme);
+        drawMarker(ctx, cmd.toMarker, theme);
         break;
       }
       case "icon": {

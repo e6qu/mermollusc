@@ -64,3 +64,7 @@
   Connect/Delete like the other families. +1 integration case.
 - Migrated the hit-test/overrides scene fixtures to the new `SceneNode.rows` + `SceneEdge.fromEnd/toEnd`
   contract (the builder core is scene-shape-agnostic, so no source change — fixtures only).
+- Added `connectClass` (appends `from --> to`, a plain association the user re-types into
+  inheritance/composition/etc.) and `deleteClassRel` (removes the first class relationship line
+  between two classes, keyed on the UML operator) so class diagrams get canvas Connect/Delete. Also
+  re-added `rowDivider: null` to the migrated fixtures. +1 integration case.

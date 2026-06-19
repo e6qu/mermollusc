@@ -1,5 +1,5 @@
 import { brand, isOk, point } from "@m/std";
-import type { ErAst, FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
+import type { ClassAst, ErAst, FlowchartAst, NodeId, SequenceAst, StateAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layout, layoutDiagram } from "../../src/shell/elk.js";
@@ -12,6 +12,8 @@ const sid = (s: string) => brand<string, "StateId">(s);
 const tid = (s: string) => brand<string, "StateTransitionId">(s);
 const erid = (s: string) => brand<string, "ErEntityId">(s);
 const errid = (s: string) => brand<string, "ErRelId">(s);
+const cid = (s: string) => brand<string, "ClassEntityId">(s);
+const crid = (s: string) => brand<string, "ClassRelId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -184,5 +186,44 @@ describe("layout", () => {
     // CUSTOMER carries its attribute as a compartment row; ORDER has none.
     expect(laid.value.nodes.find((n) => n.id === "CUSTOMER")?.rows).toEqual(["string name PK"]);
     expect(laid.value.nodes.find((n) => n.id === "ORDER")?.rows).toBeNull();
+  });
+
+  it("layoutDiagram lays out a class diagram with field/method compartments + UML arrowheads", async () => {
+    const classAst: ClassAst = {
+      kind: "class",
+      entities: [
+        {
+          id: cid("Animal"),
+          label: "Animal",
+          members: [
+            { visibility: "public", text: "int age", kind: "field" },
+            { visibility: "private", text: "name() String", kind: "method" },
+          ],
+        },
+        { id: cid("Duck"), label: "Duck", members: [] },
+      ],
+      relationships: [
+        {
+          id: crid("r0"),
+          from: cid("Animal"),
+          to: cid("Duck"),
+          fromArrow: "triangle",
+          toArrow: "none",
+          dashed: false,
+          label: "extends",
+        },
+      ],
+    };
+    const laid = await layoutDiagram(classAst, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    const animal = laid.value.nodes.find((n) => n.id === "Animal");
+    // Fields then methods, split by an inner divider at the field count.
+    expect(animal?.rows).toEqual(["+int age", "-name() String"]);
+    expect(animal?.rowDivider).toBe(1);
+    expect(laid.value.nodes.find((n) => n.id === "Duck")?.rows).toBeNull();
+    // The hollow inheritance triangle sits at the base class (the `from` end).
+    expect(laid.value.edges[0]?.fromEnd).toBe("triangle");
+    expect(laid.value.edges[0]?.label).toBe("extends");
   });
 });

@@ -16,3 +16,7 @@
 - ER: *(done)* entity attribute blocks (`ENTITY { type name PK,FK "comment" }`) parse into
   `ErEntity.attributes` (type, name, keys, comment); keys lex as identifiers and are classified in the
   CST→AST step, commas between keys are skipped. Relationships + bare entities already parsed.
+- Class: *(done)* `classDiagram` — member bodies + the `Foo : member` shorthand + the UML relationship
+  operators (inheritance/realization/composition/aggregation/association/dependency). Still: class
+  stereotypes (`<<interface>>`, currently skipped), per-end multiplicity labels (`"1" --> "*"`),
+  generics (`List~T~`), and namespaces.

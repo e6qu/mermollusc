@@ -2,6 +2,7 @@ import { err, ok, type Result } from "@m/std";
 import type {
   ActorId,
   C4ElementId,
+  ClassEntityId,
   EdgeKind,
   ErEntityId,
   NodeId,
@@ -75,6 +76,26 @@ export const deleteErRel = (text: string, from: ErEntityId, to: ErEntityId): str
   const lines = text.split("\n");
   const idx = lines.findIndex((line) => {
     const m = ER_REL.exec(line);
+    return m !== null && m[1] === from && m[2] === to;
+  });
+  if (idx === -1) return text;
+  lines.splice(idx, 1);
+  return lines.join("\n");
+};
+
+// A class relationship (`from --> to`) — a plain association the user can re-type into inheritance
+// (`<|--`), composition (`*--`), etc., or label via the inline editor.
+export const connectClass = (text: string, from: ClassEntityId, to: ClassEntityId): string =>
+  `${withTrailingNewline(text)}  ${from} --> ${to}\n`;
+
+// The UML operator between two class ids on a relationship line (heads optional, `--`/`..` line).
+const CLASS_REL = /^\s*(\S+)\s+(?:<\||<|\*|o)?(?:--|\.\.)(?:\|>|>|\*|o)?\s+(\S+)/;
+
+// Remove the first class relationship line between two classes (by their ids).
+export const deleteClassRel = (text: string, from: ClassEntityId, to: ClassEntityId): string => {
+  const lines = text.split("\n");
+  const idx = lines.findIndex((line) => {
+    const m = CLASS_REL.exec(line);
     return m !== null && m[1] === from && m[2] === to;
   });
   if (idx === -1) return text;

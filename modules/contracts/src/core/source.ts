@@ -5,6 +5,8 @@ import type {
   ActorId,
   C4ElementId,
   C4RelId,
+  ClassEntityId,
+  ClassRelId,
   EdgeId,
   ErEntityId,
   ErRelId,
@@ -69,6 +71,12 @@ export interface StateSource {
 export interface ErSource {
   readonly entities: ReadonlyMap<ErEntityId, TextSpan>;
   readonly relationships: ReadonlyMap<ErRelId, TextSpan>;
+}
+
+// Editable text spans for a class diagram: each class's name and each relationship's `: label`.
+export interface ClassSource {
+  readonly entities: ReadonlyMap<ClassEntityId, TextSpan>;
+  readonly relationships: ReadonlyMap<ClassRelId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service
