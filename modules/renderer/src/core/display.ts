@@ -1,6 +1,6 @@
 import { coordinate, length, point } from "@m/std";
 import type { Coordinate, Length, Point } from "@m/std";
-import type { EdgeEnd, IconRef, NodeShape, Scene, SceneNode } from "@m/contracts";
+import type { EdgeEnd, IconRef, NodeShape, Scene, SceneNode, SceneWedge } from "@m/contracts";
 
 const ICON_SIZE = 20;
 
@@ -66,7 +66,39 @@ export type DrawCmd =
       // Draw a background plate behind the text (edge labels), so the routed line/markers don't
       // strike through it. Node/title/row labels sit on a filled box already and set this false.
       readonly plate: boolean;
+    }
+  | {
+      // A filled pie slice. Angles are in canvas convention (radians from +x, clockwise); the painter
+      // fills with `wedgeColor(colorIndex)` so both backends share the categorical palette.
+      readonly kind: "wedge";
+      readonly cx: Coordinate;
+      readonly cy: Coordinate;
+      readonly radius: Length;
+      readonly startAngle: number;
+      readonly endAngle: number;
+      readonly colorIndex: number;
     };
+
+// Categorical palette for pie slices, cycled by `colorIndex`. Shared by the canvas and SVG backends so
+// a slice is the same colour in both. Chosen for legibility on the light and dark canvas backgrounds.
+const WEDGE_PALETTE: readonly string[] = [
+  "#4e79a7",
+  "#f28e2b",
+  "#59a14f",
+  "#e15759",
+  "#b07aa1",
+  "#76b7b2",
+  "#edc948",
+  "#ff9da7",
+  "#9c755f",
+  "#bab0ac",
+];
+
+export const wedgeColor = (index: number): string => {
+  const c =
+    WEDGE_PALETTE[((index % WEDGE_PALETTE.length) + WEDGE_PALETTE.length) % WEDGE_PALETTE.length];
+  return c ?? "#4e79a7";
+};
 
 const EMPTY_MARKER: EndMarker = { lines: [], polygons: [], circle: null };
 
@@ -391,5 +423,32 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
     }
   }
   const nodes = scene.nodes.flatMap(nodeCmds);
-  return [...edges, ...nodes, ...labels];
+  const wedges = scene.wedges.flatMap(wedgeCmds);
+  return [...wedges, ...edges, ...nodes, ...labels];
+};
+
+// A pie slice: the filled sector plus its label (name + percentage) anchored at the slice's mid-angle,
+// part-way out from the centre. The label rides a plate so it stays legible over the slice fill.
+const wedgeCmds = (wedge: SceneWedge): DrawCmd[] => {
+  const mid = (wedge.startAngle + wedge.endAngle) / 2;
+  const lr = wedge.radius * 0.62;
+  return [
+    {
+      kind: "wedge",
+      cx: coordinate(wedge.center.x),
+      cy: coordinate(wedge.center.y),
+      radius: length(wedge.radius),
+      startAngle: wedge.startAngle,
+      endAngle: wedge.endAngle,
+      colorIndex: wedge.colorIndex,
+    },
+    {
+      kind: "label",
+      x: coordinate(wedge.center.x + lr * Math.cos(mid)),
+      y: coordinate(wedge.center.y + lr * Math.sin(mid)),
+      text: `${wedge.label} ${Math.round(wedge.percent)}%`,
+      align: "center",
+      plate: true,
+    },
+  ];
 };

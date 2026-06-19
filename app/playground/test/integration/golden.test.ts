@@ -57,6 +57,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "mindmap",
     text: "mindmap\n  root((Root))\n    Branch A\n      Leaf 1\n      Leaf 2\n    Branch B\n",
   },
+  {
+    name: "pie",
+    text: 'pie\n  title Pets\n  "Dogs" : 75\n  "Cats" : 25\n',
+  },
 ];
 
 const r = (n: number): number => Math.round(n);
@@ -77,6 +81,8 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `icon ${c.ref.pack}/${c.ref.name} ${r(c.x)},${r(c.y)} ${r(c.size)}`;
       case "label":
         return `label "${c.text}" ${r(c.x)},${r(c.y)} ${c.align}`;
+      case "wedge":
+        return `wedge ${r(c.cx)},${r(c.cy)} r${r(c.radius)} ${c.startAngle.toFixed(3)}..${c.endAngle.toFixed(3)} c${c.colorIndex}`;
     }
   });
 

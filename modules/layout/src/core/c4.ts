@@ -133,5 +133,5 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return ok({ nodes, edges, extent: rect(0, 0, width, height) });
+  return ok({ nodes, edges, wedges: [], extent: rect(0, 0, width, height) });
 };

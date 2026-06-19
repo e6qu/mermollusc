@@ -150,6 +150,15 @@ exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out pie to a stable display list 1`] = `
+[
+  "wedge 174,174 r150 -1.571..3.142 c0",
+  "label "Dogs 75%" 240,240 center",
+  "wedge 174,174 r150 3.142..4.712 c1",
+  "label "Cats 25%" 108,108 center",
+]
+`;
+
 exports[`pipeline goldens > lays out requirement to a stable display list 1`] = `
 [
   "polyline 88,82 88,142 dashed=true from=l0p0c0 to=l2p0c0",

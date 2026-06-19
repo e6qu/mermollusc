@@ -62,13 +62,13 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Thirteen families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
-class (UML), requirement (SysML), gitGraph, timeline, and mindmap — and the first ten are fully
-two-way** (double-click → patch the source text); gitGraph is render + inline commit-id relabel;
-timeline is render + inline period/event relabel; mindmap is render + inline node relabel. Every
-node/edge family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate and
-add. Network nodes show built-in glyphs; cloud nodes show **vendored simple-icons brand marks** (CC0,
-pinned). Icons-in-nodes is wired end-to-end.
+**Fourteen families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML), gitGraph, timeline, mindmap, and pie — and the first ten are fully
+two-way** (double-click → patch the source text); gitGraph/timeline/mindmap are render + inline relabel
+of their node/period/event labels; pie is render-only (a chart, not an editable node/edge diagram).
+Every node/edge family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate
+and add. Network nodes show built-in glyphs; cloud nodes show **vendored simple-icons brand marks**
+(CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
@@ -126,9 +126,9 @@ P2:
 7. ✅ **Inline editor honours `viewScale`** — overlay maps scene→screen like the painter.
 8. ✅ **Goldens cover the state family** — flat + composite state samples added.
 
-### Capability parity (Mermaid families) — in progress
+### Capability parity (Mermaid families) — ✅ done
 
-Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical slice (contracts AST
+Added the Mermaid families we lacked, one PR at a time. Each is a full vertical slice (contracts AST
 + source spans → parser trio → layout engine → app wiring + example → parser/layout/e2e/golden tests).
 
 - ✅ **gitGraph** — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and the
@@ -147,8 +147,12 @@ Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical
   CST→AST step rebuilds the tree from those columns. Lays out through the ELK path (like `stateToFlow`):
   `mindmapToFlow` maps nodes to shaped flowchart nodes and parent→child links to arrowless (`open`)
   edges, so ELK's layered tree handles it — **zero renderer changes**. Inline node relabel.
-- ⏳ Next: **pie** — the one family that needs a new Scene/renderer primitive (wedges), so it lands as
-  its own dedicated PR.
+- ✅ **pie** — `pie [showData]`, optional `title`, and `"label" : value` rows (a two-mode lexer reads
+  the unquoted title; non-positive values fail loudly). The **one family that needed a new SceneGraph
+  primitive**: `Scene` gained a `wedges` array and the renderer a `wedge` `DrawCmd` (canvas arc + SVG
+  `<path>` sector, a shared categorical palette). `layoutPie` sizes slices by share and lays them
+  clockwise from 12 o'clock; slice labels show name + percentage. Render-only (a chart, not an editable
+  node/edge diagram), so no drag/relabel.
 
 ### Future bets (not yet scoped)
 
@@ -169,9 +173,9 @@ Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical
 1. Read `AGENTS.md` (hard rules + structure) then this file (architecture, decisions, status, roadmap).
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
-   **Current focus:** capability parity — adding the Mermaid families we lacked, one PR at a time
-   (see *Capability parity* above). **gitGraph**, **timeline**, and **mindmap** are done; **pie** (needs
-   a new Scene/renderer wedge primitive) is next. The earlier *External review backlog* is resolved (#59).
+   **Current focus:** capability parity (Mermaid families) is **done** — gitGraph, timeline, mindmap,
+   and pie all landed (see *Capability parity* above). Next candidates are under *Future bets* — **DOT
+   import/export** is the highest-value one. The earlier *External review backlog* is resolved (#59).
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

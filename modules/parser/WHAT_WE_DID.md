@@ -147,3 +147,9 @@
   deeper column, the nearest strictly-shallower node is the parent), reads the shape from the delimiter,
   and records each node's label span (`MindmapSource`). +6 tests; `parseDiagram` routes `mindmap`; added
   to the robustness suite.
+- Added a **pie** parser (`pie-{tokens,grammar,parse}.ts`): `pie [showData]`, an optional `title`, and
+  `"label" : value` data rows. A two-mode lexer reads the unquoted title (pushed into a `titleMode`
+  whose newline pops back) without it clashing with quoted labels / numeric values. `buildResult`
+  collects slices in source order and **fails loudly on a non-positive value** (zero reaches the parser;
+  a leading `-` isn't a numeric literal, so the lexer already rejects negatives). `parsePieWithSource`
+  records each label span (`PieSource`). +5 tests; `parseDiagram` routes `pie`; added to robustness.

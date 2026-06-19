@@ -8,6 +8,7 @@ import { parseEr } from "./er-parse.js";
 import { parseGitGraph } from "./git-parse.js";
 import { parseMindmap } from "./mindmap-parse.js";
 import { parseNetwork } from "./net-parse.js";
+import { parsePie } from "./pie-parse.js";
 import { parse } from "./parse.js";
 import { parseRequirement } from "./req-parse.js";
 import type { ParseError } from "./parse.js";
@@ -34,5 +35,6 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   if (header.startsWith("gitGraph")) return parseGitGraph(text);
   if (header.startsWith("timeline")) return parseTimeline(text);
   if (header.startsWith("mindmap")) return parseMindmap(text);
+  if (header.startsWith("pie")) return parsePie(text);
   return parse(text);
 };

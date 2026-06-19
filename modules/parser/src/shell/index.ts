@@ -25,4 +25,6 @@ export { parseTimeline, parseTimelineWithSource } from "./timeline-parse.js";
 export type { ParsedTimeline } from "./timeline-parse.js";
 export { parseMindmap, parseMindmapWithSource } from "./mindmap-parse.js";
 export type { ParsedMindmap } from "./mindmap-parse.js";
+export { parsePie, parsePieWithSource } from "./pie-parse.js";
+export type { ParsedPie } from "./pie-parse.js";
 export { parseDiagram } from "./diagram.js";

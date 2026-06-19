@@ -23,6 +23,7 @@ const sceneOf = (ids: readonly string[]): Scene => ({
     rowDivider: null, subtitle: null, rows: null,
   })),
   edges: [],
+  wedges: [],
   extent: rect(0, 0, ids.length * 10 + 60, 40),
 });
 

@@ -82,3 +82,8 @@
 - `toSvg` gained a required `origin` (scene-space) in `SvgOptions`; the draw group translates by
   `margin − origin`, matching the canvas painter, so content dragged to negative coordinates isn't
   clipped in the SVG export (part of the external-review extent fix). +1 unit assertion.
+- Added a `wedge` `DrawCmd` (a filled pie sector) and rendered it in both backends: the canvas painter
+  draws an `arc` sector, the SVG backend a `<path>` sector — both using the same shared categorical
+  palette (`wedgeColor`) so a slice is identical in both. `toDisplayList` emits a wedge + a centred
+  percentage label (on a plate) per `scene.wedges` entry; the existing node/edge families are untouched
+  (their `wedges` array is empty). +2 unit tests (display list + SVG path).

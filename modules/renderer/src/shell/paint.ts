@@ -1,3 +1,4 @@
+import { wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
@@ -270,6 +271,19 @@ export const paint = (
         }
         ctx.font = theme.font;
         ctx.globalAlpha = 1;
+        break;
+      }
+      case "wedge": {
+        ctx.fillStyle = wedgeColor(cmd.colorIndex);
+        ctx.strokeStyle = theme.background;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cmd.cx, cmd.cy);
+        ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.lineWidth = 1.5;
         break;
       }
     }

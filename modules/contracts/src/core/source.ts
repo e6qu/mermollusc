@@ -10,6 +10,7 @@ import type {
   EdgeId,
   GitCommitId,
   MindmapNodeId,
+  PieSliceId,
   TimelineEventId,
   TimelinePeriodId,
   ReqEntityId,
@@ -109,6 +110,11 @@ export interface TimelineSource {
 // text of a plain one). Nodes with an empty label have no entry.
 export interface MindmapSource {
   readonly nodes: ReadonlyMap<MindmapNodeId, TextSpan>;
+}
+
+// Editable text spans for a pie chart: each slice's label (the inner text of its `"…"`).
+export interface PieSource {
+  readonly slices: ReadonlyMap<PieSliceId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

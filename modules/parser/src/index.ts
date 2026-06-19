@@ -12,6 +12,7 @@ export { parseRequirement, parseRequirementWithSource } from "./shell/index.js";
 export { parseGitGraph, parseGitGraphWithSource } from "./shell/index.js";
 export { parseTimeline, parseTimelineWithSource } from "./shell/index.js";
 export { parseMindmap, parseMindmapWithSource } from "./shell/index.js";
+export { parsePie, parsePieWithSource } from "./shell/index.js";
 export { parseDiagram } from "./shell/index.js";
 export type {
   ParseError,
@@ -29,4 +30,5 @@ export type {
   ParsedGitGraph,
   ParsedTimeline,
   ParsedMindmap,
+  ParsedPie,
 } from "./shell/index.js";

@@ -60,8 +60,25 @@ export interface SceneEdge {
   readonly toEnd: EdgeEnd;
 }
 
+// A filled circular sector (a pie-chart slice). Angles are in canvas convention — radians from the
+// +x axis, increasing clockwise (the y-axis points down) — so the painter and SVG backend draw the
+// same arc without re-deriving the geometry. `colorIndex` selects a categorical palette colour at the
+// shell; `percent` is the slice's share of the whole (0–100) for the on-slice label.
+export interface SceneWedge {
+  readonly center: Point;
+  readonly radius: number;
+  readonly startAngle: number;
+  readonly endAngle: number;
+  readonly label: string;
+  readonly value: number;
+  readonly percent: number;
+  readonly colorIndex: number;
+}
+
 export interface Scene {
   readonly nodes: readonly SceneNode[];
   readonly edges: readonly SceneEdge[];
+  // Filled sectors for radial diagrams (pie charts); empty for every node/edge family.
+  readonly wedges: readonly SceneWedge[];
   readonly extent: Rect;
 }
