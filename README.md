@@ -11,11 +11,14 @@ for graph layout.
 
 ## What it does
 
-- **Six diagram families** render in the browser: flowchart, sequence, C4 context, block, network,
-  and cloud.
+- **Ten diagram families** render in the browser: flowchart, sequence, C4 context, block, network,
+  cloud, state, **ER** (crow's-foot cardinality + attribute compartments), **class** (UML
+  inheritance/composition/aggregation heads, field/method compartments, `«stereotype»`s), and
+  **requirement** (SysML requirement/element boxes + the seven relationship verbs).
 - **Two-way editing.** Double-click any node, edge, or label on the canvas to rename it in place;
-  the edit is patched back into the source text (formatting and comments preserved). Flowchart also
-  supports drag-to-move, add, connect, delete, and relax/regenerate layout.
+  the edit is patched back into the source text (formatting and comments preserved). **Connect** and
+  **Delete** work across every family; drag-to-move, box-select, group/lock, align/distribute, resize,
+  and undo/redo work on any family's nodes; **Add node** and **Relax/Regenerate** are flowchart's.
 - **Icons in nodes.** Network and cloud nodes show glyphs; any leaf can carry an explicit
   `icon "<pack>/<name>"` override. A built-in icon picker browses the bundled packs (simple-icons,
   devicon, gilbarbara, Kubernetes) by category and inserts the reference for you.
@@ -105,6 +108,65 @@ cloud
     storage assets "Assets"
   }
   web -- assets
+```
+
+**State** — `stateDiagram-v2`; transitions `A --> B : label`, the `[*]` start/end pseudo-states, and
+nestable `state X { … }` composites.
+
+```
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Loading : fetch
+  Loading --> Ready : ok
+  Ready --> [*]
+```
+
+**ER** — `erDiagram`; crow's-foot relationships (`||--o{` etc., split into per-end cardinality) and
+optional `ENTITY { type name PK,FK "comment" }` attribute blocks rendered as compartments.
+
+```
+erDiagram
+  CUSTOMER {
+    string name PK
+    string email UK
+  }
+  CUSTOMER ||--o{ ORDER : places
+```
+
+**Class** — `classDiagram`; `class Foo { +field\n +method() }` bodies (visibility `+`/`-`/`#`/`~`,
+field/method compartments), a `<<interface>>`/`<<abstract>>` stereotype, and UML relationship
+operators `<|--` (inheritance) · `..|>` (realization) · `*--` (composition) · `o--` (aggregation) ·
+`-->` (association) · `..>` (dependency).
+
+```
+classDiagram
+  class Animal {
+    <<abstract>>
+    +String name
+    +move() void
+  }
+  class Swimmer {
+    <<interface>>
+    +swim() void
+  }
+  Animal <|-- Duck
+  Swimmer <|.. Duck
+```
+
+**Requirement** — `requirementDiagram`; `requirement`/`element` boxes with `key: value` bodies and the
+seven SysML verbs (contains · copies · derives · satisfies · verifies · refines · traces).
+
+```
+requirementDiagram
+  requirement user_req {
+    id: 1
+    text: the user shall log in.
+    risk: high
+  }
+  element login_form {
+    type: simulation
+  }
+  login_form - satisfies -> user_req
 ```
 
 ## Architecture
