@@ -1,0 +1,18 @@
+{
+  "name": "@m/collab",
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": { "types": "./src/index.ts", "import": "./src/index.ts" }
+  },
+  "dependencies": {
+    "@m/std": "workspace:*",
+    "@m/contracts": "workspace:*",
+    "@m/builder": "workspace:*",
+    "yjs": "catalog:"
+  }
+}

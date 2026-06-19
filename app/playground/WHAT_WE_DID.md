@@ -358,3 +358,9 @@
   Yjs-backed CRDT implementation (the `save` sink becomes a broadcast) — no call sites change. Full
   phased plan recorded in `docs/collab-editor-plan.md` and the root `PLAN.md` Future bets (Phase 0
   done; Phases 1–3 + 5 decision points pending sign-off).
+- Collaborative editor **Phase 1 (Yjs CRDT, in-memory)**. Moved the `OverlayDoc` interface into
+  `@m/contracts` (shared port) and added `@m/collab` — a Yjs-backed `createCollabSession` whose
+  `overlay` implements `OverlayDoc` (and a `Y.Text` source channel + binary-sync seam). The app now
+  depends on `@m/collab` and constructs the Yjs overlay behind a default-off `?collab` URL flag — same
+  interface, so no call site changed; with no peer it behaves like the local document, proving the CRDT
+  document drives the real app. DAG updated to `builder <- collab <- app` (Makefile, AGENTS §4, PLAN).

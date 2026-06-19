@@ -69,3 +69,7 @@
 - Added `sceneNodeId`/`sceneEdgeId` smart constructors in `src/shell` (the first runtime code in the
   types-only `contracts`), so layout cores mint Scene ids through them instead of raw `brand<…>`. Keeps
   the sanctioned `as` cast in a shell; `tools/guard-types.mjs` now bans raw `brand<…>` in `src/core`.
+- Added the `OverlayDoc` port (`src/core/overlay-doc.ts`): the interface the editor drives the sidecar
+  overlay through (overrides + groups + history + persist). Two implementations satisfy it — the app's
+  local `createLocalDocument` and the Yjs-backed `@m/collab` session — so swapping local↔collaborative
+  touches no call site.

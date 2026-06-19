@@ -1,5 +1,12 @@
 # @m/app (playground) — do next
 
+- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT, in-memory).** The `OverlayDoc`
+  interface moved to `@m/contracts` (shared port); `@m/collab` provides the Yjs-backed implementation
+  (`createCollabSession().overlay`). The app constructs it behind a **default-off `?collab`** flag
+  (`?collab` in the URL) — same `OverlayDoc`, so every call site is unchanged. With no peer wired it
+  behaves identically to the local document; it proves the CRDT document drives the real app.
+  **Next:** a WebSocket transport + presence, and a live CodeMirror↔`Y.Text` source binding so the flag
+  drives true two-client editing. See `modules/collab/DO_NEXT.md` and `docs/collab-editor-plan.md`.
 - *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
   state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed

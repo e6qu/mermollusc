@@ -1,6 +1,7 @@
 # Collaborative editor — design & scoping (CRDT)
 
-Status: **Phase 0 done; decisions signed off; Phase 1 ready to start.** This scopes a real-time,
+Status: **Phase 0 done; decisions signed off; Phase 1 in progress (in-memory document built — see
+`@m/collab`).** This scopes a real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
 architecture (see *Future bets* in the root `PLAN.md`).
@@ -157,9 +158,12 @@ after merge — the invariant holds without coordination.
 - **Phase 0 — the seam (no infra). ✅ DONE.** `source` behind `Editor`, `overrides`/`groups` behind
   `OverlayDoc` (`app/playground/src/document-model.ts`). Pure refactor; shipped cleaner state
   ownership with zero backend.
-- **Phase 1 — proof of merge (next).** Yjs in-memory + dev Hocuspocus/`y-websocket`; text + overlay
-  CRDT + presence; local-first + reconnect. Validate the "derive locally, share only source+overlay"
-  model end-to-end.
+- **Phase 1 — proof of merge (in progress).** **In-memory document done:** `@m/collab`'s
+  `createCollabSession` (Yjs `Y.Doc` = source `Y.Text` + overlay `Y.Map`s) implements the `OverlayDoc`
+  port; two-peer convergence is proven by tests (concurrent overlay + character-level source merge, a
+  property test, late-joiner catch-up), and the app can run it behind a default-off `?collab` flag.
+  **Remaining:** a dev Hocuspocus/`y-websocket` transport + awareness/presence + the live CodeMirror↔
+  `Y.Text` binding, to validate local-first + reconnect end-to-end.
 - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.

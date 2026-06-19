@@ -48,6 +48,7 @@ import type {
   GroupMember,
   NetworkSource,
   NodeId,
+  OverlayDoc,
   Scene,
   SceneNodeId,
   SequenceSource,
@@ -84,8 +85,9 @@ import {
 } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point, size } from "@m/std";
+import { createCollabSession } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
-import { createLocalDocument, type OverlayDoc } from "./document-model.js";
+import { createLocalDocument } from "./document-model.js";
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -273,11 +275,25 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // persisted overlay (when the source isn't a share-link) is decoded and loaded via `doc.replace`
 // below, before the first render. `save` is the only IO it touches — a localStorage write today,
 // the seam where a collaborative backend would broadcast instead.
-const doc: OverlayDoc = createLocalDocument({
-  initialOverrides: new Map(),
-  initialGroups: new Map(),
-  save: (serialized) => localStorage.setItem(OVERLAY_KEY, serialized),
-});
+//
+// `?collab` (experimental, Phase 1) swaps the local document for the Yjs-backed `OverlayDoc` from
+// `@m/collab` — same interface, so every call site is unchanged. With no peer wired yet it behaves
+// identically to the local one; it proves the CRDT document drives the real app. Live multi-user
+// sync (a server + source binding) is the next phase. Default off, so existing flows are untouched.
+const saveOverlay = (serialized: string): void => localStorage.setItem(OVERLAY_KEY, serialized);
+const useCollab = new URLSearchParams(location.search).has("collab");
+const doc: OverlayDoc = useCollab
+  ? createCollabSession({
+      initialOverrides: new Map(),
+      initialGroups: new Map(),
+      initialSource: "",
+      save: saveOverlay,
+    }).overlay
+  : createLocalDocument({
+      initialOverrides: new Map(),
+      initialGroups: new Map(),
+      save: saveOverlay,
+    });
 
 // Undo/redo for sidecar overlay actions (drag, group/ungroup/lock, group label, regenerate) — the
 // canvas counterpart to CodeMirror's text history (which owns the source text). The history itself

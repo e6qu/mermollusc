@@ -8,6 +8,7 @@
     "@m/std": "workspace:*",
     "@m/contracts": "workspace:*",
     "@m/builder": "workspace:*",
+    "@m/collab": "workspace:*",
     "@m/parser": "workspace:*",
     "@m/layout": "workspace:*",
     "@m/renderer": "workspace:*",
