@@ -100,3 +100,8 @@
 - Class stereotypes: `layoutClass` maps `ClassEntity.stereotype` to a `«…»` `SceneNode.subtitle` and
   grows the box title band by `CLASS_SUBTITLE_H` (mirrors the renderer) so the stereotype line sits
   above the name without crowding it or the divider.
+- Quality sweep: extracted the three near-identical compartment layouts (`layoutEr`/`layoutClass`/
+  `layoutRequirement`, ~280 lines of duplicated ELK boilerplate) into one `layoutCompartments` engine
+  driven by `CompartmentBox`/`CompartmentEdge` specs + a per-family metrics record. The three are now
+  thin AST→spec mappers. Behaviour-preserving: the per-family metrics keep each family's exact box
+  sizing, so every pipeline golden is byte-identical (verified by running goldens without `-u`).

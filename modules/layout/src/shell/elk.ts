@@ -3,6 +3,8 @@ import type {
   ClassAst,
   ClassMember,
   DiagramAst,
+  EdgeEnd,
+  EdgeStroke,
   ErAst,
   FlowchartAst,
   NodeId,
@@ -214,36 +216,63 @@ const attributeRow = (a: ErAst["entities"][number]["attributes"][number]): strin
   return `${a.type} ${a.name}${keys}${comment}`;
 };
 
-// ER lays out through ELK like a flowchart, but entities are sized to fit their attribute rows (a
-// flowchart node can't), so it builds the ELK graph directly rather than via `toElkGraph`. The Scene
-// carries crow's-foot cardinality on each relationship end (the `ErCardinality` strings *are*
-// `EdgeEnd` values) and the attribute rows on each entity.
-const ER_TITLE_H = 30;
-const ER_ROW_H = 20;
-const ER_PAD = 22;
-const ER_MIN_W = 96;
-const layoutEr = async (ast: ErAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> => {
-  const rowsById = new Map(
-    ast.entities.map((e) => [e.id as string, e.attributes.map(attributeRow)]),
-  );
+// ER, class, and requirement diagrams are all *compartment-box* families: entities sized to fit their
+// rows (a flowchart node can't) and laid out through ELK directly. They share this engine — a family
+// maps its AST to `CompartmentBox`/`CompartmentEdge` specs and the metrics for its look. `EdgeEnd`
+// subsumes ER crow's-foot cardinalities and UML class arrowheads, so each family's ends assign here.
+interface CompartmentMetrics {
+  readonly direction: "RIGHT" | "DOWN";
+  readonly titleH: number;
+  readonly rowH: number;
+  readonly pad: number;
+  readonly minW: number;
+  readonly subtitleH: number; // extra title-band height when a box carries a subtitle
+}
+interface CompartmentBox {
+  readonly id: string;
+  readonly label: string;
+  readonly rows: readonly string[];
+  readonly rowDivider: number | null;
+  readonly subtitle: string | null;
+}
+interface CompartmentEdge {
+  readonly id: string;
+  readonly from: string;
+  readonly to: string;
+  readonly label: string | null;
+  readonly stroke: EdgeStroke;
+  readonly fromEnd: EdgeEnd;
+  readonly toEnd: EdgeEnd;
+}
+
+const layoutCompartments = async (
+  family: string,
+  metrics: CompartmentMetrics,
+  boxes: readonly CompartmentBox[],
+  edges: readonly CompartmentEdge[],
+  measure: MeasureText,
+): Promise<Result<Scene, LayoutError>> => {
   const graph: LayoutGraph = {
     id: "root",
-    config: { direction: "RIGHT", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
-    children: ast.entities.map((e) => {
-      const rows = rowsById.get(e.id) ?? [];
-      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), measure(e.label));
+    config: { direction: metrics.direction, interactive: false, nodeSpacing: 50, layerSpacing: 60 },
+    children: boxes.map((b) => {
+      const seed = Math.max(measure(b.label), b.subtitle === null ? 0 : measure(b.subtitle));
+      const widest = b.rows.reduce((w, r) => Math.max(w, measure(r)), seed);
       return {
         kind: "leaf",
-        id: brand<string, "NodeId">(e.id),
-        width: Math.max(ER_MIN_W, widest + ER_PAD),
-        height: ER_TITLE_H + rows.length * ER_ROW_H,
+        id: brand<string, "NodeId">(b.id),
+        width: Math.max(metrics.minW, widest + metrics.pad),
+        height:
+          metrics.titleH +
+          (b.subtitle === null ? 0 : metrics.subtitleH) +
+          b.rows.length * metrics.rowH,
         position: null,
       };
     }),
-    edges: ast.relationships.map((r) => ({
-      id: brand<string, "EdgeId">(r.id),
-      sources: [brand<string, "NodeId">(r.from)],
-      targets: [brand<string, "NodeId">(r.to)],
+    edges: edges.map((e) => ({
+      id: brand<string, "EdgeId">(e.id),
+      sources: [brand<string, "NodeId">(e.from)],
+      targets: [brand<string, "NodeId">(e.to)],
     })),
   };
   try {
@@ -257,46 +286,74 @@ const layoutEr = async (ast: ErAst, measure: MeasureText): Promise<Result<Scene,
     }
     const positioned = toPositioned(decoded.value);
     const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
-    const relById = new Map(ast.relationships.map((r) => [r.id as string, r]));
+    const edgeById = new Map(edges.map((e) => [e.id, e]));
     const nodes: SceneNode[] = [];
-    for (const e of ast.entities) {
-      const p = posById.get(e.id);
+    for (const b of boxes) {
+      const p = posById.get(b.id);
       if (p === undefined) {
-        return err({ kind: "layout", message: `er: entity ${e.id} was not positioned` });
+        return err({ kind: "layout", message: `${family}: entity ${b.id} was not positioned` });
       }
-      const rows = rowsById.get(e.id) ?? [];
       nodes.push({
-        id: brand<string, "SceneNodeId">(e.id),
+        id: brand<string, "SceneNodeId">(b.id),
         bounds: rect(p.x, p.y, p.width, p.height),
-        label: e.label,
+        label: b.label,
         shape: "rect",
         parent: null,
         icon: null,
-        rows: rows.length > 0 ? rows : null,
-        rowDivider: null,
-        subtitle: null,
+        rows: b.rows.length > 0 ? b.rows : null,
+        rowDivider: b.rowDivider,
+        subtitle: b.subtitle,
       });
     }
-    const edges: SceneEdge[] = [];
+    const sceneEdges: SceneEdge[] = [];
     for (const pe of positioned.edges) {
-      const rel = relById.get(pe.id);
-      if (rel === undefined) continue;
-      edges.push({
+      const e = edgeById.get(pe.id);
+      if (e === undefined) continue;
+      sceneEdges.push({
         id: brand<string, "SceneEdgeId">(pe.id),
-        from: brand<string, "SceneNodeId">(rel.from),
-        to: brand<string, "SceneNodeId">(rel.to),
+        from: brand<string, "SceneNodeId">(e.from),
+        to: brand<string, "SceneNodeId">(e.to),
         waypoints: pe.points.map((q) => point(q.x, q.y)),
-        label: rel.label === "" ? null : rel.label,
-        stroke: rel.identifying ? "solid" : "dashed",
-        fromEnd: rel.fromCard,
-        toEnd: rel.toCard,
+        label: e.label,
+        stroke: e.stroke,
+        fromEnd: e.fromEnd,
+        toEnd: e.toEnd,
       });
     }
-    return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
+    return ok({
+      nodes,
+      edges: sceneEdges,
+      extent: rect(0, 0, positioned.width, positioned.height),
+    });
   } catch (e) {
     return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
   }
 };
+
+// ER: attribute rows; the `ErCardinality` strings on each end *are* `EdgeEnd` values; solid line =
+// identifying, dashed = non-identifying. Laid out left-to-right.
+const layoutEr = (ast: ErAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> =>
+  layoutCompartments(
+    "er",
+    { direction: "RIGHT", titleH: 30, rowH: 20, pad: 22, minW: 96, subtitleH: 0 },
+    ast.entities.map((e) => ({
+      id: e.id,
+      label: e.label,
+      rows: e.attributes.map(attributeRow),
+      rowDivider: null,
+      subtitle: null,
+    })),
+    ast.relationships.map((r) => ({
+      id: r.id,
+      from: r.from,
+      to: r.to,
+      label: r.label === "" ? null : r.label,
+      stroke: r.identifying ? "solid" : "dashed",
+      fromEnd: r.fromCard,
+      toEnd: r.toCard,
+    })),
+    measure,
+  );
 
 const VIS_GLYPH = (v: ClassMember["visibility"]): string => {
   switch (v) {
@@ -313,195 +370,76 @@ const VIS_GLYPH = (v: ClassMember["visibility"]): string => {
   }
 };
 const memberRow = (m: ClassMember): string => `${VIS_GLYPH(m.visibility)}${m.text}`;
-
-// UML class diagram: like ER (compartment boxes sized to content, laid out through ELK directly), but
-// each box has two compartments — fields then methods, separated by an inner divider (`rowDivider`) —
-// and relationship ends carry UML arrowheads (`ClassArrow` *is* an `EdgeEnd`). Dashed line = the
-// `..` operators (dependency/realization).
-// Title/row heights match the renderer's compartment metrics (shared with ER) so dividers + rows land
-// on the boundaries the box was sized for.
-const CLASS_TITLE_H = 30;
-const CLASS_ROW_H = 20;
-const CLASS_PAD = 24;
-const CLASS_MIN_W = 100;
-// Extra title-band height for a `«stereotype»` line above the name (matches the renderer's SUBTITLE_H).
-const CLASS_SUBTITLE_H = 16;
 const classSubtitle = (e: ClassAst["entities"][number]): string | null =>
   e.stereotype === null ? null : `«${e.stereotype}»`;
-const layoutClass = async (
-  ast: ClassAst,
-  measure: MeasureText,
-): Promise<Result<Scene, LayoutError>> => {
-  // Fields first, then methods — Mermaid's two compartments. The divider sits between them (null when
-  // either compartment is empty, so a single-compartment box draws only its title divider).
-  const compartmentsById = new Map<string, { rows: string[]; divider: number | null }>();
-  for (const e of ast.entities) {
-    const fields = e.members.filter((m) => m.kind === "field").map(memberRow);
-    const methods = e.members.filter((m) => m.kind === "method").map(memberRow);
-    const rows = [...fields, ...methods];
-    const divider = fields.length > 0 && methods.length > 0 ? fields.length : null;
-    compartmentsById.set(e.id, { rows, divider });
-  }
-  const graph: LayoutGraph = {
-    id: "root",
-    config: { direction: "DOWN", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
-    children: ast.entities.map((e) => {
-      const rows = compartmentsById.get(e.id)?.rows ?? [];
-      const sub = classSubtitle(e);
-      const seed = Math.max(measure(e.label), sub === null ? 0 : measure(sub));
-      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), seed);
-      return {
-        kind: "leaf",
-        id: brand<string, "NodeId">(e.id),
-        width: Math.max(CLASS_MIN_W, widest + CLASS_PAD),
-        height: CLASS_TITLE_H + (sub === null ? 0 : CLASS_SUBTITLE_H) + rows.length * CLASS_ROW_H,
-        position: null,
-      };
-    }),
-    edges: ast.relationships.map((r) => ({
-      id: brand<string, "EdgeId">(r.id),
-      sources: [brand<string, "NodeId">(r.from)],
-      targets: [brand<string, "NodeId">(r.to)],
-    })),
-  };
-  try {
-    const raw = await elk.layout(toElkInput(graph));
-    const decoded = decode(ResultZ, raw);
-    if (!decoded.ok) {
-      return err({
-        kind: "layout",
-        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
-      });
-    }
-    const positioned = toPositioned(decoded.value);
-    const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
-    const relById = new Map(ast.relationships.map((r) => [r.id as string, r]));
-    const nodes: SceneNode[] = [];
-    for (const e of ast.entities) {
-      const p = posById.get(e.id);
-      if (p === undefined) {
-        return err({ kind: "layout", message: `class: entity ${e.id} was not positioned` });
-      }
-      const comp = compartmentsById.get(e.id) ?? { rows: [], divider: null };
-      nodes.push({
-        id: brand<string, "SceneNodeId">(e.id),
-        bounds: rect(p.x, p.y, p.width, p.height),
-        label: e.label,
-        shape: "rect",
-        parent: null,
-        icon: null,
-        rows: comp.rows.length > 0 ? comp.rows : null,
-        rowDivider: comp.divider,
-        subtitle: classSubtitle(e),
-      });
-    }
-    const edges: SceneEdge[] = [];
-    for (const pe of positioned.edges) {
-      const rel = relById.get(pe.id);
-      if (rel === undefined) continue;
-      edges.push({
-        id: brand<string, "SceneEdgeId">(pe.id),
-        from: brand<string, "SceneNodeId">(rel.from),
-        to: brand<string, "SceneNodeId">(rel.to),
-        waypoints: pe.points.map((q) => point(q.x, q.y)),
-        label: rel.label === "" ? null : rel.label,
-        stroke: rel.dashed ? "dashed" : "solid",
-        fromEnd: rel.fromArrow,
-        toEnd: rel.toArrow,
-      });
-    }
-    return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
-  } catch (e) {
-    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
-  }
-};
 
-// A requirement/element node's rows: a `«kind»` tag, then one `key: value` row per body field. The
-// tag sits in its own compartment (an inner divider before the fields) when there are any.
+// UML class: two compartments — fields then methods, split by an inner divider (`rowDivider`); a
+// `«stereotype»` subtitle above the name; `ClassArrow` ends; dashed line for the `..` operators.
+const classBox = (e: ClassAst["entities"][number]): CompartmentBox => {
+  const fields = e.members.filter((m) => m.kind === "field").map(memberRow);
+  const methods = e.members.filter((m) => m.kind === "method").map(memberRow);
+  return {
+    id: e.id,
+    label: e.label,
+    rows: [...fields, ...methods],
+    rowDivider: fields.length > 0 && methods.length > 0 ? fields.length : null,
+    subtitle: classSubtitle(e),
+  };
+};
+const layoutClass = (ast: ClassAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> =>
+  layoutCompartments(
+    "class",
+    { direction: "DOWN", titleH: 30, rowH: 20, pad: 24, minW: 100, subtitleH: 16 },
+    ast.entities.map(classBox),
+    ast.relationships.map((r) => ({
+      id: r.id,
+      from: r.from,
+      to: r.to,
+      label: r.label === "" ? null : r.label,
+      stroke: r.dashed ? "dashed" : "solid",
+      fromEnd: r.fromArrow,
+      toEnd: r.toArrow,
+    })),
+    measure,
+  );
+
+// A requirement/element node's rows: a `«kind»` tag (its own compartment when fields follow), then a
+// `key: value` row per body field.
 const reqRows = (e: RequirementAst["entities"][number]): readonly string[] => [
   `«${e.kind}»`,
   ...e.fields.map((f) => `${f.key}: ${f.value}`),
 ];
 
-// Requirement diagram: compartment boxes (like ER/class) for requirements + elements, joined by the
-// seven SysML verbs. Each relationship renders as an open arrow labelled with its verb — solid for
-// `contains`, dashed for the rest (derive/satisfy/verify/refine/trace/copy).
-const layoutRequirement = async (
+// Requirement diagram: requirements + elements joined by the seven SysML verbs — an open arrow
+// labelled with its verb, solid for `contains` and dashed for the rest.
+const layoutRequirement = (
   ast: RequirementAst,
   measure: MeasureText,
-): Promise<Result<Scene, LayoutError>> => {
-  const rowsById = new Map(ast.entities.map((e) => [e.id as string, reqRows(e)]));
-  const graph: LayoutGraph = {
-    id: "root",
-    config: { direction: "DOWN", interactive: false, nodeSpacing: 50, layerSpacing: 60 },
-    children: ast.entities.map((e) => {
-      const rows = rowsById.get(e.id) ?? [];
-      const widest = rows.reduce((w, r) => Math.max(w, measure(r)), measure(e.name));
+): Promise<Result<Scene, LayoutError>> =>
+  layoutCompartments(
+    "requirement",
+    { direction: "DOWN", titleH: 30, rowH: 20, pad: 24, minW: 100, subtitleH: 16 },
+    ast.entities.map((e) => {
+      const rows = reqRows(e);
       return {
-        kind: "leaf",
-        id: brand<string, "NodeId">(e.id),
-        width: Math.max(CLASS_MIN_W, widest + CLASS_PAD),
-        height: CLASS_TITLE_H + rows.length * CLASS_ROW_H,
-        position: null,
-      };
-    }),
-    edges: ast.relationships.map((r) => ({
-      id: brand<string, "EdgeId">(r.id),
-      sources: [brand<string, "NodeId">(r.from)],
-      targets: [brand<string, "NodeId">(r.to)],
-    })),
-  };
-  try {
-    const raw = await elk.layout(toElkInput(graph));
-    const decoded = decode(ResultZ, raw);
-    if (!decoded.ok) {
-      return err({
-        kind: "layout",
-        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
-      });
-    }
-    const positioned = toPositioned(decoded.value);
-    const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
-    const relById = new Map(ast.relationships.map((r) => [r.id as string, r]));
-    const nodes: SceneNode[] = [];
-    for (const e of ast.entities) {
-      const p = posById.get(e.id);
-      if (p === undefined) {
-        return err({ kind: "layout", message: `requirement: entity ${e.id} was not positioned` });
-      }
-      const rows = rowsById.get(e.id) ?? [];
-      nodes.push({
-        id: brand<string, "SceneNodeId">(e.id),
-        bounds: rect(p.x, p.y, p.width, p.height),
+        id: e.id,
         label: e.name,
-        shape: "rect",
-        parent: null,
-        icon: null,
         rows,
         rowDivider: rows.length > 1 ? 1 : null,
         subtitle: null,
-      });
-    }
-    const edges: SceneEdge[] = [];
-    for (const pe of positioned.edges) {
-      const rel = relById.get(pe.id);
-      if (rel === undefined) continue;
-      edges.push({
-        id: brand<string, "SceneEdgeId">(pe.id),
-        from: brand<string, "SceneNodeId">(rel.from),
-        to: brand<string, "SceneNodeId">(rel.to),
-        waypoints: pe.points.map((q) => point(q.x, q.y)),
-        label: rel.kind,
-        stroke: rel.kind === "contains" ? "solid" : "dashed",
-        fromEnd: "none",
-        toEnd: "arrowOpen",
-      });
-    }
-    return ok({ nodes, edges, extent: rect(0, 0, positioned.width, positioned.height) });
-  } catch (e) {
-    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
-  }
-};
+      };
+    }),
+    ast.relationships.map((r) => ({
+      id: r.id,
+      from: r.from,
+      to: r.to,
+      label: r.kind,
+      stroke: r.kind === "contains" ? "solid" : "dashed",
+      fromEnd: "none",
+      toEnd: "arrowOpen",
+    })),
+    measure,
+  );
 
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.

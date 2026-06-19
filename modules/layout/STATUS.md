@@ -37,17 +37,16 @@
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
   (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
   `layoutRequirement`); the rest → pure layouts.
-- **ER (`layoutEr`):** builds the ELK graph directly (not via `toElkGraph`) because each entity box
-  must be sized for its attribute rows before layout — height `ER_TITLE_H + rows·ER_ROW_H`, width the
-  widest measured row/label. Scene entities carry their `rows`; relationship ends carry the cardinality
-  on `fromEnd`/`toEnd` (`ErCardinality` *is* an `EdgeEnd`), solid for identifying / dashed for
-  non-identifying, the verb as the plain label.
-- **Class (`layoutClass`):** like `layoutEr` — boxes sized to fit members (fields then methods, split
-  by `SceneNode.rowDivider` = field count); `memberRow` prefixes the visibility glyph. Relationship
-  ends carry the UML arrowheads (`ClassArrow` *is* an `EdgeEnd`); dashed line for `..`.
-- **Requirement (`layoutRequirement`):** compartment boxes with a `«kind»` tag (its own compartment via
-  `rowDivider`) + `key: value` field rows; verb-labelled open-arrow edges, solid for `contains` /
-  dashed for the rest.
+- **Compartment families (ER, class, requirement)** share one engine, `layoutCompartments`: each
+  family maps its AST to `CompartmentBox`/`CompartmentEdge` specs + a metrics record (direction, title/
+  row/subtitle heights, padding, min width), and the engine sizes each box to its rows (a flowchart
+  node can't), runs ELK directly (not via `toElkGraph`), and builds the Scene. `EdgeEnd` subsumes ER
+  crow's-foot cardinalities and UML class arrowheads, so each family's ends assign through unchanged.
+  - **ER (`layoutEr`):** attribute rows; `ErCardinality` ends; solid = identifying / dashed = not.
+  - **Class (`layoutClass`):** fields then methods (split by `rowDivider`); a `«stereotype»` subtitle;
+    `ClassArrow` ends; dashed for the `..` operators.
+  - **Requirement (`layoutRequirement`):** a `«kind»` tag (own compartment) + `key: value` rows;
+    open-arrow edges, solid for `contains` / dashed for the rest.
 - tests: 29 unit + 13 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
