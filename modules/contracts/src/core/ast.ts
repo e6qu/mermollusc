@@ -378,6 +378,30 @@ export interface GitGraphAst {
   readonly commits: readonly GitCommit[];
 }
 
+export type TimelinePeriodId = Brand<string, "TimelinePeriodId">;
+export type TimelineEventId = Brand<string, "TimelineEventId">;
+
+export interface TimelineEvent {
+  readonly id: TimelineEventId;
+  readonly text: string;
+}
+
+// One time period (`2002 : LinkedIn : Facebook`) with the events attached to it (same line or via
+// `:`-continuation lines). `section` is the enclosing `section` name, or null when the period appears
+// before any section.
+export interface TimelinePeriod {
+  readonly id: TimelinePeriodId;
+  readonly label: string;
+  readonly section: string | null;
+  readonly events: readonly TimelineEvent[];
+}
+
+export interface TimelineAst {
+  readonly kind: "timeline";
+  readonly title: string | null;
+  readonly periods: readonly TimelinePeriod[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -390,4 +414,5 @@ export type DiagramAst =
   | ErAst
   | ClassAst
   | RequirementAst
-  | GitGraphAst;
+  | GitGraphAst
+  | TimelineAst;

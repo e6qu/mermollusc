@@ -21,3 +21,5 @@
 - gitGraph: *(done — deterministic lane layout, LR/TB/BT)*. Follow-up: offset commit labels beside the
   dot (a renderer-level change) so they don't overflow the small circle; orthogonal/curved branch+merge
   connectors instead of straight diagonals.
+- timeline: *(done — column layout with a period spine, stacked events, section bands)*. Follow-up:
+  alternate event cards above/below the spine (Mermaid-style) once a family-aware renderer pass exists.

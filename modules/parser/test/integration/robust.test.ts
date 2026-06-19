@@ -16,10 +16,14 @@ const ODD_INPUTS: readonly string[] = [
   "erDiagram\n",
   "classDiagram\n",
   "gitGraph\n",
+  "timeline\n",
   // Truncated / dangling relationships.
   "gitGraph\n  merge\n",
   "gitGraph\n  checkout\n",
   "gitGraph\n  branch\n",
+  "timeline\n  : orphan event\n",
+  "timeline\n  2002 :\n",
+  "timeline\n  section\n  2002 : x\n",
   "classDiagram\n  A <|--\n",
   "classDiagram\n  class\n",
   "erDiagram\n  A ||--o{\n",
@@ -61,6 +65,7 @@ describe("parseDiagram robustness", () => {
       "stateDiagram-v2\n",
       "sequenceDiagram\n",
       "gitGraph\n",
+      "timeline\n",
     ];
     for (const text of headers) {
       const r = parseDiagram(text);

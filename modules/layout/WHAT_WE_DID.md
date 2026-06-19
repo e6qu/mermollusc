@@ -116,3 +116,9 @@
   Commits are circle nodes (`HIGHLIGHT` → rect), branch names round head nodes; one edge per parent so
   branch points fan out and merges fan back in. Fails loudly on a commit referencing an undeclared
   branch. +6 unit tests.
+- Added `layoutTimeline` (`core/timeline.ts`), wired into `layoutDiagram`'s `timeline` case: a
+  deterministic column layout (no ELK). Periods sit in a left→right row joined by a single horizontal
+  spine polyline; each period's events stack in its column below it; a `section` run (contiguous periods
+  sharing a section) gets a labelled `container` band above the row. Periods are rounded header nodes,
+  events plain rects — all existing SceneGraph primitives, so no renderer change. Columns are sized to
+  their widest label, so timeline labels (unlike gitGraph dots) sit inside their boxes. +5 unit tests.

@@ -49,6 +49,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     name: "gitGraph",
     text: 'gitGraph\n  commit id: "init"\n  branch develop\n  commit id: "work"\n  checkout main\n  commit id: "fix"\n  merge develop tag: "v1"\n',
   },
+  {
+    name: "timeline",
+    text: "timeline\n  title History\n  section Early\n    2002 : LinkedIn\n    2004 : Facebook : Google\n  section Growth\n    2006 : Twitter\n",
+  },
 ];
 
 const r = (n: number): number => Math.round(n);

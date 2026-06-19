@@ -26,3 +26,5 @@
 - gitGraph: *(done — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and
   `LR`/`TB`/`BT` directions)*. Still: `cherry-pick`, commit `type: REVERSE`/`HIGHLIGHT` distinct glyphs
   (parsed; only HIGHLIGHT→rect is rendered today), and explicit `gitGraph` config (e.g. `mainBranchName`).
+- timeline: *(done — `title`/`section`/`period : event` with `:`-continuation lines, two-mode lexer)*.
+  Still: `<br>` soft line breaks inside event text; explicit per-section ordering.
