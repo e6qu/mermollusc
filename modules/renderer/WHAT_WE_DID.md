@@ -79,3 +79,6 @@
 - Compartment subtitle: a `SceneNode.subtitle` (a class `«stereotype»`) renders as a centred line
   above the title, widening the title band by `SUBTITLE_H` (matches the layout) so the divider and
   rows still land correctly. +1 unit assertion (subtitle above title, divider lowered).
+- `toSvg` gained a required `origin` (scene-space) in `SvgOptions`; the draw group translates by
+  `margin − origin`, matching the canvas painter, so content dragged to negative coordinates isn't
+  clipped in the SVG export (part of the external-review extent fix). +1 unit assertion.

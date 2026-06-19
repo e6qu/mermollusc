@@ -56,6 +56,15 @@ describe("overrides", () => {
     expect(applyOverrides(scene, new Map())).toBe(scene);
   });
 
+  it("extends the extent origin (not just size) when a node is dragged past the top-left", () => {
+    // Move A to negative coordinates; the extent must include them so the host can't clip it.
+    const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(-40, -30)));
+    expect(moved.extent.origin).toEqual(point(-40, -30));
+    // Width/height span from the new min corner to the far corner of the unmoved node B.
+    expect(moved.extent.size.width).toBe(60 - -40); // B right edge (60) − minX (−40)
+    expect(moved.extent.size.height).toBe(140 - -30); // original extent bottom (140) − minY (−30)
+  });
+
   it("re-anchors a boundary edge to the moved node's new border", () => {
     // Move only A → the A→B edge must re-anchor; its A end lands on A's new (left) border toward B.
     const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(200, 50)));

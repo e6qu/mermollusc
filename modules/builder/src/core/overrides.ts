@@ -80,14 +80,30 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
     return { ...edge, waypoints: [borderPoint(a, b), borderPoint(b, a)] };
   });
 
-  // Grow the extent so a node dragged past the original layout's bounds isn't clipped by the stage.
-  // (The layout always emits an origin-anchored extent, so widening width/height suffices.)
-  let width: number = scene.extent.size.width;
-  let height: number = scene.extent.size.height;
+  // Grow the extent to the true bounds of the overridden scene. A node dragged left/up past the
+  // layout's origin has negative coordinates, so the extent origin must move too (not just width/
+  // height) — otherwise the host, which anchors the canvas at the extent origin, clips it off the
+  // top-left. Edge waypoints are included so a translated (group-dragged) connector isn't clipped
+  // either. The host offsets paint + pointer-mapping by this origin, so a zero origin (the common
+  // case, no negative drag) is unchanged.
+  let minX: number = scene.extent.origin.x;
+  let minY: number = scene.extent.origin.y;
+  let maxX: number = scene.extent.origin.x + scene.extent.size.width;
+  let maxY: number = scene.extent.origin.y + scene.extent.size.height;
   for (const node of nodes) {
-    width = Math.max(width, node.bounds.origin.x + node.bounds.size.width);
-    height = Math.max(height, node.bounds.origin.y + node.bounds.size.height);
+    minX = Math.min(minX, node.bounds.origin.x);
+    minY = Math.min(minY, node.bounds.origin.y);
+    maxX = Math.max(maxX, node.bounds.origin.x + node.bounds.size.width);
+    maxY = Math.max(maxY, node.bounds.origin.y + node.bounds.size.height);
   }
-  const extent = rect(scene.extent.origin.x, scene.extent.origin.y, width, height);
+  for (const edge of edges) {
+    for (const p of edge.waypoints) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  const extent = rect(minX, minY, maxX - minX, maxY - minY);
   return { ...scene, nodes, edges, extent };
 };

@@ -77,3 +77,6 @@
   class `Foo : member` shorthand — plus every relationship line incident to it. Previously these fell
   through to line-based `deleteNode`, orphaning body rows + the closing `}`. +3 integration cases
   (block + incident rels gone, result re-parses).
+- Fixed external-review P1 (extent only grew right/down): `applyOverrides` now emits the true bounds —
+  a negative extent *origin* (not just grown width/height), including edge waypoints — so a node
+  dragged past the top-left is no longer clipped. +1 unit test (negative drag → negative origin).

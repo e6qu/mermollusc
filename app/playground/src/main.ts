@@ -402,7 +402,9 @@ const paintScene = (): void => {
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
-  ctx.translate(MARGIN, MARGIN);
+  // Offset by the extent origin so a node dragged to negative coordinates maps into the canvas (the
+  // origin is (0,0) unless something was dragged past the top-left, so this is normally just MARGIN).
+  ctx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
   drawGroupOutlines(shown);
   paint(ctx, cmds, iconImages, active);
   ctx.strokeStyle = "#2563eb";
@@ -916,7 +918,7 @@ const drawMinimap = (): void => {
   miniCtx.fillStyle = active.background;
   miniCtx.fillRect(0, 0, logicalWidth, logicalHeight);
   miniCtx.save();
-  miniCtx.translate(MARGIN, MARGIN);
+  miniCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
   // Faint edges first, then node blocks on top.
   miniCtx.strokeStyle = active.stroke;
   miniCtx.globalAlpha = 0.35;
@@ -1314,10 +1316,14 @@ const relax = async (): Promise<void> => {
 
 const scenePoint = (ev: MouseEvent) => {
   const r = canvas.getBoundingClientRect();
-  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates.
+  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates. Add the
+  // displayed extent origin (the same offset `paintScene` translates by) so pointer↔scene stays
+  // consistent when content has been dragged to negative coordinates.
+  const ox = lastRender?.scene.extent.origin.x ?? 0;
+  const oy = lastRender?.scene.extent.origin.y ?? 0;
   return point(
-    (ev.clientX - r.left) / viewScale - MARGIN,
-    (ev.clientY - r.top) / viewScale - MARGIN,
+    (ev.clientX - r.left) / viewScale - MARGIN + ox,
+    (ev.clientY - r.top) / viewScale - MARGIN + oy,
   );
 };
 
@@ -2215,6 +2221,7 @@ exportSvgBtn.addEventListener("click", () => {
   const svg = toSvg(toDisplayList(shown), {
     width: Math.ceil(shown.extent.size.width) + MARGIN * 2,
     height: Math.ceil(shown.extent.size.height) + MARGIN * 2,
+    origin: shown.extent.origin,
     margin: MARGIN,
     theme: activeTheme(),
     icons,

@@ -32,6 +32,7 @@ describe("toSvg", () => {
   const svg = toSvg(toDisplayList(scene), {
     width: 108,
     height: 168,
+    origin: { x: 0, y: 0 },
     margin: 24,
     theme: defaultTheme,
     icons: new Map(),
@@ -42,6 +43,18 @@ describe("toSvg", () => {
     expect(svg.trimEnd().endsWith("</svg>")).toBe(true);
     expect(svg).toContain(`fill="${defaultTheme.background}"`);
     expect(svg).toContain('viewBox="0 0 108 168"');
+  });
+
+  it("offsets the draw group by `margin − origin` so negative-coordinate content isn't clipped", () => {
+    const shifted = toSvg(toDisplayList(scene), {
+      width: 108,
+      height: 168,
+      origin: { x: 10, y: 20 },
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(shifted).toContain('transform="translate(14,4)"'); // 24−10, 24−20
   });
 
   it("maps each shape kind to its SVG element", () => {
@@ -78,7 +91,8 @@ describe("toSvg", () => {
       ],
       extent: rect(0, 0, 120, 140),
     };
-    const out = toSvg(toDisplayList(er), { width: 120, height: 140, margin: 0, theme: defaultTheme, icons: new Map() });
+    const out = toSvg(toDisplayList(er), { width: 120, height: 140, origin: { x: 0, y: 0 },
+ margin: 0, theme: defaultTheme, icons: new Map() });
     // The "many" prongs are <line>s; the "zero" ring is a <circle>; the attribute row is start-anchored.
     expect(out).toContain("<line");
     expect(out).toContain("<circle");
@@ -129,6 +143,7 @@ describe("toSvg", () => {
     const out = toSvg(toDisplayList(cls), {
       width: 120,
       height: 150,
+      origin: { x: 0, y: 0 },
       margin: 0,
       theme: defaultTheme,
       icons: new Map(),
@@ -150,7 +165,8 @@ describe("toSvg", () => {
       edges: [],
       extent: rect(0, 0, 90, 56),
     };
-    const out = toSvg(toDisplayList(ml), { width: 90, height: 56, margin: 0, theme: defaultTheme, icons: new Map() });
+    const out = toSvg(toDisplayList(ml), { width: 90, height: 56, origin: { x: 0, y: 0 },
+ margin: 0, theme: defaultTheme, icons: new Map() });
     expect(out.match(/<tspan/g)?.length).toBe(2);
     expect(out).toContain(">API</tspan>");
     // The continuation line is dimmed + smaller; the primary line is not styled down.
@@ -177,6 +193,7 @@ describe("toSvg", () => {
     const withIcon = toSvg(toDisplayList(iconScene), {
       width: 108,
       height: 88,
+      origin: { x: 0, y: 0 },
       margin: 24,
       theme: defaultTheme,
       icons: new Map([["p/n", "data:image/svg+xml,<svg/>"]]),

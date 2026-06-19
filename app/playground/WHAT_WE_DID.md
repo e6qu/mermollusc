@@ -291,3 +291,7 @@
   `img.decode()` failures (invalid pack SVG), logs loudly, skips the glyph, and returns the failed
   keys; `renderFromText` surfaces them in the status bar. The render no longer aborts on an unhandled
   rejection — the diagram always paints (glyph-less for the bad icon).
+- Fixed external-review P1 (negative-coordinate clipping): `paintScene`, `scenePoint` (pointer→scene),
+  the minimap, and the SVG export now offset by the displayed extent origin, so a node dragged past
+  the top-left stays visible, hit-testable, and exportable. The offset is (0,0) unless something is
+  dragged negative, so the common path is unchanged (87 Playwright still green).
