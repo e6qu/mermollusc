@@ -104,6 +104,10 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       return `${rect}${text}`;
     }
     case "wedge": {
+      // A full-circle sweep is a legend swatch — a `<circle>` (an SVG arc can't close a full turn).
+      if (cmd.endAngle - cmd.startAngle >= Math.PI * 2 - 1e-6) {
+        return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(cmd.radius)}" fill="${wedgeColor(cmd.colorIndex)}" stroke="${theme.background}" stroke-width="2"/>`;
+      }
       // A sector as an SVG path: line out to the start angle, arc to the end angle, close to centre.
       // Same canvas-convention angles + point formula as the painter, so the two backends agree.
       const x0 = cmd.cx + cmd.radius * Math.cos(cmd.startAngle);

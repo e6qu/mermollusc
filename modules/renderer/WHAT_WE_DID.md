@@ -92,3 +92,7 @@
   maps `NodeShape`→DOT shape (`round`/`stadium`→a rounded box) and each `EdgeEnd`→a Graphviz arrowtype
   (`none`/`vee`/`onormal`/`diamond`/`odiamond`/crow's-foot `tee`/`crow` etc.), carries dashed strokes
   and labels, escapes ids/labels, and emits an empty `digraph {}` for a node-less (pie) scene. +4 tests.
+- A **full-circle** `wedge` now renders as a legend swatch: the painter/SVG draw a clean disc (no centre
+  vertex; SVG uses `<circle>` since an arc can't close a full turn) and `toDisplayList` places its label
+  to the right, left-aligned. A partial wedge (a pie slice) is unchanged except its on-slice label is
+  now just the percentage (the name moved to the pie legend). +2 unit tests (legend label + `<circle>`).

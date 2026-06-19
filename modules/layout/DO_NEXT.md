@@ -25,5 +25,6 @@
   alternate event cards above/below the spine (Mermaid-style) once a family-aware renderer pass exists.
 - mindmap: *(done — layered LR tree via the flowchart ELK path)*. Follow-up: a radial/balanced layout
   (Mermaid-style) once a dedicated mindmap engine is worth it.
-- pie: *(done — radial wedge layout, slices clockwise from 12 o'clock)*. Follow-up: a side legend for
-  many-slice charts; honour `showData` (value alongside the percentage).
+- pie: *(done — radial wedge layout, slices clockwise from 12 o'clock; **side legend** with colour-disc
+  swatches + `showData` raw values; on-slice label is just the percentage)*. Follow-up: wrap/scroll the
+  legend for very many slices; an optional donut (inner radius).

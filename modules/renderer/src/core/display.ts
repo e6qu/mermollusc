@@ -427,26 +427,46 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   return [...wedges, ...edges, ...nodes, ...labels];
 };
 
-// A pie slice: the filled sector plus its label (name + percentage) anchored at the slice's mid-angle,
-// part-way out from the centre. The label rides a plate so it stays legible over the slice fill.
+const FULL_CIRCLE = Math.PI * 2 - 1e-6;
+const LEGEND_LABEL_GAP = 8;
+
+// A wedge renders one of two things, distinguished by its sweep:
+//   - a *slice* (partial sweep): the filled sector with its share as a centred `NN%` label part-way
+//     out along the mid-angle (on a plate, so it stays legible over the fill);
+//   - a *legend swatch* (a full circle): a small colour disc with its `label` (the slice name, plus
+//     the raw value when `showData`) drawn to its right, left-aligned.
 const wedgeCmds = (wedge: SceneWedge): DrawCmd[] => {
+  const cmd: DrawCmd = {
+    kind: "wedge",
+    cx: coordinate(wedge.center.x),
+    cy: coordinate(wedge.center.y),
+    radius: length(wedge.radius),
+    startAngle: wedge.startAngle,
+    endAngle: wedge.endAngle,
+    colorIndex: wedge.colorIndex,
+  };
+  if (wedge.endAngle - wedge.startAngle >= FULL_CIRCLE) {
+    return [
+      cmd,
+      {
+        kind: "label",
+        x: coordinate(wedge.center.x + wedge.radius + LEGEND_LABEL_GAP),
+        y: coordinate(wedge.center.y),
+        text: wedge.label,
+        align: "left",
+        plate: false,
+      },
+    ];
+  }
   const mid = (wedge.startAngle + wedge.endAngle) / 2;
   const lr = wedge.radius * 0.62;
   return [
-    {
-      kind: "wedge",
-      cx: coordinate(wedge.center.x),
-      cy: coordinate(wedge.center.y),
-      radius: length(wedge.radius),
-      startAngle: wedge.startAngle,
-      endAngle: wedge.endAngle,
-      colorIndex: wedge.colorIndex,
-    },
+    cmd,
     {
       kind: "label",
       x: coordinate(wedge.center.x + lr * Math.cos(mid)),
       y: coordinate(wedge.center.y + lr * Math.sin(mid)),
-      text: `${wedge.label} ${Math.round(wedge.percent)}%`,
+      text: `${Math.round(wedge.percent)}%`,
       align: "center",
       plate: true,
     },

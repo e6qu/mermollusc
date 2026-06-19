@@ -30,7 +30,7 @@
   Still: `<br>` soft line breaks inside event text; explicit per-section ordering.
 - mindmap: *(done — indentation hierarchy, shapes, icon/class stripped)*. Still: real `::icon()`
   rendering once an icon pack is wired; a radial layout option (currently a layered LR tree via ELK).
-- pie: *(done — `pie [showData]`, optional title, `"label" : value` rows, non-positive fails loudly)*.
-  Still: render the `showData` raw values alongside percentages (parsed; layout shows percent only).
+- pie: *(done — `pie [showData]`, optional title, `"label" : value` rows, non-positive fails loudly;
+  `showData` now renders the raw value in the legend)*.
 - DOT (Graphviz): *(done — import of a `graph`/`digraph` subset into the flowchart model)*. Still:
   **DOT export** (a diagram → DOT text); subgraph/cluster import → `FlowSubgraph`; HTML-label handling.
