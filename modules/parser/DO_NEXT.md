@@ -32,3 +32,5 @@
   rendering once an icon pack is wired; a radial layout option (currently a layered LR tree via ELK).
 - pie: *(done — `pie [showData]`, optional title, `"label" : value` rows, non-positive fails loudly)*.
   Still: render the `showData` raw values alongside percentages (parsed; layout shows percent only).
+- DOT (Graphviz): *(done — import of a `graph`/`digraph` subset into the flowchart model)*. Still:
+  **DOT export** (a diagram → DOT text); subgraph/cluster import → `FlowSubgraph`; HTML-label handling.

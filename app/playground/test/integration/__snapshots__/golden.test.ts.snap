@@ -60,6 +60,19 @@ exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out dot to a stable display list 1`] = `
+[
+  "polyline 60,32 100,32 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 172,32 212,32 dashed=false from=l0p0c0 to=l0p1c0",
+  "box 12,12 48x40 r0",
+  "label "a" 36,32 center",
+  "box 100,12 72x40 r8",
+  "label "middle" 136,32 center",
+  "box 212,12 48x40 r8",
+  "label "c" 236,32 center",
+]
+`;
+
 exports[`pipeline goldens > lays out er to a stable display list 1`] = `
 [
   "polyline 146,47 206,47 dashed=false from=l2p0c0 to=l3p0c1",

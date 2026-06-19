@@ -27,4 +27,5 @@ export { parseMindmap, parseMindmapWithSource } from "./mindmap-parse.js";
 export type { ParsedMindmap } from "./mindmap-parse.js";
 export { parsePie, parsePieWithSource } from "./pie-parse.js";
 export type { ParsedPie } from "./pie-parse.js";
+export { parseDot } from "./dot-parse.js";
 export { parseDiagram } from "./diagram.js";
