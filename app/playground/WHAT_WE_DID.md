@@ -313,3 +313,6 @@
   a `timelineSource` var, a "Timeline" Examples entry (+`index.html` option), the `renderFromText`
   source-map case, and an inline-relabel branch (periods + events editable; section bands and the spine
   carry no span). +1 golden sample, +3 e2e specs (render, example loads, orphan-continuation lint).
+- Wired the **mindmap** family end-to-end: imported `parseMindmapWithSource` + `MindmapSource`, added a
+  `mindmapSource` var, a "Mindmap" Examples entry (+`index.html` option), the `renderFromText`
+  source-map case, and an inline-relabel branch (node labels editable). +1 golden sample, +2 e2e specs.

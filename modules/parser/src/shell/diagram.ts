@@ -6,6 +6,7 @@ import { parseClass } from "./class-parse.js";
 import { parseCloud } from "./cloud-parse.js";
 import { parseEr } from "./er-parse.js";
 import { parseGitGraph } from "./git-parse.js";
+import { parseMindmap } from "./mindmap-parse.js";
 import { parseNetwork } from "./net-parse.js";
 import { parse } from "./parse.js";
 import { parseRequirement } from "./req-parse.js";
@@ -32,5 +33,6 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   if (header.startsWith("cloud")) return parseCloud(text);
   if (header.startsWith("gitGraph")) return parseGitGraph(text);
   if (header.startsWith("timeline")) return parseTimeline(text);
+  if (header.startsWith("mindmap")) return parseMindmap(text);
   return parse(text);
 };

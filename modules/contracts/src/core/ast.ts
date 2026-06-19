@@ -402,6 +402,28 @@ export interface TimelineAst {
   readonly periods: readonly TimelinePeriod[];
 }
 
+export type MindmapNodeId = Brand<string, "MindmapNodeId">;
+// The node's drawn form from its delimiter: `default`/`rounded` (plain text or `(text)`) draw as a
+// rounded box, `square` (`[text]`) as a rect, `circle` (`((text))`) as a circle, `hexagon` (`{{text}}`)
+// approximated by a diamond (the SceneGraph has no hexagon).
+export type MindmapShape = "default" | "square" | "rounded" | "circle" | "hexagon";
+
+export interface MindmapNode {
+  readonly id: MindmapNodeId;
+  readonly label: string;
+  readonly shape: MindmapShape;
+  // The parent established by indentation (the nearest shallower node); null for a root.
+  readonly parent: MindmapNodeId | null;
+  // Indentation level: the root is 0, each deeper indent step adds 1.
+  readonly level: number;
+}
+
+export interface MindmapAst {
+  readonly kind: "mindmap";
+  // Pre-order (source order): a node always follows its parent. Parent links carry the tree.
+  readonly nodes: readonly MindmapNode[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
@@ -415,4 +437,5 @@ export type DiagramAst =
   | ClassAst
   | RequirementAst
   | GitGraphAst
-  | TimelineAst;
+  | TimelineAst
+  | MindmapAst;

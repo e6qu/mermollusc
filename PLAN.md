@@ -62,12 +62,13 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Twelve families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
-class (UML), requirement (SysML), gitGraph, and timeline — and the first ten are fully two-way**
-(double-click → patch the source text); gitGraph is render + inline commit-id relabel; timeline is
-render + inline period/event relabel. Every node/edge family has drag/resize/align, connect, and delete;
-flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show
-**vendored simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
+**Thirteen families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML), gitGraph, timeline, and mindmap — and the first ten are fully
+two-way** (double-click → patch the source text); gitGraph is render + inline commit-id relabel;
+timeline is render + inline period/event relabel; mindmap is render + inline node relabel. Every
+node/edge family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate and
+add. Network nodes show built-in glyphs; cloud nodes show **vendored simple-icons brand marks** (CC0,
+pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
@@ -140,8 +141,14 @@ Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical
   period/event text holds spaces. Deterministic column layout (no ELK): periods in a spine-joined row,
   events stacked per column, section bands above their runs — **zero renderer changes**. Inline relabel
   of period + event text.
-- ⏳ Next: **mindmap** (node/edge-fit, indentation parse), then **pie** (the one family that needs a new
-  Scene/renderer primitive — wedges — so it lands as its own dedicated PR).
+- ✅ **mindmap** — indentation-defined hierarchy, the shapes (`[square]`/`(rounded)`/`((circle))`/
+  `{{hexagon}}`/plain), and `::icon()`/`:::class` decorations (parsed + stripped — no icon pack). A
+  single-mode lexer skips leading whitespace so each line's `startColumn` *is* its indentation; the
+  CST→AST step rebuilds the tree from those columns. Lays out through the ELK path (like `stateToFlow`):
+  `mindmapToFlow` maps nodes to shaped flowchart nodes and parent→child links to arrowless (`open`)
+  edges, so ELK's layered tree handles it — **zero renderer changes**. Inline node relabel.
+- ⏳ Next: **pie** — the one family that needs a new Scene/renderer primitive (wedges), so it lands as
+  its own dedicated PR.
 
 ### Future bets (not yet scoped)
 
@@ -163,8 +170,8 @@ Adding the Mermaid families we lacked, one PR at a time. Each is a full vertical
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
    **Current focus:** capability parity — adding the Mermaid families we lacked, one PR at a time
-   (see *Capability parity* above). **gitGraph** and **timeline** are done; mindmap / pie are next. The
-   earlier *External review backlog* is fully resolved (PR #59).
+   (see *Capability parity* above). **gitGraph**, **timeline**, and **mindmap** are done; **pie** (needs
+   a new Scene/renderer wedge primitive) is next. The earlier *External review backlog* is resolved (#59).
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

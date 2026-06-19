@@ -3,6 +3,7 @@ import type {
   ClassAst,
   ErAst,
   FlowchartAst,
+  MindmapAst,
   NodeId,
   RequirementAst,
   SequenceAst,
@@ -22,6 +23,7 @@ const erid = (s: string) => brand<string, "ErEntityId">(s);
 const errid = (s: string) => brand<string, "ErRelId">(s);
 const cid = (s: string) => brand<string, "ClassEntityId">(s);
 const crid = (s: string) => brand<string, "ClassRelId">(s);
+const mmid = (s: string) => brand<string, "MindmapNodeId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -157,6 +159,26 @@ describe("layout", () => {
     expect(laid.value.nodes.find((n) => n.id === "Idle")?.shape).toBe("round");
     expect(laid.value.nodes.find((n) => n.id === "__state_start")?.shape).toBe("circle");
     expect(laid.value.edges).toHaveLength(1);
+  });
+
+  it("layoutDiagram lays out a mindmap as an arrowless tree through the ELK path", async () => {
+    const mm: MindmapAst = {
+      kind: "mindmap",
+      nodes: [
+        { id: mmid("n0"), label: "Root", shape: "circle", parent: null, level: 0 },
+        { id: mmid("n1"), label: "A", shape: "default", parent: mmid("n0"), level: 1 },
+        { id: mmid("n2"), label: "B", shape: "square", parent: mmid("n0"), level: 1 },
+      ],
+    };
+    const laid = await layoutDiagram(mm, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    expect(laid.value.nodes.map((n) => n.id).sort()).toEqual(["n0", "n1", "n2"]);
+    expect(laid.value.nodes.find((n) => n.id === "n0")?.shape).toBe("circle");
+    expect(laid.value.nodes.find((n) => n.id === "n2")?.shape).toBe("rect");
+    // Two parent→child links, both arrowless (mindmap connections carry no arrowheads).
+    expect(laid.value.edges).toHaveLength(2);
+    expect(laid.value.edges.every((e) => e.toEnd === "none")).toBe(true);
   });
 
   it("layoutDiagram lays out an ER diagram, showing cardinality in the edge label", async () => {
