@@ -65,6 +65,13 @@ describe("parseCloud", () => {
     expect(byId.get(nid("db"))?.icon).toBeNull();
   });
 
+  it("fails loudly on a malformed icon reference", () => {
+    const r = parseCloud('cloud\n  compute web "Web" icon "bogus"\n');
+    expect(isOk(r)).toBe(false);
+    if (isOk(r)) return;
+    expect(r.error.errors[0]).toMatch(/malformed icon reference/);
+  });
+
   it("parses an undirected link with a label", () => {
     const r = parseCloud(SAMPLE);
     expect(isOk(r)).toBe(true);

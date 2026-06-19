@@ -43,6 +43,13 @@ describe("parseBlock", () => {
     expect(byId.get(nid("b"))?.icon).toBeNull();
   });
 
+  it("fails loudly on a malformed icon reference", () => {
+    const r = parseBlock('block-beta\n  a["Web"] icon "bogus"\n');
+    expect(isOk(r)).toBe(false);
+    if (isOk(r)) return;
+    expect(r.error.errors[0]).toMatch(/malformed icon reference/);
+  });
+
   it("keeps a dotted-link edge label", () => {
     const r = parseBlock("block-beta\n  a -.->|maybe| b\n");
     expect(isOk(r)).toBe(true);

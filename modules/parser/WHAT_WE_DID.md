@@ -112,3 +112,8 @@
   instead of `gN`. The `:` is outside the `CloudIdentifier` space (`[A-Za-z0-9_]+`), so a user service
   named `g0` can no longer collide with the first group and overwrite its box / hit-test / source
   identity. +1 unit regression test.
+- Fixed external-review P1 (malformed icon refs silently nulled): extracted the three duplicated
+  `parseIconRef` copies into a shared `iconRefOf` returning `Result<IconRef, string>`; net/block/cloud
+  now fail the parse with a token-located error (new `parseErrorAt` helper) instead of dropping a bad
+  `icon "…"` ref to `null` and rendering a default glyph — honouring the fail-loudly contract. Flipped
+  the three "ignores malformed icon" unit tests to assert the loud failure.

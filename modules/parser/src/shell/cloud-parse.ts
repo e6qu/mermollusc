@@ -14,7 +14,8 @@ import type {
 } from "@m/contracts";
 import { cloudParser } from "./cloud-grammar.js";
 import { cloudLexer } from "./cloud-tokens.js";
-import { lexingError, recognitionError } from "./parse-error.js";
+import { iconRefOf } from "./icon-ref.js";
+import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 
 export interface ParsedCloud {
@@ -34,13 +35,6 @@ const innerSpan = (t: IToken): TextSpan => ({
   start: t.startOffset + 1,
   end: t.startOffset + t.image.length - 1,
 });
-
-// `"<pack>/<name>"` (a quoted-token image) → an icon ref; null unless it's a two-part reference.
-const parseIconRef = (image: string): IconRef | null => {
-  const slash = image.indexOf("/");
-  if (slash <= 1 || slash >= image.length - 2) return null;
-  return { pack: image.slice(1, slash), name: image.slice(slash + 1, -1) };
-};
 
 const KIND_TOKEN: ReadonlyMap<string, CloudNodeKind> = new Map([
   ["Compute", "compute"],
@@ -64,10 +58,13 @@ interface Acc {
   readonly groupSpans: Map<NodeId, TextSpan>;
   readonly nodeSpans: Map<NodeId, TextSpan>;
   readonly linkSpans: Map<EdgeId, TextSpan>;
+  // First malformed-icon (or other semantic) failure; once set, the walk bails and the parse fails.
+  error: ParseError | null;
 }
 
 const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): void => {
   for (const item of items) {
+    if (acc.error !== null) return; // a malformed icon already failed the parse — stop walking
     const group = childNodes(item.children, "group")[0];
     if (group !== undefined) {
       // Groups are named only by a quoted label, so their id is synthetic. The `:` keeps it out of
@@ -90,12 +87,21 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
       const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
       const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
       const kindNode = childNodes(leaf.children, "kind")[0];
+      let icon: IconRef | null = null;
+      if (iconToken !== undefined) {
+        const ref = iconRefOf(iconToken.image);
+        if (!ref.ok) {
+          acc.error = parseErrorAt(ref.error, iconToken.startOffset, iconToken.image.length);
+          return;
+        }
+        icon = ref.value;
+      }
       acc.nodes.push({
         id,
         label: labelToken === undefined ? id : unquote(labelToken.image),
         kind: kindNode === undefined ? "compute" : kindOf(kindNode.children),
         parent,
-        icon: iconToken === undefined ? null : parseIconRef(iconToken.image),
+        icon,
       });
       if (labelToken !== undefined) acc.nodeSpans.set(id, innerSpan(labelToken));
       continue;
@@ -132,8 +138,10 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
     groupSpans: new Map(),
     nodeSpans: new Map(),
     linkSpans: new Map(),
+    error: null,
   };
   walkItems(childNodes(cst.children, "item"), null, acc);
+  if (acc.error !== null) return err(acc.error);
   return ok({
     ast: { kind: "cloud", groups: acc.groups, nodes: acc.nodes, links: acc.links },
     source: { groups: acc.groupSpans, nodes: acc.nodeSpans, links: acc.linkSpans },

@@ -5,9 +5,10 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
 - ~~**Cloud group id collision.**~~ Fixed — synthetic cloud group ids are now `group:N`; the `:` is
   outside the `CloudIdentifier` space (`[A-Za-z0-9_]+`) so a user service named `g0` can no longer
   collide with a group. (+ a parser regression test.)
-- **Malformed `icon "…"` refs silently nulled.** net/block/cloud parsers convert a bad icon ref to
-  `null`, so user intent vanishes and a default glyph renders — violates the repo's fail-loudly
-  contract. `parseIconRef` should return `Result` and fail the parse. *(P1, open.)*
+- ~~**Malformed `icon "…"` refs silently nulled.**~~ Fixed — a shared `iconRefOf` returns a `Result`;
+  net/block/cloud now fail the parse with a located error (`parseErrorAt`, highlightable) instead of
+  dropping a bad ref to `null` and rendering a default glyph. (Three `parseIconRef` copies removed;
+  the three "ignores malformed icon" tests flipped to "fails loudly".)
 
 Checked while adding the optional C4 element description.
 

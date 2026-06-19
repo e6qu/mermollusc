@@ -63,10 +63,12 @@ describe("parseNetwork — per-node icon override", () => {
     expect(byId.get(nid("plain"))?.icon).toBeNull();
   });
 
-  it("ignores a malformed icon reference (no pack/name split)", () => {
+  it("fails loudly on a malformed icon reference (no pack/name split) instead of silently dropping it", () => {
     const r = parseNetwork('network\n  server x "Y" icon "bogus"\n');
-    expect(isOk(r)).toBe(true);
-    if (!isOk(r)) return;
-    expect(r.value.nodes[0]?.icon).toBeNull();
+    expect(isOk(r)).toBe(false);
+    if (isOk(r)) return;
+    expect(r.error.errors[0]).toMatch(/malformed icon reference/);
+    // The error is located at the icon token so the editor can highlight it.
+    expect(r.error.positions[0]?.length).toBeGreaterThan(0);
   });
 });
