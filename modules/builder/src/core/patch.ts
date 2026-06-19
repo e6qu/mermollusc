@@ -126,6 +126,78 @@ export const deleteRequirementRel = (text: string, from: ReqEntityId, to: ReqEnt
 
 const occurrences = (s: string, ch: string): number => s.split(ch).length - 1;
 
+// Delete a compartment-family entity (ER / class / requirement) by id, properly: remove its
+// declaration line and, if that line opens a `{ … }` body, the whole brace block (tracked by depth);
+// and remove every relationship line incident to it. Line-based `deleteNode` can't do this — it
+// strips only lines containing the id and orphans the body rows + closing `}`. `declId(line)` returns
+// the entity declared on a line (or null); `relEnds(line)` returns a relationship's two endpoint ids.
+const deleteEntityWithBody = (
+  text: string,
+  id: string,
+  declId: (line: string) => string | null,
+  relEnds: (line: string) => readonly [string, string] | null,
+): string => {
+  const out: string[] = [];
+  let depth = 0;
+  let inBlock = false;
+  for (const line of text.split("\n")) {
+    if (inBlock) {
+      depth += occurrences(line, "{") - occurrences(line, "}");
+      if (depth <= 0) inBlock = false;
+      continue;
+    }
+    if (declId(line) === id) {
+      const opens = occurrences(line, "{") - occurrences(line, "}");
+      if (opens > 0) {
+        depth = opens;
+        inBlock = true;
+      }
+      continue;
+    }
+    const ends = relEnds(line);
+    if (ends !== null && (ends[0] === id || ends[1] === id)) continue;
+    out.push(line);
+  }
+  return out.join("\n");
+};
+
+const erEnds = (line: string): readonly [string, string] | null => {
+  const m = ER_REL.exec(line);
+  return m === null ? null : [m[1] ?? "", m[2] ?? ""];
+};
+// An ER entity declaration: a bare or block-opening name (quoted or hyphenated), nothing after it but
+// an optional `{` — so relationship lines (which carry the crow's-foot operator) never match.
+const ER_DECL = /^\s*(?:"([^"]*)"|([A-Za-z_][\w-]*))\s*\{?\s*$/;
+const erDeclId = (line: string): string | null => {
+  const m = ER_DECL.exec(line);
+  return m === null ? null : (m[1] ?? m[2] ?? null);
+};
+export const deleteErEntity = (text: string, id: ErEntityId): string =>
+  deleteEntityWithBody(text, id, erDeclId, erEnds);
+
+const classEnds = (line: string): readonly [string, string] | null => {
+  const m = CLASS_REL.exec(line);
+  return m === null ? null : [m[1] ?? "", m[2] ?? ""];
+};
+// A class declaration (`class Foo` / `class Foo {`) or the `Foo : +member` shorthand — both belong to
+// `Foo`. A relationship like `A <|-- B : x` never matches (it has the operator before the `:`).
+const CLASS_DECL = /^\s*class\s+([A-Za-z_]\w*)\s*\{?\s*$/;
+const CLASS_MEMBER = /^\s*([A-Za-z_]\w*)\s*:\s*\S/;
+const classDeclId = (line: string): string | null =>
+  CLASS_DECL.exec(line)?.[1] ?? CLASS_MEMBER.exec(line)?.[1] ?? null;
+export const deleteClassEntity = (text: string, id: ClassEntityId): string =>
+  deleteEntityWithBody(text, id, classDeclId, classEnds);
+
+const reqEnds = (line: string): readonly [string, string] | null => {
+  const m = REQ_REL.exec(line);
+  return m === null ? null : [m[1] ?? "", m[2] ?? ""];
+};
+const REQ_DECL =
+  /^\s*(?:requirement|functionalRequirement|performanceRequirement|interfaceRequirement|physicalRequirement|designConstraint|element)\s+([A-Za-z_]\w*)\s*\{?\s*$/;
+const reqDeclId = (line: string): string | null => REQ_DECL.exec(line)?.[1] ?? null;
+export const deleteRequirementEntity = (text: string, id: ReqEntityId): string =>
+  deleteEntityWithBody(text, id, reqDeclId, reqEnds);
+
 // The endpoint ids of a C4 `Rel(a, b, …)` line (bare identifiers inside the parens), or null.
 const C4_REL = /^\s*Rel\s*\(([^)]*)\)/;
 const c4RelIds = (line: string): readonly [string, string] | null => {

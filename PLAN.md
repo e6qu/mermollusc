@@ -62,9 +62,9 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Eight families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER — and
-all are two-way** (double-click → patch the source text). Every family has drag/resize/align,
-connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
+**Ten families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML) — and all are two-way** (double-click → patch the source text). Every
+family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
 simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
@@ -103,7 +103,43 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
    *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
    the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*
 
+### External review backlog (codex `gpt-5.5`, 2026-06-19)
+
+A read-only senior review (sources: Mermaid 11.15.0, PlantUML, D2, Graphviz). Per-bug detail also
+lives in the owning module's `BUGS.md`; work through P1s one PR at a time.
+
+P1 (defects — verified against source):
+1. **Delete corrupts brace-bodied entities** — `app/playground/src/main.ts` `removeNode` falls
+   through to line-based `deleteNode` for ER/class/requirement (and composite state); the `{ … }`
+   body lines + closing `}` are orphaned. Needs family-specific entity-delete (whole brace block +
+   incident relationships). *(builder + app)*
+2. **Drag/resize extent only grows right/down** — `modules/builder/src/core/overrides.ts`: a node
+   moved past `x=0`/`y=0` keeps negative coords and is clipped/unreachable. Normalize the displayed
+   origin (and update hit-test/export/minimap). *(builder + app)*
+3. **Unhandled icon-decode rejection** — `app/playground/src/main.ts` `ensureIcons`: a pack that
+   decodes (strings) but has invalid SVG makes `img.decode()` reject; `renderFromText` is fire-and-
+   forget. Make rasterise return `Result`, catch per-icon, still paint. *(app)*
+4. **Cloud group id collision** — `modules/parser/src/shell/cloud-parse.ts` synthesises group ids
+   `g0/g1…` in the user `NodeId` space; a service named `g0` overwrites a group. Use a distinct
+   branded id / collision-proof prefix. *(parser + layout)*
+5. **Malformed `icon "…"` silently nulled** — net/block/cloud parsers drop bad refs to `null`,
+   violating "fail loudly". `parseIconRef` should return `Result` and fail the parse. *(parser)*
+
+P2 (nice-to-have):
+6. **Requirement verb labels not editable** despite the README "double-click any … label" claim
+   (`ReqSource.relationships` is empty) — capture verb spans + cycle the seven verbs, or drop the
+   claim. *(contracts + app)*
+7. **Inline editor ignores `viewScale`** — after zoom/Fit the overlay opens off-target
+   (`app/playground/src/main.ts`). *(app)*
+8. **Goldens omit the state family** — add flat + composite state samples to the pipeline goldens.
+   *(app)*
+
 ### Future bets (not yet scoped)
+
+- **More diagram families (capability parity).** External review flags the biggest gaps vs Mermaid/
+  PlantUML/Graphviz: component / deployment / use-case / activity (software-architecture parity),
+  Gantt / timeline (planning), and pie / mindmap / git-graph. Plus **DOT (Graphviz) import/export**
+  for interoperability — the highest-value format gap.
 
 - **Comprehensive, searchable audit trail.** Record edits/actions (text patches, drags, layout
   regenerates, exports) as a queryable, searchable history — beyond the in-memory undo. Likely a new
@@ -118,6 +154,8 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 1. Read `AGENTS.md` (hard rules + structure) then this file (architecture, decisions, status, roadmap).
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
+   **Current focus:** working through the *External review backlog* (Roadmap section) — the P1
+   defects first, one PR at a time; each P1 is also logged in its owning module's `BUGS.md`.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

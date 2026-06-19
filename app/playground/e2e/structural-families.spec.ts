@@ -129,3 +129,39 @@ test("Delete removes a sequence actor and messages touching it", async ({ page }
   await expectSourceMatches(page, /B->>C: yo/);
   expect(errors).toEqual([]);
 });
+
+test("Delete removes a brace-bodied ER entity — its whole block, not just the id line", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const parseErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
+  });
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(
+    page,
+    "erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n    int age\n  }\n  ORDER {\n    int id PK\n  }\n  CUSTOMER ||--o{ ORDER : places\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  // CUSTOMER is the tall left-hand box (laid out left-to-right); click well inside it, then Delete.
+  await page.mouse.click(box.x + 50, box.y + box.height / 2);
+  await page.keyboard.press("Delete");
+
+  // The whole block goes — no orphaned attribute rows, no incident relationship — and ORDER stays.
+  await expectSourceNotMatches(page, /CUSTOMER/);
+  await expectSourceNotMatches(page, /string name PK/);
+  await expectSourceNotMatches(page, /places/);
+  await expectSourceMatches(page, /ORDER \{/);
+  await expectSourceMatches(page, /int id PK/);
+  // Crucially the source still parses (no stray `}`): the diagram re-renders without a parse error.
+  expect(parseErrors).toEqual([]);
+  expect(errors).toEqual([]);
+});

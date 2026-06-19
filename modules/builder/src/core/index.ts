@@ -35,5 +35,8 @@ export {
   deleteErRel,
   deleteClassRel,
   deleteRequirementRel,
+  deleteErEntity,
+  deleteClassEntity,
+  deleteRequirementEntity,
 } from "./patch.js";
 export type { PatchError } from "./patch.js";

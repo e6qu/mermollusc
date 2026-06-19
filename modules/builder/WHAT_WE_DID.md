@@ -71,3 +71,9 @@
 - Added `connectRequirement` (appends `from - satisfies -> to`, a default verb the user re-types) and
   `deleteRequirementRel` (removes the first `a - verb -> b` line between two entities) so requirement
   diagrams get canvas Connect/Delete. +1 integration case.
+- Fixed external-review P1 (Delete corrupting brace-bodied entities): added `deleteErEntity` /
+  `deleteClassEntity` / `deleteRequirementEntity` over a shared `deleteEntityWithBody` helper that
+  removes the entity's `{ … }` block (brace-depth tracked) — or bare/`class`/`<kind>` decl line, and a
+  class `Foo : member` shorthand — plus every relationship line incident to it. Previously these fell
+  through to line-based `deleteNode`, orphaning body rows + the closing `}`. +3 integration cases
+  (block + incident rels gone, result re-parses).

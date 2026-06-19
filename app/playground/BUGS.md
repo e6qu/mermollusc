@@ -1,6 +1,22 @@
 # @m/app (playground) — bugs
 
-_None known._
+Open (external review, codex `gpt-5.5`, 2026-06-19):
+
+- **Unhandled icon-decode rejection.** `ensureIcons` calls `img.decode()` on rasterised pack SVGs; a
+  pack that decodes as JSON but holds invalid SVG markup rejects, and `renderFromText` is invoked as
+  `void`, so the failure is unhandled and the diagram may not paint. Make rasterise return `Result`,
+  catch per-icon, surface status, still paint. *(P1, open.)*
+- **Inline editor ignores `viewScale`.** After zoom in/out or Fit, the `#inline-edit` overlay opens at
+  unscaled scene coordinates, off the target node/edge label. Scale the anchor by `viewScale`
+  (account for canvas rect + scroll). *(P2, open.)*
+- **Requirement verb labels aren't editable** despite the "double-click any … label" claim
+  (`ReqSource.relationships` is intentionally empty). Capture verb spans + cycle the seven verbs, or
+  drop the claim for requirement. *(P2, open.)*
+- **Pipeline goldens omit the state family** — composite/`[*]` geometry regressions go uncaught. Add
+  flat + composite state samples. *(P2, open.)*
+
+Delete of brace-bodied entities (ER/class/requirement) is logged under `@m/builder` (dispatch lives
+in `main.ts` `removeNode`, the delete helpers in the builder).
 
 Checked while wiring Delete across C4 and sequence diagrams.
 

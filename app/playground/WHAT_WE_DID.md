@@ -282,3 +282,8 @@
   a `renderSeq` **latest-wins guard** so an out-of-order layout result can't paint over a newer
   diagram. Added `test/integration/scale.test.ts` — a 300-node flowchart through parse→layout→
   display-list→paint→hit-test as a scale regression guard.
+- Ran an external code review (codex `gpt-5.5`, read-only) and recorded its prioritized backlog in
+  `PLAN.md` (+ per-module `BUGS.md`, continuity note). Fixed the first P1: `removeNode` now dispatches
+  ER/class/requirement deletes to the new family entity-delete helpers (whole `{ … }` block + incident
+  relationships) instead of the line-based `deleteNode` that orphaned bodies. +1 e2e (delete a
+  brace-bodied ER entity → block gone, ORDER stays, source still parses).

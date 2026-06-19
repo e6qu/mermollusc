@@ -12,11 +12,14 @@ import {
   deleteActor,
   deleteC4,
   deleteC4Rel,
+  deleteClassEntity,
   deleteClassRel,
   deleteEdge,
+  deleteErEntity,
   deleteErRel,
   deleteMessage,
   deleteNode,
+  deleteRequirementEntity,
   deleteRequirementRel,
   emptySelection,
   group,
@@ -1749,6 +1752,14 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       return deleteC4(text, brand<string, "C4ElementId">(id));
     case "sequence":
       return deleteActor(text, brand<string, "ActorId">(id));
+    // Compartment families have `id { … }` bodies; line-based `deleteNode` would orphan the body +
+    // closing brace, so each removes its whole block + incident relationships.
+    case "er":
+      return deleteErEntity(text, brand<string, "ErEntityId">(id));
+    case "class":
+      return deleteClassEntity(text, brand<string, "ClassEntityId">(id));
+    case "requirement":
+      return deleteRequirementEntity(text, brand<string, "ReqEntityId">(id));
     default:
       return deleteNode(text, brand<string, "NodeId">(id));
   }
