@@ -35,6 +35,10 @@ import type {
   PositionedNode,
 } from "../core/index.js";
 
+// `elk.bundled.js` runs the layout algorithm in an inlined Web Worker in the browser (and inline on
+// the calling thread under Node, where there's no `Worker` — e.g. tests). So `elk.layout` is genuinely
+// off the main thread in the app: the heavy graph computation never blocks rendering/interaction.
+// (Don't wrap this in another Worker — nesting elk.bundled's inlined worker breaks under bundlers.)
 const elk = new ELK();
 
 const PointZ = z.object({ x: z.number(), y: z.number() });
