@@ -23,9 +23,20 @@ describe("parseCloud", () => {
     if (!isOk(r)) return;
 
     expect(r.value.groups.map((g) => [g.id, g.label, g.parent])).toEqual([
-      ["g0", "AWS", null],
-      ["g1", "us-east-1", nid("g0")],
+      ["group:0", "AWS", null],
+      ["group:1", "us-east-1", nid("group:0")],
     ]);
+  });
+
+  it("synthetic group ids can't collide with a user service named like the old `g0`", () => {
+    // `g0` was the old group-id format; a service literally named `g0` used to overwrite the group.
+    const r = parseCloud('cloud\n  group "AWS" {\n    compute g0 "Edge"\n  }\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.groups.map((g) => g.id)).toEqual(["group:0"]);
+    const svc = r.value.nodes.find((n) => n.id === "g0");
+    expect(svc?.label).toBe("Edge");
+    expect(svc?.parent).toBe("group:0"); // nested in the group, not conflated with it
   });
 
   it("parses kind-typed service leaves nested under their group", () => {
@@ -34,8 +45,8 @@ describe("parseCloud", () => {
     if (!isOk(r)) return;
 
     expect(r.value.nodes.map((n) => [n.id, n.label, n.kind, n.parent])).toEqual([
-      ["web", "Web", "compute", nid("g1")],
-      ["assets", "Assets", "storage", nid("g1")],
+      ["web", "Web", "compute", nid("group:1")],
+      ["assets", "Assets", "storage", nid("group:1")],
       ["db", "Orders", "database", null],
     ]);
   });
@@ -74,8 +85,8 @@ describe("parseCloudWithSource", () => {
     const at = (span: { start: number; end: number } | undefined) =>
       span === undefined ? "" : SAMPLE.slice(span.start, span.end);
 
-    expect(at(r.value.source.groups.get(nid("g0")))).toBe("AWS");
-    expect(at(r.value.source.groups.get(nid("g1")))).toBe("us-east-1");
+    expect(at(r.value.source.groups.get(nid("group:0")))).toBe("AWS");
+    expect(at(r.value.source.groups.get(nid("group:1")))).toBe("us-east-1");
     expect(at(r.value.source.nodes.get(nid("web")))).toBe("Web");
     expect(at(r.value.source.links.get(eid("l0")))).toBe("query");
   });

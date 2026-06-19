@@ -108,3 +108,7 @@
   +4 integration tests.
 - Class stereotypes: a `<<interface>>` / `<<abstract>>` line in a class body now parses into
   `ClassEntity.stereotype` (the inner guillemet text; previously skipped). +1 integration assertion.
+- Fixed external-review P1 (cloud group-id collision): synthetic cloud group ids are now `group:N`
+  instead of `gN`. The `:` is outside the `CloudIdentifier` space (`[A-Za-z0-9_]+`), so a user service
+  named `g0` can no longer collide with the first group and overwrite its box / hit-test / source
+  identity. +1 unit regression test.

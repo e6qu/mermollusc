@@ -70,7 +70,10 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
   for (const item of items) {
     const group = childNodes(item.children, "group")[0];
     if (group !== undefined) {
-      const id = brand<string, "NodeId">(`g${acc.groups.length}`);
+      // Groups are named only by a quoted label, so their id is synthetic. The `:` keeps it out of
+      // the `CloudIdentifier` space (`[A-Za-z0-9_]+`) — a user service named `g0` can no longer
+      // collide with the first group and silently overwrite its box / hit-test / source identity.
+      const id = brand<string, "NodeId">(`group:${acc.groups.length}`);
       const label = childTokens(group.children, "CloudQuoted")[0];
       acc.groups.push({ id, label: unquote(label?.image ?? '""'), parent });
       if (label !== undefined) acc.groupSpans.set(id, innerSpan(label));

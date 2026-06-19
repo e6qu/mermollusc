@@ -2,10 +2,9 @@
 
 Open (external review, codex `gpt-5.5`, 2026-06-19):
 
-- **Cloud group id collision.** `cloud-parse.ts` synthesises group ids `g0`/`g1`/… in the same
-  `NodeId` space as user-authored service ids, so a service literally named `g0` overwrites the first
-  group (breaks layout boxes, hit-test, two-way edits). Use a distinct branded id / collision-proof
-  internal prefix. *(P1, open.)*
+- ~~**Cloud group id collision.**~~ Fixed — synthetic cloud group ids are now `group:N`; the `:` is
+  outside the `CloudIdentifier` space (`[A-Za-z0-9_]+`) so a user service named `g0` can no longer
+  collide with a group. (+ a parser regression test.)
 - **Malformed `icon "…"` refs silently nulled.** net/block/cloud parsers convert a bad icon ref to
   `null`, so user intent vanishes and a default glyph renders — violates the repo's fail-loudly
   contract. `parseIconRef` should return `Result` and fail the parse. *(P1, open.)*
