@@ -14,5 +14,8 @@
     "@m/contracts": "workspace:*",
     "@m/builder": "workspace:*",
     "yjs": "catalog:"
+  },
+  "devDependencies": {
+    "ws": "catalog:"
   }
 }

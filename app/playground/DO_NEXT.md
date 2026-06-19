@@ -1,12 +1,13 @@
 # @m/app (playground) — do next
 
-- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT, in-memory).** The `OverlayDoc`
-  interface moved to `@m/contracts` (shared port); `@m/collab` provides the Yjs-backed implementation
-  (`createCollabSession().overlay`). The app constructs it behind a **default-off `?collab`** flag
-  (`?collab` in the URL) — same `OverlayDoc`, so every call site is unchanged. With no peer wired it
-  behaves identically to the local document; it proves the CRDT document drives the real app.
-  **Next:** a WebSocket transport + presence, and a live CodeMirror↔`Y.Text` source binding so the flag
-  drives true two-client editing. See `modules/collab/DO_NEXT.md` and `docs/collab-editor-plan.md`.
+- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT).** The `OverlayDoc` interface lives in
+  `@m/contracts` (shared port); `@m/collab` provides the Yjs-backed implementation
+  (`createCollabSession`). The app constructs it behind a **default-off `?collab`** flag and **connects
+  it to the dev relay** (`make collab-server`): two tabs on `?collab&room=…` edit the overlay live, and
+  remote overlay changes repaint here. Same `OverlayDoc`, so no call site changed. Two Playwright specs
+  cover the single-tab Yjs path and two-tab convergence (relay runs as a second Playwright webServer).
+  **Next:** remote-cursor presence and a live CodeMirror↔`Y.Text` **source** binding (today only the
+  overlay syncs; source stays local per tab). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
 - *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
   state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed

@@ -85,9 +85,17 @@ import {
 } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import { brand, isOk, point, type Point, size } from "@m/std";
-import { createCollabSession } from "@m/collab";
+import { connectWebSocket, createCollabSession, type CollabSession } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { createLocalDocument } from "./document-model.js";
+
+declare global {
+  interface Window {
+    // e2e hook (collab mode only): the number of overlay position overrides currently in the document,
+    // so a spec can assert a remote peer's drag landed in this tab.
+    __collabOverrideCount?: () => number;
+  }
+}
 
 const SAMPLE = `flowchart TD
   A[Start] --> B{Choice}
@@ -277,23 +285,30 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // the seam where a collaborative backend would broadcast instead.
 //
 // `?collab` (experimental, Phase 1) swaps the local document for the Yjs-backed `OverlayDoc` from
-// `@m/collab` — same interface, so every call site is unchanged. With no peer wired yet it behaves
-// identically to the local one; it proves the CRDT document drives the real app. Live multi-user
-// sync (a server + source binding) is the next phase. Default off, so existing flows are untouched.
+// `@m/collab` — same interface, so every call site is unchanged. When the URL also reaches a relay
+// (the dev WebSocket server), two tabs on the same `?collab&room=…` edit the overlay live. In collab
+// mode the shared Y.Doc is the source of truth, so the session is kept (to wire the transport +
+// remote-repaint at the end of this file) and the persisted localStorage overlay is *not* restored
+// (it would clobber the room). Default off, so existing single-user flows are untouched.
 const saveOverlay = (serialized: string): void => localStorage.setItem(OVERLAY_KEY, serialized);
 const useCollab = new URLSearchParams(location.search).has("collab");
-const doc: OverlayDoc = useCollab
-  ? createCollabSession({
-      initialOverrides: new Map(),
-      initialGroups: new Map(),
-      initialSource: "",
-      save: saveOverlay,
-    }).overlay
-  : createLocalDocument({
-      initialOverrides: new Map(),
-      initialGroups: new Map(),
-      save: saveOverlay,
-    });
+let collabSession: CollabSession | null = null;
+let doc: OverlayDoc;
+if (useCollab) {
+  collabSession = createCollabSession({
+    initialOverrides: new Map(),
+    initialGroups: new Map(),
+    initialSource: "",
+    save: saveOverlay,
+  });
+  doc = collabSession.overlay;
+} else {
+  doc = createLocalDocument({
+    initialOverrides: new Map(),
+    initialGroups: new Map(),
+    save: saveOverlay,
+  });
+}
 
 // Undo/redo for sidecar overlay actions (drag, group/ungroup/lock, group label, regenerate) — the
 // canvas counterpart to CodeMirror's text history (which owns the source text). The history itself
@@ -2392,8 +2407,9 @@ const hashSource = (): string | null => {
 const fromHash = hashSource();
 const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
 // Restore the persisted overlay only for the persisted source — a share-link source is a different
-// diagram whose node ids wouldn't match. A corrupt/invalid overlay is logged loudly and ignored.
-if (fromHash === null) {
+// diagram whose node ids wouldn't match, and in collab mode the shared room owns the overlay. A
+// corrupt/invalid overlay is logged loudly and ignored.
+if (fromHash === null && !useCollab) {
   const rawOverlay = localStorage.getItem(OVERLAY_KEY);
   if (rawOverlay !== null) {
     try {
@@ -2417,3 +2433,22 @@ editor = createEditor(editorMount, initialSource, (text) => {
   void renderFromText(text);
 });
 void renderFromText(initialSource);
+
+// Collab transport (experimental): connect the session to the dev relay so a remote peer's overlay
+// edits arrive and repaint. The room and relay URL come from the query (`room`, `ws`); the default
+// relay is the dev server on :1234. The scheme follows the page — secure `wss` on an https page,
+// plain `ws` only for local/http dev — so a deployed instance never falls back to an insecure socket.
+// A remote overlay change isn't a local gesture, so it repaints the canvas + refreshes the group
+// buttons here (the doc itself stays UI-agnostic). `__collabOverrideCount` is an e2e convergence hook.
+if (collabSession !== null) {
+  const params = new URLSearchParams(location.search);
+  const room = params.get("room") ?? "playground";
+  const scheme = location.protocol === "https:" ? "wss" : "ws";
+  const wsBase = params.get("ws") ?? `${scheme}://${location.hostname || "localhost"}:1234`;
+  collabSession.onOverlayChange(() => {
+    requestPaint();
+    updateGroupButtons();
+  });
+  connectWebSocket(collabSession, `${wsBase}/${encodeURIComponent(room)}`);
+  window.__collabOverrideCount = () => doc.overrides().size;
+}

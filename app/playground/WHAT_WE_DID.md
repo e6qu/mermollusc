@@ -364,3 +364,11 @@
   depends on `@m/collab` and constructs the Yjs overlay behind a default-off `?collab` URL flag — same
   interface, so no call site changed; with no peer it behaves like the local document, proving the CRDT
   document drives the real app. DAG updated to `builder <- collab <- app` (Makefile, AGENTS §4, PLAN).
+- Collab Phase 1 **dev WebSocket transport**. The `?collab` flag now connects the Yjs session to the
+  dev relay (`@m/collab`'s `connectWebSocket` → `dev-server.mjs`) and repaints on remote overlay
+  changes; two tabs on `?collab&room=…` edit the overlay live. `?room=`/`?ws=` override the room/relay
+  (default relay on port 1234; the scheme follows the page — secure on https, plain only for local
+  dev). Added a `window.__collabOverrideCount` e2e hook + two Playwright
+  specs (single-tab Yjs path, two-tab convergence) with the relay as a second Playwright webServer
+  (TCP-port wait). In collab mode the shared room owns the overlay, so the persisted localStorage
+  overlay is not restored.
