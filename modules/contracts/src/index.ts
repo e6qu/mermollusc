@@ -100,6 +100,7 @@ export type {
   GroupMember,
   Group,
   Groups,
+  OverlayDoc,
   TextSpan,
   NodeSpans,
   SourceMap,

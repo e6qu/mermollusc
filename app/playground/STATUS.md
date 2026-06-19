@@ -17,13 +17,14 @@
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
   out of the app and the surface stays swappable.
-- **Overlay document model** (`src/document-model.ts`): the sidecar overlay (manual node
-  positions/sizes + element groups) and its undo/redo history live behind an `OverlayDoc` interface;
-  `createLocalDocument` is the single-user, localStorage-backed implementation. `main.ts` reads and
-  mutates the overlay only through `doc`. This is the **Phase 0 seam** of the collaborative-editor
-  plan ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)): a future CRDT backend is a
-  second `OverlayDoc` implementation, dropped in without touching call sites — the source-text
-  counterpart of the `Editor` seam.
+- **Overlay document model** (`OverlayDoc` port in `@m/contracts`): the sidecar overlay (manual node
+  positions/sizes + element groups) and its undo/redo history live behind the `OverlayDoc` interface.
+  Two implementations: `createLocalDocument` (`src/document-model.ts`, single-user, localStorage-backed)
+  and the Yjs-backed `@m/collab` `createCollabSession().overlay` (CRDT). `main.ts` reads/mutates the
+  overlay only through `doc`, and constructs the collaborative one behind a **default-off `?collab`**
+  flag. This is the **Phase 0 seam + Phase 1 CRDT** of the collaborative-editor plan
+  ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
+  the `Editor` seam.
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fourteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate

@@ -16,10 +16,11 @@ text ──▶ parser ──AST──▶ layout ──SceneGraph IR──▶ ren
                                                        ▲
                          builder (hit-test, drag, two-way sync) ┘
 
-std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
+std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- app
 ```
 
-`@m/contracts` holds the two seams (AST, SceneGraph IR) plus `LayoutOverrides` and `SourceMap`.
+`@m/contracts` holds the two seams (AST, SceneGraph IR) plus `LayoutOverrides`, `SourceMap`, and the
+`OverlayDoc` port. `@m/collab` is the Yjs-backed `OverlayDoc` implementation (collaborative editing).
 
 | module | owns |
 |--------|------|
@@ -30,6 +31,7 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
 | `@m/icons` | icon-pack registry + loaders (OSS bundled; cloud packs user-loaded) |
 | `@m/builder` | hit-testing, selection, sidecar overrides, two-way text patching |
+| `@m/collab` | Yjs-backed `OverlayDoc` + `Y.Text` source — CRDT collaborative document (Phase 1) |
 | `@m/app` (playground) | wires everything; hosts node e2e + Playwright flows |
 
 ## Decisions (locked)

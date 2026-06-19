@@ -8,45 +8,14 @@ import {
   setLocked,
   ungroup,
 } from "@m/builder";
-import type { GroupId, GroupMember, Groups, LayoutOverrides, SceneNodeId } from "@m/contracts";
-import { brand, type Point, type Size } from "@m/std";
+import type { Groups, LayoutOverrides, OverlayDoc } from "@m/contracts";
+import { brand } from "@m/std";
 
-// The sidecar overlay document: manual node positions/sizes (`overrides`) plus element groups
-// (`groups`), with its own undo/redo history and a pluggable `save` sink. It is the single owner of
-// that state, so the rest of the app reads and mutates the overlay only through this seam.
-//
-// The seam is deliberate: today the only implementation is local + single-user (`createLocalDocument`),
-// but a future collaborative backend (the CRDT plan in docs/collab-editor-plan.md) plugs in here —
-// a Yjs-backed document with the same interface whose edits sync to peers — without rewriting any
-// call site. The diagram source text has the symmetric seam in `Editor` (editor.ts).
-export interface OverlayDoc {
-  overrides(): LayoutOverrides;
-  groups(): Groups;
-
-  // Overlay mutations. None of these persist or record history on their own — the caller drives
-  // `record()` (once per gesture) and `persist()` (e.g. on pointer-up), so a multi-node drag is a
-  // single history entry and a single save, the same way a hand edit behaves.
-  moveNode(id: SceneNodeId, to: Point): void;
-  resizeNode(id: SceneNodeId, origin: Point, dim: Size): void;
-  clearOverrides(): void;
-  groupNodes(units: readonly GroupMember[]): void;
-  ungroupAt(top: GroupId): void;
-  setGroupLocked(top: GroupId, locked: boolean): void;
-  setGroupLabel(id: GroupId, label: string): void;
-  // Drop groups whose member nodes the edited text removed; returns whether anything changed.
-  pruneGroupsTo(liveNodeIds: ReadonlySet<SceneNodeId>): boolean;
-  replace(overrides: LayoutOverrides, groups: Groups): void;
-
-  // Undo/redo over the overlay. `record` snapshots the present state onto the undo stack (and clears
-  // redo); `undo`/`redo` swap the live state with a stacked snapshot and return whether one applied.
-  record(): void;
-  undo(): boolean;
-  redo(): boolean;
-  clearHistory(): void;
-
-  // Write the current overlay through the injected `save` sink.
-  persist(): void;
-}
+// The local, single-user implementation of the `OverlayDoc` port (defined in `@m/contracts` so the
+// Yjs-backed collaborative implementation in `@m/collab` shares the exact interface). State lives in
+// closure variables and `save` is injected, so this module never touches `localStorage` directly —
+// the app wires the storage write; a collaborative backend wires a broadcast instead. The diagram
+// source text has the symmetric seam in `Editor` (editor.ts).
 
 interface OverlaySnapshot {
   readonly overrides: LayoutOverrides;

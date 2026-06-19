@@ -57,6 +57,9 @@ catalogs:
     vitest:
       specifier: 4.1.8
       version: 4.1.8
+    yjs:
+      specifier: 13.6.31
+      version: 13.6.31
     zod:
       specifier: 4.4.3
       version: 4.4.3
@@ -110,6 +113,9 @@ importers:
       '@m/builder':
         specifier: workspace:*
         version: link:../../modules/builder
+      '@m/collab':
+        specifier: workspace:*
+        version: link:../../modules/collab
       '@m/contracts':
         specifier: workspace:*
         version: link:../../modules/contracts
@@ -159,6 +165,21 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.4.3
+
+  modules/collab:
+    dependencies:
+      '@m/builder':
+        specifier: workspace:*
+        version: link:../builder
+      '@m/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@m/std':
+        specifier: workspace:*
+        version: link:../std
+      yjs:
+        specifier: 'catalog:'
+        version: 13.6.31
 
   modules/contracts:
     dependencies:
@@ -947,6 +968,9 @@ packages:
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
+  isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
     engines: {node: '>=8'}
@@ -965,6 +989,11 @@ packages:
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
+
+  lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -1343,6 +1372,10 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
+
+  yjs@13.6.31:
+    resolution: {integrity: sha512-Eq+5BRfbeGyqGVrTJL3bEcr8gKkxPuyuoHmAwpk52fDb8kOVMrfVSTRPd6yiGgX5Fskb96qCRjzjbRjrL4YEnw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
@@ -1893,6 +1926,8 @@ snapshots:
 
   html-escaper@2.0.2: {}
 
+  isomorphic.js@0.2.5: {}
+
   istanbul-lib-coverage@3.2.2: {}
 
   istanbul-lib-report@3.0.1:
@@ -1909,6 +1944,10 @@ snapshots:
   joycon@3.1.1: {}
 
   js-tokens@10.0.0: {}
+
+  lib0@0.2.117:
+    dependencies:
+      isomorphic.js: 0.2.5
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -2228,5 +2267,9 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  yjs@13.6.31:
+    dependencies:
+      lib0: 0.2.117
 
   zod@4.4.3: {}

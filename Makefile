@@ -3,7 +3,7 @@
 
 # DAG order (std first, app last). Importing upward is forbidden; see AGENTS.md §4.
 MODULES := modules/std modules/contracts modules/parser modules/layout \
-           modules/renderer modules/icons modules/builder app/playground
+           modules/renderer modules/icons modules/builder modules/collab app/playground
 
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
@@ -19,7 +19,7 @@ $(FANOUT):
 	done
 
 graph:
-	@echo "std <- contracts <- { parser, layout, renderer, icons } <- builder <- app"
+	@echo "std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- app"
 
 deps-check:
 	@node tools/pick-version.mjs --verify-catalog

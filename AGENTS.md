@@ -103,7 +103,7 @@ The five doc files, by purpose:
 ## 4. Dependency DAG (acyclic — enforced)
 
 ```
-std <- contracts <- { parser, layout, renderer, icons } <- builder <- app
+std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- app
 ```
 
 `std` depends on nothing. Importing "upward" (e.g. `std` importing `parser`) is forbidden.
