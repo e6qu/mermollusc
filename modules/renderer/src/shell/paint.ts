@@ -1,3 +1,4 @@
+import { assertNever } from "@m/std";
 import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
@@ -301,6 +302,9 @@ export const paint = (
         ctx.lineWidth = 1.5;
         break;
       }
+      default:
+        // A new DrawCmd variant must be handled here (and in the SVG backend), not silently skipped.
+        assertNever(cmd);
     }
   }
 };

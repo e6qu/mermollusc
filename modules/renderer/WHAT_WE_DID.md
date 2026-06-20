@@ -104,3 +104,10 @@
   draws as a cubic bezier bowed along its dominant axis (shared `bezierControls` helper → identical in
   the canvas painter and the SVG `<path>` backend). `toDisplayList` also emits **per-end labels** from
   `SceneEdge.fromLabel`/`toLabel` (class multiplicity), anchored just inside each endpoint. +tests.
+- Type-system hardening + coverage: the canvas painter's `DrawCmd` switch gained a
+  `default: assertNever(cmd)` so a new draw command can't be silently dropped on the canvas (the SVG
+  backend was already exhaustive-by-return). Closed the **red `make cov` gate** (display.ts/paint.ts had
+  drifted below the ratchet): added focused tests for `bezierControls` (both axes), `cornerRadius` per
+  shape, `edgeLabelAnchor`'s multi-segment + degenerate paths, the curved-bezier paint/SVG paths, the
+  icon-miss SVG branch, and `defaultSvgOptions`. Coverage rose (lines 90→98), so the ratchet was raised
+  to statements 97 / branches 84 / functions 97 / lines 98.

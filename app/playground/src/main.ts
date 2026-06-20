@@ -86,7 +86,7 @@ import {
   toSvg,
 } from "@m/renderer";
 import type { Theme } from "@m/renderer";
-import { brand, isOk, point, type Point, size } from "@m/std";
+import { assertNever, brand, isOk, match, point, type Point, type Result, size } from "@m/std";
 import { connectWebSocket, createCollabSession, type CollabSession } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { createLocalDocument } from "./document-model.js";
@@ -1436,72 +1436,92 @@ const renderFromText = async (text: string): Promise<void> => {
   gitSource = null;
   timelineSource = null;
   mindmapSource = null;
+  // The text already parsed above; re-parse for the per-family source map (the spans the inline editor
+  // patches). A disagreement is unexpected — disable the source-driven features *loudly* (a logged
+  // null), never a silent drop. Exhaustive: a new family must add its arm or this won't compile.
+  const captureSource = <S>(
+    r: Result<{ readonly source: S }, unknown>,
+    set: (source: S | null) => void,
+  ): void =>
+    match(
+      r,
+      (v) => set(v.source),
+      () => {
+        console.error(`source map unavailable: ${diagram.kind} re-parse disagreed`);
+        set(null);
+      },
+    );
   switch (diagram.kind) {
-    case "flowchart": {
-      const withSource = parseWithSource(text);
-      source = isOk(withSource) ? withSource.value.source : null;
+    case "flowchart":
+      captureSource(parseWithSource(text), (s) => {
+        source = s;
+      });
       break;
-    }
-    case "sequence": {
-      const withSource = parseSequenceWithSource(text);
-      seqSource = isOk(withSource) ? withSource.value.source : null;
+    case "sequence":
+      captureSource(parseSequenceWithSource(text), (s) => {
+        seqSource = s;
+      });
       break;
-    }
-    case "c4": {
-      const withSource = parseC4WithSource(text);
-      c4Source = isOk(withSource) ? withSource.value.source : null;
+    case "c4":
+      captureSource(parseC4WithSource(text), (s) => {
+        c4Source = s;
+      });
       break;
-    }
-    case "block": {
-      const withSource = parseBlockWithSource(text);
-      blockSource = isOk(withSource) ? withSource.value.source : null;
+    case "block":
+      captureSource(parseBlockWithSource(text), (s) => {
+        blockSource = s;
+      });
       break;
-    }
-    case "network": {
-      const withSource = parseNetworkWithSource(text);
-      netSource = isOk(withSource) ? withSource.value.source : null;
+    case "network":
+      captureSource(parseNetworkWithSource(text), (s) => {
+        netSource = s;
+      });
       break;
-    }
-    case "cloud": {
-      const withSource = parseCloudWithSource(text);
-      cloudSource = isOk(withSource) ? withSource.value.source : null;
+    case "cloud":
+      captureSource(parseCloudWithSource(text), (s) => {
+        cloudSource = s;
+      });
       break;
-    }
-    case "state": {
-      const withSource = parseStateWithSource(text);
-      stateSource = isOk(withSource) ? withSource.value.source : null;
+    case "state":
+      captureSource(parseStateWithSource(text), (s) => {
+        stateSource = s;
+      });
       break;
-    }
-    case "er": {
-      const withSource = parseErWithSource(text);
-      erSource = isOk(withSource) ? withSource.value.source : null;
+    case "er":
+      captureSource(parseErWithSource(text), (s) => {
+        erSource = s;
+      });
       break;
-    }
-    case "class": {
-      const withSource = parseClassWithSource(text);
-      classSource = isOk(withSource) ? withSource.value.source : null;
+    case "class":
+      captureSource(parseClassWithSource(text), (s) => {
+        classSource = s;
+      });
       break;
-    }
-    case "requirement": {
-      const withSource = parseRequirementWithSource(text);
-      reqSource = isOk(withSource) ? withSource.value.source : null;
+    case "requirement":
+      captureSource(parseRequirementWithSource(text), (s) => {
+        reqSource = s;
+      });
       break;
-    }
-    case "gitGraph": {
-      const withSource = parseGitGraphWithSource(text);
-      gitSource = isOk(withSource) ? withSource.value.source : null;
+    case "gitGraph":
+      captureSource(parseGitGraphWithSource(text), (s) => {
+        gitSource = s;
+      });
       break;
-    }
-    case "timeline": {
-      const withSource = parseTimelineWithSource(text);
-      timelineSource = isOk(withSource) ? withSource.value.source : null;
+    case "timeline":
+      captureSource(parseTimelineWithSource(text), (s) => {
+        timelineSource = s;
+      });
       break;
-    }
-    case "mindmap": {
-      const withSource = parseMindmapWithSource(text);
-      mindmapSource = isOk(withSource) ? withSource.value.source : null;
+    case "mindmap":
+      captureSource(parseMindmapWithSource(text), (s) => {
+        mindmapSource = s;
+      });
       break;
-    }
+    case "pie":
+      // pie has no editable source map (no node/edge text spans to patch).
+      break;
+    default:
+      assertNever(diagram);
   }
   const failedIcons = await ensureIcons(scene);
   if (failedIcons.length > 0) {
@@ -1534,17 +1554,30 @@ const relax = async (): Promise<void> => {
   paintScene();
 };
 
-const scenePoint = (ev: MouseEvent) => {
+// The displayed extent origin (the offset `paintScene` translates by) — (0,0) until the first render.
+const sceneExtentOrigin = (): Point =>
+  point(lastRender?.scene.extent.origin.x ?? 0, lastRender?.scene.extent.origin.y ?? 0);
+
+// The single scene↔screen transform pair, kept together so they can't drift out of being inverses.
+// Screen here is viewport CSS px (what `getBoundingClientRect`, `clientX/Y` and `style.left/top` use);
+// scene is diagram space. `scenePoint` is screen→scene (used for hit-testing pointer events) and
+// `sceneToScreen` its inverse (used to place DOM overlays like the inline editor). They previously
+// existed as two hand-copied arithmetic expressions, and a copy that dropped `* viewScale` shipped a
+// drift bug — folding them here is what makes that class of mistake a single, tested place.
+const scenePoint = (ev: MouseEvent): Point => {
   const r = canvas.getBoundingClientRect();
-  // The bounding rect is the zoomed CSS box; divide by the zoom to recover scene coordinates. Add the
-  // displayed extent origin (the same offset `paintScene` translates by) so pointer↔scene stays
-  // consistent when content has been dragged to negative coordinates.
-  const ox = lastRender?.scene.extent.origin.x ?? 0;
-  const oy = lastRender?.scene.extent.origin.y ?? 0;
+  const o = sceneExtentOrigin();
   return point(
-    (ev.clientX - r.left) / viewScale - MARGIN + ox,
-    (ev.clientY - r.top) / viewScale - MARGIN + oy,
+    (ev.clientX - r.left) / viewScale - MARGIN + o.x,
+    (ev.clientY - r.top) / viewScale - MARGIN + o.y,
   );
+};
+
+// scene → viewport CSS px (left/top). Inverse of `scenePoint`.
+const sceneToScreen = (p: Point): Point => {
+  const r = canvas.getBoundingClientRect();
+  const o = sceneExtentOrigin();
+  return point(r.left + (MARGIN - o.x + p.x) * viewScale, r.top + (MARGIN - o.y + p.y) * viewScale);
 };
 
 canvas.addEventListener("pointerdown", (ev) => {
@@ -1836,16 +1869,14 @@ let closeEditor: ((apply: boolean) => void) | null = null;
 const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) => void): void => {
   closeEditor?.(false);
   inlineEl.value = value;
-  // The anchor is in scene coordinates; map it to screen the same way the canvas paints — offset by
-  // the extent origin and scaled by the current zoom — so the overlay sits on its target after a
-  // zoom/Fit (it previously ignored `viewScale` and drifted off the element). Recomputed on scroll/
-  // resize while open, since the stage scrolls and the canvas rect is viewport-relative.
+  // The anchor is in scene coordinates; map it to screen through the shared `sceneToScreen` (the sole
+  // inverse of `scenePoint`) so the overlay sits on its target after a zoom/Fit — it previously
+  // re-derived the transform inline and a dropped `* viewScale` made it drift off the element.
+  // Recomputed on scroll/resize while open, since the stage scrolls and the canvas rect is viewport-relative.
   const place = (): void => {
-    const cr = canvas.getBoundingClientRect();
-    const ox = lastRender?.scene.extent.origin.x ?? 0;
-    const oy = lastRender?.scene.extent.origin.y ?? 0;
-    inlineEl.style.left = `${cr.left + (MARGIN - ox + anchor.x) * viewScale}px`;
-    inlineEl.style.top = `${cr.top + (MARGIN - oy + anchor.y) * viewScale}px`;
+    const at = sceneToScreen(point(anchor.x, anchor.y));
+    inlineEl.style.left = `${at.x}px`;
+    inlineEl.style.top = `${at.y}px`;
     inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
     inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   };
@@ -2152,13 +2183,22 @@ const appendEdge = (
         brand<string, "ReqEntityId">(first),
         brand<string, "ReqEntityId">(second),
       );
-    default:
+    // The flowchart `A --> B` arrow syntax (best-effort for the families whose node ids it can name).
+    case "flowchart":
+    case "block":
+    case "state":
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
       return connect(
         text,
         brand<string, "NodeId">(first),
         brand<string, "NodeId">(second),
         "arrow",
       );
+    default:
+      return assertNever(kind);
   }
 };
 
@@ -2180,8 +2220,18 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     // Composite states own a `{ … }` body that line-based `deleteNode` would orphan.
     case "state":
       return deleteStateEntity(text, brand<string, "StateId">(id));
-    default:
+    // Families whose nodes are single declaration lines: the line-based removal is correct.
+    case "flowchart":
+    case "block":
+    case "network":
+    case "cloud":
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
       return deleteNode(text, brand<string, "NodeId">(id));
+    default:
+      return assertNever(kind);
   }
 };
 
@@ -2210,8 +2260,19 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
         brand<string, "ReqEntityId">(from),
         brand<string, "ReqEntityId">(to),
       );
-    default:
+    // Families whose edges are single `from <op> to` lines: the line-based removal is correct.
+    case "flowchart":
+    case "block":
+    case "network":
+    case "cloud":
+    case "state":
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
       return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));
+    default:
+      return assertNever(kind);
   }
 };
 

@@ -287,6 +287,58 @@ describe("paint", () => {
     expect(sketchy.calls).toContain("fillText:A");
   });
 
+  it("draws a curved 2-point connector as a bezier (not straight line segments)", () => {
+    const curved: Scene = {
+      nodes: [],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(100, 60)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "none",
+          curved: true,
+          fromLabel: null,
+          toLabel: null,
+        },
+      ],
+      wedges: [],
+      extent: rect(0, 0, 120, 80),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(curved));
+    expect(ctx.calls).toContain("bezierCurveTo");
+    expect(ctx.calls).not.toContain("lineTo"); // a curve, no straight segments
+  });
+
+  it("fills a pie wedge with an arc sweep", () => {
+    const pie: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 0,
+        },
+      ],
+      extent: rect(0, 0, 200, 200),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(pie));
+    expect(ctx.calls).toContain("arc");
+    expect(ctx.calls).toContain("fill");
+    expect(ctx.calls).toContain("fillText:50%");
+  });
+
   it("draws an icon glyph only when its image is supplied", () => {
     const without = new RecordingCtx();
     paint(without, toDisplayList(iconScene));

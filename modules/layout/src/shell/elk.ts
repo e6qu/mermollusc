@@ -1,4 +1,4 @@
-import { brand, decode, err, ok, point, rect, type Point, type Result } from "@m/std";
+import { assertNever, brand, decode, err, ok, point, rect, type Point, type Result } from "@m/std";
 import type {
   ClassAst,
   ClassMember,
@@ -204,8 +204,11 @@ const stateShape = (kind: StateKind): NodeShape => {
     case "fork":
     case "join":
       return "rect";
-    default:
+    case "start":
+    case "end":
       return "circle";
+    default:
+      return assertNever(kind);
   }
 };
 

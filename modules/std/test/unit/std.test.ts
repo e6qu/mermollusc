@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { assertNever } from "../../src/core/exhaustive.js";
 import { rectContains } from "../../src/core/geometry.js";
-import { err, isErr, isOk, map, ok, unwrapOr } from "../../src/core/result.js";
+import { andThen, err, isErr, isOk, map, ok, traverse, unwrapOr } from "../../src/core/result.js";
 import { point, rect } from "../../src/shell/brand.js";
 
 describe("Result", () => {
@@ -17,6 +18,33 @@ describe("Result", () => {
   it("unwrapOr returns the explicit default on err", () => {
     expect(unwrapOr(ok(5), 9)).toBe(5);
     expect(unwrapOr(err<string>("boom"), 9)).toBe(9);
+  });
+
+  it("andThen sequences a fallible step, short-circuiting on err", () => {
+    const half = (n: number) => (n % 2 === 0 ? ok(n / 2) : err<string>("odd"));
+    expect(andThen(ok(8), half)).toEqual({ ok: true, value: 4 });
+    expect(andThen(ok(7), half)).toEqual({ ok: false, error: "odd" });
+    expect(andThen(err<string>("boom"), half)).toEqual({ ok: false, error: "boom" });
+  });
+
+  it("traverse collects oks in order and returns the first err", () => {
+    const parsePos = (n: number) => (n > 0 ? ok(n * 2) : err<string>(`bad ${n}`));
+    expect(traverse([1, 2, 3], parsePos)).toEqual({ ok: true, value: [2, 4, 6] });
+    expect(traverse([1, -2, 3], parsePos)).toEqual({ ok: false, error: "bad -2" });
+    expect(traverse([], parsePos)).toEqual({ ok: true, value: [] });
+    // index is threaded to the mapper
+    expect(traverse(["a", "b"], (s, i) => ok(`${i}:${s}`))).toEqual({
+      ok: true,
+      value: ["0:a", "1:b"],
+    });
+  });
+});
+
+describe("assertNever", () => {
+  it("throws loudly when a value reaches it despite the types", () => {
+    // a value that escaped the type system (e.g. unchecked external input) hitting an exhaustive switch
+    const sneaky = "unexpected" as unknown as never;
+    expect(() => assertNever(sneaky)).toThrow(/unhandled variant/);
   });
 });
 

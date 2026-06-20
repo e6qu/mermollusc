@@ -22,3 +22,12 @@
   so an inverted box surfaces at its source; `coordinate()` is unrestricted. `Point` uses
   `Coordinate`, `Size` uses `Length`. A negative-size value is now unconstructible. +1 test (length
   rejects negatives); shell `px` test reworked to coordinate/length (26 total).
+- Type-system hardening: added `assertNever(x: never)` (`core/exhaustive.ts`) — the compile-time
+  exhaustiveness guard for closed unions, so a new diagram family / shape / draw-command can't be
+  silently misrouted by a `default:`/fall-through (it becomes a type error at every dispatch).
+  Enriched the Result monad with `andThen` (the conventional name for `flatMap`) and `traverse`
+  (the fallible `map`: collect oks, short-circuit the first err — replaces hand-rolled push/early-return
+  loops). Strengthened `length()` to reject **non-finite** values: the old `n < 0` guard let
+  `length(NaN)` through (NaN compares false to everything), so a NaN could be branded as a Length;
+  now `!(n >= 0) || !Number.isFinite(n)` fails loud. +tests (andThen, traverse incl. empty/index/err,
+  assertNever throws, length rejects NaN/Infinity).

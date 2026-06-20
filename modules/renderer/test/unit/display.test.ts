@@ -1,7 +1,7 @@
 import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { edgeLabelAnchor, toDisplayList } from "../../src/core/display.js";
+import { bezierControls, edgeLabelAnchor, toDisplayList } from "../../src/core/display.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
@@ -277,6 +277,18 @@ describe("toDisplayList", () => {
     expect(anchor.y).toBe(11);
   });
 
+  it("places the label in a later segment when the midpoint is past the first", () => {
+    // total 110, half 55: the first 10px segment is consumed, so the anchor lands in the long segment.
+    const anchor = edgeLabelAnchor([point(0, 0), point(10, 0), point(110, 0)]);
+    expect(anchor.x).toBe(55);
+  });
+
+  it("falls back to the first point for a degenerate (zero-length) polyline", () => {
+    const anchor = edgeLabelAnchor([point(7, 9), point(7, 9)]);
+    expect(anchor.x).toBe(7);
+    expect(anchor.y).toBe(9);
+  });
+
   it("passes the curved flag onto the polyline and emits per-end labels", () => {
     const s: Scene = {
       nodes: [],
@@ -356,5 +368,49 @@ describe("toDisplayList", () => {
     expect(label.text).toBe("Dogs  75");
     expect(label.align).toBe("left");
     expect(label.x).toBeGreaterThan(50 + 7);
+  });
+
+  it("gives each node shape its corner radius (round/stadium/circle/container, rect = sharp)", () => {
+    const radiusOf = (shape: "rect" | "round" | "stadium" | "circle" | "container"): number => {
+      const s: Scene = {
+        nodes: [
+          {
+            id: snid("N"),
+            bounds: rect(0, 0, 80, 40),
+            label: "N",
+            shape,
+            parent: null,
+            icon: null,
+            rowDivider: null,
+            subtitle: null,
+            rows: null,
+          },
+        ],
+        edges: [],
+        wedges: [],
+        extent: rect(0, 0, 80, 40),
+      };
+      const box = toDisplayList(s).find((c) => c.kind === "box");
+      return box?.kind === "box" ? box.radius : Number.NaN;
+    };
+    expect(radiusOf("rect")).toBe(0);
+    expect(radiusOf("round")).toBe(8);
+    expect(radiusOf("stadium")).toBe(20); // height / 2
+    expect(radiusOf("circle")).toBe(20); // min(w, h) / 2
+    expect(radiusOf("container")).toBe(4);
+  });
+});
+
+describe("bezierControls", () => {
+  it("bows along the dominant (horizontal) axis: control points share the endpoints' y", () => {
+    const [c1, c2] = bezierControls(point(0, 0), point(100, 20));
+    expect(c1).toEqual(point(50, 0));
+    expect(c2).toEqual(point(50, 20));
+  });
+
+  it("bows along the dominant (vertical) axis: control points share the endpoints' x", () => {
+    const [c1, c2] = bezierControls(point(0, 0), point(20, 100));
+    expect(c1).toEqual(point(0, 50));
+    expect(c2).toEqual(point(20, 50));
   });
 });

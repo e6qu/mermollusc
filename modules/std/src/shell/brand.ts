@@ -9,10 +9,14 @@ export const brand = <TBase, TTag extends string>(value: TBase): Brand<TBase, TT
 
 export const coordinate = (n: number): Coordinate => brand<number, "Coordinate">(n);
 
-// A length is non-negative by construction — fail loud on a negative, so a bad size surfaces at its
-// source rather than silently producing an inverted box downstream.
+// A length is finite and non-negative by construction — fail loud otherwise, so a bad size surfaces
+// at its source rather than silently producing an inverted (or NaN) box downstream. The guard is
+// written `>= 0` so NaN — which compares false to everything — is rejected too; a bare `< 0` would
+// let `length(NaN)` slip through.
 export const length = (n: number): Length => {
-  if (n < 0) throw new RangeError(`length must be non-negative, got ${n}`);
+  if (!(n >= 0) || !Number.isFinite(n)) {
+    throw new RangeError(`length must be a finite non-negative number, got ${n}`);
+  }
   return brand<number, "Length">(n);
 };
 
