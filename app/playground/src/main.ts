@@ -875,6 +875,13 @@ const selectedUnitBoxes = (shown: Scene): UnitBox[] => {
   return units;
 };
 
+// Fold-based min/max — never `Math.min(...arr)`, whose argument spread throws (RangeError) once the
+// array is large enough (a select-all-then-align on a big diagram would hit that limit).
+const minOf = (ns: readonly number[]): number =>
+  ns.reduce((m, n) => Math.min(m, n), Number.POSITIVE_INFINITY);
+const maxOf = (ns: readonly number[]): number =>
+  ns.reduce((m, n) => Math.max(m, n), Number.NEGATIVE_INFINITY);
+
 // The per-leaf translation that aligns/distributes the unit boxes. Distribute spaces the unit
 // centres evenly between the extreme units (which stay put); align snaps an edge or centre axis.
 const arrangeDeltas = (
@@ -891,32 +898,32 @@ const arrangeDeltas = (
   const bottoms = units.map((u) => u.y + u.h);
   switch (kind) {
     case "left": {
-      const t = Math.min(...lefts);
+      const t = minOf(lefts);
       for (const u of units) put(u, t - u.x, 0);
       break;
     }
     case "right": {
-      const t = Math.max(...rights);
+      const t = maxOf(rights);
       for (const u of units) put(u, t - u.w - u.x, 0);
       break;
     }
     case "top": {
-      const t = Math.min(...tops);
+      const t = minOf(tops);
       for (const u of units) put(u, 0, t - u.y);
       break;
     }
     case "bottom": {
-      const t = Math.max(...bottoms);
+      const t = maxOf(bottoms);
       for (const u of units) put(u, 0, t - u.h - u.y);
       break;
     }
     case "centerX": {
-      const axis = (Math.min(...lefts) + Math.max(...rights)) / 2;
+      const axis = (minOf(lefts) + maxOf(rights)) / 2;
       for (const u of units) put(u, axis - u.w / 2 - u.x, 0);
       break;
     }
     case "centerY": {
-      const axis = (Math.min(...tops) + Math.max(...bottoms)) / 2;
+      const axis = (minOf(tops) + maxOf(bottoms)) / 2;
       for (const u of units) put(u, 0, axis - u.h / 2 - u.y);
       break;
     }

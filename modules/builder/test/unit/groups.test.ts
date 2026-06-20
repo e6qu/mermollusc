@@ -34,6 +34,19 @@ describe("groups", () => {
     expect(labelled.get(gid("g1"))?.members).toEqual([node("a"), node("b")]);
   });
 
+  it("flattens a huge nested group without an argument-spread overflow", () => {
+    // The inner group's leaves flow up through `push(...leafNodes(inner))`; a spread of this many
+    // would throw RangeError, so a fold/loop is required. 200k clears every engine's arg-count limit.
+    const count = 200_000;
+    const inner: GroupMember[] = [];
+    for (let i = 0; i < count; i++) inner.push(node(`x${i}`));
+    const g: Groups = new Map([
+      [gid("outer"), { id: gid("outer"), label: "O", members: [sub("inner")], locked: false }],
+      [gid("inner"), { id: gid("inner"), label: "I", members: inner, locked: false }],
+    ]);
+    expect(leafNodes(g, gid("outer")).length).toBe(count);
+  });
+
   it("nests groups and flattens leaves depth-first in order", () => {
     let g: Groups = group(new Map(), gid("inner"), [node("b"), node("c")]);
     g = group(g, gid("outer"), [node("a"), sub("inner"), node("d")]);
