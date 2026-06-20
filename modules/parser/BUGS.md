@@ -1,13 +1,13 @@
 # @m/parser — bugs
 
-Open (collab-era audit sweep):
+Withdrawn (collab-era audit sweep — verified false against source):
 
-- **Printer doesn't escape special chars or empty labels.** `print.ts` emits a flowchart node label
-  verbatim, so a label containing a closing delimiter (`A[x]y]`) or an empty label (`A(())`) produces
-  markup the parser then rejects — i.e. `parse(print(ast))` doesn't round-trip for some valid ASTs.
-  The round-trip property test masks this by restricting the label alphabet. Fix: emit a quoted/escaped
-  label, and the bare id (or a quoted empty) when the label is empty. Low impact today (the two-way
-  edit path uses span patching, not `print`), but a real latent correctness gap.
+- ~~**Printer doesn't escape special chars or empty labels.**~~ An audit reviewer flagged that
+  `print(parse(text))` could fail to round-trip on empty / delimiter-bearing labels. Verified against
+  the parser: it **rejects** `A(())` and `A[]` (empty labels don't parse) and never yields a label with
+  an unescaped delimiter — so no AST the parser produces can trigger the case. The round-trip property
+  test's restricted alphabet is therefore correct, not a mask. (`print` is also currently unused outside
+  its own test.) No fix needed.
 
 Resolved (internal audit sweep, 2026-06-20):
 
