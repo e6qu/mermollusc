@@ -102,7 +102,9 @@
   canvas at device resolution: PNG via `toBlob`; PDF wraps the canvas-as-JPEG in a **hand-rolled
   minimal one-page PDF** (DCTDecode image XObject, MediaBox in CSS px so the device-res JPEG is
   high-DPI) — dependency-free. SVG is **true vector** via the renderer's `toSvg` over the same
-  display list, with node icons embedded as `<image>` data-URL hrefs resolved from the registry.
+  display list, with node icons embedded as `<image>` data-URL hrefs resolved from the registry. A
+  **Copy** button (`#copy-png`) writes that same composite to the clipboard as a PNG (`ClipboardItem`),
+  best-effort with a status-bar outcome.
 - **Share link** (`#share-link`): encodes the current source into the URL hash (`#src=<encoded>`,
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over

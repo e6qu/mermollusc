@@ -136,6 +136,7 @@ const iconsClose = document.querySelector<HTMLButtonElement>("#icons-close");
 const iconPicker = document.querySelector<HTMLElement>("#icon-picker");
 const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
 const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
+const copyBtn = document.querySelector<HTMLButtonElement>("#copy-png");
 const exportBtn = document.querySelector<HTMLButtonElement>("#export-png");
 const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
@@ -183,6 +184,7 @@ if (
   iconPicker === null ||
   iconFilter === null ||
   iconGrid === null ||
+  copyBtn === null ||
   exportBtn === null ||
   exportPdfBtn === null ||
   exportSvgBtn === null ||
@@ -2299,6 +2301,39 @@ exportBtn.addEventListener("click", () => {
     }
     downloadBlob(blob, "mermollusc.png");
     setStatus("ok", "exported mermollusc.png");
+  }, "image/png");
+});
+
+// Copy the rendered diagram to the clipboard as a PNG (the same zoom-independent composite the PNG
+// export uses), so it can be pasted straight into a doc / chat / issue without a download. The
+// clipboard write is best-effort — it needs a secure context + the `clipboard-write` permission — and
+// its outcome is always surfaced to the status bar, never silently dropped.
+copyBtn.addEventListener("click", () => {
+  const clip = navigator.clipboard;
+  const ItemCtor = window.ClipboardItem;
+  if (clip === undefined || typeof clip.write !== "function" || ItemCtor === undefined) {
+    setStatus("ok", "copying images isn't supported here — use PNG to download");
+    return;
+  }
+  const out = compositeCanvas();
+  if (out === null) {
+    console.error("copy failed: 2d context unavailable");
+    setStatus("error", "copy failed — no 2D context");
+    return;
+  }
+  out.toBlob((blob) => {
+    if (blob === null) {
+      console.error("copy failed: toBlob returned null");
+      setStatus("error", "copy failed");
+      return;
+    }
+    void clip.write([new ItemCtor({ "image/png": blob })]).then(
+      () => setStatus("ok", "diagram image copied to clipboard"),
+      (e: unknown) => {
+        console.error("copy to clipboard failed:", e instanceof Error ? e.message : String(e));
+        setStatus("ok", "clipboard was blocked — use PNG to download instead");
+      },
+    );
   }, "image/png");
 });
 
