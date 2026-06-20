@@ -24,9 +24,13 @@
 - **Browser Auth0 login (next):** wire the Auth0 SPA login so the app obtains a real access token and
   passes it as `?token=`; carry the verified user identity into **presence** (name/colour from the
   token, replacing the random pick) and into rooms.
-- **Rooms + RBAC:** per-document roles (owner/editor/viewer) enforced server-side in `authorize`/on
-  message; per-tenant isolation. Then swap the file `RoomStore` for Postgres (update log = audit trail)
-  + S3 (snapshots) + Redis fan-out — same interface.
+- *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles (owner/editor/viewer) from
+  token claims + isolates tenants by room prefix; the relay closes 1008 on no access and enforces
+  viewers read-only. Follow-up: make the **client** read-only for viewers (the editor + canvas reflect
+  the role — today the server is the security boundary but the viewer's local edits aren't shared);
+  surface the active role in the UI.
+- **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
+  (snapshots) + Redis fan-out — same interface. Needs a real DB to verify end to end.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,
   user identity/color) — ephemeral, not persisted.
 - **App source binding:** bind CodeMirror ↔ `Y.Text` (e.g. `y-codemirror.next`) so the `?collab` flag

@@ -1,9 +1,10 @@
 # @m/collab — status
 
-**State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence **and Auth0 OIDC
-verification** at the relay handshake. CRDT document, WebSocket transport, live source binding,
-presence, a relay that survives restart, and token-verified connections. Rooms + RBAC are next. The
-app always runs single-user with no relay/persistence/auth.
+**State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence, Auth0 OIDC
+verification, **and rooms + RBAC** at the relay. CRDT document, WebSocket transport, live source
+binding, presence, restart-survival, token-verified connections, and server-enforced per-document
+roles + tenant isolation. Remaining Phase 2: the browser login + the production store. The app always
+runs single-user with no relay/persistence/auth.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
   Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/
@@ -18,9 +19,16 @@ app always runs single-user with no relay/persistence/auth.
   store (`PERSIST_DIR`). The relay loads a room's snapshot on first join and saves (debounced + flush on
   room close), so rooms survive a restart. Production target: Postgres + S3 (same interface).
 - **Auth (`server/auth.mjs`):** the `authorize(req)` hook verifies the connection's `?token=` against
-  the issuer's JWKS (Auth0; `jose`) — signature + issuer + audience + expiry — and surfaces the user, or
-  rejects (the relay closes 1008, buffering frames during the async check). **Env-gated**
-  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is allow-all, so local dev / e2e stay zero-auth.
+  the issuer's JWKS (Auth0; `jose`) — signature + issuer + audience + expiry — and surfaces the user
+  (incl. `tenant` from `org_id` and per-room `roles` claims), or rejects (the relay closes 1008,
+  buffering frames during the async check). **Env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is
+  allow-all, so local dev / e2e stay zero-auth.
+- **RBAC (`server/rbac.mjs`):** `authorizeRoom({ user, room })` resolves the role (owner/editor/viewer)
+  or null (no access). The default resolver isolates **tenants** (a tenant-bound user reaches only
+  rooms namespaced `<tenant>/…`) and reads **per-room roles** from token claims (authoritative when
+  present; an authenticated user with no roles claim defaults to editor). The relay closes 1008 on no
+  access and enforces **viewers read-only** (their inbound document frames are dropped; presence still
+  relays). Unauthenticated/dev → editor, so single-user and e2e are unaffected.
 - **Source binding:** `sourceBinding()` returns a y-codemirror.next extension that two-way-binds the
   editor to the source `Y.Text` (character-level merge, per-user text undo). The `Y.Text` stays
   encapsulated — only an opaque CodeMirror extension crosses the boundary. Two `?collab` tabs now share
@@ -36,9 +44,11 @@ app always runs single-user with no relay/persistence/auth.
   socket path (incl. live source + remote cursors) is covered end-to-end by the app's Playwright
   two-tab specs. Coverage ~98% stmts (ratchet in `vitest.config.ts`).
 - **Server (`.mjs`) tests:** a `RoomStore` round-trip incl. fresh-instance-over-same-dir (≈ restart);
-  and a **local JWKS harness** for the OIDC verifier — a valid token is accepted (user surfaced),
-  while missing/malformed/wrong-audience/wrong-issuer/expired tokens are rejected. The relay's
-  restart-survival and admit-vs-reject (close 1008, with frame buffering) flows were verified manually.
+  a **local JWKS harness** for the OIDC verifier — a valid token is accepted (user + tenant + roles
+  surfaced), while missing/malformed/wrong-audience/wrong-issuer/expired tokens are rejected; and
+  **RBAC** — role-from-claims, deny-when-unlisted, unknown-role reject, tenant isolation, `canWrite`.
+  The relay's restart-survival, admit-vs-reject (1008), and viewer-read-only / editor-read-write /
+  deny-closes enforcement were verified manually.
 - **Boundary discipline:** peer/Y data is decoded through `@m/builder`'s Zod overlay decoder before it
   becomes branded state; a decode failure throws loudly (no silent fallback).
 - **App integration:** the playground constructs the Yjs session behind a default-off `?collab` flag,

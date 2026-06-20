@@ -66,3 +66,12 @@
   so dev/e2e stay zero-auth. The app forwards a `?token=` to the relay when present. Pinned `jose` 6.2.3.
   Test: a local JWKS harness (generated RSA key + a local endpoint + signed tokens) covering accept +
   every rejection; the relay admit/reject + buffering flow verified manually.
+- Phase 2 — rooms + RBAC (server-enforced). The verifier now surfaces `tenant` (Auth0 `org_id`) + per-
+  room `roles` (a namespaced claim) on the user. `server/rbac.mjs` `createClaimsRoleResolver` returns
+  `authorizeRoom({user,room}) -> owner|editor|viewer|null`: tenant isolation (a tenant-bound user reaches
+  only rooms namespaced `<tenant>/…`) + per-room role from claims (authoritative when present; default
+  editor when no claim; null = deny). The relay closes 1008 on no access and enforces viewers read-only
+  (inbound DOC frames dropped; presence still relays); `authorizeRoom` is injectable and defaults to the
+  claims resolver, which grants editor to an unauthenticated user so dev/e2e are unaffected. Tests
+  (`rbac.test.mjs`, 8): role resolution, deny, tenant isolation, `canWrite`; verifier-surfaces-claims in
+  `auth.test.mjs`. Relay enforcement (viewer-drop / editor-relay / deny-close-1008) verified manually.

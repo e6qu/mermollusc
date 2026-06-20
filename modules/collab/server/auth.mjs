@@ -8,10 +8,22 @@
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
+// Namespaced custom claim (Auth0 requires a namespace) mapping room id → role for this user. Per-room
+// roles ride in the token; the tenant is the standard Auth0 Organizations `org_id` claim.
+const ROLES_CLAIM = "https://mermollusc.dev/roles";
+
 const tokenFrom = (req) => {
   const url = new URL(req.url ?? "/", "http://relay.invalid");
   return url.searchParams.get("token");
 };
+
+const userFrom = (payload) => ({
+  sub: payload.sub ?? null,
+  name: payload.name ?? null,
+  email: payload.email ?? null,
+  tenant: payload.org_id ?? null,
+  roles: payload[ROLES_CLAIM] ?? null,
+});
 
 // Returns an async `authorize(req) -> { ok: true, user } | { ok: false, reason }`. A missing token, or
 // any verification failure (bad signature, wrong issuer/audience, expired), is a definitive rejection —
@@ -23,10 +35,7 @@ export const createVerifier = ({ jwksUri, issuer, audience }) => {
     if (token === null) return { ok: false, reason: "no token" };
     try {
       const { payload } = await jwtVerify(token, jwks, { issuer, audience });
-      return {
-        ok: true,
-        user: { sub: payload.sub ?? null, name: payload.name ?? null, email: payload.email ?? null },
-      };
+      return { ok: true, user: userFrom(payload) };
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : "invalid token" };
     }

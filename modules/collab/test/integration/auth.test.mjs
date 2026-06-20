@@ -52,11 +52,23 @@ const sign = (claims, { issuer = ISSUER, audience = AUDIENCE, expSeconds = 3600 
 const req = (token) => ({ url: token === null ? "/room" : `/room?token=${token}` });
 
 describe("collab OIDC authorize", () => {
-  it("accepts a valid token and surfaces the user", async () => {
-    const token = await sign({ sub: "auth0|user-123", name: "Ada", email: "ada@example.com" });
+  it("accepts a valid token and surfaces the user (incl. tenant + roles claims)", async () => {
+    const token = await sign({
+      sub: "auth0|user-123",
+      name: "Ada",
+      email: "ada@example.com",
+      org_id: "org_acme",
+      "https://mermollusc.dev/roles": { "org_acme/board1": "editor" },
+    });
     const result = await authorize(req(token));
     expect(result.ok).toBe(true);
-    expect(result.user).toEqual({ sub: "auth0|user-123", name: "Ada", email: "ada@example.com" });
+    expect(result.user).toEqual({
+      sub: "auth0|user-123",
+      name: "Ada",
+      email: "ada@example.com",
+      tenant: "org_acme",
+      roles: { "org_acme/board1": "editor" },
+    });
   });
 
   it("rejects a missing token", async () => {
