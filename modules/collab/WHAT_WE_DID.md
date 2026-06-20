@@ -29,3 +29,13 @@
   single-tab Yjs path and two-tab live convergence (relay added as a second Playwright webServer).
   Added `@m/collab` to the base tsconfig paths. The relay URL scheme is page-derived (`wss` on https,
   plain only for local dev) so a deployed instance never opens an insecure socket.
+- Live source-text binding. Added `CollabSession.sourceBinding()` — a y-codemirror.next `yCollab(yText,
+  null)` CodeMirror extension that two-way-binds the editor to the source `Y.Text` (character-level
+  merge, per-user text undo via Yjs). The `Y.Text` stays encapsulated; only an opaque CM extension
+  crosses the boundary. The app's `createEditor` gained an `extra` extensions hook + a `textHistory`
+  flag (collab mode drops CodeMirror's own history so the two undo stacks don't fight ⌘Z); in collab
+  mode the editor starts empty and a seed-if-empty (after sync) fills the first client's room, later
+  joiners adopt it. A text edit no longer clears the shared overlay in collab mode (stale overrides are
+  inert). Pinned `y-codemirror.next` 0.3.5 + `@codemirror/state`/`@codemirror/view` deps. A new
+  Playwright spec proves two tabs share the diagram text live (edit in A → B's editor + canvas follow);
+  the module's 30 tests + 108 Playwright specs are green.

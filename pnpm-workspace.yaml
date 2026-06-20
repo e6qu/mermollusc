@@ -26,6 +26,7 @@ catalog:
   "@lezer/highlight": 1.2.3
   yjs: 13.6.31
   ws: 8.21.0
+  y-codemirror.next: 0.3.5
 
 # esbuild's postinstall fetches its platform binary; vitest and tsup need it.
 allowBuilds:

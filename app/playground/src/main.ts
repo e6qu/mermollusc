@@ -2424,31 +2424,53 @@ if (fromHash === null && !useCollab) {
     }
   }
 }
-// Editing the text by hand drops manual layout (positions no longer match) and re-renders. The
-// editor is created here, last, because its change callback closes over `renderFromText`.
-editor = createEditor(editorMount, initialSource, (text) => {
-  doc.clearOverrides();
-  doc.clearHistory(); // the text (and thus the diagram) changed — old positions/history are stale
-  doc.persist();
+// Editing the text re-renders. In single-user mode a hand edit also drops the manual layout (positions
+// belong to the old node ids) and persists; in collab mode the overlay is shared and the room owns it,
+// so a text edit (local or a peer's) must NOT clear it — stale overrides for renamed ids are inert
+// (they only apply to matching scene nodes). The editor is created last because this closes over
+// `renderFromText`; in collab mode it starts empty and the `Y.Text` binding fills it (seeded below).
+const onTextChange = (text: string): void => {
+  if (!useCollab) {
+    doc.clearOverrides();
+    doc.clearHistory();
+    doc.persist();
+  }
   void renderFromText(text);
-});
+};
+editor =
+  collabSession !== null
+    ? createEditor(editorMount, "", onTextChange, {
+        extra: [collabSession.sourceBinding()],
+        textHistory: false,
+      })
+    : createEditor(editorMount, initialSource, onTextChange);
+// Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
+// itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
+// authoritative shared text (identical when this client seeds; the room's text when it joins one).
 void renderFromText(initialSource);
 
-// Collab transport (experimental): connect the session to the dev relay so a remote peer's overlay
-// edits arrive and repaint. The room and relay URL come from the query (`room`, `ws`); the default
-// relay is the dev server on :1234. The scheme follows the page — secure `wss` on an https page,
-// plain `ws` only for local/http dev — so a deployed instance never falls back to an insecure socket.
-// A remote overlay change isn't a local gesture, so it repaints the canvas + refreshes the group
-// buttons here (the doc itself stays UI-agnostic). `__collabOverrideCount` is an e2e convergence hook.
+// Collab transport (experimental): connect the session to the dev relay so peers' source-text and
+// overlay edits arrive (the source binds to the editor via `sourceBinding`; an overlay change repaints
+// here, since the doc stays UI-agnostic). The room and relay URL come from the query (`room`, `ws`);
+// the default relay is the dev server on :1234. The scheme follows the page — secure `wss` on an https
+// page, plain `ws` only for local/http dev — so a deployed instance never opens an insecure socket.
+// `__collabOverrideCount` is an e2e convergence hook.
 if (collabSession !== null) {
+  const session = collabSession;
   const params = new URLSearchParams(location.search);
   const room = params.get("room") ?? "playground";
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   const wsBase = params.get("ws") ?? `${scheme}://${location.hostname || "localhost"}:1234`;
-  collabSession.onOverlayChange(() => {
+  session.onOverlayChange(() => {
     requestPaint();
     updateGroupButtons();
   });
-  connectWebSocket(collabSession, `${wsBase}/${encodeURIComponent(room)}`);
+  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}`);
+  // Seed the room's source once the initial sync has settled: the first client into an empty room
+  // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
+  // relay) and adopts that instead, so the text isn't duplicated.
+  window.setTimeout(() => {
+    if (session.source() === "") session.setSource(initialSource);
+  }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
 }

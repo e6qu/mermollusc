@@ -372,3 +372,10 @@
   specs (single-tab Yjs path, two-tab convergence) with the relay as a second Playwright webServer
   (TCP-port wait). In collab mode the shared room owns the overlay, so the persisted localStorage
   overlay is not restored.
+- Collab Phase 1 **live source binding**. The `?collab` editor now binds to the session's source
+  `Y.Text` via `collabSession.sourceBinding()` (y-codemirror.next), so two tabs share the diagram TEXT
+  live (character merge, per-user text undo) — each re-deriving its diagram locally. `createEditor`
+  gained an `extra` extensions hook + a `textHistory` flag (collab drops CodeMirror's own history so
+  Yjs owns ⌘Z); collab mode starts the editor empty, seeds the room if empty after sync, and no longer
+  clears the shared overlay on a text edit (stale overrides are inert). New Playwright spec: edit in
+  tab A → tab B's editor + canvas follow.

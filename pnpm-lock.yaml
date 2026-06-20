@@ -60,6 +60,9 @@ catalogs:
     ws:
       specifier: 8.21.0
       version: 8.21.0
+    y-codemirror.next:
+      specifier: 0.3.5
+      version: 0.3.5
     yjs:
       specifier: 13.6.31
       version: 13.6.31
@@ -171,6 +174,12 @@ importers:
 
   modules/collab:
     dependencies:
+      '@codemirror/state':
+        specifier: 'catalog:'
+        version: 6.6.0
+      '@codemirror/view':
+        specifier: 'catalog:'
+        version: 6.43.1
       '@m/builder':
         specifier: workspace:*
         version: link:../builder
@@ -180,6 +189,9 @@ importers:
       '@m/std':
         specifier: workspace:*
         version: link:../std
+      y-codemirror.next:
+        specifier: 'catalog:'
+        version: 0.3.5(@codemirror/state@6.6.0)(@codemirror/view@6.43.1)(yjs@13.6.31)
       yjs:
         specifier: 'catalog:'
         version: 13.6.31
@@ -1392,6 +1404,13 @@ packages:
       utf-8-validate:
         optional: true
 
+  y-codemirror.next@0.3.5:
+    resolution: {integrity: sha512-VluNu3e5HfEXybnypnsGwKAj+fKLd4iAnR7JuX1Sfyydmn1jCBS5wwEL/uS04Ch2ib0DnMAOF6ZRR/8kK3wyGw==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+      yjs: ^13.5.6
+
   yjs@13.6.31:
     resolution: {integrity: sha512-Eq+5BRfbeGyqGVrTJL3bEcr8gKkxPuyuoHmAwpk52fDb8kOVMrfVSTRPd6yiGgX5Fskb96qCRjzjbRjrL4YEnw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -2288,6 +2307,13 @@ snapshots:
       stackback: 0.0.2
 
   ws@8.21.0: {}
+
+  y-codemirror.next@0.3.5(@codemirror/state@6.6.0)(@codemirror/view@6.43.1)(yjs@13.6.31):
+    dependencies:
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.43.1
+      lib0: 0.2.117
+      yjs: 13.6.31
 
   yjs@13.6.31:
     dependencies:
