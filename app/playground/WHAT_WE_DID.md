@@ -408,3 +408,12 @@
   regression can't slip through with the old diagram on screen, and the three flowchart-kind specs
   (subgraph/shapes/dot) assert the new diagram's `aria-label` content — they can no longer pass on the
   lingering default flowchart sample.
+- Performance deep-dive. Benchmarked the on-thread pipeline (parse → layout-transform → display-list →
+  overlay → hit-test) at 200–8000 nodes: all fast and roughly linear (parse ~36ms @ 8000 nodes; the
+  post-ELK decode + toScene ~5ms @ 2000; toDisplayList/applyOverrides/hitTest sub-ms). The heavy ELK
+  layout runs off the main thread (worker), so there's no main-thread layout block. The one real
+  per-interaction cost found: the minimap redrew **every node + edge on every scroll event**
+  (`scroll → drawMinimap`, O(node count)). Fixed by caching the static minimap content (background +
+  edges + node blocks) to an offscreen canvas, rebuilt only on a scene/theme change; a scroll now blits
+  the cache + redraws the cheap viewport scrim — O(1) per scroll regardless of diagram size. Pan/zoom/
+  theme e2e cover the path; screenshot-verified.

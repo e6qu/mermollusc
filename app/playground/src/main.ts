@@ -473,6 +473,9 @@ const paintScene = (): void => {
   }
   ctx.restore();
   lastRender = { scene: shown, logicalWidth, logicalHeight };
+  // The scene/theme changed, so rebuild the minimap's static-content cache; a scroll only redraws the
+  // viewport scrim over the cached content (see `drawMinimap`).
+  buildMinimapCache();
   drawMinimap();
 };
 
@@ -931,57 +934,88 @@ updateGroupButtons();
 const MINIMAP_ACCENT_LIGHT = "#d2602c";
 const MINIMAP_ACCENT_DARK = "#f0894e";
 
-const drawMinimap = (): void => {
-  if (lastRender === null) return;
+// The minimap's static content (background + faint edges + node blocks) is cached to an offscreen
+// canvas, rebuilt only when the scene/theme changes. A scroll then just blits the cache and redraws the
+// (cheap) viewport scrim — so panning a large diagram is O(1), not O(node count) per scroll event.
+const miniCache = document.createElement("canvas");
+const miniCacheCtx = miniCache.getContext("2d");
+// Null when the diagram fits (minimap hidden); else the layout the cache was built at.
+let miniLayout: {
+  readonly scale: number;
+  readonly w: number;
+  readonly h: number;
+  readonly dpr: number;
+} | null = null;
+
+const buildMinimapCache = (): void => {
+  miniLayout = null;
+  if (lastRender === null || miniCacheCtx === null) return;
   const { scene, logicalWidth, logicalHeight } = lastRender;
   const overflowing =
     logicalWidth * viewScale > stageWrap.clientWidth + 1 ||
     logicalHeight * viewScale > stageWrap.clientHeight + 1;
-  if (!overflowing) {
+  if (!overflowing) return;
+
+  const scale = Math.min(MINIMAP_MAX / logicalWidth, MINIMAP_MAX / logicalHeight);
+  const dpr = window.devicePixelRatio || 1;
+  miniCache.width = Math.round(logicalWidth * scale * dpr);
+  miniCache.height = Math.round(logicalHeight * scale * dpr);
+
+  const active = activeTheme();
+  // Work in logical coordinates (origin at the sheet's content, matching the canvas's MARGIN inset).
+  miniCacheCtx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  miniCacheCtx.clearRect(0, 0, logicalWidth, logicalHeight);
+  miniCacheCtx.fillStyle = active.background;
+  miniCacheCtx.fillRect(0, 0, logicalWidth, logicalHeight);
+  miniCacheCtx.save();
+  miniCacheCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
+  // Faint edges first, then node blocks on top.
+  miniCacheCtx.strokeStyle = active.stroke;
+  miniCacheCtx.globalAlpha = 0.35;
+  miniCacheCtx.lineWidth = 1 / scale;
+  for (const edge of scene.edges) {
+    const [head, ...tail] = edge.waypoints;
+    if (head === undefined) continue;
+    miniCacheCtx.beginPath();
+    miniCacheCtx.moveTo(head.x, head.y);
+    for (const p of tail) miniCacheCtx.lineTo(p.x, p.y);
+    miniCacheCtx.stroke();
+  }
+  miniCacheCtx.globalAlpha = 1;
+  miniCacheCtx.fillStyle = active.nodeFill;
+  miniCacheCtx.strokeStyle = active.stroke;
+  miniCacheCtx.lineWidth = 1 / scale;
+  for (const node of scene.nodes) {
+    const { origin, size } = node.bounds;
+    miniCacheCtx.fillRect(origin.x, origin.y, size.width, size.height);
+    miniCacheCtx.strokeRect(origin.x, origin.y, size.width, size.height);
+  }
+  miniCacheCtx.restore();
+  miniLayout = { scale, w: logicalWidth * scale, h: logicalHeight * scale, dpr };
+};
+
+const drawMinimap = (): void => {
+  if (miniLayout === null || lastRender === null) {
     minimap.hidden = true;
     return;
   }
   minimap.hidden = false;
+  const { logicalWidth, logicalHeight } = lastRender;
+  const { scale: miniScale, w: miniW, h: miniH, dpr } = miniLayout;
+  const W = Math.round(miniW * dpr);
+  const H = Math.round(miniH * dpr);
+  if (minimap.width !== W || minimap.height !== H) {
+    minimap.width = W;
+    minimap.height = H;
+    minimap.style.width = `${miniW}px`;
+    minimap.style.height = `${miniH}px`;
+  }
 
-  const miniScale = Math.min(MINIMAP_MAX / logicalWidth, MINIMAP_MAX / logicalHeight);
-  const miniW = logicalWidth * miniScale;
-  const miniH = logicalHeight * miniScale;
-  const dpr = window.devicePixelRatio || 1;
-  minimap.width = Math.round(miniW * dpr);
-  minimap.height = Math.round(miniH * dpr);
-  minimap.style.width = `${miniW}px`;
-  minimap.style.height = `${miniH}px`;
-
-  const active = activeTheme();
-  // Work in logical coordinates (origin at the sheet's content, matching the canvas's MARGIN inset).
+  // Blit the cached static content 1:1, then draw the viewport overlay in logical coordinates.
+  miniCtx.setTransform(1, 0, 0, 1, 0, 0);
+  miniCtx.clearRect(0, 0, W, H);
+  miniCtx.drawImage(miniCache, 0, 0);
   miniCtx.setTransform(dpr * miniScale, 0, 0, dpr * miniScale, 0, 0);
-  miniCtx.clearRect(0, 0, logicalWidth, logicalHeight);
-  miniCtx.fillStyle = active.background;
-  miniCtx.fillRect(0, 0, logicalWidth, logicalHeight);
-  miniCtx.save();
-  miniCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
-  // Faint edges first, then node blocks on top.
-  miniCtx.strokeStyle = active.stroke;
-  miniCtx.globalAlpha = 0.35;
-  miniCtx.lineWidth = 1 / miniScale;
-  for (const edge of scene.edges) {
-    const [head, ...tail] = edge.waypoints;
-    if (head === undefined) continue;
-    miniCtx.beginPath();
-    miniCtx.moveTo(head.x, head.y);
-    for (const p of tail) miniCtx.lineTo(p.x, p.y);
-    miniCtx.stroke();
-  }
-  miniCtx.globalAlpha = 1;
-  miniCtx.fillStyle = active.nodeFill;
-  miniCtx.strokeStyle = active.stroke;
-  miniCtx.lineWidth = 1 / miniScale;
-  for (const node of scene.nodes) {
-    const { origin, size } = node.bounds;
-    miniCtx.fillRect(origin.x, origin.y, size.width, size.height);
-    miniCtx.strokeRect(origin.x, origin.y, size.width, size.height);
-  }
-  miniCtx.restore();
 
   // The visible logical region, derived from the live canvas/stage rects so the centred/padded
   // scroll container needs no special-casing. Coordinates are logical px from the canvas origin.
