@@ -11,6 +11,17 @@ export interface Point {
   readonly x: Coordinate;
   readonly y: Coordinate;
 }
+
+// A coordinate in *screen* space — viewport CSS px (what `getBoundingClientRect`, `clientX/Y` and
+// `style.left/top` speak), deliberately a different brand from a scene `Coordinate`. Because the two
+// aren't mutually assignable, a screen point can't be handed to a scene API (`moveNode`, `hitTest`, …)
+// or vice versa without the explicit `sceneToScreen` / `scenePoint` conversion — the coordinate-space
+// mix-up that drifted the inline editor off its target becomes a compile error.
+export type ScreenCoord = Brand<number, "ScreenCoord">;
+export interface ScreenPoint {
+  readonly x: ScreenCoord;
+  readonly y: ScreenCoord;
+}
 export interface Size {
   readonly width: Length;
   readonly height: Length;

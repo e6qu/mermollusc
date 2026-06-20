@@ -2,7 +2,7 @@ import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
-import { brand, coordinate, length, point, positive, positiveInt, rect, size, twoOrMore } from "../../src/shell/brand.js";
+import { brand, coordinate, length, point, positive, positiveInt, rect, screenCoord, screenPoint, size, twoOrMore } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
 import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
@@ -111,5 +111,10 @@ describe("branded geometry constructors", () => {
     // [0] and [1] are statically present (required tuple slots) — the point of the type.
     const t = twoOrMore(10, 20, 30);
     expect(t[0] + t[1]).toBe(30);
+  });
+
+  it("screenCoord/screenPoint build viewport-px values (negatives allowed, distinct brand)", () => {
+    expect(screenCoord(-5)).toBe(-5);
+    expect(screenPoint(12, 34)).toEqual({ x: 12, y: 34 });
   });
 });

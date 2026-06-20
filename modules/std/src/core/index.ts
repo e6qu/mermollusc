@@ -17,6 +17,14 @@ export type { Result, Ok, Err } from "./result.js";
 export { assertNever } from "./exhaustive.js";
 export type { Brand } from "./brand.js";
 export { rectContains } from "./geometry.js";
-export type { Coordinate, Length, Point, Size, Rect } from "./geometry.js";
+export type {
+  Coordinate,
+  Length,
+  Point,
+  Size,
+  Rect,
+  ScreenCoord,
+  ScreenPoint,
+} from "./geometry.js";
 export type { Positive, PositiveInt, TwoOrMore } from "./refined.js";
 export type { LogLevel, LogRecord, Logger } from "./log.js";

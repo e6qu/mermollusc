@@ -86,7 +86,20 @@ import {
   toSvg,
 } from "@m/renderer";
 import type { Theme } from "@m/renderer";
-import { assertNever, brand, isOk, match, point, type Point, type Result, size } from "@m/std";
+import {
+  assertNever,
+  brand,
+  isOk,
+  match,
+  point,
+  type Point,
+  type Result,
+  type ScreenCoord,
+  screenCoord,
+  screenPoint,
+  type ScreenPoint,
+  size,
+} from "@m/std";
 import { connectWebSocket, createCollabSession, type CollabSession } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { createLocalDocument } from "./document-model.js";
@@ -306,9 +319,11 @@ const snapCandidates = (
 window.__snapActive = () => snapGuides.vx !== null || snapGuides.hy !== null;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
+// `startX`/`startY` are the *screen* (viewport-px) pointer position when the empty canvas was grabbed;
+// `scrollLeft`/`scrollTop` the stage scroll then. Screen-typed so they can't be mistaken for scene coords.
 let pan: {
-  readonly startX: number;
-  readonly startY: number;
+  readonly startX: ScreenCoord;
+  readonly startY: ScreenCoord;
   readonly scrollLeft: number;
   readonly scrollTop: number;
 } | null = null;
@@ -1573,11 +1588,22 @@ const scenePoint = (ev: MouseEvent): Point => {
   );
 };
 
-// scene → viewport CSS px (left/top). Inverse of `scenePoint`.
-const sceneToScreen = (p: Point): Point => {
+// scene → viewport CSS px (left/top). Inverse of `scenePoint`. Returns a `ScreenPoint`, so its result
+// can't be fed back into a scene API (`moveNode`, `hitTest`, …) without an obvious second conversion.
+const sceneToScreen = (p: Point): ScreenPoint => {
   const r = canvas.getBoundingClientRect();
   const o = sceneExtentOrigin();
-  return point(r.left + (MARGIN - o.x + p.x) * viewScale, r.top + (MARGIN - o.y + p.y) * viewScale);
+  return screenPoint(
+    r.left + (MARGIN - o.x + p.x) * viewScale,
+    r.top + (MARGIN - o.y + p.y) * viewScale,
+  );
+};
+
+// Position a DOM overlay at a screen point. Typed to require a `ScreenPoint`, so a raw scene `Point`
+// (or a value off the canvas's scene coordinates) can't be used to place an element by mistake.
+const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
+  el.style.left = `${at.x}px`;
+  el.style.top = `${at.y}px`;
 };
 
 canvas.addEventListener("pointerdown", (ev) => {
@@ -1691,8 +1717,8 @@ canvas.addEventListener("pointerdown", (ev) => {
     canvas.setPointerCapture(ev.pointerId);
   } else if (hit === null) {
     pan = {
-      startX: ev.clientX,
-      startY: ev.clientY,
+      startX: screenCoord(ev.clientX),
+      startY: screenCoord(ev.clientY),
       scrollLeft: stageWrap.scrollLeft,
       scrollTop: stageWrap.scrollTop,
     };
@@ -1874,9 +1900,7 @@ const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) 
   // re-derived the transform inline and a dropped `* viewScale` made it drift off the element.
   // Recomputed on scroll/resize while open, since the stage scrolls and the canvas rect is viewport-relative.
   const place = (): void => {
-    const at = sceneToScreen(point(anchor.x, anchor.y));
-    inlineEl.style.left = `${at.x}px`;
-    inlineEl.style.top = `${at.y}px`;
+    positionOverlay(inlineEl, sceneToScreen(point(anchor.x, anchor.y)));
     inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
     inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   };
