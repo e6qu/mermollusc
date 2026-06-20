@@ -1,16 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("renders a mindmap (indented hierarchy, shapes) from the textarea", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -21,8 +17,8 @@ test("renders a mindmap (indented hierarchy, shapes) from the textarea", async (
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^mindmap diagram:/);
   await expect(page.locator("#kind")).toHaveText("mindmap");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 

@@ -1,16 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("renders a state diagram (transitions, [*], labels) from the textarea", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -21,18 +17,13 @@ test("renders a state diagram (transitions, [*], labels) from the textarea", asy
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^state diagram:/);
   await expect(page.locator("#kind")).toHaveText("state");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 
 test("renders a composite state (nested `state X { … }`) as a container", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -42,8 +33,8 @@ test("renders a composite state (nested `state X { … }`) as a container", asyn
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^state diagram:/);
   await expect(page.locator("#kind")).toHaveText("state");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 

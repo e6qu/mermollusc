@@ -1,15 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("drag then relax then regenerate runs without errors", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   const canvas = page.locator("#stage");
@@ -31,6 +27,5 @@ test("drag then relax then regenerate runs without errors", async ({ page }) => 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   await expect(page.locator("#kind")).toHaveText("flowchart");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -7,12 +8,7 @@ const canvasWidth = (page: Page) =>
 test("renders an ER diagram (entities + cardinality relationships) from the textarea", async ({
   page,
 }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -23,19 +19,13 @@ test("renders an ER diagram (entities + cardinality relationships) from the text
   await expect(page.locator("#kind")).toHaveText("er");
   // The canvas text alternative reflects the entities.
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /er diagram.*CUSTOMER/);
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 
 test("renders entity attribute blocks (crow's-foot + compartment rows) without error", async ({
   page,
 }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -48,7 +38,6 @@ test("renders entity attribute blocks (crow's-foot + compartment rows) without e
 
   await expect(page.locator("#kind")).toHaveText("er");
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /er diagram.*CUSTOMER/);
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { expectSourceMatches, expectSourceNotMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -133,12 +134,7 @@ test("Delete removes a sequence actor and messages touching it", async ({ page }
 test("Delete removes a brace-bodied ER entity — its whole block, not just the id line", async ({
   page,
 }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
@@ -162,6 +158,5 @@ test("Delete removes a brace-bodied ER entity — its whole block, not just the 
   await expectSourceMatches(page, /ORDER \{/);
   await expectSourceMatches(page, /int id PK/);
   // Crucially the source still parses (no stray `}`): the diagram re-renders without a parse error.
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
