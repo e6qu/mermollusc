@@ -479,6 +479,10 @@
   of duplicated boilerplate; 118 e2e specs green.
 - Type-system hardening: dropped the `e.waypoints.length < 2` guard in the inline-editor edge-anchor
   path now that `SceneEdge.waypoints` is `TwoOrMore<Point>` (always anchorable).
+- Editing UX: **Connect chains 3+ selected nodes** (A→B→C) in click order — one edge per consecutive
+  pair, built in a single action via the per-family `appendEdge` (so it works across every family, not
+  just flowchart). Two selected still makes a single edge (the common case). +1 e2e (⌘A-select three
+  loose nodes → Connect → both `A --> B` and `B --> C` appended in order).
 - Editing UX: **⌘C / ⌘V copy-paste** of flowchart node(s). ⌘C captures the selected nodes' label +
   shape and their offsets from the selection's top-left into an in-memory clipboard (persists across
   edits); ⌘V pastes fresh-id copies — keeping the arrangement, cascading each successive paste so they

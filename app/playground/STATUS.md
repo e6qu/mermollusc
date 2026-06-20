@@ -54,7 +54,8 @@
     commit, Escape cancel — no modal prompt) patches the source text (flowchart nodes **and edge
     labels**; sequence actor/message text; C4 element/relation; block block/edge; network node/link;
     cloud group/leaf/link labels) — **canvas → text two-way for all families (incl. state)**;
-  - structural edits: **Connect** (two selected nodes → family-specific edge/relation/message) and
+  - structural edits: **Connect** (selected nodes → family-specific edge/relation/message; 3+ selected
+    chain in click order A→B→C in one action) and
     **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
     all ten families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
   - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors

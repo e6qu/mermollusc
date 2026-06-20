@@ -2219,15 +2219,21 @@ const pasteClipboard = async (): Promise<void> => {
   updateGroupButtons();
 };
 
-// Connect: link the first two shift-selected nodes (in click order), in each family's own edge
-// syntax — directed `-->` (flowchart/block), undirected `--` (network/cloud), `Rel(a,b,"")` (C4),
-// or a `A->>B: message` (sequence).
+// Connect: chain the shift-selected nodes in click order — one edge per consecutive pair
+// (A→B→C…), in each family's own edge syntax — directed `-->` (flowchart/block), undirected `--`
+// (network/cloud), `Rel(a,b,"")` (C4), or a `A->>B: message` (sequence). Two selected makes a single
+// edge (the common case); 3+ builds the whole chain in one action.
 connectBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || selectionOrder.length < 2) return;
-  const [first, second] = selectionOrder;
-  if (first === undefined || second === undefined) return;
-  editor.setValue(appendEdge(ast.kind, editor.value(), first, second));
-  void renderFromText(editor.value());
+  let text = editor.value();
+  for (let i = 0; i + 1 < selectionOrder.length; i++) {
+    const from = selectionOrder[i];
+    const to = selectionOrder[i + 1];
+    if (from === undefined || to === undefined) continue;
+    text = appendEdge(ast.kind, text, from, to);
+  }
+  editor.setValue(text);
+  void renderFromText(text);
 });
 
 const appendEdge = (
