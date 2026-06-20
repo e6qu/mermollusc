@@ -18,3 +18,14 @@
   root `PLAN.md`. Moved the `OverlayDoc` interface into `@m/contracts` so the local (app) and Yjs
   (collab) implementations share one port. The app constructs the Yjs `overlay` behind a default-off
   `?collab` flag.
+- Dev WebSocket transport. Added `connectTransport(session, socket)` over a `CollabSocket` abstraction
+  (send state on open, applyUpdate on message, forward local updates) + `webSocketTransport(url)` using
+  the platform `WebSocket`. `dev-server.mjs` is a server-authoritative relay (rooms by URL path,
+  per-room `Y.Doc`, full state on join + broadcast to others); `make collab-server` runs it. Pinned
+  `ws` 8.21.0 (server only; the client uses the global `WebSocket`). Tests: transport wiring over
+  in-memory paired sockets + a mocked-`WebSocket` `webSocketTransport` (unit, deterministic); the real
+  relay + socket path is covered end-to-end by the app's Playwright two-tab spec. The app `?collab` flag
+  now connects to the relay and repaints on remote overlay changes; two new Playwright specs cover the
+  single-tab Yjs path and two-tab live convergence (relay added as a second Playwright webServer).
+  Added `@m/collab` to the base tsconfig paths. The relay URL scheme is page-derived (`wss` on https,
+  plain only for local dev) so a deployed instance never opens an insecure socket.

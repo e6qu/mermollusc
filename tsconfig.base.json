@@ -17,7 +17,8 @@
       "@m/layout": ["./modules/layout/src/index.ts"],
       "@m/renderer": ["./modules/renderer/src/index.ts"],
       "@m/icons": ["./modules/icons/src/index.ts"],
-      "@m/builder": ["./modules/builder/src/index.ts"]
+      "@m/builder": ["./modules/builder/src/index.ts"],
+      "@m/collab": ["./modules/collab/src/index.ts"]
     },
 
     "strict": true,

@@ -3,9 +3,13 @@
 - *(done)* Phase 1 document: `createCollabSession` (Yjs `Y.Doc` = source `Y.Text` + overlay `Y.Map`s),
   `OverlayDoc`-compatible `overlay`, undo/redo via `Y.UndoManager`, binary-sync seam, in-memory
   convergence tests.
-- **Transport (next):** a server-authoritative WebSocket layer over the `state`/`applyUpdate`/`onUpdate`
-  seam — extend a Node Yjs server (Hocuspocus). Keep the doc transport-agnostic; the server owns
-  auth/rooms/persistence (Phases 2–3 of `docs/collab-editor-plan.md`).
+- *(done)* **Dev transport:** `connectTransport`/`webSocketTransport`/`connectWebSocket` bind the
+  binary-sync seam to a `WebSocket`; `dev-server.mjs` is a server-authoritative relay (rooms, per-room
+  `Y.Doc`, state-on-join + broadcast). Two `?collab` tabs converge live (Playwright). No auth/persistence
+  /presence yet.
+- **Production server (next):** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
+  auth (OIDC), rooms + RBAC, and durable persistence (Postgres update log + S3 snapshots + Redis
+  fan-out) — Phases 2–3 of `docs/collab-editor-plan.md`. The client transport is unchanged.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,
   user identity/color) — ephemeral, not persisted.
 - **App source binding:** bind CodeMirror ↔ `Y.Text` (e.g. `y-codemirror.next`) so the `?collab` flag

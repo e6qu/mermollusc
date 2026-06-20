@@ -8,7 +8,7 @@ MODULES := modules/std modules/contracts modules/parser modules/layout \
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
 
-.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-api
+.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-api collab-server
 
 SEMGREP_VERSION := 1.166.0
 
@@ -36,6 +36,11 @@ e2e-ui:
 
 e2e-api:
 	@echo "no API packages yet; HTTP e2e will run here once an API module exists"
+
+# Dev-only collaborative relay (WebSocket). Run alongside `make -C app/playground run`, then open two
+# tabs at /?collab&room=demo to edit the overlay together. Not a deployable — Phase 1 transport only.
+collab-server:
+	@PORT=$${PORT:-1234} node modules/collab/dev-server.mjs
 
 doctor:
 	@command -v pnpm >/dev/null || { echo "pnpm not found"; exit 1; }

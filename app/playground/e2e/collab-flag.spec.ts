@@ -20,7 +20,7 @@ test("?collab runs the Yjs overlay: drag persists and ⌘Z undoes it", async ({ 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
-  await page.goto("/?collab");
+  await page.goto("/?collab&room=smoke");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();

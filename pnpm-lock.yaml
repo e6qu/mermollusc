@@ -57,6 +57,9 @@ catalogs:
     vitest:
       specifier: 4.1.8
       version: 4.1.8
+    ws:
+      specifier: 8.21.0
+      version: 8.21.0
     yjs:
       specifier: 13.6.31
       version: 13.6.31
@@ -180,6 +183,10 @@ importers:
       yjs:
         specifier: 'catalog:'
         version: 13.6.31
+    devDependencies:
+      ws:
+        specifier: 'catalog:'
+        version: 8.21.0
 
   modules/contracts:
     dependencies:
@@ -1373,6 +1380,18 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   yjs@13.6.31:
     resolution: {integrity: sha512-Eq+5BRfbeGyqGVrTJL3bEcr8gKkxPuyuoHmAwpk52fDb8kOVMrfVSTRPd6yiGgX5Fskb96qCRjzjbRjrL4YEnw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -2267,6 +2286,8 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  ws@8.21.0: {}
 
   yjs@13.6.31:
     dependencies:
