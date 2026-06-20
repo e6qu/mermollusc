@@ -262,6 +262,16 @@ let pan: {
 // A shift-drag box-select on the empty canvas: the start corner and the current corner, in scene
 // coordinates. On release, every node the box touches is added to the selection.
 let marquee: { readonly x0: number; readonly y0: number; x1: number; y1: number } | null = null;
+// An ⌥-drag from a node draws a rubber-band toward the cursor; releasing over another node creates an
+// edge between them (in the family's own syntax). `from`/`fromX`/`fromY` are the source node + its
+// centre, `x`/`y` the live cursor, all in scene coordinates.
+let connectDrag: {
+  readonly from: SceneNodeId;
+  readonly fromX: number;
+  readonly fromY: number;
+  x: number;
+  y: number;
+} | null = null;
 // True while a run of arrow-key nudges is in progress, so the run shares a single undo entry (the
 // pre-nudge overlay is recorded once); reset by any other interaction.
 let nudging = false;
@@ -459,6 +469,21 @@ const paintScene = (): void => {
     ctx.setLineDash([4, 3]);
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
+  }
+  if (connectDrag !== null) {
+    // The in-progress ⌥-connect: a dashed rubber-band from the source node centre to the cursor.
+    ctx.strokeStyle = "#2563eb";
+    ctx.fillStyle = "#2563eb";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(connectDrag.fromX, connectDrag.fromY);
+    ctx.lineTo(connectDrag.x, connectDrag.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(connectDrag.x, connectDrag.y, 4, 0, Math.PI * 2);
+    ctx.fill();
   }
   // Resize handles: small squares at the corners of the single selected node.
   const resizableId = singleResizableNodeId();
@@ -1461,6 +1486,24 @@ canvas.addEventListener("pointerdown", (ev) => {
       : null;
   const additive = ev.shiftKey || ev.metaKey;
 
+  // ⌥-drag from a node starts a connect (a rubber-band to the cursor; an edge on release over another
+  // node) — before the resize/move paths, since ⌥ is the connect modifier. Viewers can't connect.
+  if (ev.altKey && !viewerMode && hit !== null && hit.kind === "node") {
+    const src = shown.nodes.find((nd) => nd.id === hit.id);
+    if (src !== undefined) {
+      ev.preventDefault();
+      connectDrag = {
+        from: hit.id,
+        fromX: src.bounds.origin.x + src.bounds.size.width / 2,
+        fromY: src.bounds.origin.y + src.bounds.size.height / 2,
+        x: at.x,
+        y: at.y,
+      };
+      canvas.setPointerCapture(ev.pointerId);
+      return;
+    }
+  }
+
   // A corner handle of the single selected node starts a resize (takes priority over re-selecting
   // the node under the corner). Shift/⌘ is multi-select intent, so skip resize then; a viewer never
   // resizes (read-only).
@@ -1541,6 +1584,12 @@ canvas.addEventListener("pointerdown", (ev) => {
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (connectDrag !== null) {
+    const at = scenePoint(ev);
+    connectDrag = { ...connectDrag, x: at.x, y: at.y };
+    requestPaint();
+    return;
+  }
   if (resize !== null) {
     const at = scenePoint(ev);
     if (!resizeRecorded) {
@@ -1588,6 +1637,20 @@ canvas.addEventListener("pointermove", (ev) => {
 });
 
 canvas.addEventListener("pointerup", (ev) => {
+  if (connectDrag !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    const cd = connectDrag;
+    connectDrag = null;
+    const target =
+      scene === null ? null : hitTest(applyOverrides(scene, doc.overrides()), scenePoint(ev));
+    if (ast !== null && target !== null && target.kind === "node" && target.id !== cd.from) {
+      editor.setValue(appendEdge(ast.kind, editor.value(), cd.from, target.id));
+      void renderFromText(editor.value());
+    } else {
+      paintScene(); // released on empty space / the same node — clear the rubber-band
+    }
+    return;
+  }
   if (resize !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     resize = null;
