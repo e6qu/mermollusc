@@ -429,3 +429,8 @@
   only terse status-bar hints. Closes on ✕ / Escape / backdrop click; the Escape handler is capture-
   phase so closing the panel doesn't also clear the canvas selection. +1 e2e (open via button + key,
   close via all three).
+- Editing UX: **duplicate selected node(s)** (⌘D, flowchart). Appends a fresh-id copy of each selected
+  node (same label + shape) to the source, and — after the re-layout — pins each copy just off its
+  original via a position override and selects the copies, so the duplicate lands next to the original
+  ready to move/connect (edges aren't copied; loose like Add node). Overrides the browser ⌘D; added to
+  the shortcut overlay. +1 e2e (select → ⌘D → 5th node, label duplicated, one override).
