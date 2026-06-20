@@ -434,3 +434,9 @@
   original via a position override and selects the copies, so the duplicate lands next to the original
   ready to move/connect (edges aren't copied; loose like Add node). Overrides the browser ⌘D; added to
   the shortcut overlay. +1 e2e (select → ⌘D → 5th node, label duplicated, one override).
+- Editing UX: **drag-to-connect** (⌥-drag). Holding Option and dragging from a node draws a dashed
+  rubber-band to the cursor; releasing over another node creates an edge between them in the family's
+  own syntax (reuses `appendEdge`, so it works wherever the Connect button does — flowchart, network,
+  C4, sequence, …), no select-two-then-Connect dance. Releasing on empty space / the same node cancels.
+  Viewers can't connect. Added to the shortcut overlay. +2 e2e (drag creates an edge; empty-space drag
+  doesn't); rubber-band screenshot-verified.
