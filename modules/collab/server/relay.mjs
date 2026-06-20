@@ -19,6 +19,7 @@ import { canWrite, createClaimsRoleResolver } from "./rbac.mjs";
 import { createFileStore, createMemoryStore } from "./store.mjs";
 
 const DOC = 0; // frame tag: document update (tag 1 = presence, relayed but not persisted)
+const CONTROL = 2; // server→client control channel (e.g. the granted role)
 const SAVE_DEBOUNCE_MS = 400;
 
 const bytes = (data) =>
@@ -29,6 +30,14 @@ const bytes = (data) =>
 const docFrame = (payload) => {
   const frame = new Uint8Array(payload.byteLength + 1);
   frame[0] = DOC;
+  frame.set(payload, 1);
+  return frame;
+};
+
+const controlFrame = (message) => {
+  const payload = new TextEncoder().encode(message);
+  const frame = new Uint8Array(payload.byteLength + 1);
+  frame[0] = CONTROL;
   frame.set(payload, 1);
   return frame;
 };
@@ -156,7 +165,9 @@ export const startRelay = ({
       room = loadRoom(name);
       room.sockets.add(socket);
       phase = "open";
-      // Bring the newcomer up to the room's current document state.
+      // Tell the client its granted role (so it can present read-only UI for a viewer), then bring it
+      // up to the room's current document state.
+      socket.send(controlFrame(role));
       socket.send(docFrame(encodeStateAsUpdate(room.doc)));
       for (const data of pending) handle(data);
       pending.length = 0;

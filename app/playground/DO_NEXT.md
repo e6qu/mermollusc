@@ -8,8 +8,11 @@
   `textHistory` flag (collab drops CM's own history so Yjs owns ⌘Z); collab mode seeds the room if empty
   and doesn't clear the shared overlay on a text edit. It also labels the client (`setLocalUser`) so
   **remote cursors** render in peers' editors. Four Playwright specs cover the single-tab Yjs path,
-  two-tab overlay convergence, source sync, and presence. **Phase 1 is feature-complete.**
-  **Next (Phases 2–3):** the production server (auth/persistence). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
+  two-tab overlay convergence, source sync, and presence. **Phase 1 is feature-complete.** Phase 2
+  (server-side) added durable persistence, Auth0 verification, and rooms + RBAC; the app now also
+  **reflects the role** — a viewer's editor + canvas are read-only (the relay sends the role as a
+  control frame). **Next (Phase 2 cont.):** the browser Auth0 login + the production store. See
+  `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
 - *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
   state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed

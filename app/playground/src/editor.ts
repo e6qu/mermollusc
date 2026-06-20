@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
 import { type Diagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
-import { Annotation, EditorState, type Extension } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -29,6 +29,9 @@ export interface Editor {
   focus(): void;
   hasFocus(): boolean;
   setError(range: SourceRange | null, message: string): void;
+  // Make the buffer non-editable (a collaborative viewer). Programmatic changes — incl. the remote
+  // sync — still apply; only user keystrokes are blocked.
+  setReadOnly(readOnly: boolean): void;
 }
 
 // Keywords across all six families. Highlighting a network/cloud node kind (`cloud`, `group`,
@@ -173,6 +176,8 @@ export const createEditor = (
   opts: { extra?: readonly Extension[]; textHistory?: boolean } = {},
 ): Editor => {
   const textHistory = opts.textHistory ?? true;
+  // A compartment so editability can be toggled later (a collaborative viewer is read-only).
+  const editable = new Compartment();
   const view = new EditorView({
     parent,
     state: EditorState.create({
@@ -189,6 +194,7 @@ export const createEditor = (
         mermaidLanguage,
         lintGutter(),
         appTheme,
+        editable.of(EditorView.editable.of(true)),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
           const isProgrammatic = update.transactions.some(
@@ -243,6 +249,9 @@ export const createEditor = (
         diagnostics.push({ from, to, severity: "error", message });
       }
       view.dispatch(setDiagnostics(view.state, diagnostics));
+    },
+    setReadOnly: (readOnly) => {
+      view.dispatch({ effects: editable.reconfigure(EditorView.editable.of(!readOnly)) });
     },
   };
 

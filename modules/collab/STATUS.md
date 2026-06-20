@@ -29,6 +29,10 @@ runs single-user with no relay/persistence/auth.
   present; an authenticated user with no roles claim defaults to editor). The relay closes 1008 on no
   access and enforces **viewers read-only** (their inbound document frames are dropped; presence still
   relays). Unauthenticated/dev → editor, so single-user and e2e are unaffected.
+- **Role-aware client:** the relay sends the granted role as a **control frame** (transport tag 2,
+  surfaced via `connectWebSocket`'s `onControl`). The app applies it: a viewer's **editor and canvas go
+  read-only** (drag/resize/delete/nudge/rename blocked, editing tools dimmed) with a "view only" badge;
+  an editor grant restores editing. The server stays the security boundary — this is the matching UX.
 - **Source binding:** `sourceBinding()` returns a y-codemirror.next extension that two-way-binds the
   editor to the source `Y.Text` (character-level merge, per-user text undo). The `Y.Text` stays
   encapsulated — only an opaque CodeMirror extension crosses the boundary. Two `?collab` tabs now share

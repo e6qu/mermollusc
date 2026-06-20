@@ -75,3 +75,12 @@
   claims resolver, which grants editor to an unauthenticated user so dev/e2e are unaffected. Tests
   (`rbac.test.mjs`, 8): role resolution, deny, tenant isolation, `canWrite`; verifier-surfaces-claims in
   `auth.test.mjs`. Relay enforcement (viewer-drop / editor-relay / deny-close-1008) verified manually.
+- Phase 2 — role-aware client. Added a server→client CONTROL frame (transport tag 2) carrying the
+  granted role; `connectTransport`/`connectWebSocket` gained an `onControl` hook (`TransportHooks`), and
+  the relay sends the role on admit (before the doc state). The app applies it: a viewer's editor +
+  canvas go read-only (CodeMirror editability compartment via a new `editor.setReadOnly`; drag / resize
+  / delete / nudge / rename guarded by a `viewerMode` flag; the `.editor-tools` dimmed via a
+  `body[data-role]` attribute) with a "view only" badge; editor/owner restore editing. Tests: control-
+  frame routing (unit); a Playwright spec drives the role via a `__collabSetRole` hook → editor
+  read-only + badge + body role, then back to editable (screenshot-verified). The relay's actual role
+  control frame was verified manually. The server remains the security boundary; this is the matching UX.

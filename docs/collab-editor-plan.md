@@ -182,9 +182,10 @@ after merge — the invariant holds without coordination.
   our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Rooms + RBAC are in:**
   `server/rbac.mjs` resolves a per-document role (owner/editor/viewer) from the token's per-room `roles`
   claim and isolates **tenants** by room prefix (`<tenant>/…`); the relay closes 1008 on no access and
-  enforces **viewers read-only** (their document frames are dropped server-side). **Remaining:** the
-  browser Auth0 login that supplies the token (and a client that reflects the role), then the production
-  `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out).
+  enforces **viewers read-only** (their document frames are dropped server-side). The **client reflects
+  the role** — the relay sends it as a control frame and a viewer's editor + canvas go read-only with a
+  badge. **Remaining:** the browser Auth0 login that supplies the token, then the production `RoomStore`
+  (Postgres update log + S3 snapshots + Redis fan-out).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 

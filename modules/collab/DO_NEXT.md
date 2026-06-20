@@ -24,11 +24,11 @@
 - **Browser Auth0 login (next):** wire the Auth0 SPA login so the app obtains a real access token and
   passes it as `?token=`; carry the verified user identity into **presence** (name/colour from the
   token, replacing the random pick) and into rooms.
-- *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles (owner/editor/viewer) from
-  token claims + isolates tenants by room prefix; the relay closes 1008 on no access and enforces
-  viewers read-only. Follow-up: make the **client** read-only for viewers (the editor + canvas reflect
-  the role — today the server is the security boundary but the viewer's local edits aren't shared);
-  surface the active role in the UI.
+- *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles + isolates tenants; the relay
+  closes 1008 on no access and enforces viewers read-only.
+- *(done)* **Role-aware client:** the relay sends the role (a CONTROL frame); the app makes a viewer's
+  editor + canvas read-only with a "view only" badge. Follow-up: a presence "active users" list
+  (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
 - **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
   (snapshots) + Redis fan-out — same interface. Needs a real DB to verify end to end.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,

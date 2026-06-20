@@ -147,6 +147,26 @@ describe("collab transport — connectTransport", () => {
     b.destroy();
   });
 
+  it("routes a server control frame to onControl", () => {
+    const a = blank();
+    const wire = pair();
+    let control = "";
+    connectTransport(a, wire.a, {
+      onControl: (m) => {
+        control = m;
+      },
+    });
+    wire.connect();
+    // the "server" (the other end) sends a control frame (tag 2) carrying the role
+    const payload = new TextEncoder().encode("viewer");
+    const frame = new Uint8Array(payload.byteLength + 1);
+    frame[0] = 2;
+    frame.set(payload, 1);
+    wire.b.send(frame);
+    expect(control).toBe("viewer");
+    a.destroy();
+  });
+
   it("disconnect stops forwarding further edits", () => {
     const a = blank();
     const b = blank();

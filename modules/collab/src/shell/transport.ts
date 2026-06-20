@@ -13,9 +13,11 @@ export interface CollabSocket {
 }
 
 // Frame tags: the document (CRDT) and presence (awareness) travel on the same socket as distinct
-// frames, a single leading byte apart. The relay keeps the document but only relays presence.
+// frames, a single leading byte apart. CONTROL is a server→client channel (e.g. the granted role). The
+// relay keeps the document, only relays presence, and originates control.
 const DOC = 0;
 const AWARE = 1;
+const CONTROL = 2;
 
 const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   const frame = new Uint8Array(payload.byteLength + 1);
@@ -24,11 +26,20 @@ const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   return frame;
 };
 
+// Optional hooks. `onControl` receives a server control message (a short UTF-8 string, e.g. the role).
+export interface TransportHooks {
+  onControl?: (message: string) => void;
+}
+
 // Bind a session to a socket: on open, send our whole document + presence so the peer/relay can merge
 // us in; apply every inbound frame to the matching channel; forward our own local updates outbound.
 // Returns a disconnect fn that stops forwarding and closes the socket. Applied remote updates are not
 // re-forwarded (the session emits only local-origin updates), so a relay can't loop.
-export const connectTransport = (session: CollabSession, socket: CollabSocket): (() => void) => {
+export const connectTransport = (
+  session: CollabSession,
+  socket: CollabSocket,
+  hooks: TransportHooks = {},
+): (() => void) => {
   const sendState = (): void => {
     socket.send(framed(DOC, session.state()));
     socket.send(framed(AWARE, session.awarenessState()));
@@ -40,6 +51,7 @@ export const connectTransport = (session: CollabSession, socket: CollabSocket): 
     const payload = data.subarray(1);
     if (data[0] === DOC) session.applyUpdate(payload);
     else if (data[0] === AWARE) session.applyAwarenessUpdate(payload);
+    else if (data[0] === CONTROL) hooks.onControl?.(new TextDecoder().decode(payload));
   });
   const offDoc = session.onUpdate((update) => {
     if (socket.isOpen()) socket.send(framed(DOC, update));
@@ -79,5 +91,8 @@ export const webSocketTransport = (url: string): CollabSocket => {
 };
 
 // Convenience: open a WebSocket to `url` and bind `session` to it. Returns the disconnect fn.
-export const connectWebSocket = (session: CollabSession, url: string): (() => void) =>
-  connectTransport(session, webSocketTransport(url));
+export const connectWebSocket = (
+  session: CollabSession,
+  url: string,
+  hooks: TransportHooks = {},
+): (() => void) => connectTransport(session, webSocketTransport(url), hooks);
