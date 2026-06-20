@@ -6,9 +6,10 @@
   `collabSession.sourceBinding()`: two tabs on `?collab&room=…` edit **both the overlay and the diagram
   text** live, each re-deriving locally. `createEditor` gained an `extra`-extensions hook + a
   `textHistory` flag (collab drops CM's own history so Yjs owns ⌘Z); collab mode seeds the room if empty
-  and doesn't clear the shared overlay on a text edit. Three Playwright specs cover the single-tab Yjs
-  path, two-tab overlay convergence, and two-tab source sync.
-  **Next:** remote-cursor **presence** (awareness). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
+  and doesn't clear the shared overlay on a text edit. It also labels the client (`setLocalUser`) so
+  **remote cursors** render in peers' editors. Four Playwright specs cover the single-tab Yjs path,
+  two-tab overlay convergence, source sync, and presence. **Phase 1 is feature-complete.**
+  **Next (Phases 2–3):** the production server (auth/persistence). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
 - *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
   state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed

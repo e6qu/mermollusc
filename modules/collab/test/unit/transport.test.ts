@@ -109,6 +109,44 @@ describe("collab transport — connectTransport", () => {
     b.destroy();
   });
 
+  it("setLocalUser emits an awareness frame a peer can apply", () => {
+    const a = blank();
+    let frame: Uint8Array | null = null;
+    a.onAwarenessUpdate((u) => {
+      frame = u;
+    });
+    a.setLocalUser({ name: "Ada", color: "#ff0000" });
+    if (frame === null) throw new Error("no awareness frame emitted");
+    expect((frame as Uint8Array).byteLength).toBeGreaterThan(0);
+    expect(a.awarenessState().byteLength).toBeGreaterThan(0);
+    const b = blank();
+    expect(() => b.applyAwarenessUpdate(frame as Uint8Array)).not.toThrow();
+    a.destroy();
+    b.destroy();
+  });
+
+  it("routes both document and presence frames between connected peers", () => {
+    const a = blank();
+    const b = blank();
+    const wire = pair();
+    connectTransport(a, wire.a);
+    connectTransport(b, wire.b);
+    const tagsAtB: number[] = [];
+    wire.b.onMessage((d) => tagsAtB.push(d[0] ?? -1));
+    wire.connect(); // open → peers exchange a document frame (0) and a presence frame (1)
+    a.setLocalUser({ name: "Ada", color: "#ff0000" });
+    expect(tagsAtB).toContain(0);
+    expect(tagsAtB).toContain(1);
+
+    // malformed frames are ignored, not fatal: an empty frame and an unknown tag both no-op
+    expect(() => {
+      wire.a.send(new Uint8Array(0));
+      wire.a.send(new Uint8Array([2, 9]));
+    }).not.toThrow();
+    a.destroy();
+    b.destroy();
+  });
+
   it("disconnect stops forwarding further edits", () => {
     const a = blank();
     const b = blank();

@@ -7,6 +7,11 @@ import {
   encodeStateAsUpdate,
 } from "yjs";
 import { yCollab } from "y-codemirror.next";
+import {
+  Awareness,
+  applyAwarenessUpdate as applyAwareness,
+  encodeAwarenessUpdate,
+} from "y-protocols/awareness";
 import type { Extension } from "@codemirror/state";
 import {
   decodeOverlay,
@@ -47,12 +52,20 @@ export interface CollabSession {
   // Fires on *remote* / undo-driven overlay changes (local mutations update synchronously in place).
   onOverlayChange(listener: () => void): () => void;
 
-  // Binary sync seam. `state` is the whole-document update for a joining peer; `applyUpdate` integrates
-  // a peer's update; `onUpdate` emits this client's *own* updates to broadcast (applied remote updates
-  // are not re-emitted, so a relay can't loop).
+  // Presence (awareness). `setLocalUser` labels this client (the colour/name remote cursors show).
+  // The local text cursor is tracked into awareness automatically by the source binding.
+  setLocalUser(user: { readonly name: string; readonly color: string }): void;
+
+  // Binary sync seam. `state`/`awarenessState` are the whole-document / whole-presence updates for a
+  // joining peer; `applyUpdate`/`applyAwarenessUpdate` integrate a peer's; `onUpdate`/`onAwarenessUpdate`
+  // emit this client's *own* updates to broadcast (applied remote updates are not re-emitted, so a relay
+  // can't loop). Document and presence travel as distinct frames (see the transport).
   state(): Uint8Array;
   applyUpdate(update: Uint8Array): void;
   onUpdate(listener: (update: Uint8Array) => void): () => void;
+  awarenessState(): Uint8Array;
+  applyAwarenessUpdate(update: Uint8Array): void;
+  onAwarenessUpdate(listener: (update: Uint8Array) => void): () => void;
 
   destroy(): void;
 }
@@ -88,6 +101,10 @@ export const createCollabSession = (opts: {
   const yText: YText = doc.getText("source");
   const yOverrides: YMap<unknown> = doc.getMap("overrides");
   const yGroups: YMap<unknown> = doc.getMap("groups");
+  // Presence is ephemeral and travels on its own frame (see the transport), so the awareness origin is
+  // distinct from the doc origins — applied remote presence isn't re-broadcast.
+  const awareness = new Awareness(doc);
+  const AWARE_REMOTE = Symbol("collab/aware-remote");
 
   // Local materialised view (branded). Local mutations update it synchronously; remote/undo changes
   // rebuild it from the Y.Maps through the shared Zod decoder, so peer data crosses the boundary
@@ -253,7 +270,7 @@ export const createCollabSession = (opts: {
         if (insert.length > 0) yText.insert(index, insert);
       }, LOCAL);
     },
-    sourceBinding: () => yCollab(yText, null),
+    sourceBinding: () => yCollab(yText, awareness),
     onSourceChange: (listener) => {
       sourceListeners.add(listener);
       return () => sourceListeners.delete(listener);
@@ -262,13 +279,30 @@ export const createCollabSession = (opts: {
       overlayListeners.add(listener);
       return () => overlayListeners.delete(listener);
     },
+    setLocalUser: (user) =>
+      awareness.setLocalStateField("user", { name: user.name, color: user.color }),
     state: () => encodeStateAsUpdate(doc),
     applyUpdate: (update) => applyUpdate(doc, update, REMOTE),
     onUpdate: (listener) => {
       updateListeners.add(listener);
       return () => updateListeners.delete(listener);
     },
+    awarenessState: () => encodeAwarenessUpdate(awareness, [awareness.clientID]),
+    applyAwarenessUpdate: (update) => applyAwareness(awareness, update, AWARE_REMOTE),
+    onAwarenessUpdate: (listener) => {
+      const handler = (
+        changes: { added: number[]; updated: number[]; removed: number[] },
+        origin: unknown,
+      ): void => {
+        if (origin === AWARE_REMOTE) return; // don't re-broadcast presence we just received
+        const changed = [...changes.added, ...changes.updated, ...changes.removed];
+        listener(encodeAwarenessUpdate(awareness, changed));
+      };
+      awareness.on("update", handler);
+      return () => awareness.off("update", handler);
+    },
     destroy: () => {
+      awareness.destroy();
       undoManager.destroy();
       doc.destroy();
     },

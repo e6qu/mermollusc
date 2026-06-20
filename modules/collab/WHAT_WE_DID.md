@@ -39,3 +39,11 @@
   inert). Pinned `y-codemirror.next` 0.3.5 + `@codemirror/state`/`@codemirror/view` deps. A new
   Playwright spec proves two tabs share the diagram text live (edit in A → B's editor + canvas follow);
   the module's 30 tests + 108 Playwright specs are green.
+- Presence (awareness). Added a y-protocols `Awareness` to the session: `setLocalUser(name/color)`,
+  `awarenessState()`/`applyAwarenessUpdate()`/`onAwarenessUpdate()`, and `sourceBinding()` now passes
+  the awareness to `yCollab` so remote carets/selections render (the binding tracks the local cursor
+  into awareness). Document and presence ride the same socket as distinct **tagged frames** (byte 0 =
+  doc, 1 = awareness): `connectTransport` sends/routes both, and the dev relay applies doc frames to the
+  room `Y.Doc` (for late-join) but only relays presence (ephemeral). Pinned `y-protocols` 1.0.7. Tests:
+  presence-frame routing + setLocalUser round-trip (unit); a Playwright spec proves a remote cursor from
+  one tab shows in the other. Phase 1 is now feature-complete (32 module tests + 109 Playwright green).

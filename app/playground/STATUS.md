@@ -22,9 +22,10 @@
   Two implementations: `createLocalDocument` (`src/document-model.ts`, single-user, localStorage-backed)
   and the Yjs-backed `@m/collab` `createCollabSession` (CRDT). `main.ts` reads/mutates the overlay only
   through `doc`, and behind a **default-off `?collab`** flag constructs the collaborative one, connects
-  it to the dev relay, and binds the editor to the source `Y.Text` — two tabs on `?collab&room=…` edit
-  the overlay **and the diagram text live**. This is the **Phase 0 seam + Phase 1 CRDT + dev transport
-  + source binding** of the collaborative-editor plan
+  it to the dev relay, binds the editor to the source `Y.Text`, and labels the client for presence —
+  two tabs on `?collab&room=…` edit the overlay **and the diagram text live and see each other's
+  cursors**. This is the **feature-complete Phase 1** (CRDT + dev transport + source binding + presence)
+  of the collaborative-editor plan
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
 - **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fourteen

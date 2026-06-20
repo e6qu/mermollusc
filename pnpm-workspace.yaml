@@ -27,6 +27,7 @@ catalog:
   yjs: 13.6.31
   ws: 8.21.0
   y-codemirror.next: 0.3.5
+  y-protocols: 1.0.7
 
 # esbuild's postinstall fetches its platform binary; vitest and tsup need it.
 allowBuilds:
