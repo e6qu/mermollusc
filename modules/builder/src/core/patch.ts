@@ -8,6 +8,7 @@ import type {
   ReqEntityId,
   NodeId,
   NodeShape,
+  StateId,
   SourceMap,
   TextSpan,
 } from "@m/contracts";
@@ -197,6 +198,30 @@ const REQ_DECL =
 const reqDeclId = (line: string): string | null => REQ_DECL.exec(line)?.[1] ?? null;
 export const deleteRequirementEntity = (text: string, id: ReqEntityId): string =>
   deleteEntityWithBody(text, id, reqDeclId, reqEnds);
+
+// A state declaration (`state id`, `state "Label" as id`, either optionally opening a `{ … }`
+// composite block) or the `id : description` form — all belong to `id`. A transition (`a --> b`) or a
+// description line never matches: the declaration needs the `state` keyword, and the description needs
+// the `:` immediately after the id (transitions have the arrow first).
+const STATE_DECL = /^\s*state\s+(?:"[^"]*"\s+as\s+)?([A-Za-z_]\w*)\s*\{?\s*$/;
+const STATE_DESC = /^\s*([A-Za-z_]\w*)\s*:\s*\S/;
+const stateDeclId = (line: string): string | null =>
+  STATE_DECL.exec(line)?.[1] ?? STATE_DESC.exec(line)?.[1] ?? null;
+// A state transition's two endpoints (each an id or the `[*]` pseudo-state), or a note's target
+// returned as both endpoints so deleting the annotated state also drops its `note … of id` line. The
+// `[*]` pseudo-state never equals a real id, so transitions to/from it are only removed via the real end.
+const STATE_REL = /^\s*(\[\*\]|[A-Za-z_]\w*)\s*-->\s*(\[\*\]|[A-Za-z_]\w*)/;
+const STATE_NOTE = /^\s*note\s+(?:right of|left of|over)\s+([A-Za-z_]\w*)/;
+const stateEnds = (line: string): readonly [string, string] | null => {
+  const rel = STATE_REL.exec(line);
+  if (rel !== null) return [rel[1] ?? "", rel[2] ?? ""];
+  const note = STATE_NOTE.exec(line);
+  return note === null ? null : [note[1] ?? "", note[1] ?? ""];
+};
+// Remove a state and everything bound to it: a composite's whole `{ … }` block, its transitions, its
+// description line, and any note annotating it. Line-based `deleteNode` would orphan a composite body.
+export const deleteStateEntity = (text: string, id: StateId): string =>
+  deleteEntityWithBody(text, id, stateDeclId, stateEnds);
 
 // The endpoint ids of a C4 `Rel(a, b, …)` line (bare identifiers inside the parens), or null.
 const C4_REL = /^\s*Rel\s*\(([^)]*)\)/;

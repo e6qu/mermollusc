@@ -452,3 +452,8 @@
   it when the box can't actually grow/shrink onto the line — no lying guide. +1 e2e (nudge the corner a
   few px → snaps to the shared right-edge line; big drag → no snap; clears on release); the guide line
   through the diagram was screenshot-verified.
+- Polish/harden: **Delete of a composite `state X { … }`** now routes to the builder's body-aware
+  `deleteStateEntity` instead of the line-based `deleteNode`, which had orphaned the block body +
+  closing `}` and corrupted the source (the last open piece of the brace-bodied-delete P1; ER/class/
+  requirement were already fixed). +1 e2e (select the composite container's title strip, Delete → its
+  whole block is gone, a sibling state survives, the source still parses with no lint marker).
