@@ -142,6 +142,9 @@ const exportPdfBtn = document.querySelector<HTMLButtonElement>("#export-pdf");
 const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
 const exportDotBtn = document.querySelector<HTMLButtonElement>("#export-dot");
 const shareBtn = document.querySelector<HTMLButtonElement>("#share-link");
+const helpToggle = document.querySelector<HTMLButtonElement>("#help-toggle");
+const helpClose = document.querySelector<HTMLButtonElement>("#help-close");
+const helpOverlay = document.querySelector<HTMLElement>("#help-overlay");
 const zoomInBtn = document.querySelector<HTMLButtonElement>("#zoom-in");
 const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
 const zoomResetBtn = document.querySelector<HTMLButtonElement>("#zoom-reset");
@@ -189,7 +192,10 @@ if (
   exportPdfBtn === null ||
   exportSvgBtn === null ||
   exportDotBtn === null ||
-  shareBtn === null
+  shareBtn === null ||
+  helpToggle === null ||
+  helpClose === null ||
+  helpOverlay === null
 ) {
   throw new Error("playground: missing toolbar controls");
 }
@@ -2249,6 +2255,42 @@ const setPickerOpen = (open: boolean): void => {
 iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
 iconsClose.addEventListener("click", () => setPickerOpen(false));
 iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
+
+// Keyboard & mouse shortcut reference. `?` opens it (unless typing); Escape / the ✕ / a backdrop click
+// close it. The Escape handler is capture-phase so closing the panel doesn't also clear the canvas
+// selection (the bubble-phase Escape handler).
+let helpOpen = false;
+const setHelpOpen = (open: boolean): void => {
+  helpOpen = open;
+  helpOverlay.hidden = !open;
+  helpToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) helpClose.focus();
+};
+helpToggle.addEventListener("click", () => setHelpOpen(!helpOpen));
+helpClose.addEventListener("click", () => setHelpOpen(false));
+helpOverlay.addEventListener("click", (ev) => {
+  if (ev.target === helpOverlay) setHelpOpen(false); // a click on the backdrop, not the panel
+});
+window.addEventListener(
+  "keydown",
+  (ev) => {
+    if (ev.key === "Escape" && helpOpen) {
+      setHelpOpen(false);
+      ev.stopPropagation();
+      return;
+    }
+    const active = document.activeElement;
+    const typing =
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement ||
+      editor.hasFocus();
+    if (ev.key === "?" && !typing) {
+      ev.preventDefault();
+      setHelpOpen(true);
+    }
+  },
+  true,
+);
 
 // The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
 // drawn), so an export composites onto a background-filled offscreen canvas at device resolution —
