@@ -87,3 +87,8 @@
   description + note and the source stays parseable. The app's `removeNode` now routes `state` here
   instead of falling through to line-based `deleteNode`. +2 integration cases (composite block gone +
   re-parses; non-composite drops only its lines).
+- Polish/harden: extracted the overlay's per-entry wire encoders — `encodeOverrideEntry` /
+  `encodeGroupEntry` — as the single source of truth for its on-the-wire shape. `serializeOverlay` (JSON
+  persistence) and `@m/collab`'s Y.Map sync now both encode through them, so the two can't drift; each
+  carries a `satisfies Record<keyof NodeOverride|Group, unknown>` guard that turns a newly-added domain
+  field into a compile error rather than a silent wire-drop. +1 unit test (per-entry shape + round-trip).

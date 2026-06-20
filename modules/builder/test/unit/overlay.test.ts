@@ -1,7 +1,12 @@
 import { brand, isOk, point, size } from "@m/std";
 import type { Groups, LayoutOverrides } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { decodeOverlay, serializeOverlay } from "../../src/shell/overlay.js";
+import {
+  decodeOverlay,
+  encodeGroupEntry,
+  encodeOverrideEntry,
+  serializeOverlay,
+} from "../../src/shell/overlay.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const gid = (s: string) => brand<string, "GroupId">(s);
@@ -37,5 +42,38 @@ describe("overlay codec", () => {
   it("fails loudly on a malformed payload (no silent fallback)", () => {
     expect(isOk(decodeOverlay({ overrides: "nope" }))).toBe(false);
     expect(isOk(decodeOverlay(null))).toBe(false);
+  });
+
+  // The per-entry encoders are the shared source of truth for the on-the-wire shape: JSON persistence
+  // and the collab Y.Map sync both encode through them, and an entry must decode through the same
+  // schema. (A new domain field is caught at compile time by the encoders' `satisfies` guard.)
+  it("per-entry encoders flatten brands and decode back unchanged", () => {
+    const o = { position: point(10, 20), size: size(60, 24), pinned: true };
+    const g = {
+      id: gid("g1"),
+      label: "Backend",
+      members: [{ kind: "node", id: snid("A") }] as const,
+      locked: false,
+    };
+    expect(encodeOverrideEntry(o)).toEqual({
+      position: { x: 10, y: 20 },
+      size: { width: 60, height: 24 },
+      pinned: true,
+    });
+    expect(encodeGroupEntry(g)).toEqual({
+      id: "g1",
+      label: "Backend",
+      members: [{ kind: "node", id: "A" }],
+      locked: false,
+    });
+    // a single encoded entry round-trips through the overlay decoder (the path collab's materialise uses)
+    const decoded = decodeOverlay({
+      overrides: [["A", encodeOverrideEntry(o)]],
+      groups: [["g1", encodeGroupEntry(g)]],
+    });
+    expect(isOk(decoded)).toBe(true);
+    if (!isOk(decoded)) return;
+    expect(decoded.value.overrides.get(snid("A"))).toEqual(o);
+    expect(decoded.value.groups.get(gid("g1"))).toEqual(g);
   });
 });

@@ -98,3 +98,8 @@
   closed) — resolving the silent fail-open the audit flagged (+ a fail-closed test). Verified and
   withdrew the audit's printer-round-trip finding: the parser rejects empty/delimiter labels, so no
   parser-produced AST can trigger it (recorded in @m/parser BUGS).
+- Polish/harden: dropped `session.ts`'s hand-written `encodeOverride`/`encodeGroup`; it now encodes
+  Y.Map entries through `@m/builder`'s shared `encodeOverrideEntry`/`encodeGroupEntry` (the same encoders
+  JSON persistence uses), so the wire shapes can't drift and a new `NodeOverride`/`Group` field is a
+  compile error at the encoder's `satisfies` guard rather than a silent wire-drop. Resolves the audit's
+  hand-written-encoder finding.
