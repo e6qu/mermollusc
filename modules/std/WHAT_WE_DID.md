@@ -31,3 +31,7 @@
   `length(NaN)` through (NaN compares false to everything), so a NaN could be branded as a Length;
   now `!(n >= 0) || !Number.isFinite(n)` fails loud. +tests (andThen, traverse incl. empty/index/err,
   assertNever throws, length rejects NaN/Infinity).
+- Refined-number brands: added `Positive` (finite `> 0`) and `PositiveInt` (finite integer `≥ 1`) with
+  validating shell constructors `positive`/`positiveInt` — the same "push the invariant into the type"
+  pattern as `Length`, so a zero/negative/NaN slice value or a zero/fractional column count is
+  unconstructible. +tests (accept valid, reject zero/negative/fraction/NaN/Infinity).

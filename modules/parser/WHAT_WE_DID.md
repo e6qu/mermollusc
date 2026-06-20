@@ -185,3 +185,7 @@
   matching; **mindmap** relabel-span search starts at the shape delimiter so an id that repeats the
   label text doesn't point the span at the wrong occurrence. +tests (incl. the req "fails loudly" test,
   which previously exercised a lexer error rather than the verb path).
+- Refined-number brands: `pie-parse` mints `PieSlice.value` via `positive()` (right after its existing
+  `> 0` check) and `block-parse` mints `BlockAst.columns` via `positiveInt(max(1, trunc(requested)))`
+  (the columns decl is now read defensively, so a non-finite value falls back to ≥1 rather than a NaN
+  grid width). The invariants the parser already enforced at runtime are now carried in the types.

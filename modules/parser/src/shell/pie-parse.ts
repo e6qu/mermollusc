@@ -1,5 +1,5 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, map, ok, type Result } from "@m/std";
+import { brand, err, map, ok, positive, type Result } from "@m/std";
 import type { PieAst, PieSlice, PieSliceId, PieSource, TextSpan } from "@m/contracts";
 import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
@@ -50,7 +50,7 @@ const buildResult = (cst: CstNode): Result<ParsedPie, ParseError> => {
       );
     }
     const id = brand<string, "PieSliceId">(`s${slices.length}`);
-    slices.push({ id, label: unquote(labelTok.image), value });
+    slices.push({ id, label: unquote(labelTok.image), value: positive(value) });
     sliceSpans.set(id, innerSpan(labelTok));
   }
 
