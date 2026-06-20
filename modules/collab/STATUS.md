@@ -1,16 +1,22 @@
 # @m/collab — status
 
-**State:** Phase 1 **feature-complete** and green — CRDT document, dev WebSocket transport, live source
-binding, and presence. No auth / persistence yet (those are Phases 2–3).
+**State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence + an auth seam.
+CRDT document, WebSocket transport, live source binding, presence, and now a relay that survives
+restart. Auth0 OIDC handshake is next. The app always runs single-user with no relay/persistence/auth.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
   Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/
   clear, undo/redo via `Y.UndoManager`, persist via injected `save`). Source channel:
   `source`/`setSource`/`spliceSource` + `onSourceChange`. Binary sync: `state`/`applyUpdate`/`onUpdate`.
 - **Transport:** `connectTransport(session, socket)` binds the binary-sync seam to any `CollabSocket`;
-  `webSocketTransport(url)`/`connectWebSocket(session, url)` use the platform `WebSocket`. `dev-server.mjs`
-  is a server-authoritative relay (rooms by URL path; per-room `Y.Doc`; full state on join + broadcast).
-  Run it with `make collab-server`.
+  `webSocketTransport(url)`/`connectWebSocket(session, url)` use the platform `WebSocket`.
+- **Server (`server/relay.mjs`):** a server-authoritative relay (rooms by URL path; per-room `Y.Doc`;
+  full state on join + broadcast). `make collab-server` runs it. **Optional** — the app runs fully
+  single-user without it.
+- **Persistence (`server/store.mjs`):** a pluggable `RoomStore` — in-memory default + a file-snapshot
+  store (`PERSIST_DIR`). The relay loads a room's snapshot on first join and saves (debounced + flush on
+  room close), so rooms survive a restart. Production target: Postgres + S3 (same interface). Every
+  connection passes an `authorize(req)` hook (default allow) — the Auth0 OIDC seam.
 - **Source binding:** `sourceBinding()` returns a y-codemirror.next extension that two-way-binds the
   editor to the source `Y.Text` (character-level merge, per-user text undo). The `Y.Text` stays
   encapsulated — only an opaque CodeMirror extension crosses the boundary. Two `?collab` tabs now share

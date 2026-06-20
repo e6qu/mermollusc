@@ -31,7 +31,7 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- 
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
 | `@m/icons` | icon-pack registry + loaders (OSS bundled; cloud packs user-loaded) |
 | `@m/builder` | hit-testing, selection, sidecar overrides, two-way text patching |
-| `@m/collab` | Yjs-backed `OverlayDoc` + `Y.Text` source binding + presence + WebSocket transport/dev relay — CRDT collaboration (Phase 1) |
+| `@m/collab` | Yjs `OverlayDoc` + `Y.Text` source binding + presence + WebSocket transport + optional durable relay (`server/`) — CRDT collaboration |
 | `@m/app` (playground) | wires everything; hosts node e2e + Playwright flows |
 
 ## Decisions (locked)
@@ -196,7 +196,10 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
     WebSocket transport/relay + the live `Y.Text`↔CodeMirror source binding + presence; two `?collab`
     tabs share overlay **and** text live and see each other's cursors. (Open before Phase 2: confirm the
     specific OIDC IdP.)
-  - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
+  - **Phase 2 — durable + secured (in progress).** Persistence landed: the relay has a pluggable
+    `RoomStore` (memory + file snapshots; rooms survive restart) + an `authorize` seam. Next: the
+    **Auth0** OIDC handshake, rooms + RBAC, then the production store (Postgres + S3). The app always
+    runs single-user with zero infra — collab is an optional mechanism, never a fork.
   - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
     observability/SLOs, offline buffer, compaction, compliance hooks.
 - **Comprehensive, searchable audit trail.** (Folded into the collaborative-editor plan — the CRDT

@@ -384,3 +384,7 @@
   remote carets/selections render in peers' editors (document + presence ride one socket as distinct
   frames). New Playwright spec: a remote cursor from tab A shows in tab B. Phase 1 (CRDT + transport +
   source binding + presence) is feature-complete.
+- Collab Phase 2 start (persistence). The optional relay moved to `modules/collab/server/relay.mjs`
+  with a pluggable `RoomStore` (rooms survive restart via `PERSIST_DIR`); the Playwright webServer +
+  `make collab-server` point at the new path. No app behaviour change — single-user local still needs
+  no server, and the `?collab` path is unchanged.
