@@ -311,7 +311,9 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const walk = (parentId: NodeId | null): void => {
     for (const s of subgraphs) {
       if (s.parent === parentId) {
-        orderedIds.push(...s.nodes);
+        // A loop, not `push(...)`: a spread of a very large subgraph's nodes would exceed the
+        // argument-count limit and throw.
+        for (const n of s.nodes) orderedIds.push(n);
         walk(s.id);
       }
     }

@@ -192,3 +192,5 @@
 - The flowchart source map now records each node's `decl` span (id + shape brackets), computed per
   shape from the inner label span + the closing-delimiter length, so the builder can reshape a node
   (rewrite its brackets) in place.
+- Robustness: the canonical node-order walk appends a subgraph's node ids with a loop, not
+  `push(...s.nodes)` — a spread of a very large subgraph would exceed the argument-count limit and throw.

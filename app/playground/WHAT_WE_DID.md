@@ -502,3 +502,7 @@
   ScreenPoint)` seam (so a scene point can't position an element), and the pan gesture's `startX`/`startY`
   are `ScreenCoord` (minted from `clientX/Y`). Complements the single-`sceneToScreen` consolidation that
   fixed the original drift bug — branding adds boundary protection that arithmetic-only checks couldn't.
+- Robustness (perf track): **Arrange** (align/center) computed its extent via `Math.min(...lefts)` /
+  `Math.max(...rights)`, whose argument spread throws once the selection is large enough — a select-all
+  (⌘A) then align on a big diagram would `RangeError`. Replaced with fold-based `minOf`/`maxOf`, the
+  same convention the gitgraph/pie layouts already use.

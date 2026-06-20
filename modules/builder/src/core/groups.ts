@@ -62,7 +62,9 @@ export const leafNodes = (groups: Groups, id: GroupId): readonly SceneNodeId[] =
   const out: SceneNodeId[] = [];
   for (const m of g.members) {
     if (m.kind === "node") out.push(m.id);
-    else out.push(...leafNodes(groups, m.id));
+    // A loop, not `push(...)`: a spread of a large nested group's leaves would exceed the
+    // argument-count limit and throw.
+    else for (const leaf of leafNodes(groups, m.id)) out.push(leaf);
   }
   return out;
 };

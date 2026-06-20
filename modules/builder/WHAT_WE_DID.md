@@ -97,3 +97,6 @@
 - Added `reshapeNode` (two-way edit): rewrites a flowchart node's whole declaration span (`A[x]` →
   `A((x))` etc.) to a new shape via an exhaustive `wrapShape`, keeping the label; a bare node's id
   becomes its label. +integration tests (all five shapes round-trip through re-parse; bare-node case).
+- Robustness: `leafNodes` flattens a nested group's leaves with a loop, not `push(...leafNodes(...))` —
+  a spread of a very large nested group would exceed the argument-count limit and throw. +unit test
+  (a 200k-leaf nested group flattens without overflow).
