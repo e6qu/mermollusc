@@ -32,7 +32,8 @@
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
-  preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s); a single-node drag
+  preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s) and **⌘C / ⌘V**
+  copy-paste them via a persistent in-memory clipboard (cascading each paste); a single-node drag
   **snaps to alignment** with amber guide lines, and a **corner-handle resize snaps the moving corner**
   to the same lines (the min-size clamp drops the guide when the corner can't reach it). A **?** button (or the `?` key) opens a
   shortcut-reference modal grouped by Select / Edit / Layout & groups / View.

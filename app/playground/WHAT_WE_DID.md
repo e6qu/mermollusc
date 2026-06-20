@@ -479,6 +479,12 @@
   of duplicated boilerplate; 118 e2e specs green.
 - Type-system hardening: dropped the `e.waypoints.length < 2` guard in the inline-editor edge-anchor
   path now that `SceneEdge.waypoints` is `TwoOrMore<Point>` (always anchorable).
+- Editing UX: **⌘C / ⌘V copy-paste** of flowchart node(s). ⌘C captures the selected nodes' label +
+  shape and their offsets from the selection's top-left into an in-memory clipboard (persists across
+  edits); ⌘V pastes fresh-id copies — keeping the arrangement, cascading each successive paste so they
+  don't stack, and selecting the result. Complements ⌘D (duplicate) with a reusable clipboard. With
+  nothing selected / off-flowchart the keys fall through to the browser. Added to the shortcut overlay.
+  +1 e2e (copy → paste → 5th node; second paste → 6th; clipboard persists). Screenshot-verified.
 - Type-system hardening: **scene vs screen coordinate spaces are now distinct types.** `sceneToScreen`
   returns a `ScreenPoint` (not a scene `Point`), so its result can't be fed into a scene API
   (`moveNode`/`hitTest`/…) without an obvious reconversion — feeding a screen-converted point into scene
