@@ -423,3 +423,9 @@
   always surfaced to the status bar, with a graceful fallback message where image-clipboard isn't
   supported, never silently dropped. +1 e2e (grants clipboard permissions, copies, and asserts an
   image/png item actually landed on the clipboard).
+- Editing UX: a **keyboard & mouse shortcut reference** — a "?" toolbar button (and the `?` key) opens
+  a centered modal listing the shortcuts grouped by Select / Edit / Layout & groups / View, so the rich
+  editing toolkit (marquee, nudge, ⌘A, group/lock, undo/redo, ⌘-wheel zoom…) is discoverable instead of
+  only terse status-bar hints. Closes on ✕ / Escape / backdrop click; the Escape handler is capture-
+  phase so closing the panel doesn't also clear the canvas selection. +1 e2e (open via button + key,
+  close via all three).
