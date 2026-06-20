@@ -417,3 +417,9 @@
   edges + node blocks) to an offscreen canvas, rebuilt only on a scene/theme change; a scroll now blits
   the cache + redraws the cheap viewport scrim — O(1) per scroll regardless of diagram size. Pan/zoom/
   theme e2e cover the path; screenshot-verified.
+- Editing/export UX: a **Copy** button that puts the rendered diagram on the clipboard as a PNG (the
+  same zoom-independent, chrome-free composite the PNG export uses) — paste straight into a doc/chat/
+  issue, no download. Best-effort (needs a secure context + clipboard-write permission); the outcome is
+  always surfaced to the status bar, with a graceful fallback message where image-clipboard isn't
+  supported, never silently dropped. +1 e2e (grants clipboard permissions, copies, and asserts an
+  image/png item actually landed on the clipboard).
