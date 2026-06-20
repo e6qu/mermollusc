@@ -440,3 +440,8 @@
   C4, sequence, …), no select-two-then-Connect dance. Releasing on empty space / the same node cancels.
   Viewers can't connect. Added to the shortcut overlay. +2 e2e (drag creates an edge; empty-space drag
   doesn't); rubber-band screenshot-verified.
+- Editing UX: **alignment snapping** while dragging a single node. At drag start the other nodes'
+  edge/centre lines (left/centre/right xs, top/middle/bottom ys) are captured; each pointer-move snaps
+  the dragged node's nearest edge to a candidate line within ~6px and draws an amber dashed guide on
+  the snapped axis (cleared on release). Multi-node drags don't snap. +1 e2e (a 3px drag snaps to the
+  spine centre; a far drag doesn't; guide clears on release); screenshot-verified the guide line.

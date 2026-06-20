@@ -96,6 +96,8 @@ declare global {
     __collabOverrideCount?: () => number;
     // e2e hook (collab mode only): apply a server-granted role, to exercise the read-only viewer UI.
     __collabSetRole?: (role: string) => void;
+    // e2e hook: whether a drag-alignment guide is currently active (a node is snapped to another).
+    __snapActive?: () => boolean;
   }
 }
 
@@ -251,6 +253,39 @@ let drag: {
 // Whether the in-progress drag has already snapshotted the overlay for undo (done on the first move,
 // so a click that never moves leaves no no-op history entry).
 let dragRecorded = false;
+// Alignment snapping for a single-node drag: the candidate guide lines (other nodes' left/centre/right
+// xs and top/middle/bottom ys) captured at drag start + the dragged node's size, and the currently
+// snapped lines to draw (`vx` vertical, `hy` horizontal). Null `snapTargets` = no snapping (multi-drag).
+let snapTargets: {
+  readonly xs: readonly number[];
+  readonly ys: readonly number[];
+  readonly w: number;
+  readonly h: number;
+} | null = null;
+let snapGuides: { vx: number | null; hy: number | null } = { vx: null, hy: null };
+const SNAP_T = 6;
+// The smallest shift (within `SNAP_T`) that lands one of the dragged box's `edges` on a candidate
+// line, and the line it snapped to (null = no snap). Picks the closest candidate across all edges.
+const snapAxis = (
+  edges: readonly number[],
+  targets: readonly number[],
+): { readonly delta: number; readonly line: number | null } => {
+  let delta = 0;
+  let line: number | null = null;
+  let dist = SNAP_T + 1;
+  for (const e of edges) {
+    for (const t of targets) {
+      const d = Math.abs(t - e);
+      if (d <= SNAP_T && d < dist) {
+        dist = d;
+        delta = t - e;
+        line = t;
+      }
+    }
+  }
+  return { delta, line };
+};
+window.__snapActive = () => snapGuides.vx !== null || snapGuides.hy !== null;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
 let pan: {
@@ -484,6 +519,26 @@ const paintScene = (): void => {
     ctx.beginPath();
     ctx.arc(connectDrag.x, connectDrag.y, 4, 0, Math.PI * 2);
     ctx.fill();
+  }
+  if (snapGuides.vx !== null || snapGuides.hy !== null) {
+    // Alignment guides: amber dashed lines on the axes the dragged node snapped to, spanning content.
+    const ex = shown.extent;
+    ctx.strokeStyle = "#f5a623";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    if (snapGuides.vx !== null) {
+      ctx.beginPath();
+      ctx.moveTo(snapGuides.vx, ex.origin.y);
+      ctx.lineTo(snapGuides.vx, ex.origin.y + ex.size.height);
+      ctx.stroke();
+    }
+    if (snapGuides.hy !== null) {
+      ctx.beginPath();
+      ctx.moveTo(ex.origin.x, snapGuides.hy);
+      ctx.lineTo(ex.origin.x + ex.size.width, snapGuides.hy);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
   }
   // Resize handles: small squares at the corners of the single selected node.
   const resizableId = singleResizableNodeId();
@@ -1568,6 +1623,24 @@ canvas.addEventListener("pointerdown", (ev) => {
     }
     drag = { ids: [...origin.keys()], origin, pointerX: at.x, pointerY: at.y };
     dragRecorded = false;
+    snapGuides = { vx: null, hy: null };
+    // Snap only a single-node drag: capture every *other* node's edge/centre lines as snap candidates.
+    snapTargets = null;
+    if (origin.size === 1) {
+      const dragged = hit.id;
+      const me = shown.nodes.find((nd) => nd.id === dragged);
+      if (me !== undefined) {
+        const xs: number[] = [];
+        const ys: number[] = [];
+        for (const nd of shown.nodes) {
+          if (nd.id === dragged) continue;
+          const { origin: o, size: s } = nd.bounds;
+          xs.push(o.x, o.x + s.width / 2, o.x + s.width);
+          ys.push(o.y, o.y + s.height / 2, o.y + s.height);
+        }
+        snapTargets = { xs, ys, w: me.bounds.size.width, h: me.bounds.size.height };
+      }
+    }
     canvas.setPointerCapture(ev.pointerId);
   } else if (hit === null) {
     pan = {
@@ -1623,11 +1696,25 @@ canvas.addEventListener("pointermove", (ev) => {
   }
   if (drag === null) return;
   const at = scenePoint(ev);
-  const dx = at.x - drag.pointerX;
-  const dy = at.y - drag.pointerY;
+  let dx = at.x - drag.pointerX;
+  let dy = at.y - drag.pointerY;
   if (!dragRecorded && (dx !== 0 || dy !== 0)) {
     doc.record();
     dragRecorded = true;
+  }
+  // Single-node drag snaps its edges/centre to nearby nodes' lines; the snapped lines become guides.
+  const single = snapTargets !== null && drag.ids.length === 1 ? drag.ids[0] : undefined;
+  const start = single === undefined ? undefined : drag.origin.get(single);
+  if (snapTargets !== null && start !== undefined) {
+    const nx = start.x + dx;
+    const ny = start.y + dy;
+    const sx = snapAxis([nx, nx + snapTargets.w / 2, nx + snapTargets.w], snapTargets.xs);
+    const sy = snapAxis([ny, ny + snapTargets.h / 2, ny + snapTargets.h], snapTargets.ys);
+    dx += sx.delta;
+    dy += sy.delta;
+    snapGuides = { vx: sx.line, hy: sy.line };
+  } else {
+    snapGuides = { vx: null, hy: null };
   }
   for (const id of drag.ids) {
     const o = drag.origin.get(id);
@@ -1694,6 +1781,11 @@ canvas.addEventListener("pointerup", (ev) => {
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;
+    snapTargets = null;
+    if (snapGuides.vx !== null || snapGuides.hy !== null) {
+      snapGuides = { vx: null, hy: null };
+      requestPaint(); // clear the guide lines now the drag has ended
+    }
     doc.persist();
   }
 });
