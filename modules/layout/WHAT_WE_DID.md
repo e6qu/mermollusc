@@ -163,3 +163,6 @@
 - Type-system hardening: `stateShape` over `StateKind` now lists `start`/`end` explicitly and ends in
   `default: assertNever(kind)` instead of a `default: "circle"` that swallowed unhandled kinds — a new
   `StateKind` is now a compile error rather than a silent circle.
+- Refined-number brands: `layoutBlock` dropped its `Math.max(1, ast.columns)` clamp now that
+  `BlockAst.columns` is a `PositiveInt` (≥1 by construction) — the type carries the invariant the clamp
+  used to re-assert.

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
-import { brand, coordinate, length, point, rect, size } from "../../src/shell/brand.js";
+import { brand, coordinate, length, point, positive, positiveInt, rect, size } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
 import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
@@ -86,5 +86,22 @@ describe("branded geometry constructors", () => {
   it("length rejects non-finite extents (NaN slips past a bare `< 0` guard)", () => {
     expect(() => length(Number.NaN)).toThrow(RangeError);
     expect(() => length(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it("positive accepts > 0 (incl. fractions) and rejects zero/negative/non-finite", () => {
+    expect(positive(0.5)).toBe(0.5);
+    expect(positive(386)).toBe(386);
+    expect(() => positive(0)).toThrow(RangeError);
+    expect(() => positive(-1)).toThrow(RangeError);
+    expect(() => positive(Number.NaN)).toThrow(RangeError);
+    expect(() => positive(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it("positiveInt accepts integers >= 1 and rejects 0/fractions/non-finite", () => {
+    expect(positiveInt(1)).toBe(1);
+    expect(positiveInt(12)).toBe(12);
+    expect(() => positiveInt(0)).toThrow(RangeError);
+    expect(() => positiveInt(2.5)).toThrow(RangeError);
+    expect(() => positiveInt(Number.NaN)).toThrow(RangeError);
   });
 });

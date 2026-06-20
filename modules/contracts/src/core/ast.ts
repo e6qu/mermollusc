@@ -1,6 +1,6 @@
 // AST contract: the parser's output and the layout's input.
 
-import type { Brand } from "@m/std";
+import type { Brand, Positive, PositiveInt } from "@m/std";
 import type { IconRef } from "./scene.js";
 
 export type NodeId = Brand<string, "NodeId">;
@@ -112,7 +112,8 @@ export interface BlockEdge {
 // A `block-beta` diagram: blocks flow into a `columns`-wide grid; edges connect them.
 export interface BlockAst {
   readonly kind: "block";
-  readonly columns: number;
+  // ≥ 1 by construction (the parser clamps); a zero/negative grid width is unrepresentable.
+  readonly columns: PositiveInt;
   readonly blocks: readonly BlockNode[];
   readonly edges: readonly BlockEdge[];
 }
@@ -441,9 +442,9 @@ export type PieSliceId = Brand<string, "PieSliceId">;
 export interface PieSlice {
   readonly id: PieSliceId;
   readonly label: string;
-  // A positive number (the parser rejects zero and negatives). Slices are shares of the total, not
-  // percentages — the renderer derives the percentage.
-  readonly value: number;
+  // A positive share of the total (the renderer derives the percentage). `Positive` makes zero,
+  // negative, and NaN unrepresentable — the parser mints it through the smart constructor.
+  readonly value: Positive;
 }
 
 export interface PieAst {

@@ -73,3 +73,6 @@
   overlay through (overrides + groups + history + persist). Two implementations satisfy it — the app's
   local `createLocalDocument` and the Yjs-backed `@m/collab` session — so swapping local↔collaborative
   touches no call site.
+- Refined-number types: `PieSlice.value` is now `Positive` and `BlockAst.columns` is `PositiveInt`
+  (from `@m/std`) — a zero/negative/NaN slice or a zero/fractional grid width is no longer representable
+  in the AST; the parser mints both through the smart constructors at the parse boundary.

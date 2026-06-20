@@ -1,4 +1,4 @@
-import { brand } from "@m/std";
+import { brand, positive } from "@m/std";
 import type { PieAst, SceneWedge } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
@@ -15,8 +15,8 @@ const ast: PieAst = {
   title: "Pets",
   showData: false,
   slices: [
-    { id: sid("s0"), label: "Dogs", value: 75 },
-    { id: sid("s1"), label: "Cats", value: 25 },
+    { id: sid("s0"), label: "Dogs", value: positive(75) },
+    { id: sid("s1"), label: "Cats", value: positive(25) },
   ],
 };
 
@@ -74,7 +74,7 @@ describe("layoutPie", () => {
       slices: Array.from({ length: 20 }, (_, i) => ({
         id: sid(`s${i}`),
         label: `slice ${i}`,
-        value: i + 1,
+        value: positive(i + 1),
       })),
     };
     const laid = layoutPie(many, heuristicMeasure);

@@ -1,4 +1,4 @@
-import { brand } from "@m/std";
+import { brand, positiveInt } from "@m/std";
 import type { BlockAst, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { layoutBlock } from "../../src/core/block.js";
@@ -9,7 +9,7 @@ const eid = (s: string) => brand<string, "EdgeId">(s);
 
 const ast: BlockAst = {
   kind: "block",
-  columns: 2,
+  columns: positiveInt(2),
   blocks: [
     { id: nid("a"), label: "A", shape: "rect", icon: null },
     { id: nid("b"), label: "B", shape: "rect", icon: null },
@@ -27,7 +27,7 @@ describe("layoutBlock", () => {
   it("fails loudly when an edge references an unknown block", () => {
     const bad: BlockAst = {
       kind: "block",
-      columns: 1,
+      columns: positiveInt(1),
       blocks: [{ id: nid("a"), label: "A", shape: "rect", icon: null }],
       edges: [{ id: eid("e0"), from: nid("a"), to: nid("ghost"), kind: "arrow", label: null }],
     };

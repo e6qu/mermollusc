@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { brand } from "@m/std";
+import { brand, positiveInt } from "@m/std";
 import type { BlockAst, NetworkAst, NetworkNodeKind, Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { layoutBlock } from "../../src/core/block.js";
@@ -41,7 +41,7 @@ describe("layoutBlock — grid invariants (property-based)", () => {
         (ids, columns) => {
           const ast: BlockAst = {
             kind: "block",
-            columns,
+            columns: positiveInt(columns),
             blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null })),
             edges: [],
           };

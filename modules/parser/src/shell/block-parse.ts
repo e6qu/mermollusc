@@ -1,5 +1,5 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, map, ok, type Result } from "@m/std";
+import { brand, err, map, ok, positiveInt, type Result } from "@m/std";
 import type {
   BlockAst,
   BlockEdge,
@@ -174,8 +174,10 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   }
 
   const blocks = [...blockMap.values()];
-  // Mermaid defaults to a single row when `columns` is omitted; clamp to a sane minimum.
-  const resolved = columns === null ? Math.max(1, blocks.length) : Math.max(1, columns);
+  // Mermaid defaults to a single row when `columns` is omitted; clamp to ≥1 (a finite integer) before
+  // minting — so the grid width is `PositiveInt` and the layout never divides by zero.
+  const requested = columns !== null && Number.isFinite(columns) ? columns : blocks.length;
+  const resolved = positiveInt(Math.max(1, Math.trunc(requested)));
   return ok({
     ast: { kind: "block", columns: resolved, blocks, edges },
     source: { blocks: blockSpans, edges: edgeSpans },

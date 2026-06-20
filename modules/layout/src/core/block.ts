@@ -34,7 +34,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     (w, b) => Math.max(w, labelWidth(b.label, measure)),
     MIN_CELL_WIDTH,
   );
-  const columns = Math.max(1, ast.columns);
+  const columns = ast.columns; // `PositiveInt` — guaranteed ≥ 1 by the parser, no clamp needed
 
   const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
   const nodes: SceneNode[] = ast.blocks.map((b, i) => {
