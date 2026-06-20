@@ -82,4 +82,9 @@ describe("branded geometry constructors", () => {
     expect(() => length(-1)).toThrow(RangeError);
     expect(length(0)).toBe(0);
   });
+
+  it("length rejects non-finite extents (NaN slips past a bare `< 0` guard)", () => {
+    expect(() => length(Number.NaN)).toThrow(RangeError);
+    expect(() => length(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
 });

@@ -457,6 +457,19 @@
   closing `}` and corrupted the source (the last open piece of the brace-bodied-delete P1; ER/class/
   requirement were already fixed). +1 e2e (select the composite container's title strip, Delete → its
   whole block is gone, a sibling state survives, the source still parses with no lint marker).
+- Type-system hardening (make bug *classes* unrepresentable):
+  - **Exhaustive family dispatch.** `removeNode`/`removeEdge`/`appendEdge` and the render source-capture
+    switch list every `DiagramAst["kind"]` explicitly and end in `assertNever`. The generic line-based
+    handlers (flowchart/block/network/cloud/gitGraph/timeline/mindmap/pie) are now named arms, not a
+    `default:` catch-all — so a new family is a **compile error** instead of being silently misrouted to
+    flowchart syntax (the exact shape of the composite-state-delete bug, now prevented as a class).
+  - **No silent error-drops.** The 13 `isOk(withSource) ? withSource.value.source : null` lines in the
+    render path became one `match`-based `captureSource` helper that **logs** when a re-parse disagrees
+    instead of silently nulling the source map — removing a direct violation of the no-silent-fallback rule.
+  - **Single scene↔screen transform.** `scenePoint` (screen→scene) and the new `sceneToScreen`
+    (scene→screen) are kept together as one inverse pair; the inline editor's `place()` routes through
+    `sceneToScreen` instead of re-deriving the arithmetic inline. A copied derivation that dropped
+    `* viewScale` is what shipped the inline-editor-drift bug twice; there's now one tested place.
 - Polish/harden: closed the "renders X" e2e test-confidence gap. Every family render spec (15 files)
   now captures pipeline errors through the shared `watchPipelineErrors` helper — which sees
   `parse`/`layout`/`relax failed` **and** page errors, so a layout/relax regression that returns early

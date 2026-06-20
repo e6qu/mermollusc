@@ -160,3 +160,6 @@
   whole subgraph list at every nesting level (was O(S²)).
 - Audit fix: gitgraph + pie sized labels via `Math.max(...arr.map())`, which throws (argument-count
   limit) on a very large history/pie — a totality break in a pure core. Switched to `reduce`.
+- Type-system hardening: `stateShape` over `StateKind` now lists `start`/`end` explicitly and ends in
+  `default: assertNever(kind)` instead of a `default: "circle"` that swallowed unhandled kinds — a new
+  `StateKind` is now a compile error rather than a silent circle.

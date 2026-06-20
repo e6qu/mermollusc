@@ -6,10 +6,13 @@ export {
   map,
   mapErr,
   flatMap,
+  andThen,
+  traverse,
   unwrapOr,
   match,
   all,
   tap,
+  assertNever,
   rectContains,
 } from "./core/index.js";
 export type {

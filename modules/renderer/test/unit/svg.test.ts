@@ -247,6 +247,75 @@ describe("toSvg", () => {
     expect(svg).toContain("50%");
   });
 
+  it("renders a curved 2-point connector as a bezier <path> (matching the canvas painter)", () => {
+    const curvedScene: Scene = {
+      nodes: [],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(100, 60)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "none",
+          curved: true,
+          fromLabel: null,
+          toLabel: null,
+        },
+      ],
+      wedges: [],
+      extent: rect(0, 0, 120, 80),
+    };
+    const out = toSvg(toDisplayList(curvedScene), {
+      width: 120,
+      height: 80,
+      origin: { x: 0, y: 0 },
+      margin: 0,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(out).toMatch(/<path d="M 0 0 C /); // a cubic bezier, not a straight polyline
+  });
+
+  it("omits the <image> for an icon whose href is missing (the box still renders)", () => {
+    const missing: Scene = {
+      nodes: [
+        {
+          id: snid("S"),
+          bounds: rect(0, 0, 60, 40),
+          label: "S",
+          shape: "rect",
+          parent: null,
+          icon: { pack: "p", name: "absent" },
+          rowDivider: null,
+          subtitle: null,
+          rows: null,
+        },
+      ],
+      edges: [],
+      wedges: [],
+      extent: rect(0, 0, 60, 40),
+    };
+    const out = toSvg(toDisplayList(missing), {
+      width: 60,
+      height: 40,
+      origin: { x: 0, y: 0 },
+      margin: 0,
+      theme: defaultTheme,
+      icons: new Map(), // no href for "p/absent"
+    });
+    expect(out).not.toContain("<image");
+    expect(out).toContain("<rect"); // the node box is still drawn
+  });
+
+  it("renders with default options when none are supplied", () => {
+    const out = toSvg(toDisplayList(scene));
+    expect(out.startsWith("<svg")).toBe(true);
+    expect(out).toContain('viewBox="0 0 0 0"'); // the zero-size default
+  });
+
   it("renders a full-circle wedge (legend swatch) as a <circle>", () => {
     const swatchScene: Scene = {
       nodes: [],
