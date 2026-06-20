@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { setSource } from "./support/source.js";
+import { watchPipelineErrors } from "./support/render.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -8,12 +9,7 @@ const canvasWidth = (page: Page) =>
 // it without error (nodes lay out flat for now — container grouping comes when layout consumes the
 // subgraph data).
 test("renders a flowchart with a subgraph end to end without errors", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -22,9 +18,12 @@ test("renders a flowchart with a subgraph end to end without errors", async ({ p
     page,
     "flowchart TD\n  subgraph Backend\n    api[API] --> db[DB]\n  end\n  user[User] --> api\n",
   );
-  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-
+  // The aria-label names the parsed nodes, so this can't pass on the lingering default sample (which
+  // has Start/Choice/Process/End) — it proves the new diagram actually rendered.
+  await expect(page.locator("#stage")).toHaveAttribute(
+    "aria-label",
+    /flowchart diagram.*\bAPI\b.*\bDB\b/,
+  );
   await expect(page.locator("#kind")).toHaveText("flowchart");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });

@@ -8,7 +8,11 @@
 
 const ROLES = new Set(["owner", "editor", "viewer"]);
 
-export const createClaimsRoleResolver = () => ({ user, room }) => {
+// `defaultRole` is the role granted to an authenticated user whose token carries no per-room roles
+// claim. It defaults to `"editor"` (dev-friendly: any authenticated org member can edit), but is an
+// EXPLICIT knob — a production deployment with a real membership source should pass `null` to
+// fail *closed* (no claim → no access) instead of fail-open. See BUGS.md.
+export const createClaimsRoleResolver = ({ defaultRole = "editor" } = {}) => ({ user, room }) => {
   // No authenticated user (auth disabled / local dev) → full access. RBAC only bites when auth is on.
   if (user === null || user === undefined) return "editor";
 
@@ -18,9 +22,9 @@ export const createClaimsRoleResolver = () => ({ user, room }) => {
   }
 
   // Role: the per-room roles claim is authoritative when present (deny rooms it doesn't list). With no
-  // roles claim at all, an authenticated user defaults to editor. The claim may key by full room id
-  // (`<tenant>/<id>`) or the bare id.
-  if (user.roles === null || user.roles === undefined) return "editor";
+  // roles claim at all, fall back to `defaultRole`. The claim may key by full room id (`<tenant>/<id>`)
+  // or the bare id.
+  if (user.roles === null || user.roles === undefined) return defaultRole;
   const bare = room.includes("/") ? room.slice(room.indexOf("/") + 1) : room;
   const role = user.roles[room] ?? user.roles[bare] ?? null;
   return ROLES.has(role) ? role : null;

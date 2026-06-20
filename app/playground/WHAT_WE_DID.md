@@ -403,3 +403,8 @@
   is now surfaced (a status line + console error) via the transport `onClose` hook. The role e2e now
   attempts a viewer write and asserts it's rejected (no override, source unchanged), then that an editor
   can.
+- Polish pass (audit follow-up). Strengthened the weak "renders X" e2e specs: a shared
+  `watchPipelineErrors` helper now captures layout/relax failures (not just parse) so a layout
+  regression can't slip through with the old diagram on screen, and the three flowchart-kind specs
+  (subgraph/shapes/dot) assert the new diagram's `aria-label` content — they can no longer pass on the
+  lingering default flowchart sample.

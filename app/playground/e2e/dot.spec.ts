@@ -1,26 +1,21 @@
 import { expect, test, type Page } from "@playwright/test";
 import { setSource } from "./support/source.js";
+import { watchPipelineErrors } from "./support/render.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("imports a Graphviz DOT digraph and renders it as a flowchart", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   await setSource(page, 'digraph G {\n  rankdir=LR\n  a [shape=box]\n  a -> b -> c\n  c -> a [label="loop"]\n}\n');
-  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-
-  // DOT is imported into the flowchart model, so the kind badge reads "flowchart".
+  // DOT is imported into the flowchart model, so the kind badge reads "flowchart"; the imported graph
+  // has 3 nodes (a/b/c), unlike the 4-node default sample — so this can't pass on a stale render.
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /flowchart diagram: 3 node/);
   await expect(page.locator("#kind")).toHaveText("flowchart");
-  expect(parseErrors).toEqual([]);
   expect(errors).toEqual([]);
 });
 

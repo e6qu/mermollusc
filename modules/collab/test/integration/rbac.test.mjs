@@ -16,6 +16,16 @@ describe("RBAC — role resolution", () => {
     expect(authorizeRoom({ user, room: "anything" })).toBe("editor");
   });
 
+  it("can fail closed: defaultRole null denies a no-roles-claim user", () => {
+    const denyByDefault = createClaimsRoleResolver({ defaultRole: null });
+    const user = { sub: "u", tenant: null, roles: null };
+    expect(denyByDefault({ user, room: "anything" })).toBeNull();
+    // an explicit per-room grant still works under the fail-closed default
+    expect(denyByDefault({ user: { sub: "u", tenant: null, roles: { x: "editor" } }, room: "x" })).toBe(
+      "editor",
+    );
+  });
+
   it("returns the per-room role from the claim (by full id or bare id)", () => {
     const user = { sub: "u", tenant: null, roles: { "acme/board1": "viewer", board2: "owner" } };
     expect(authorizeRoom({ user, room: "acme/board1" })).toBe("viewer");

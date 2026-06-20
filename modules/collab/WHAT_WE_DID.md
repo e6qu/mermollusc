@@ -93,3 +93,8 @@
   race within a client). Transport (`transport.ts`): a `TransportHooks.onClose` so a dropped relay is
   surfaced, not a silent desync. Tests: a relay integration test (viewer write dropped, editor relayed,
   forbidden/bad-token → 1008, role frame announced); `seedSourceIfEmpty` + `onClose` unit tests.
+- Polish pass (audit follow-up). RBAC: the permissive no-roles-claim default is now an explicit
+  `createClaimsRoleResolver({ defaultRole })` knob (default `editor`; production passes `null` to fail
+  closed) — resolving the silent fail-open the audit flagged (+ a fail-closed test). Verified and
+  withdrew the audit's printer-round-trip finding: the parser rejects empty/delimiter labels, so no
+  parser-produced AST can trigger it (recorded in @m/parser BUGS).

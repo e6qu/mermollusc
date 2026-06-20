@@ -2,11 +2,11 @@
 
 Known issues surfaced by the audit sweep and deliberately deferred (not yet fixed):
 
-- **RBAC default is permissive for tokens without a roles claim.** When auth is on, a valid token with
-  no `org_id` and no per-room roles claim resolves to `editor` for every room (`rbac.mjs`
-  `createClaimsRoleResolver`). That's "fail-open" for the no-claim case. A stricter posture (default
-  **deny** unless a positive grant exists) is the safer enterprise default — a policy decision to make
-  before production, alongside the real membership source.
+- **RBAC default for tokens without a roles claim is now an explicit knob** (was a silent fail-open).
+  `createClaimsRoleResolver({ defaultRole })` controls the role granted to an authenticated user whose
+  token carries no per-room roles claim; it still defaults to `editor` (dev-friendly), but a production
+  deployment with a real membership source should pass `defaultRole: null` to **fail closed**. Choosing
+  that posture (and wiring the membership source) is the remaining decision.
 
 - **Two genuinely-simultaneous fresh clients can both seed a room.** `seedSourceIfEmpty` is atomic
   within a client, but if two clients open the same empty room and seed within the sync window, the
