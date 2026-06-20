@@ -6,6 +6,8 @@ import {
   applyUpdate,
   encodeStateAsUpdate,
 } from "yjs";
+import { yCollab } from "y-codemirror.next";
+import type { Extension } from "@codemirror/state";
 import {
   decodeOverlay,
   group,
@@ -35,6 +37,11 @@ export interface CollabSession {
   setSource(text: string): void;
   // Character-level edit (the CRDT-friendly path: concurrent splices at different offsets both survive).
   spliceSource(index: number, deleteCount: number, insert: string): void;
+  // A CodeMirror extension that two-way-binds the editor to the source `Y.Text` (y-codemirror.next):
+  // local keystrokes flow into the CRDT and remote edits into the editor, merged at the character
+  // level, with per-user text undo. The `Y.Text` stays encapsulated — only an opaque extension crosses
+  // the boundary. Add it to a CodeMirror `EditorState` (the app wires it through `createEditor`).
+  sourceBinding(): Extension;
   // Fires on *remote* source changes only (local edits don't echo back). Returns an unsubscribe fn.
   onSourceChange(listener: (text: string) => void): () => void;
   // Fires on *remote* / undo-driven overlay changes (local mutations update synchronously in place).
@@ -246,6 +253,7 @@ export const createCollabSession = (opts: {
         if (insert.length > 0) yText.insert(index, insert);
       }, LOCAL);
     },
+    sourceBinding: () => yCollab(yText, null),
     onSourceChange: (listener) => {
       sourceListeners.add(listener);
       return () => sourceListeners.delete(listener);

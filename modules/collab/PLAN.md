@@ -23,7 +23,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 - `createCollabSession({ initialOverrides, initialGroups, initialSource, save }) → CollabSession`
 - `CollabSession`: `overlay: OverlayDoc`, `source()/setSource()/spliceSource()`,
+  `sourceBinding()` (a CodeMirror extension binding the editor to the source `Y.Text`),
   `onSourceChange()/onOverlayChange()`, `state()/applyUpdate()/onUpdate()`, `destroy()`.
+- Transport: `connectTransport(session, socket)` / `webSocketTransport(url)` / `connectWebSocket`.
 
 ## Design notes
 

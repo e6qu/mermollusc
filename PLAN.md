@@ -31,7 +31,7 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- 
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
 | `@m/icons` | icon-pack registry + loaders (OSS bundled; cloud packs user-loaded) |
 | `@m/builder` | hit-testing, selection, sidecar overrides, two-way text patching |
-| `@m/collab` | Yjs-backed `OverlayDoc` + `Y.Text` source + WebSocket transport/dev relay — CRDT collaboration (Phase 1) |
+| `@m/collab` | Yjs-backed `OverlayDoc` + `Y.Text` source binding + WebSocket transport/dev relay — CRDT collaboration (Phase 1) |
 | `@m/app` (playground) | wires everything; hosts node e2e + Playwright flows |
 
 ## Decisions (locked)
@@ -192,9 +192,10 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
     implementation; the source text has the symmetric seam in `Editor` (`editor.ts`). Pure refactor,
     zero backend — collab now plugs in as a second `OverlayDoc` implementation without touching call
     sites.
-  - **Phase 1 — proof of merge (mostly done).** `@m/collab` Yjs document (overlay + source) + a dev
-    WebSocket transport/relay; two `?collab` tabs converge live (overlay). Remaining: presence + the
-    live CodeMirror↔`Y.Text` source binding. (Open before Phase 2: confirm the specific OIDC IdP.)
+  - **Phase 1 — proof of merge (nearly complete).** `@m/collab` Yjs document (overlay + source) + a dev
+    WebSocket transport/relay + the live `Y.Text`↔CodeMirror source binding; two `?collab` tabs share
+    overlay **and** text live. Remaining: remote-cursor presence. (Open before Phase 2: confirm the
+    specific OIDC IdP.)
   - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
   - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
     observability/SLOs, offline buffer, compaction, compliance hooks.

@@ -13,7 +13,10 @@
     "@m/std": "workspace:*",
     "@m/contracts": "workspace:*",
     "@m/builder": "workspace:*",
-    "yjs": "catalog:"
+    "yjs": "catalog:",
+    "y-codemirror.next": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:"
   },
   "devDependencies": {
     "ws": "catalog:"

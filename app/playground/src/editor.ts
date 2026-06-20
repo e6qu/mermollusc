@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
 import { type Diagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
-import { Annotation, EditorState } from "@codemirror/state";
+import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -167,7 +167,12 @@ export const createEditor = (
   parent: HTMLElement,
   initial: string,
   onUserChange: (value: string) => void,
+  // `extra` are appended extensions (the `@m/collab` source binding, in collab mode). When that binding
+  // is present it owns text undo/redo (per-user, via Yjs), so `textHistory` is set false to drop
+  // CodeMirror's own history — otherwise the two undo stacks fight over ⌘Z.
+  opts: { extra?: readonly Extension[]; textHistory?: boolean } = {},
 ): Editor => {
+  const textHistory = opts.textHistory ?? true;
   const view = new EditorView({
     parent,
     state: EditorState.create({
@@ -176,10 +181,10 @@ export const createEditor = (
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightActiveLine(),
-        history(),
+        ...(textHistory ? [history()] : []),
         drawSelection(),
         EditorView.lineWrapping,
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        keymap.of([...defaultKeymap, ...(textHistory ? historyKeymap : [])]),
         syntaxHighlighting(highlight),
         mermaidLanguage,
         lintGutter(),
@@ -191,6 +196,7 @@ export const createEditor = (
           );
           if (!isProgrammatic) onUserChange(view.state.doc.toString());
         }),
+        ...(opts.extra ?? []),
       ],
     }),
   });

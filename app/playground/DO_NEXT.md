@@ -1,13 +1,14 @@
 # @m/app (playground) — do next
 
-- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT).** The `OverlayDoc` interface lives in
-  `@m/contracts` (shared port); `@m/collab` provides the Yjs-backed implementation
-  (`createCollabSession`). The app constructs it behind a **default-off `?collab`** flag and **connects
-  it to the dev relay** (`make collab-server`): two tabs on `?collab&room=…` edit the overlay live, and
-  remote overlay changes repaint here. Same `OverlayDoc`, so no call site changed. Two Playwright specs
-  cover the single-tab Yjs path and two-tab convergence (relay runs as a second Playwright webServer).
-  **Next:** remote-cursor presence and a live CodeMirror↔`Y.Text` **source** binding (today only the
-  overlay syncs; source stays local per tab). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
+- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT).** The `OverlayDoc` port lives in
+  `@m/contracts`; `@m/collab` provides the Yjs session. Behind a **default-off `?collab`** flag the app
+  connects to the dev relay (`make collab-server`) and binds the editor to the source `Y.Text` via
+  `collabSession.sourceBinding()`: two tabs on `?collab&room=…` edit **both the overlay and the diagram
+  text** live, each re-deriving locally. `createEditor` gained an `extra`-extensions hook + a
+  `textHistory` flag (collab drops CM's own history so Yjs owns ⌘Z); collab mode seeds the room if empty
+  and doesn't clear the shared overlay on a text edit. Three Playwright specs cover the single-tab Yjs
+  path, two-tab overlay convergence, and two-tab source sync.
+  **Next:** remote-cursor **presence** (awareness). See `modules/collab/DO_NEXT.md` + `docs/collab-editor-plan.md`.
 - *(done)* **Collaborative editor — Phase 0 (the seam, no infra).** Extracted the sidecar overlay
   state (overrides + groups + undo/redo history + persistence) behind an `OverlayDoc` document-model
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed

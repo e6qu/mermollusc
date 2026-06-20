@@ -7,7 +7,13 @@
   binary-sync seam to a `WebSocket`; `dev-server.mjs` is a server-authoritative relay (rooms, per-room
   `Y.Doc`, state-on-join + broadcast). Two `?collab` tabs converge live (Playwright). No auth/persistence
   /presence yet.
-- **Production server (next):** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
+- *(done)* **Live source binding:** `sourceBinding()` (y-codemirror.next) two-way-binds the editor to
+  the source `Y.Text`; two `?collab` tabs share the diagram text live (character merge, per-user text
+  undo). The app drops CodeMirror's own history in collab mode and seeds the room if empty.
+- **Presence (next):** add the Yjs awareness protocol — remote cursors/selections in the editor (and
+  on the canvas), user identity/color, viewport. Wire `yCollab`'s awareness arg + an awareness channel
+  over the transport; ephemeral, not persisted.
+- **Production server:** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
   auth (OIDC), rooms + RBAC, and durable persistence (Postgres update log + S3 snapshots + Redis
   fan-out) — Phases 2–3 of `docs/collab-editor-plan.md`. The client transport is unchanged.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,

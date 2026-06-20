@@ -11,6 +11,10 @@ persistence / presence yet (those are Phases 2–3).
   `webSocketTransport(url)`/`connectWebSocket(session, url)` use the platform `WebSocket`. `dev-server.mjs`
   is a server-authoritative relay (rooms by URL path; per-room `Y.Doc`; full state on join + broadcast).
   Run it with `make collab-server`.
+- **Source binding:** `sourceBinding()` returns a y-codemirror.next extension that two-way-binds the
+  editor to the source `Y.Text` (character-level merge, per-user text undo). The `Y.Text` stays
+  encapsulated — only an opaque CodeMirror extension crosses the boundary. Two `?collab` tabs now share
+  the diagram **text** live, each re-deriving its diagram locally.
 - **Verified:** 30 tests green — single-client overlay + undo/redo + source (unit); transport wiring
   over in-memory paired sockets + a mocked-`WebSocket` `webSocketTransport` (unit); two-peer
   **convergence** (integration): late-joiner catch-up, concurrent moves of different nodes (no lost
@@ -20,9 +24,10 @@ persistence / presence yet (those are Phases 2–3).
   `vitest.config.ts`).
 - **Boundary discipline:** peer/Y data is decoded through `@m/builder`'s Zod overlay decoder before it
   becomes branded state; a decode failure throws loudly (no silent fallback).
-- **App integration:** the playground constructs the Yjs `overlay` behind a default-off `?collab` flag
-  and connects it to the relay; two tabs on `?collab&room=…` edit the overlay live (Playwright covers
-  both the single-tab Yjs path and two-tab convergence).
+- **App integration:** the playground constructs the Yjs session behind a default-off `?collab` flag,
+  connects it to the relay, and binds the editor to the source `Y.Text`; two tabs on `?collab&room=…`
+  edit both the **overlay and the text** live (Playwright covers the single-tab Yjs path, two-tab
+  overlay convergence, and two-tab source sync).
 
-**Next:** awareness/presence (remote cursors), the live CodeMirror ↔ `Y.Text` source binding, and then
-the production server (Hocuspocus) with auth/persistence (Phases 2–3).
+**Next:** awareness/presence (remote cursors + selections), then the production server (Hocuspocus) with
+auth/persistence (Phases 2–3).
