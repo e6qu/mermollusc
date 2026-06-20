@@ -1867,6 +1867,44 @@ addBtn.addEventListener("click", () => {
   void renderFromText(editor.value());
 });
 
+// Duplicate the selected flowchart node(s) (⌘D): append a fresh-id copy of each (same label + shape)
+// to the source, then — after the re-layout — pin each copy just off its original via an override and
+// select the copies. (Edges aren't copied; the duplicates are loose, like Add node.)
+const duplicateSelection = async (): Promise<void> => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) return;
+  const nodeById = new Map(ast.nodes.map((nd) => [nd.id, nd]));
+  const used = new Set<string>(ast.nodes.map((nd) => nd.id));
+  let next = 1;
+  const pairs: Array<{ readonly from: SceneNodeId; readonly to: SceneNodeId }> = [];
+  let text = editor.value();
+  for (const id of selectionOrder) {
+    const orig = nodeById.get(brand<string, "NodeId">(id));
+    if (orig === undefined) continue;
+    while (used.has(`n${next}`)) next++;
+    const newId = `n${next}`;
+    used.add(newId);
+    text = addNode(text, brand<string, "NodeId">(newId), orig.label, orig.shape);
+    pairs.push({ from: id, to: brand<string, "SceneNodeId">(newId) });
+  }
+  if (pairs.length === 0) return;
+  editor.setValue(text);
+  await renderFromText(text);
+  if (scene === null) return;
+  const posById = new Map(
+    applyOverrides(scene, doc.overrides()).nodes.map((nd) => [nd.id, nd.bounds.origin]),
+  );
+  doc.record();
+  for (const { from, to } of pairs) {
+    const p = posById.get(from);
+    if (p !== undefined) doc.moveNode(to, point(p.x + 28, p.y + 28));
+  }
+  doc.persist();
+  selection = { nodes: new Set(pairs.map((p) => p.to)), edges: new Set() };
+  selectionOrder = pairs.map((p) => p.to);
+  paintScene();
+  updateGroupButtons();
+};
+
 // Connect: link the first two shift-selected nodes (in click order), in each family's own edge
 // syntax — directed `-->` (flowchart/block), undirected `--` (network/cloud), `Rel(a,b,"")` (C4),
 // or a `A->>B: message` (sequence).
@@ -2034,6 +2072,11 @@ window.addEventListener("keydown", (ev) => {
     nudging = false;
     paintScene();
     updateGroupButtons();
+  } else if (key === "d") {
+    // Duplicate the selected flowchart node(s) (overriding the browser's ⌘D bookmark).
+    if (viewerMode || selectionOrder.length === 0) return;
+    ev.preventDefault();
+    void duplicateSelection();
   }
 });
 
