@@ -33,7 +33,8 @@
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
   preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s); a single-node drag
-  **snaps to alignment** with amber guide lines. A **?** button (or the `?` key) opens a
+  **snaps to alignment** with amber guide lines, and a **corner-handle resize snaps the moving corner**
+  to the same lines (the min-size clamp drops the guide when the corner can't reach it). A **?** button (or the `?` key) opens a
   shortcut-reference modal grouped by Select / Edit / Layout & groups / View.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`

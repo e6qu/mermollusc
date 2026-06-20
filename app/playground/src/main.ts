@@ -50,6 +50,7 @@ import type {
   NodeId,
   OverlayDoc,
   Scene,
+  SceneNode,
   SceneNodeId,
   SequenceSource,
   SourceMap,
@@ -253,9 +254,10 @@ let drag: {
 // Whether the in-progress drag has already snapshotted the overlay for undo (done on the first move,
 // so a click that never moves leaves no no-op history entry).
 let dragRecorded = false;
-// Alignment snapping for a single-node drag: the candidate guide lines (other nodes' left/centre/right
-// xs and top/middle/bottom ys) captured at drag start + the dragged node's size, and the currently
-// snapped lines to draw (`vx` vertical, `hy` horizontal). Null `snapTargets` = no snapping (multi-drag).
+// Alignment snapping for a single-node drag or a corner-handle resize: the candidate guide lines (other
+// nodes' left/centre/right xs and top/middle/bottom ys) captured at the gesture start + the dragged
+// node's size (`w`/`h`, unused by resize, which snaps only the moving corner), and the currently snapped
+// lines to draw (`vx` vertical, `hy` horizontal). Null `snapTargets` = no snapping (multi-drag).
 let snapTargets: {
   readonly xs: readonly number[];
   readonly ys: readonly number[];
@@ -284,6 +286,21 @@ const snapAxis = (
     }
   }
   return { delta, line };
+};
+// Every *other* node's left/centre/right xs and top/middle/bottom ys — the lines a drag or resize snaps to.
+const snapCandidates = (
+  nodes: readonly SceneNode[],
+  exceptId: SceneNodeId,
+): { readonly xs: number[]; readonly ys: number[] } => {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const nd of nodes) {
+    if (nd.id === exceptId) continue;
+    const { origin: o, size: s } = nd.bounds;
+    xs.push(o.x, o.x + s.width / 2, o.x + s.width);
+    ys.push(o.y, o.y + s.height / 2, o.y + s.height);
+  }
+  return { xs, ys };
 };
 window.__snapActive = () => snapGuides.vx !== null || snapGuides.hy !== null;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
@@ -1566,6 +1583,9 @@ canvas.addEventListener("pointerdown", (ev) => {
   if (resizeStart !== null) {
     resize = resizeStart;
     resizeRecorded = false;
+    snapGuides = { vx: null, hy: null };
+    // The moving corner snaps to other nodes' alignment lines, like a single-node drag.
+    snapTargets = { ...snapCandidates(shown.nodes, resizeStart.id), w: 0, h: 0 };
     canvas.setPointerCapture(ev.pointerId);
     return;
   }
@@ -1630,14 +1650,7 @@ canvas.addEventListener("pointerdown", (ev) => {
       const dragged = hit.id;
       const me = shown.nodes.find((nd) => nd.id === dragged);
       if (me !== undefined) {
-        const xs: number[] = [];
-        const ys: number[] = [];
-        for (const nd of shown.nodes) {
-          if (nd.id === dragged) continue;
-          const { origin: o, size: s } = nd.bounds;
-          xs.push(o.x, o.x + s.width / 2, o.x + s.width);
-          ys.push(o.y, o.y + s.height / 2, o.y + s.height);
-        }
+        const { xs, ys } = snapCandidates(shown.nodes, dragged);
         snapTargets = { xs, ys, w: me.bounds.size.width, h: me.bounds.size.height };
       }
     }
@@ -1671,10 +1684,28 @@ canvas.addEventListener("pointermove", (ev) => {
     }
     const rawW = at.x - resize.anchorX;
     const rawH = at.y - resize.anchorY;
-    const w = Math.max(RESIZE_MIN_W, Math.abs(rawW));
-    const h = Math.max(RESIZE_MIN_H, Math.abs(rawH));
+    // Snap the moving corner to nearby alignment lines; the min-size clamp can pull it back off a line,
+    // so derive the guides from the *final* corner and only show one when the corner actually lands on it.
+    let snapX: number = at.x;
+    let snapY: number = at.y;
+    let vx: number | null = null;
+    let hy: number | null = null;
+    if (snapTargets !== null) {
+      const sx = snapAxis([at.x], snapTargets.xs);
+      const sy = snapAxis([at.y], snapTargets.ys);
+      snapX += sx.delta;
+      snapY += sy.delta;
+      vx = sx.line;
+      hy = sy.line;
+    }
+    const w = Math.max(RESIZE_MIN_W, Math.abs(snapX - resize.anchorX));
+    const h = Math.max(RESIZE_MIN_H, Math.abs(snapY - resize.anchorY));
     const cornerX = resize.anchorX + (rawW >= 0 ? w : -w);
     const cornerY = resize.anchorY + (rawH >= 0 ? h : -h);
+    snapGuides = {
+      vx: vx !== null && Math.abs(cornerX - vx) <= 0.5 ? vx : null,
+      hy: hy !== null && Math.abs(cornerY - hy) <= 0.5 ? hy : null,
+    };
     doc.resizeNode(
       resize.id,
       point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
@@ -1741,6 +1772,11 @@ canvas.addEventListener("pointerup", (ev) => {
   if (resize !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     resize = null;
+    snapTargets = null;
+    if (snapGuides.vx !== null || snapGuides.hy !== null) {
+      snapGuides = { vx: null, hy: null };
+      requestPaint(); // clear the guide lines now the resize has ended
+    }
     doc.persist();
     return;
   }
