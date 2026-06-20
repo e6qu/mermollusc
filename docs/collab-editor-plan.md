@@ -1,9 +1,9 @@
 # Collaborative editor — design & scoping (CRDT)
 
 Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete; Phase 2 in progress — durable
-persistence + Auth0 OIDC verification at the relay handshake (env-gated; JWKS via `jose`) both landed;
-next is rooms + RBAC and the browser login. The app always runs single-user with zero infra (see §1).**
-This scopes a real-time,
+persistence, Auth0 OIDC verification, and rooms + RBAC (server-enforced roles + tenant isolation) all
+landed at the relay; next is the browser login + the production store. The app always runs single-user
+with zero infra (see §1).** This scopes a real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
 architecture (see *Future bets* in the root `PLAN.md`).
@@ -179,9 +179,12 @@ after merge — the invariant holds without coordination.
   `?token=` against the issuer's JWKS (Auth0; `jose`), checking signature + issuer + audience + expiry;
   the relay admits or closes (1008) the connection, buffering frames during the async check. Auth is
   **env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`) so local dev / e2e stay zero-auth. We're **extending
-  our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Remaining:** rooms + RBAC
-  (per-document roles, server-enforced), the browser Auth0 login that supplies the token, then the
-  production `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out).
+  our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Rooms + RBAC are in:**
+  `server/rbac.mjs` resolves a per-document role (owner/editor/viewer) from the token's per-room `roles`
+  claim and isolates **tenants** by room prefix (`<tenant>/…`); the relay closes 1008 on no access and
+  enforces **viewers read-only** (their document frames are dropped server-side). **Remaining:** the
+  browser Auth0 login that supplies the token (and a client that reflects the role), then the production
+  `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 

@@ -15,6 +15,7 @@
 import { WebSocketServer } from "ws";
 import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { createAuth0Authorizer } from "./auth.mjs";
+import { canWrite, createClaimsRoleResolver } from "./rbac.mjs";
 import { createFileStore, createMemoryStore } from "./store.mjs";
 
 const DOC = 0; // frame tag: document update (tag 1 = presence, relayed but not persisted)
@@ -45,9 +46,15 @@ const runAuthorize = async (authorize, req) => {
   return result === true ? { ok: true } : result === false ? { ok: false } : result;
 };
 
-// Start the relay. `store` is the durability seam; `authorize(req) -> boolean` gates connections. Both
-// are injected so a test (or the Auth0 build) can swap them. Returns the WebSocketServer.
-export const startRelay = ({ port = 0, store = createMemoryStore(), authorize = () => true } = {}) => {
+// Start the relay. `store` is the durability seam; `authorize(req)` gates the connection (returns
+// `{ ok, user }`); `authorizeRoom({ user, room })` decides the per-document role (or null = no access).
+// All injected so a test or the production build can swap them. Returns the WebSocketServer.
+export const startRelay = ({
+  port = 0,
+  store = createMemoryStore(),
+  authorize = () => true,
+  authorizeRoom = createClaimsRoleResolver(),
+} = {}) => {
   // room name → { doc, sockets, saveTimer }
   const rooms = new Map();
   const wss = new WebSocketServer({ port });
@@ -78,11 +85,13 @@ export const startRelay = ({ port = 0, store = createMemoryStore(), authorize = 
     const pending = [];
     let room = null;
     let name = "";
+    let role = null; // owner | editor | viewer, set once admitted
 
     const handle = (data) => {
       const frame = bytes(data);
       if (frame.byteLength === 0) return;
       if (frame[0] === DOC) {
+        if (!canWrite(role)) return; // viewers are read-only — drop their document edits entirely
         applyUpdate(room.doc, frame.subarray(1));
         // Debounce the snapshot save so a burst of keystrokes is one write.
         if (room.saveTimer !== null) clearTimeout(room.saveTimer);
@@ -91,6 +100,7 @@ export const startRelay = ({ port = 0, store = createMemoryStore(), authorize = 
           store.save(name, encodeStateAsUpdate(room.doc));
         }, SAVE_DEBOUNCE_MS);
       }
+      // Presence (AWARE) frames relay even from a viewer, so others see who is looking.
       for (const peer of room.sockets) {
         if (peer !== socket && peer.readyState === peer.OPEN) peer.send(frame);
       }
@@ -110,30 +120,47 @@ export const startRelay = ({ port = 0, store = createMemoryStore(), authorize = 
       }
     });
 
-    runAuthorize(authorize, req).then(
-      (auth) => {
-        if (phase === "closed") return; // client gave up while we verified
-        if (!auth.ok) {
-          console.warn(`collab relay: rejected connection (${auth.reason ?? "unauthorized"})`);
-          phase = "closed";
-          socket.close(1008, "unauthorized");
-          return;
-        }
-        name = roomName(req);
-        room = loadRoom(name);
-        room.sockets.add(socket);
-        phase = "open";
-        // Bring the newcomer up to the room's current document state.
-        socket.send(docFrame(encodeStateAsUpdate(room.doc)));
-        for (const data of pending) handle(data);
-        pending.length = 0;
-      },
-      (e) => {
+    const reject = (code, reason) => {
+      console.warn(`collab relay: rejected connection (${reason})`);
+      phase = "closed";
+      socket.close(code, reason);
+    };
+
+    (async () => {
+      let auth;
+      try {
+        auth = await runAuthorize(authorize, req);
+      } catch (e) {
         console.error("collab relay: authorize threw —", e instanceof Error ? e.message : e);
         phase = "closed";
         socket.close(1011, "auth error"); // 1011 = internal error
-      },
-    );
+        return;
+      }
+      if (phase === "closed") return; // client gave up while we verified
+      if (!auth.ok) return reject(1008, auth.reason ?? "unauthorized");
+
+      name = roomName(req);
+      let resolved;
+      try {
+        resolved = await authorizeRoom({ user: auth.user ?? null, room: name });
+      } catch (e) {
+        console.error("collab relay: authorizeRoom threw —", e instanceof Error ? e.message : e);
+        phase = "closed";
+        socket.close(1011, "rbac error");
+        return;
+      }
+      if (phase === "closed") return;
+      if (resolved === null || resolved === undefined) return reject(1008, `forbidden: ${name}`);
+      role = resolved;
+
+      room = loadRoom(name);
+      room.sockets.add(socket);
+      phase = "open";
+      // Bring the newcomer up to the room's current document state.
+      socket.send(docFrame(encodeStateAsUpdate(room.doc)));
+      for (const data of pending) handle(data);
+      pending.length = 0;
+    })();
   });
 
   return wss;

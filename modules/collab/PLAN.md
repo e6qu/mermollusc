@@ -29,9 +29,10 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   `destroy()`.
 - Transport: `connectTransport(session, socket)` / `webSocketTransport(url)` / `connectWebSocket`
   (frames document and presence updates distinctly on one socket).
-- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize })`), `store.mjs`
-  (`createMemoryStore` / `createFileStore` — the `RoomStore` durability seam), and `auth.mjs`
-  (`createVerifier` / `createAuth0Authorizer` — OIDC token verification for `authorize`).
+- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom })`),
+  `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability seam), `auth.mjs`
+  (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and `rbac.mjs`
+  (`createClaimsRoleResolver` / `canWrite` — per-document roles + tenant isolation).
 
 ## Design notes
 
