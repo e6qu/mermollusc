@@ -445,3 +445,10 @@
   the dragged node's nearest edge to a candidate line within ~6px and draws an amber dashed guide on
   the snapped axis (cleared on release). Multi-node drags don't snap. +1 e2e (a 3px drag snaps to the
   spine centre; a far drag doesn't; guide clears on release); screenshot-verified the guide line.
+- Editing UX: **resize snapping** — a corner-handle resize reuses the same alignment machinery. The
+  candidate lines are captured at resize start (factored into a shared `snapCandidates` helper, used by
+  both drag and resize); each move snaps the *moving corner* to the nearest line within ~6px and draws
+  the amber guide. The guide is derived from the corner's *final* position, so the min-size clamp drops
+  it when the box can't actually grow/shrink onto the line — no lying guide. +1 e2e (nudge the corner a
+  few px → snaps to the shared right-edge line; big drag → no snap; clears on release); the guide line
+  through the diagram was screenshot-verified.
