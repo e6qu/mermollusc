@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { expectSourceNotMatches, sourceValue, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -10,10 +11,7 @@ const canvasWidth = (page: Page) =>
 test("Delete on a composite state removes its whole block, leaving valid source", async ({
   page,
 }) => {
-  const parseErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && m.text().includes("parse failed")) parseErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   const canvas = page.locator("#stage");
@@ -41,6 +39,6 @@ test("Delete on a composite state removes its whole block, leaving valid source"
   // a sibling state and its own transition survive
   expect(await sourceValue(page)).toContain("Done --> [*]");
   // and the result still parses cleanly (no dangling `}` / orphaned rows)
-  expect(parseErrors).toEqual([]);
+  expect(errors).toEqual([]);
   await expect(page.locator(".cm-lint-marker-error")).toHaveCount(0);
 });

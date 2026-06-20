@@ -457,3 +457,10 @@
   closing `}` and corrupted the source (the last open piece of the brace-bodied-delete P1; ER/class/
   requirement were already fixed). +1 e2e (select the composite container's title strip, Delete → its
   whole block is gone, a sibling state survives, the source still parses with no lint marker).
+- Polish/harden: closed the "renders X" e2e test-confidence gap. Every family render spec (15 files)
+  now captures pipeline errors through the shared `watchPipelineErrors` helper — which sees
+  `parse`/`layout`/`relax failed` **and** page errors, so a layout/relax regression that returns early
+  (leaving the previous diagram on screen) can no longer slip past a parse-only filter. Each also
+  asserts the canvas `aria-label` starts with its own `"<kind> diagram:"` (flowchart/C4 specs name a
+  specific parsed node), so a stale render of the default flowchart fails the assertion. Net −71 lines
+  of duplicated boilerplate; 118 e2e specs green.

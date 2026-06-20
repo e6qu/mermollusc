@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { watchPipelineErrors } from "./support/render.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 test("renders a C4 diagram (with a nested boundary) from the textarea", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -16,16 +16,14 @@ test("renders a C4 diagram (with a nested boundary) from the textarea", async ({
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  // The aria-label names the rendered kind + elements, so this can't pass on the lingering default
+  // flowchart sample — it proves the C4 diagram actually rendered.
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^c4 diagram:.*\bAPI\b/);
   expect(errors).toEqual([]);
 });
 
 test("renders C4 elements with the optional description argument", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  const consoleErrors: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error") consoleErrors.push(m.text());
-  });
+  const errors = watchPipelineErrors(page);
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
@@ -36,7 +34,8 @@ test("renders C4 elements with the optional description argument", async ({ page
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  // No parse error (the 3-arg form is accepted) and no runtime error.
-  expect(consoleErrors.filter((e) => e.includes("parse failed"))).toEqual([]);
+  // The 3-arg form is accepted: the C4 diagram renders (named in the aria-label) with no pipeline error.
+  // (dotAll: an element's label + description are joined by a newline in the aria text.)
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^c4 diagram:.*\bWeb\b/s);
   expect(errors).toEqual([]);
 });

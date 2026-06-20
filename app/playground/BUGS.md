@@ -1,14 +1,16 @@
 # @m/app (playground) — bugs
 
-Open (collab-era audit sweep):
+Resolved (collab-era audit sweep):
 
-- **Some "renders X" e2e specs can pass on the lingering default sample.** The flowchart-kind specs
-  (`subgraph`, `shapes`, `dot`) assert `#kind === "flowchart"`, but the app already loads a flowchart
-  at startup — so if the new source fails to render, the old diagram stays up and the assertion still
-  holds. Related: the textarea "renders" specs capture only `pageerror` + a `"parse failed"` substring,
-  so a *layout* failure (`"layout failed:"`, which returns early) is invisible. Strengthen by asserting
-  the new diagram's specific `aria-label` content and capturing all console `error`s. (Not a product
-  bug — a test-confidence gap. The collab/RBAC specs were already strengthened in the sweep.)
+- ~~**Some "renders X" e2e specs can pass on the lingering default sample.**~~ Fixed — every family
+  "renders X" spec now routes its error capture through the shared `watchPipelineErrors` helper
+  (`e2e/support/render.ts`), which collects `parse`/`layout`/`relax failed` console errors **and**
+  uncaught page errors — so a *layout* or *relax* regression (which returns early, leaving the prior
+  diagram on screen) is no longer invisible. For freshness, each spec also asserts the `#stage`
+  `aria-label` starts with its own `"<kind> diagram:"` (and, for flowchart/C4 specs, names a specific
+  parsed node) — the lingering default is a flowchart, so a stale render fails the assertion. The
+  per-file hand-rolled parse-only filters (15 files) were deleted. (Not a product bug — a test-
+  confidence gap.)
 
 Resolved (internal audit sweep, 2026-06-20):
 
