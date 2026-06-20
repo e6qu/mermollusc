@@ -1924,8 +1924,8 @@ const anchorFor = (
     return { x: origin.x, y: origin.y, w: size.width, h: size.height };
   }
   const e = shown.edges.find((ee) => ee.id === hit.id);
-  if (e === undefined || e.waypoints.length < 2) return null;
-  const anchor = edgeLabelAnchor(e.waypoints);
+  if (e === undefined) return null;
+  const anchor = edgeLabelAnchor(e.waypoints); // waypoints is TwoOrMore — always anchorable
   return { x: anchor.x - 40, y: anchor.y - 12, w: 80, h: 24 };
 };
 

@@ -1,4 +1,4 @@
-import { ok, point, rect, type Result } from "@m/std";
+import { ok, point, rect, twoOrMore, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type { Scene, SceneEdge, SceneNode, TimelineAst, TimelinePeriod } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
@@ -125,12 +125,13 @@ export const layoutTimeline = (
   if (centers.length >= 2) {
     const first = ast.periods[0];
     const last = ast.periods[ast.periods.length - 1];
-    if (first !== undefined && last !== undefined) {
+    const [a, b, ...rest] = centers.map((c) => point(c.x, c.y));
+    if (first !== undefined && last !== undefined && a !== undefined && b !== undefined) {
       edges.push({
         id: sceneEdgeId("spine"),
         from: sceneNodeId(first.id),
         to: sceneNodeId(last.id),
-        waypoints: centers.map((c) => point(c.x, c.y)),
+        waypoints: twoOrMore(a, b, ...rest),
         label: null,
         stroke: "solid",
         fromEnd: "none",

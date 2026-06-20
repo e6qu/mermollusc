@@ -111,3 +111,6 @@
   shape, `edgeLabelAnchor`'s multi-segment + degenerate paths, the curved-bezier paint/SVG paths, the
   icon-miss SVG branch, and `defaultSvgOptions`. Coverage rose (lines 90→98), so the ratchet was raised
   to statements 97 / branches 84 / functions 97 / lines 98.
+- `SceneEdge.waypoints` is now `TwoOrMore<Point>`: `toDisplayList` dropped its `if (pts.length < 2)
+  continue` (a silent skip — an edge that didn't draw) and the now-redundant first/second undefined
+  guards, since `waypoints[0]`/`[1]` are total.

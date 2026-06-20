@@ -477,3 +477,5 @@
   asserts the canvas `aria-label` starts with its own `"<kind> diagram:"` (flowchart/C4 specs name a
   specific parsed node), so a stale render of the default flowchart fails the assertion. Net −71 lines
   of duplicated boilerplate; 118 e2e specs green.
+- Type-system hardening: dropped the `e.waypoints.length < 2` guard in the inline-editor edge-anchor
+  path now that `SceneEdge.waypoints` is `TwoOrMore<Point>` (always anchorable).

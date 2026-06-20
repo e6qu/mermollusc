@@ -166,3 +166,8 @@
 - Refined-number brands: `layoutBlock` dropped its `Math.max(1, ast.columns)` clamp now that
   `BlockAst.columns` is a `PositiveInt` (≥1 by construction) — the type carries the invariant the clamp
   used to re-assert.
+- `SceneEdge.waypoints` is now `TwoOrMore<Point>`. A new `routeWaypoints` helper (`core/route.ts`) builds
+  it from a routing engine's point list, falling back to a **straight line between the endpoint centres**
+  when ELK returns a degenerate (<2-point) route — a defined geometry, not the old silent skip and not a
+  blanked diagram. The flowchart (`transform.ts`) and ELK (`elk.ts`) edge builders route through it
+  (using the just-built node centres); the timeline spine uses `twoOrMore` directly. +route.ts tests.

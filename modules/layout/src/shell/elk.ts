@@ -1,4 +1,5 @@
-import { assertNever, brand, decode, err, ok, point, rect, type Point, type Result } from "@m/std";
+import { assertNever, brand, decode, err, ok, rect, type Point, type Result } from "@m/std";
+import { boxCenter, routeWaypoints } from "../core/route.js";
 import type {
   ClassAst,
   ClassMember,
@@ -355,15 +356,24 @@ const layoutCompartments = async (
         subtitle: b.subtitle,
       });
     }
+    const centerById = new Map<string, Point>(
+      nodes.map((n) => [
+        n.id,
+        boxCenter(n.bounds.origin.x, n.bounds.origin.y, n.bounds.size.width, n.bounds.size.height),
+      ]),
+    );
     const sceneEdges: SceneEdge[] = [];
     for (const pe of positioned.edges) {
       const e = edgeById.get(pe.id);
       if (e === undefined) continue;
+      const fromCenter = centerById.get(e.from);
+      const toCenter = centerById.get(e.to);
+      if (fromCenter === undefined || toCenter === undefined) continue;
       sceneEdges.push({
         id: brand<string, "SceneEdgeId">(pe.id),
         from: brand<string, "SceneNodeId">(e.from),
         to: brand<string, "SceneNodeId">(e.to),
-        waypoints: pe.points.map((q) => point(q.x, q.y)),
+        waypoints: routeWaypoints(pe.points, fromCenter, toCenter),
         label: e.label,
         stroke: e.stroke,
         fromEnd: e.fromEnd,

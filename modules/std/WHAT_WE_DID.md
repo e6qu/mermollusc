@@ -35,3 +35,7 @@
   validating shell constructors `positive`/`positiveInt` — the same "push the invariant into the type"
   pattern as `Length`, so a zero/negative/NaN slice value or a zero/fractional column count is
   unconstructible. +tests (accept valid, reject zero/negative/fraction/NaN/Infinity).
+- Added `TwoOrMore<T>` (`readonly [T, T, ...T[]]`) + the `twoOrMore(first, second, ...rest)` constructor
+  — a list with ≥2 elements where `[0]`/`[1]` are total, so a too-short edge route is unrepresentable.
+  The constructor needs no assertion (the tuple-rest literal types itself), and the type is structurally
+  a `readonly T[]`, so existing readers are unaffected. +test (order kept, `[0]`/`[1]` present).

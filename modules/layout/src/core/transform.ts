@@ -1,5 +1,6 @@
-import { err, ok, point, rect, type Point, type Result } from "@m/std";
+import { err, ok, rect, type Point, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
+import { boxCenter, routeWaypoints } from "./route.js";
 import type {
   EdgeEnd,
   EdgeId,
@@ -155,16 +156,29 @@ export const toScene = (
     });
   }
 
+  const centerById = new Map<string, Point>(
+    nodes.map((n) => [
+      n.id,
+      boxCenter(n.bounds.origin.x, n.bounds.origin.y, n.bounds.size.width, n.bounds.size.height),
+    ]),
+  );
+
   const edges: SceneEdge[] = [];
   for (const pe of positioned.edges) {
     const astEdge = edgeById.get(pe.id);
     if (astEdge === undefined)
       return err({ kind: "layout", message: `edge ${pe.id} missing from AST` });
+    const fromId = sceneNodeId(astEdge.from);
+    const toId = sceneNodeId(astEdge.to);
+    const fromCenter = centerById.get(fromId);
+    const toCenter = centerById.get(toId);
+    if (fromCenter === undefined || toCenter === undefined)
+      return err({ kind: "layout", message: `edge ${pe.id} references an unpositioned node` });
     edges.push({
       id: sceneEdgeId(pe.id),
-      from: sceneNodeId(astEdge.from),
-      to: sceneNodeId(astEdge.to),
-      waypoints: pe.points.map((p) => point(p.x, p.y)),
+      from: fromId,
+      to: toId,
+      waypoints: routeWaypoints(pe.points, fromCenter, toCenter),
       label: astEdge.label,
       fromEnd: "none",
       curved: false,
