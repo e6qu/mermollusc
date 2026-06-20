@@ -57,3 +57,12 @@
   fresh-instance-over-same-dir (≈ restart) and path-safe room filenames; the relay's end-to-end restart
   survival was verified manually (a client wrote text, the relay restarted on the same dir, a new client
   read it back). Production `RoomStore` (Postgres update log + S3 snapshots) is the same interface.
+- Phase 2 — Auth0 OIDC handshake (extending our own relay, not Hocuspocus; §10.5 reconsidered).
+  `server/auth.mjs`: `createVerifier({jwksUri,issuer,audience})` + `createAuth0Authorizer({domain,audience})`
+  verify the connection's `?token=` (carried in the WS URL, since browsers can't set WS headers) against
+  the issuer JWKS via `jose` — signature + issuer + audience + expiry — returning `{ok,user}` or a
+  reason. The relay's connection handler is now async: it buffers frames during verification, then admits
+  (sends state) or closes 1008. Auth is env-gated (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default allow-all,
+  so dev/e2e stay zero-auth. The app forwards a `?token=` to the relay when present. Pinned `jose` 6.2.3.
+  Test: a local JWKS harness (generated RSA key + a local endpoint + signed tokens) covering accept +
+  every rejection; the relay admit/reject + buffering flow verified manually.

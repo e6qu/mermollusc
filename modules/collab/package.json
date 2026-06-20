@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "ws": "catalog:",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "jose": "catalog:"
   }
 }

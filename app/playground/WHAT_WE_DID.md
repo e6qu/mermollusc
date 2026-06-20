@@ -388,3 +388,6 @@
   with a pluggable `RoomStore` (rooms survive restart via `PERSIST_DIR`); the Playwright webServer +
   `make collab-server` point at the new path. No app behaviour change — single-user local still needs
   no server, and the `?collab` path is unchanged.
+- Collab Phase 2 — forward a `?token=` to the relay (an Auth0 access token, once login is wired); the
+  relay verifies it when auth is enabled. Absent in local dev → the relay's default allow-all accepts,
+  so single-user and the `?collab` flow are unchanged.
