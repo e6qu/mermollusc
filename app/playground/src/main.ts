@@ -28,6 +28,7 @@ import {
   patchSpan,
   pathLocked,
   relabelNode,
+  reshapeNode,
   selectOnly,
   toggle,
   topGroupOfNode,
@@ -2478,6 +2479,41 @@ const nudgeSelection = (dx: number, dy: number): void => {
   paintScene();
 };
 
+// Cycle the selected flowchart node(s) through the shapes (rect → round → stadium → circle → diamond),
+// rewriting each declaration's brackets via `reshapeNode`. Edits are applied back-to-front (by source
+// position) so an earlier rewrite can't shift the offsets of a later one within the same pass.
+const SHAPE_CYCLE: readonly NodeShape[] = ["rect", "round", "stadium", "circle", "diamond"];
+const cycleShape = async (): Promise<void> => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart" || source === null) return;
+  const src = source;
+  const nodeById = new Map(ast.nodes.map((nd) => [nd.id, nd]));
+  const targets = selectionOrder
+    .flatMap((id) => {
+      const nid = brand<string, "NodeId">(id);
+      const node = nodeById.get(nid);
+      const spans = src.nodes.get(nid);
+      return node === undefined || spans === undefined
+        ? []
+        : [{ nid, node, start: spans.decl.start }];
+    })
+    .sort((a, b) => b.start - a.start);
+  if (targets.length === 0) return;
+  let text = editor.value();
+  for (const t of targets) {
+    const idx = SHAPE_CYCLE.indexOf(t.node.shape);
+    const next = SHAPE_CYCLE[(idx + 1) % SHAPE_CYCLE.length] ?? "rect";
+    const out = reshapeNode(text, src, t.nid, t.node.label, next);
+    if (isOk(out)) text = out.value;
+  }
+  const keep = selectionOrder.map((id) => brand<string, "SceneNodeId">(id));
+  editor.setValue(text);
+  await renderFromText(text);
+  selection = { nodes: new Set(keep), edges: new Set() };
+  selectionOrder = keep;
+  paintScene();
+  updateGroupButtons();
+};
+
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (ev.key === "Escape") {
@@ -2490,6 +2526,9 @@ window.addEventListener("keydown", (ev) => {
     return;
   }
   if (ev.metaKey || ev.ctrlKey) return; // leave ⌘-combos to the other handlers / the browser
+  // A focused text field (icon-filter, inline rename) keeps its own keys — never hijack a letter/arrow.
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
   const step = ev.shiftKey ? 10 : 1;
   switch (ev.key) {
     case "ArrowLeft":
@@ -2507,6 +2546,14 @@ window.addEventListener("keydown", (ev) => {
     case "ArrowDown":
       ev.preventDefault();
       nudgeSelection(0, step);
+      break;
+    case "s":
+    case "S":
+      if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) {
+        return;
+      }
+      ev.preventDefault();
+      void cycleShape();
       break;
   }
 });

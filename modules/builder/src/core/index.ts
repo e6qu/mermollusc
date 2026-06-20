@@ -17,6 +17,7 @@ export {
 } from "./groups.js";
 export {
   relabelNode,
+  reshapeNode,
   patchSpan,
   addNode,
   connect,

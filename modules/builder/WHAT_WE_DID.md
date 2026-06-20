@@ -94,3 +94,6 @@
   field into a compile error rather than a silent wire-drop. +1 unit test (per-entry shape + round-trip).
 - `applyOverrides` rebuilds `SceneEdge.waypoints` (now `TwoOrMore<Point>`) by destructuring the ≥2 input
   and shifting each point, so the offset route stays a `TwoOrMore` by construction.
+- Added `reshapeNode` (two-way edit): rewrites a flowchart node's whole declaration span (`A[x]` →
+  `A((x))` etc.) to a new shape via an exhaustive `wrapShape`, keeping the label; a bare node's id
+  becomes its label. +integration tests (all five shapes round-trip through re-parse; bare-node case).

@@ -70,6 +70,8 @@ interface Ref {
   readonly explicit: boolean;
   readonly idSpan: TextSpan;
   readonly labelSpan: TextSpan;
+  // The whole declaration span (id + shape brackets), so a reshape can rewrite the brackets.
+  readonly declSpan: TextSpan;
   readonly bracketed: boolean;
 }
 
@@ -88,56 +90,72 @@ const readNodeRef = (node: CstNode): Ref => {
       explicit: false,
       idSpan,
       labelSpan: idSpan,
+      declSpan: idSpan,
       bracketed: false,
     };
   }
 
+  // The declaration span runs from the id to past the closing bracket(s); the label token is the inner
+  // text, so the close sits `closeLen` chars after it (`]`/`)`/`}` = 1, `])`/`))` = 2).
+  const declTo = (label: TextSpan, closeLen: number): TextSpan => ({
+    start: idSpan.start,
+    end: label.end + closeLen,
+  });
+
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
   if (square !== undefined) {
+    const labelSpan = spanOf(square);
     return {
       id,
       label: square.image.trim(),
       shape: "rect",
       explicit: true,
       idSpan,
-      labelSpan: spanOf(square),
+      labelSpan,
+      declSpan: declTo(labelSpan, 1),
       bracketed: true,
     };
   }
   const stadium = childTokens(sc, "StadiumText")[0];
   if (stadium !== undefined) {
+    const labelSpan = spanOf(stadium);
     return {
       id,
       label: stadium.image.trim(),
       shape: "stadium",
       explicit: true,
       idSpan,
-      labelSpan: spanOf(stadium),
+      labelSpan,
+      declSpan: declTo(labelSpan, 2),
       bracketed: true,
     };
   }
   const circle = childTokens(sc, "CircleText")[0];
   if (circle !== undefined) {
+    const labelSpan = spanOf(circle);
     return {
       id,
       label: circle.image.trim(),
       shape: "circle",
       explicit: true,
       idSpan,
-      labelSpan: spanOf(circle),
+      labelSpan,
+      declSpan: declTo(labelSpan, 2),
       bracketed: true,
     };
   }
   const paren = childTokens(sc, "ParenText")[0];
   if (paren !== undefined) {
+    const labelSpan = spanOf(paren);
     return {
       id,
       label: paren.image.trim(),
       shape: "round",
       explicit: true,
       idSpan,
-      labelSpan: spanOf(paren),
+      labelSpan,
+      declSpan: declTo(labelSpan, 1),
       bracketed: true,
     };
   }
@@ -150,6 +168,7 @@ const readNodeRef = (node: CstNode): Ref => {
     explicit: true,
     idSpan,
     labelSpan,
+    declSpan: curly === undefined ? idSpan : declTo(labelSpan, 1),
     bracketed: true,
   };
 };
@@ -201,12 +220,18 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       if (existing === undefined) {
         const nodeId = brand<string, "NodeId">(ref.id);
         nodeMap.set(ref.id, { id: nodeId, label: ref.label, shape: ref.shape });
-        nodeSpans.set(nodeId, { id: ref.idSpan, label: ref.labelSpan, bracketed: ref.bracketed });
+        nodeSpans.set(nodeId, {
+          id: ref.idSpan,
+          label: ref.labelSpan,
+          decl: ref.declSpan,
+          bracketed: ref.bracketed,
+        });
       } else if (ref.explicit) {
         nodeMap.set(ref.id, { id: existing.id, label: ref.label, shape: ref.shape });
         nodeSpans.set(existing.id, {
           id: ref.idSpan,
           label: ref.labelSpan,
+          decl: ref.declSpan,
           bracketed: ref.bracketed,
         });
       }

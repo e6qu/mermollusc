@@ -34,6 +34,7 @@ import {
   deleteStateEntity,
   patchSpan,
   relabelNode,
+  reshapeNode,
 } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -75,6 +76,38 @@ describe("relabelNode", () => {
   it("fails loudly for an unknown node", () => {
     const text = "flowchart TD\n  A --> B\n";
     expect(relabelNode(text, sourceOf(text), nid("Z"), "x").ok).toBe(false);
+  });
+
+  it("reshapeNode rewrites a node's shape brackets across every shape, keeping the label", () => {
+    const cases: ReadonlyArray<readonly ["rect" | "round" | "stadium" | "circle" | "diamond", string]> =
+      [
+        ["round", "A(Start)"],
+        ["stadium", "A([Start])"],
+        ["circle", "A((Start))"],
+        ["diamond", "A{Start}"],
+        ["rect", "A[Start]"],
+      ];
+    for (const [shape, expected] of cases) {
+      const text = "flowchart TD\n  A[Start] --> B[End]\n";
+      const r = reshapeNode(text, sourceOf(text), nid("A"), "Start", shape);
+      expect(isOk(r)).toBe(true);
+      if (!isOk(r)) continue;
+      expect(r.value).toBe(`flowchart TD\n  ${expected} --> B[End]\n`);
+      const reparsed = parseWithSource(r.value);
+      expect(isOk(reparsed)).toBe(true);
+      if (!isOk(reparsed)) continue;
+      const a = reparsed.value.ast.nodes.find((n) => n.id === "A");
+      expect(a?.shape).toBe(shape);
+      expect(a?.label).toBe("Start"); // label preserved through the reshape
+    }
+  });
+
+  it("reshapeNode wraps a bare node (its id becomes the label)", () => {
+    const text = "flowchart TD\n  A --> B\n";
+    const r = reshapeNode(text, sourceOf(text), nid("A"), "A", "diamond");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value).toBe("flowchart TD\n  A{A} --> B\n");
   });
 
   it("patchSpan replaces exactly the given range", () => {
