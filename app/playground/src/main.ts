@@ -94,6 +94,8 @@ declare global {
     // e2e hook (collab mode only): the number of overlay position overrides currently in the document,
     // so a spec can assert a remote peer's drag landed in this tab.
     __collabOverrideCount?: () => number;
+    // e2e hook (collab mode only): apply a server-granted role, to exercise the read-only viewer UI.
+    __collabSetRole?: (role: string) => void;
   }
 }
 
@@ -214,6 +216,9 @@ let lastDirection: FlowDirection | null = null;
 let viewScale = 1;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 4;
+// True when this client's collaborative role is `viewer` — the editor and canvas become read-only (the
+// server is the real boundary; this is the matching UX). Always false in single-user / non-collab.
+let viewerMode = false;
 // The last laid-out scene + logical sheet size, cached so the minimap can redraw on scroll without
 // re-running the main paint. The minimap renders a *simplified* view from the scene (node blocks,
 // faint edges) rather than the full display list — shrunk labels/icons would just be noise.
@@ -1412,8 +1417,9 @@ canvas.addEventListener("pointerdown", (ev) => {
   const additive = ev.shiftKey || ev.metaKey;
 
   // A corner handle of the single selected node starts a resize (takes priority over re-selecting
-  // the node under the corner). Shift/⌘ is multi-select intent, so skip resize then.
-  const resizeStart = additive ? null : resizeAnchorAt(shown, at);
+  // the node under the corner). Shift/⌘ is multi-select intent, so skip resize then; a viewer never
+  // resizes (read-only).
+  const resizeStart = additive || viewerMode ? null : resizeAnchorAt(shown, at);
   if (resizeStart !== null) {
     resize = resizeStart;
     resizeRecorded = false;
@@ -1460,7 +1466,7 @@ canvas.addEventListener("pointerdown", (ev) => {
 
   // A plain click on a node drags it; if it's in a group, the whole group moves — unless the group
   // is locked, in which case it's selectable (for Ungroup/Lock) but not draggable. Empty canvas pans.
-  if (hit !== null && hit.kind === "node" && !pathLocked(doc.groups(), hit.id)) {
+  if (hit !== null && hit.kind === "node" && !pathLocked(doc.groups(), hit.id) && !viewerMode) {
     const moveIds = new Set<SceneNodeId>();
     for (const id of selection.nodes) {
       const top = topGroupOfNode(doc.groups(), id);
@@ -1657,7 +1663,7 @@ const anchorFor = (
 
 // Two-way edit: rename what was double-clicked and write the patch back into the source text.
 canvas.addEventListener("dblclick", (ev) => {
-  if (scene === null || ast === null) return;
+  if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
   const shown = applyOverrides(scene, doc.overrides());
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
@@ -1940,6 +1946,7 @@ window.addEventListener("keydown", (ev) => {
   // so editing its text never silently deletes selected canvas nodes.
   const active = document.activeElement;
   if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+  if (viewerMode) return; // a viewer can't delete
   if (ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
@@ -1965,6 +1972,7 @@ window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (!ev.metaKey && !ev.ctrlKey) return;
   const key = ev.key.toLowerCase();
+  if ((key === "z" || key === "y") && viewerMode) return; // a viewer has no overlay edits to undo/redo
   if (key === "z" && !ev.shiftKey) {
     ev.preventDefault();
     undoOverlay();
@@ -2000,7 +2008,7 @@ const movableSelectionLeaves = (): SceneNodeId[] => {
 // Arrow-key nudge: fine positioning to complement coarse drag (Shift = a bigger step). A run of
 // nudges shares one undo entry. Escape clears the selection.
 const nudgeSelection = (dx: number, dy: number): void => {
-  if (scene === null) return;
+  if (scene === null || viewerMode) return;
   const ids = movableSelectionLeaves();
   if (ids.length === 0) return;
   const shown = applyOverrides(scene, doc.overrides());
@@ -2470,11 +2478,27 @@ if (collabSession !== null) {
   const PRESENCE_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080"];
   const color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)] ?? "#4363d8";
   session.setLocalUser({ name: `User ${1 + Math.floor(Math.random() * 99)}`, color });
+  // The relay sends this client's granted role (a control frame). A viewer's editor + canvas go
+  // read-only, with a badge — the server already drops a viewer's edits, so this is the matching UX.
+  const roleBadge = document.querySelector<HTMLElement>("#role-badge");
+  const applyRole = (role: string): void => {
+    viewerMode = role === "viewer";
+    editor.setReadOnly(viewerMode);
+    document.body.dataset["role"] = role;
+    if (roleBadge !== null) {
+      roleBadge.textContent = viewerMode ? "view only" : role;
+      roleBadge.dataset["role"] = role;
+      roleBadge.hidden = false;
+    }
+    updateGroupButtons();
+  };
   // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
   // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
   const token = params.get("token");
   const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
-  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`);
+  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`, {
+    onControl: applyRole,
+  });
   // Seed the room's source once the initial sync has settled: the first client into an empty room
   // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
   // relay) and adopts that instead, so the text isn't duplicated.
@@ -2482,4 +2506,5 @@ if (collabSession !== null) {
     if (session.source() === "") session.setSource(initialSource);
   }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
+  window.__collabSetRole = applyRole; // e2e hook: drive the role without a real RBAC server
 }

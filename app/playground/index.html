@@ -203,6 +203,22 @@
         border-radius: 999px;
         padding: 2px 10px;
       }
+      .role-badge {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--ink-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+      .role-badge[data-role="viewer"] {
+        color: #8a5a00;
+        background: color-mix(in srgb, #f5a623 18%, transparent);
+        border-color: color-mix(in srgb, #f5a623 40%, transparent);
+      }
+      /* A collaborative viewer can navigate (select/pan/zoom) but not edit: dim + disable the tools. */
+      body[data-role="viewer"] .editor-tools { pointer-events: none; opacity: 0.45; }
       #editor {
         flex: 1;
         min-height: 0;
@@ -467,6 +483,7 @@
             <span class="dot"></span>
             <span>source</span>
             <span class="grow"></span>
+            <span id="role-badge" class="role-badge" hidden></span>
             <span id="kind" class="kind-badge">flowchart</span>
           </div>
           <div id="editor"></div>

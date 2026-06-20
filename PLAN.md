@@ -199,9 +199,10 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   - **Phase 2 — durable + secured (in progress).** Landed: a pluggable `RoomStore` (memory + file
     snapshots; rooms survive restart), **Auth0 OIDC verification** at the relay handshake (JWKS via
     `jose`, env-gated), and **rooms + RBAC** (server-enforced per-document roles + tenant isolation;
-    viewers read-only). Decided to extend our own relay (not Hocuspocus, §10.5). Next: the browser Auth0
-    login, then the production store (Postgres + S3). The app always runs single-user with zero infra —
-    collab is an optional mechanism, never a fork.
+    viewers read-only) — with the **client reflecting the role** (a viewer's editor + canvas are
+    read-only). Decided to extend our own relay (not Hocuspocus, §10.5). Next: the browser Auth0 login,
+    then the production store (Postgres + S3). The app always runs single-user with zero infra — collab
+    is an optional mechanism, never a fork.
   - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
     observability/SLOs, offline buffer, compaction, compliance hooks.
 - **Comprehensive, searchable audit trail.** (Folded into the collaborative-editor plan — the CRDT

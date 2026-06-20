@@ -391,3 +391,8 @@
 - Collab Phase 2 — forward a `?token=` to the relay (an Auth0 access token, once login is wired); the
   relay verifies it when auth is enabled. Absent in local dev → the relay's default allow-all accepts,
   so single-user and the `?collab` flow are unchanged.
+- Collab Phase 2 — role-aware UI. The relay sends the granted role (a control frame); the app applies
+  it via `connectWebSocket`'s `onControl`. A viewer's editor goes read-only (new `editor.setReadOnly`)
+  and the canvas mutations (drag/resize/delete/nudge/rename) are guarded by a `viewerMode` flag, with
+  the editing tools dimmed (`body[data-role="viewer"]`) and a "view only" badge in the source header;
+  editor/owner restore editing. A `__collabSetRole` e2e hook + spec cover it.

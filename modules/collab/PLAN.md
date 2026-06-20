@@ -27,8 +27,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   `setLocalUser()`, `onSourceChange()/onOverlayChange()`, the binary-sync seam
   (`state()/applyUpdate()/onUpdate()` + `awarenessState()/applyAwarenessUpdate()/onAwarenessUpdate()`),
   `destroy()`.
-- Transport: `connectTransport(session, socket)` / `webSocketTransport(url)` / `connectWebSocket`
-  (frames document and presence updates distinctly on one socket).
+- Transport: `connectTransport(session, socket, hooks?)` / `webSocketTransport(url)` /
+  `connectWebSocket(session, url, hooks?)` — frames document, presence, and server→client control
+  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket.
 - Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom })`),
   `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability seam), `auth.mjs`
   (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and `rbac.mjs`
