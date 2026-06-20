@@ -1,9 +1,9 @@
 # Collaborative editor — design & scoping (CRDT)
 
 Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete; Phase 2 in progress — durable
-persistence landed (the relay has a pluggable `RoomStore`; rooms survive restart) + an auth seam; next
-is the Auth0 OIDC handshake. The app always runs single-user with zero infra (see §1).** This scopes a
-real-time,
+persistence + Auth0 OIDC verification at the relay handshake (env-gated; JWKS via `jose`) both landed;
+next is rooms + RBAC and the browser login. The app always runs single-user with zero infra (see §1).**
+This scopes a real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
 architecture (see *Future bets* in the root `PLAN.md`).
@@ -174,13 +174,14 @@ after merge — the invariant holds without coordination.
   **overlay and the diagram text** live and see each other's **cursors**, each re-deriving its diagram
   locally (Playwright covers overlay convergence, source sync, and presence).
 - **Phase 2 — durable + secured (in progress).** **Persistence is in:** the relay has a pluggable
-  `RoomStore` (`modules/collab/server/store.mjs`) — an in-memory default plus a file-snapshot store
-  (`PERSIST_DIR`), so rooms survive a restart (verified). The relay also gates every connection through
-  an `authorize(req)` hook (default allow-all) — the seam for the next slice. **Remaining:** the **Auth0
-  OIDC** handshake (JWKS verification) + rooms + RBAC, then the production `RoomStore` (Postgres update
-  log + S3 snapshots). *Sequencing note:* the relay is our own minimal server today; whether to adopt
-  Hocuspocus (§10.5) is the call at the auth slice, where its auth/persistence/scale extensions earn
-  their keep (it implies migrating the client to a Hocuspocus provider).
+  `RoomStore` (`server/store.mjs`) — in-memory default + a file-snapshot store (`PERSIST_DIR`), so rooms
+  survive a restart (verified). **OIDC auth is in:** `server/auth.mjs` verifies the connection's
+  `?token=` against the issuer's JWKS (Auth0; `jose`), checking signature + issuer + audience + expiry;
+  the relay admits or closes (1008) the connection, buffering frames during the async check. Auth is
+  **env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`) so local dev / e2e stay zero-auth. We're **extending
+  our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Remaining:** rooms + RBAC
+  (per-document roles, server-enforced), the browser Auth0 login that supplies the token, then the
+  production `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 
@@ -198,10 +199,12 @@ after merge — the invariant holds without coordination.
    commitment.
 4. **Auth / tenancy → OIDC via Auth0** (decided 2026-06-20). JWKS token verification at the WS
    handshake; tenant = org boundary; per-tenant region-pinned storage.
-5. **Server stack → extend a Node Yjs server (Hocuspocus).** Reuses the Yjs ecosystem and its
-   auth/persistence/Redis hooks; the relay is IO-bound, so Node suffices for Phases 1–2. Revisit a
-   custom Go/Rust relay only if fan-out becomes the Phase 3 bottleneck. (Exact Hocuspocus API/version
-   to be verified against current docs at build time, per the repo's no-memory-claims rule.)
+5. **Server stack → extend our own minimal Node relay** (reconsidered 2026-06-20, was "adopt
+   Hocuspocus"). The relay (`modules/collab/server/`) already speaks our compact framed protocol and
+   keeps the client unchanged, so persistence and the OIDC handshake bolt onto it directly — no
+   client-provider migration. Adopting Hocuspocus stays the fallback if its built-in scaling
+   (Redis fan-out) or extension ecosystem is later worth the migration; the relay is IO-bound, so Node
+   suffices regardless. (Revisit a custom Go/Rust relay only if Phase 3 fan-out demands it.)
 
 ## 11. Risks & open questions
 

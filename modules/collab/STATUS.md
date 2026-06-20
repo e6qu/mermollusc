@@ -1,8 +1,9 @@
 # @m/collab — status
 
-**State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence + an auth seam.
-CRDT document, WebSocket transport, live source binding, presence, and now a relay that survives
-restart. Auth0 OIDC handshake is next. The app always runs single-user with no relay/persistence/auth.
+**State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence **and Auth0 OIDC
+verification** at the relay handshake. CRDT document, WebSocket transport, live source binding,
+presence, a relay that survives restart, and token-verified connections. Rooms + RBAC are next. The
+app always runs single-user with no relay/persistence/auth.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
   Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/
@@ -15,8 +16,11 @@ restart. Auth0 OIDC handshake is next. The app always runs single-user with no r
   single-user without it.
 - **Persistence (`server/store.mjs`):** a pluggable `RoomStore` — in-memory default + a file-snapshot
   store (`PERSIST_DIR`). The relay loads a room's snapshot on first join and saves (debounced + flush on
-  room close), so rooms survive a restart. Production target: Postgres + S3 (same interface). Every
-  connection passes an `authorize(req)` hook (default allow) — the Auth0 OIDC seam.
+  room close), so rooms survive a restart. Production target: Postgres + S3 (same interface).
+- **Auth (`server/auth.mjs`):** the `authorize(req)` hook verifies the connection's `?token=` against
+  the issuer's JWKS (Auth0; `jose`) — signature + issuer + audience + expiry — and surfaces the user, or
+  rejects (the relay closes 1008, buffering frames during the async check). **Env-gated**
+  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is allow-all, so local dev / e2e stay zero-auth.
 - **Source binding:** `sourceBinding()` returns a y-codemirror.next extension that two-way-binds the
   editor to the source `Y.Text` (character-level merge, per-user text undo). The `Y.Text` stays
   encapsulated — only an opaque CodeMirror extension crosses the boundary. Two `?collab` tabs now share
@@ -31,6 +35,10 @@ restart. Auth0 OIDC handshake is next. The app always runs single-user with no r
   remote-only notifications, and a property test that any interleaving converges. The **real** relay +
   socket path (incl. live source + remote cursors) is covered end-to-end by the app's Playwright
   two-tab specs. Coverage ~98% stmts (ratchet in `vitest.config.ts`).
+- **Server (`.mjs`) tests:** a `RoomStore` round-trip incl. fresh-instance-over-same-dir (≈ restart);
+  and a **local JWKS harness** for the OIDC verifier — a valid token is accepted (user surfaced),
+  while missing/malformed/wrong-audience/wrong-issuer/expired tokens are rejected. The relay's
+  restart-survival and admit-vs-reject (close 1008, with frame buffering) flows were verified manually.
 - **Boundary discipline:** peer/Y data is decoded through `@m/builder`'s Zod overlay decoder before it
   becomes branded state; a decode failure throws loudly (no silent fallback).
 - **App integration:** the playground constructs the Yjs session behind a default-off `?collab` flag,

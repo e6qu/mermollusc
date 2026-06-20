@@ -2470,7 +2470,11 @@ if (collabSession !== null) {
   const PRESENCE_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080"];
   const color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)] ?? "#4363d8";
   session.setLocalUser({ name: `User ${1 + Math.floor(Math.random() * 99)}`, color });
-  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}`);
+  // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
+  // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
+  const token = params.get("token");
+  const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
+  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`);
   // Seed the room's source once the initial sync has settled: the first client into an empty room
   // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
   // relay) and adopts that instead, so the text isn't duplicated.
