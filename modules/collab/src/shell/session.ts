@@ -40,6 +40,11 @@ export interface CollabSession {
 
   source(): string;
   setSource(text: string): void;
+  // Atomically seed the source only if it is still empty, in one transaction (no check-then-set gap).
+  // Returns whether it seeded. The first client into an empty room fills it; a client that has already
+  // synced non-empty content skips. (Two genuinely-simultaneous fresh clients can still both seed —
+  // that needs server-side coordination, a later phase.)
+  seedSourceIfEmpty(text: string): boolean;
   // Character-level edit (the CRDT-friendly path: concurrent splices at different offsets both survive).
   spliceSource(index: number, deleteCount: number, insert: string): void;
   // A CodeMirror extension that two-way-binds the editor to the source `Y.Text` (y-codemirror.next):
@@ -178,17 +183,25 @@ export const createCollabSession = (opts: {
     cache = materialize();
     notifyOverlay();
   };
-  yOverrides.observe((e) => onMapChange(e.transaction.origin));
-  yGroups.observe((e) => onMapChange(e.transaction.origin));
-  yText.observe((e) => {
+  // Named so `destroy()` can detach them — `Y.Doc.destroy()` does not remove type observers, so leaving
+  // these bound would leak the session (and its captured listener Sets) for any retained doc reference.
+  const onOverridesChange = (e: { transaction: { origin: unknown } }): void =>
+    onMapChange(e.transaction.origin);
+  const onGroupsChange = (e: { transaction: { origin: unknown } }): void =>
+    onMapChange(e.transaction.origin);
+  const onTextChange = (e: { transaction: { origin: unknown } }): void => {
     if (e.transaction.origin === LOCAL) return;
     const text = yText.toString();
     for (const l of sourceListeners) l(text);
-  });
-  doc.on("update", (update: Uint8Array, origin: unknown) => {
+  };
+  const onDocUpdate = (update: Uint8Array, origin: unknown): void => {
     if (origin === REMOTE) return; // don't re-broadcast what we just received
     for (const l of updateListeners) l(update);
-  });
+  };
+  yOverrides.observe(onOverridesChange);
+  yGroups.observe(onGroupsChange);
+  yText.observe(onTextChange);
+  doc.on("update", onDocUpdate);
 
   const overlay: OverlayDoc = {
     overrides: () => cache.overrides,
@@ -264,6 +277,16 @@ export const createCollabSession = (opts: {
         if (text.length > 0) yText.insert(0, text);
       }, LOCAL);
     },
+    seedSourceIfEmpty: (text) => {
+      let seeded = false;
+      doc.transact(() => {
+        if (yText.length === 0 && text.length > 0) {
+          yText.insert(0, text);
+          seeded = true;
+        }
+      }, LOCAL);
+      return seeded;
+    },
     spliceSource: (index, deleteCount, insert) => {
       doc.transact(() => {
         if (deleteCount > 0) yText.delete(index, deleteCount);
@@ -302,6 +325,13 @@ export const createCollabSession = (opts: {
       return () => awareness.off("update", handler);
     },
     destroy: () => {
+      yOverrides.unobserve(onOverridesChange);
+      yGroups.unobserve(onGroupsChange);
+      yText.unobserve(onTextChange);
+      doc.off("update", onDocUpdate);
+      overlayListeners.clear();
+      sourceListeners.clear();
+      updateListeners.clear();
       awareness.destroy();
       undoManager.destroy();
       doc.destroy();

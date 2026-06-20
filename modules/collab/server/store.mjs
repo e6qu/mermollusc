@@ -9,7 +9,7 @@
 // + S3 (snapshots) per the decisions in docs/collab-editor-plan.md §10.3; that implementation satisfies
 // the same interface and drops in without touching the relay.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const createMemoryStore = () => {
@@ -31,8 +31,13 @@ export const createFileStore = (dir) => {
       const file = fileFor(room);
       return existsSync(file) ? new Uint8Array(readFileSync(file)) : null;
     },
+    // Write to a temp file then rename into place: a crash mid-write leaves the old snapshot intact
+    // rather than a truncated/corrupt one (rename is atomic on the same filesystem).
     save: (room, snapshot) => {
-      writeFileSync(fileFor(room), snapshot);
+      const file = fileFor(room);
+      const tmp = `${file}.tmp`;
+      writeFileSync(tmp, snapshot);
+      renameSync(tmp, file);
     },
   };
 };

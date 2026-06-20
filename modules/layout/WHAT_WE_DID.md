@@ -158,3 +158,5 @@
   `@m/contracts`) rather than raw `brand<…>`, so `src/core` is free of the cast (guard-enforced).
 - Perf: `transform.toElkGraph` indexes subgraphs by parent once (a Map) instead of re-filtering the
   whole subgraph list at every nesting level (was O(S²)).
+- Audit fix: gitgraph + pie sized labels via `Math.max(...arr.map())`, which throws (argument-count
+  limit) on a very large history/pie — a totality break in a pure core. Switched to `reduce`.

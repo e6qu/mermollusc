@@ -21,6 +21,12 @@ import { createFileStore, createMemoryStore } from "./store.mjs";
 const DOC = 0; // frame tag: document update (tag 1 = presence, relayed but not persisted)
 const CONTROL = 2; // server→client control channel (e.g. the granted role)
 const SAVE_DEBOUNCE_MS = 400;
+// Abuse limits. A single frame is capped at the WebSocket layer (`maxPayload`); the pre-auth buffer
+// (frames a client sends before its token verifies) is bounded so an unauthenticated peer can't OOM
+// the process; and the room count is capped so it can't be exhausted by connecting to endless paths.
+const MAX_FRAME_BYTES = 8 * 1024 * 1024;
+const MAX_PENDING_FRAMES = 64;
+const MAX_ROOMS = 10_000;
 
 const bytes = (data) =>
   data instanceof ArrayBuffer
@@ -66,17 +72,40 @@ export const startRelay = ({
 } = {}) => {
   // room name → { doc, sockets, saveTimer }
   const rooms = new Map();
-  const wss = new WebSocketServer({ port });
+  const wss = new WebSocketServer({ port, maxPayload: MAX_FRAME_BYTES });
 
+  // Load a room (from the store on first touch). Returns null if the room cap is hit and the room is
+  // new — the caller rejects the connection rather than letting room count grow without bound.
   const loadRoom = (name) => {
     let room = rooms.get(name);
     if (room !== undefined) return room;
+    if (rooms.size >= MAX_ROOMS) return null;
     const doc = new Doc();
-    const snapshot = store.load(name);
+    const snapshot = safeLoad(name);
     if (snapshot !== null) applyUpdate(doc, snapshot);
     room = { doc, sockets: new Set(), saveTimer: null };
     rooms.set(name, room);
     return room;
+  };
+
+  // Store IO is the shell boundary: a failure (EACCES, ENOSPC, corrupt file) is logged loudly and
+  // contained, never swallowed silently and never allowed to crash the process from a timer callback.
+  const safeLoad = (name) => {
+    try {
+      return store.load(name);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      console.error(`collab relay: store.load("${name}") failed — ${detail}`);
+      return null;
+    }
+  };
+  const safeSave = (name, room) => {
+    try {
+      store.save(name, encodeStateAsUpdate(room.doc));
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      console.error(`collab relay: store.save("${name}") failed — ${detail}`);
+    }
   };
 
   const flush = (name, room) => {
@@ -84,7 +113,7 @@ export const startRelay = ({
       clearTimeout(room.saveTimer);
       room.saveTimer = null;
     }
-    store.save(name, encodeStateAsUpdate(room.doc));
+    safeSave(name, room);
   };
 
   wss.on("connection", (socket, req) => {
@@ -106,7 +135,7 @@ export const startRelay = ({
         if (room.saveTimer !== null) clearTimeout(room.saveTimer);
         room.saveTimer = setTimeout(() => {
           room.saveTimer = null;
-          store.save(name, encodeStateAsUpdate(room.doc));
+          safeSave(name, room);
         }, SAVE_DEBOUNCE_MS);
       }
       // Presence (AWARE) frames relay even from a viewer, so others see who is looking.
@@ -117,7 +146,12 @@ export const startRelay = ({
 
     socket.on("message", (data) => {
       if (phase === "open") handle(data);
-      else if (phase === "pending") pending.push(data);
+      else if (phase === "pending") {
+        // Bound the pre-auth buffer: a client that floods frames before its token verifies is dropped
+        // rather than allowed to grow `pending` without limit.
+        if (pending.length >= MAX_PENDING_FRAMES) reject(1008, "flood before auth");
+        else pending.push(data);
+      }
     });
     socket.on("close", () => {
       phase = "closed";
@@ -160,11 +194,25 @@ export const startRelay = ({
       }
       if (phase === "closed") return;
       if (resolved === null || resolved === undefined) return reject(1008, `forbidden: ${name}`);
-      role = resolved;
 
-      room = loadRoom(name);
+      const loaded = loadRoom(name);
+      if (loaded === null) return reject(1013, "server full"); // 1013 = try again later
+      role = resolved;
+      room = loaded;
       room.sockets.add(socket);
       phase = "open";
+      // The socket may have closed during the async verification — its `close` handler ran while
+      // `room` was still null, so it couldn't remove this now-registered socket. Reconcile here so a
+      // dead socket can't keep an otherwise-empty room (and its Doc) alive forever.
+      if (socket.readyState !== socket.OPEN) {
+        phase = "closed";
+        room.sockets.delete(socket);
+        if (room.sockets.size === 0) {
+          flush(name, room);
+          rooms.delete(name);
+        }
+        return;
+      }
       // Tell the client its granted role (so it can present read-only UI for a viewer), then bring it
       // up to the room's current document state.
       socket.send(controlFrame(role));

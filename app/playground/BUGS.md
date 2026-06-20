@@ -1,5 +1,15 @@
 # @m/app (playground) — bugs
 
+Open (collab-era audit sweep):
+
+- **Some "renders X" e2e specs can pass on the lingering default sample.** The flowchart-kind specs
+  (`subgraph`, `shapes`, `dot`) assert `#kind === "flowchart"`, but the app already loads a flowchart
+  at startup — so if the new source fails to render, the old diagram stays up and the assertion still
+  holds. Related: the textarea "renders" specs capture only `pageerror` + a `"parse failed"` substring,
+  so a *layout* failure (`"layout failed:"`, which returns early) is invisible. Strengthen by asserting
+  the new diagram's specific `aria-label` content and capturing all console `error`s. (Not a product
+  bug — a test-confidence gap. The collab/RBAC specs were already strengthened in the sweep.)
+
 Resolved (internal audit sweep, 2026-06-20):
 
 - ~~**Delete/Backspace hijacked focused text fields.**~~ Fixed — the global delete handler now also
