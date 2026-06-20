@@ -2,7 +2,7 @@ import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
-import { brand, coordinate, length, point, positive, positiveInt, rect, size } from "../../src/shell/brand.js";
+import { brand, coordinate, length, point, positive, positiveInt, rect, size, twoOrMore } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
 import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
@@ -103,5 +103,13 @@ describe("branded geometry constructors", () => {
     expect(() => positiveInt(0)).toThrow(RangeError);
     expect(() => positiveInt(2.5)).toThrow(RangeError);
     expect(() => positiveInt(Number.NaN)).toThrow(RangeError);
+  });
+
+  it("twoOrMore builds a >=2 tuple from first + second (+ rest), keeping order", () => {
+    expect(twoOrMore("a", "b")).toEqual(["a", "b"]);
+    expect(twoOrMore(1, 2, 3, 4)).toEqual([1, 2, 3, 4]);
+    // [0] and [1] are statically present (required tuple slots) — the point of the type.
+    const t = twoOrMore(10, 20, 30);
+    expect(t[0] + t[1]).toBe(30);
   });
 });

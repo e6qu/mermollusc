@@ -1,6 +1,6 @@
 // SceneGraph IR contract: the layout's output and the renderer's input.
 
-import type { Brand, Point, Rect } from "@m/std";
+import type { Brand, Point, Rect, TwoOrMore } from "@m/std";
 import type { NodeShape } from "./ast.js";
 
 export type SceneNodeId = Brand<string, "SceneNodeId">;
@@ -53,7 +53,8 @@ export interface SceneEdge {
   readonly id: SceneEdgeId;
   readonly from: SceneNodeId;
   readonly to: SceneNodeId;
-  readonly waypoints: readonly Point[];
+  // Always ≥ 2 — an edge connects two points, so a segment can always be drawn (no length guard needed).
+  readonly waypoints: TwoOrMore<Point>;
   readonly label: string | null;
   readonly stroke: EdgeStroke;
   readonly fromEnd: EdgeEnd;

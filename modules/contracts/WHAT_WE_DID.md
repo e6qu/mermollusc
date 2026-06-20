@@ -76,3 +76,5 @@
 - Refined-number types: `PieSlice.value` is now `Positive` and `BlockAst.columns` is `PositiveInt`
   (from `@m/std`) — a zero/negative/NaN slice or a zero/fractional grid width is no longer representable
   in the AST; the parser mints both through the smart constructors at the parse boundary.
+- `SceneEdge.waypoints` is now `TwoOrMore<Point>` (≥2) — an edge always has two endpoints, so a segment
+  can always be drawn; the `< 2` length guards in the renderer/app are no longer needed.

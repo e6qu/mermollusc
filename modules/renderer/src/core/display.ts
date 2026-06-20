@@ -423,15 +423,12 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   const labels: DrawCmd[] = [];
   for (const edge of scene.edges) {
     const pts = edge.waypoints;
-    if (pts.length < 2) continue;
+    // `waypoints` is `TwoOrMore`, so the first two points are always present (no length guard needed).
     const first = pts[0];
     const second = pts[1];
     const last = pts[pts.length - 1];
     const prev = pts[pts.length - 2];
-    const fromMarker =
-      first === undefined || second === undefined
-        ? EMPTY_MARKER
-        : endMarker(edge.fromEnd, first, awayUnit(second, first));
+    const fromMarker = endMarker(edge.fromEnd, first, awayUnit(second, first));
     const toMarker =
       last === undefined || prev === undefined
         ? EMPTY_MARKER
@@ -457,7 +454,7 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
     }
     // Per-end labels (class multiplicity) sit just inside each endpoint, offset along the first/last
     // segment and nudged perpendicular so they clear the line.
-    if (edge.fromLabel !== null && first !== undefined && second !== undefined) {
+    if (edge.fromLabel !== null) {
       labels.push(endLabel(edge.fromLabel, first, second));
     }
     if (edge.toLabel !== null && last !== undefined && prev !== undefined) {

@@ -3,7 +3,7 @@
 
 import type { Brand } from "../core/brand.js";
 import type { Coordinate, Length, Point, Rect, Size } from "../core/geometry.js";
-import type { Positive, PositiveInt } from "../core/refined.js";
+import type { Positive, PositiveInt, TwoOrMore } from "../core/refined.js";
 
 export const brand = <TBase, TTag extends string>(value: TBase): Brand<TBase, TTag> =>
   value as Brand<TBase, TTag>;
@@ -37,6 +37,14 @@ export const length = (n: number): Length => {
   }
   return brand<number, "Length">(n);
 };
+
+// Build a `TwoOrMore<T>` from an explicit first + second (+ any rest). The tuple-rest literal types
+// itself as `[T, T, ...T[]]`, so this needs no assertion — and a caller can't pass fewer than two.
+export const twoOrMore = <T>(first: T, second: T, ...rest: readonly T[]): TwoOrMore<T> => [
+  first,
+  second,
+  ...rest,
+];
 
 export const point = (x: number, y: number): Point => ({ x: coordinate(x), y: coordinate(y) });
 export const size = (width: number, height: number): Size => ({

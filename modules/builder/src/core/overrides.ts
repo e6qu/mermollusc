@@ -1,5 +1,5 @@
 import type { LayoutOverrides, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
-import { point, rect, type Point, type Rect, type Size } from "@m/std";
+import { point, rect, twoOrMore, type Point, type Rect, type Size } from "@m/std";
 
 export const moveNode = (
   overrides: LayoutOverrides,
@@ -72,7 +72,9 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
     const to = delta.get(edge.to);
     if (from === undefined && to === undefined) return edge;
     if (from !== undefined && to !== undefined && from.dx === to.dx && from.dy === to.dy) {
-      return { ...edge, waypoints: edge.waypoints.map((p) => point(p.x + from.dx, p.y + from.dy)) };
+      const shift = (p: Point): Point => point(p.x + from.dx, p.y + from.dy);
+      const [w0, w1, ...wr] = edge.waypoints;
+      return { ...edge, waypoints: twoOrMore(shift(w0), shift(w1), ...wr.map(shift)) };
     }
     const a = boundsById.get(edge.from);
     const b = boundsById.get(edge.to);
