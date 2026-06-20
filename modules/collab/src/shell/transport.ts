@@ -9,6 +9,7 @@ export interface CollabSocket {
   send(data: Uint8Array): void;
   onOpen(listener: () => void): void;
   onMessage(listener: (data: Uint8Array) => void): void;
+  onClose(listener: () => void): void;
   close(): void;
 }
 
@@ -26,9 +27,11 @@ const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   return frame;
 };
 
-// Optional hooks. `onControl` receives a server control message (a short UTF-8 string, e.g. the role).
+// Optional hooks. `onControl` receives a server control message (a short UTF-8 string, e.g. the role);
+// `onClose` fires when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
 export interface TransportHooks {
   onControl?: (message: string) => void;
+  onClose?: () => void;
 }
 
 // Bind a session to a socket: on open, send our whole document + presence so the peer/relay can merge
@@ -53,6 +56,7 @@ export const connectTransport = (
     else if (data[0] === AWARE) session.applyAwarenessUpdate(payload);
     else if (data[0] === CONTROL) hooks.onControl?.(new TextDecoder().decode(payload));
   });
+  if (hooks.onClose !== undefined) socket.onClose(hooks.onClose);
   const offDoc = session.onUpdate((update) => {
     if (socket.isOpen()) socket.send(framed(DOC, update));
   });
@@ -86,6 +90,18 @@ export const webSocketTransport = (url: string): CollabSocket => {
         const data: unknown = e.data;
         if (data instanceof ArrayBuffer) listener(new Uint8Array(data));
       }),
+    onClose: (listener) => {
+      // A relay drop surfaces as `close`; a failed connection as `error` (which is also followed by
+      // `close` in browsers, but Node's WebSocket may only emit `error`) — fire the listener once.
+      let fired = false;
+      const once = (): void => {
+        if (fired) return;
+        fired = true;
+        listener();
+      };
+      ws.addEventListener("close", once);
+      ws.addEventListener("error", once);
+    },
     close: () => ws.close(),
   };
 };

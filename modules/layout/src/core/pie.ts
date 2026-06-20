@@ -29,7 +29,12 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   const TWO_PI = Math.PI * 2;
   const legendText = (label: string, value: number): string =>
     ast.showData ? `${label}  ${value}` : label;
-  const maxLabelW = Math.max(0, ...ast.slices.map((s) => measure(legendText(s.label, s.value))));
+  // reduce, not Math.max(...spread): a spread over every slice would exceed the argument-count limit
+  // (and throw) on a very large pie — keeping the core total.
+  const maxLabelW = ast.slices.reduce(
+    (m, s) => Math.max(m, measure(legendText(s.label, s.value))),
+    0,
+  );
   // Wrap the legend into columns so a long list doesn't run off the bottom past the disc.
   const maxRows = Math.max(1, Math.floor((discSpan - 2 * MARGIN) / ROW_H));
   const colPitch = 2 * SWATCH_R + LABEL_GAP + maxLabelW + LEGEND_GAP;

@@ -37,6 +37,7 @@ const pair = (): { a: CollabSocket; b: CollabSocket; connect: () => void } => {
     },
     onOpen: (l) => reg.a.open.push(l),
     onMessage: (l) => reg.a.msg.push(l),
+    onClose: () => {},
     close: () => {
       openA = false;
     },
@@ -48,6 +49,7 @@ const pair = (): { a: CollabSocket; b: CollabSocket; connect: () => void } => {
     },
     onOpen: (l) => reg.b.open.push(l),
     onMessage: (l) => reg.b.msg.push(l),
+    onClose: () => {},
     close: () => {
       openB = false;
     },
@@ -191,15 +193,19 @@ class FakeWebSocket {
   readyState = FakeWebSocket.OPEN;
   binaryType = "";
   readonly sent: ArrayBuffer[] = [];
-  private readonly listeners: { open: Array<() => void>; message: Array<(e: { data: unknown }) => void> } = {
-    open: [],
-    message: [],
-  };
+  private readonly listeners: {
+    open: Array<() => void>;
+    message: Array<(e: { data: unknown }) => void>;
+    close: Array<() => void>;
+    error: Array<() => void>;
+  } = { open: [], message: [], close: [], error: [] };
   constructor(readonly url: string) {
     FakeWebSocket.instances.push(this);
   }
-  addEventListener(type: "open" | "message", cb: () => void): void {
+  addEventListener(type: "open" | "message" | "close" | "error", cb: () => void): void {
     if (type === "open") this.listeners.open.push(cb);
+    else if (type === "close") this.listeners.close.push(cb);
+    else if (type === "error") this.listeners.error.push(cb);
     else this.listeners.message.push(cb as (e: { data: unknown }) => void);
   }
   send(data: ArrayBuffer): void {
@@ -207,6 +213,10 @@ class FakeWebSocket {
   }
   close(): void {
     this.readyState = 3;
+    for (const l of this.listeners.close) l();
+  }
+  error(): void {
+    for (const l of this.listeners.error) l();
   }
   open(): void {
     for (const l of this.listeners.open) l();
@@ -278,6 +288,23 @@ describe("collab transport — webSocketTransport (platform socket)", () => {
     expect(ws.sent.length).toBeGreaterThan(0); // the open-state frame was sent
     cut();
     expect(ws.readyState).toBe(3); // disconnect closed the socket
+    session.destroy();
+  });
+
+  it("onClose fires once on a drop, whether close or error (or both) arrive", () => {
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    const session = blank();
+    let drops = 0;
+    connectWebSocket(session, "wss://relay.example/room-4", {
+      onClose: () => {
+        drops += 1;
+      },
+    });
+    const ws = FakeWebSocket.instances[0];
+    if (ws === undefined) throw new Error("no socket created");
+    ws.error(); // a failed connection emits error…
+    ws.close(); // …then close — the listener must fire exactly once
+    expect(drops).toBe(1);
     session.destroy();
   });
 });

@@ -396,3 +396,10 @@
   and the canvas mutations (drag/resize/delete/nudge/rename) are guarded by a `viewerMode` flag, with
   the editing tools dimmed (`body[data-role="viewer"]`) and a "view only" badge in the source header;
   editor/owner restore editing. A `__collabSetRole` e2e hook + spec cover it.
+- Audit fix: closed the viewer read-only holes. `viewerMode` now guards every mutation entry point — the
+  Examples dropdown, the icon picker, Add/Connect/Relax/Regenerate/Group/Ungroup/Lock/Arrange handlers,
+  and the canvas drag/resize/delete/nudge/rename — not just the CSS dim (which `editable:false` and
+  pointer-events couldn't fully enforce, since programmatic/keyboard paths bypass them). A dropped relay
+  is now surfaced (a status line + console error) via the transport `onClose` hook. The role e2e now
+  attempts a viewer write and asserts it's rejected (no override, source unchanged), then that an editor
+  can.

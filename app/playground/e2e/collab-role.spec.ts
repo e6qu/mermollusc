@@ -5,13 +5,24 @@ import { expect, test, type Page } from "@playwright/test";
 // `__collabSetRole` hook (the role normally arrives as a server control frame).
 
 const editorValue = (page: Page) => page.evaluate(() => window.__editor?.value() ?? "");
+const overrideCount = (page: Page) => page.evaluate(() => window.__collabOverrideCount?.() ?? -1);
 
 declare global {
   interface Window {
     __editor?: { value(): string; setValue(text: string): void };
     __collabSetRole?: (role: string) => void;
+    __collabOverrideCount?: () => number;
   }
 }
+
+const dragStartNode = async (page: Page) => {
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) throw new Error("no stage box");
+  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 300, box.y + 240, { steps: 6 });
+  await page.mouse.up();
+};
 
 test("a viewer role makes the editor + tools read-only; editor restores it", async ({ page }) => {
   const errors: string[] = [];
@@ -30,10 +41,20 @@ test("a viewer role makes the editor + tools read-only; editor restores it", asy
   expect(await page.evaluate(() => document.body.dataset["role"])).toBe("viewer");
   await page.screenshot({ path: "shots/collab-role-viewer.png" });
 
-  // back to editor — editing restored, badge reflects the role
+  // a viewer's edits are actually rejected, not just visually dimmed: a drag makes no override, and
+  // the Examples dropdown can't replace the source.
+  const sourceBefore = await editorValue(page);
+  await dragStartNode(page);
+  expect(await overrideCount(page)).toBe(0);
+  await page.locator("#example").selectOption({ index: 1 }).catch(() => {});
+  expect(await editorValue(page)).toBe(sourceBefore);
+
+  // back to editor — editing restored, badge reflects the role, and the same drag now does move a node
   await page.evaluate(() => window.__collabSetRole?.("editor"));
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
   await expect(page.locator("#role-badge")).toHaveText("editor");
+  await dragStartNode(page);
+  await expect.poll(() => overrideCount(page)).toBe(1);
 
   expect(errors).toEqual([]);
 });

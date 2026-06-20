@@ -44,8 +44,10 @@ export const layoutGitGraph = (
 
   const pillW = (c: GitCommit): number =>
     Math.max(MIN_COMMIT_W, measure(commitLabel(c)) + PILL_PAD);
-  const maxPillW = Math.max(MIN_COMMIT_W, ...ast.commits.map(pillW));
-  const headW = Math.max(MIN_HEAD_W, ...ast.branches.map((b) => measure(b.name) + HEAD_PAD));
+  // reduce, not Math.max(...spread): a spread over every commit/branch would exceed the argument-count
+  // limit (and throw) on a very large history — keeping the core total.
+  const maxPillW = ast.commits.reduce((m, c) => Math.max(m, pillW(c)), MIN_COMMIT_W);
+  const headW = ast.branches.reduce((m, b) => Math.max(m, measure(b.name) + HEAD_PAD), MIN_HEAD_W);
 
   const vertical = ast.direction !== "LR";
   const lastCol = Math.max(0, ast.commits.length - 1);

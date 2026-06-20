@@ -173,4 +173,13 @@ describe("collab session — source channel", () => {
     expect(s.source()).toBe("hello there");
     s.destroy();
   });
+
+  it("seedSourceIfEmpty seeds an empty doc once, then skips a non-empty one", () => {
+    const s = newSession({});
+    expect(s.seedSourceIfEmpty("flowchart TD\n  A --> B\n")).toBe(true);
+    expect(s.source()).toBe("flowchart TD\n  A --> B\n");
+    expect(s.seedSourceIfEmpty("something else")).toBe(false); // already non-empty
+    expect(s.source()).toBe("flowchart TD\n  A --> B\n");
+    s.destroy();
+  });
 });

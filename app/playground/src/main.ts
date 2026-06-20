@@ -823,7 +823,7 @@ const arrangeDeltas = (
 };
 
 const applyArrange = (kind: AlignKind): void => {
-  if (scene === null) return;
+  if (scene === null || viewerMode) return;
   const shown = applyOverrides(scene, doc.overrides());
   const units = selectedUnitBoxes(shown);
   const need = kind === "distH" || kind === "distV" ? 3 : 2;
@@ -877,6 +877,7 @@ for (const { id, kind } of ARRANGE_ACTIONS) {
 // Bundle the selection into a new group. Each selected node contributes its top group (nesting an
 // existing group) or itself — so groups and loose elements bundle together, in selection order.
 const groupSelection = (): void => {
+  if (viewerMode) return;
   const units: GroupMember[] = [];
   const seen = new Set<string>();
   for (const id of selectionOrder) {
@@ -896,6 +897,7 @@ const groupSelection = (): void => {
 };
 
 const ungroupSelection = (): void => {
+  if (viewerMode) return;
   const top = selectedTopGroup();
   if (top === null) return;
   doc.record();
@@ -906,6 +908,7 @@ const ungroupSelection = (): void => {
 };
 
 const toggleLockSelection = (): void => {
+  if (viewerMode) return;
   const top = selectedTopGroup();
   const g = top === null ? undefined : doc.groups().get(top);
   if (top === null || g === undefined) return;
@@ -1814,7 +1817,7 @@ canvas.addEventListener("dblclick", (ev) => {
 
 // Add node: append a fresh rect node to the flowchart text (flowchart only for now).
 addBtn.addEventListener("click", () => {
-  if (ast === null || ast.kind !== "flowchart") return;
+  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
   const used = new Set<string>(ast.nodes.map((n) => n.id));
   let n = 1;
   while (used.has(`n${n}`)) n++;
@@ -1826,7 +1829,7 @@ addBtn.addEventListener("click", () => {
 // syntax — directed `-->` (flowchart/block), undirected `--` (network/cloud), `Rel(a,b,"")` (C4),
 // or a `A->>B: message` (sequence).
 connectBtn.addEventListener("click", () => {
-  if (ast === null || selectionOrder.length < 2) return;
+  if (viewerMode || ast === null || selectionOrder.length < 2) return;
   const [first, second] = selectionOrder;
   if (first === undefined || second === undefined) return;
   editor.setValue(appendEdge(ast.kind, editor.value(), first, second));
@@ -2059,11 +2062,13 @@ window.addEventListener("keydown", (ev) => {
 });
 
 relaxBtn.addEventListener("click", () => {
+  if (viewerMode) return;
   void relax();
 });
 // Regenerate: drop manual positions and lay out cleanly from the text. Undoable — so a regenerate
 // that throws away a hand-tuned layout can be taken back (the groups are kept either way).
 regenBtn.addEventListener("click", () => {
+  if (viewerMode) return;
   if (doc.overrides().size > 0) doc.record();
   doc.clearOverrides();
   doc.persist();
@@ -2087,6 +2092,10 @@ syncThemeLabel();
 // Examples menu: drop in a known-good starter for any family so the syntax is discoverable, then
 // reset the select back to its placeholder.
 exampleEl.addEventListener("change", () => {
+  if (viewerMode) {
+    exampleEl.value = "";
+    return;
+  }
   const text = EXAMPLES.get(exampleEl.value);
   exampleEl.value = "";
   if (text === undefined) return;
@@ -2142,6 +2151,7 @@ loadPackEl.addEventListener("change", () => {
 // `icon "<pack>/<name>"` override at the editor caret. Built fresh on each open so it reflects any
 // packs added via "Load icons". The glyph previews reuse the SVG→data-URL path (no innerHTML).
 const insertIconRef = (packId: string, name: string): void => {
+  if (viewerMode) return;
   editor.insertAtCursor(` icon "${packId}/${name}"`);
   doc.clearOverrides();
   doc.persist();
@@ -2498,12 +2508,18 @@ if (collabSession !== null) {
   const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
   connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`, {
     onControl: applyRole,
+    // Surface a dropped relay loudly rather than silently desyncing — local edits keep working, but
+    // the user must know they're no longer shared.
+    onClose: () => {
+      console.error("collab: disconnected from the relay");
+      setStatus("ok", "⚠ disconnected from the collaboration relay — editing locally");
+    },
   });
   // Seed the room's source once the initial sync has settled: the first client into an empty room
   // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
   // relay) and adopts that instead, so the text isn't duplicated.
   window.setTimeout(() => {
-    if (session.source() === "") session.setSource(initialSource);
+    session.seedSourceIfEmpty(initialSource);
   }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
   window.__collabSetRole = applyRole; // e2e hook: drive the role without a real RBAC server

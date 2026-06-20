@@ -1,5 +1,14 @@
 # @m/parser — bugs
 
+Open (collab-era audit sweep):
+
+- **Printer doesn't escape special chars or empty labels.** `print.ts` emits a flowchart node label
+  verbatim, so a label containing a closing delimiter (`A[x]y]`) or an empty label (`A(())`) produces
+  markup the parser then rejects — i.e. `parse(print(ast))` doesn't round-trip for some valid ASTs.
+  The round-trip property test masks this by restricting the label alphabet. Fix: emit a quoted/escaped
+  label, and the bare id (or a quoted empty) when the label is empty. Low impact today (the two-way
+  edit path uses span patching, not `print`), but a real latent correctness gap.
+
 Resolved (internal audit sweep, 2026-06-20):
 
 - ~~**Requirement: unknown verb silently dropped.**~~ Fixed — `req-parse` now returns a located `err`

@@ -84,3 +84,12 @@
   frame routing (unit); a Playwright spec drives the role via a `__collabSetRole` hook → editor
   read-only + badge + body role, then back to editable (screenshot-verified). The relay's actual role
   control frame was verified manually. The server remains the security boundary; this is the matching UX.
+- Audit sweep fixes. Server (`relay.mjs`): WebSocket `maxPayload` cap + bounded pre-auth frame buffer
+  + room cap (DoS hardening); store IO wrapped in try/catch so a save failure in the debounce timer is
+  logged loudly, not a process crash (fail-loudly); a close-during-async-auth reconciliation so a dead
+  socket can't keep an empty room alive. `store.mjs`: atomic file write (temp + rename). Session
+  (`session.ts`): `destroy()` now unobserves the Y observers + `doc.off("update")` + clears the listener
+  Sets (was leaking on teardown); added atomic `seedSourceIfEmpty` (removes the seed check-then-set
+  race within a client). Transport (`transport.ts`): a `TransportHooks.onClose` so a dropped relay is
+  surfaced, not a silent desync. Tests: a relay integration test (viewer write dropped, editor relayed,
+  forbidden/bad-token → 1008, role frame announced); `seedSourceIfEmpty` + `onClose` unit tests.
