@@ -1,8 +1,8 @@
 # Collaborative editor — design & scoping (CRDT)
 
-Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete (CRDT document + dev WebSocket
-transport + live source binding + presence — two `?collab` tabs share overlay *and* text live and see
-each other's cursors; see `@m/collab`). Next: the production server (Phases 2–3).** This scopes a
+Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete; Phase 2 in progress — durable
+persistence landed (the relay has a pluggable `RoomStore`; rooms survive restart) + an auth seam; next
+is the Auth0 OIDC handshake. The app always runs single-user with zero infra (see §1).** This scopes a
 real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
@@ -19,7 +19,7 @@ path plugs in as alternate implementations without touching call sites.
 | 1 | CRDT engine | **Yjs** |
 | 2 | Sync model | **Server-authoritative WebSocket** |
 | 3 | Persistence / hosting | **Self-hosted: Postgres (update log) + S3 (snapshots) + Redis (fan-out)** |
-| 4 | Auth / tenancy | **OIDC via the existing IdP**; tenant = org; region-pinned storage. *(Open: confirm which IdP — Okta / Entra / Auth0 / Keycloak.)* |
+| 4 | Auth / tenancy | **OIDC via Auth0** (JWKS token verification at the WS handshake); tenant = org; region-pinned storage. |
 | 5 | Server stack | **Extend a Node Yjs server (Hocuspocus)** for Phases 1–2; revisit Go/Rust only if Phase 3 fan-out demands it |
 
 The rest of this doc records the design these decisions resolve.
@@ -29,6 +29,11 @@ The rest of this doc records the design these decisions resolve.
 ## 1. Goal & requirements
 
 Multiple users edit the **same diagram** simultaneously and see each other's changes live.
+
+**Guiding principle — collaboration is an optional *mechanism*, not a fork.** The app must always run
+fully **single-user, locally, with zero infrastructure** (no server, no auth, no database). Collaboration
+is the same app with a swappable document mechanism (the `OverlayDoc` / `Editor` seams), enabled by the
+`?collab` flag; it never becomes a required dependency of the local path.
 
 Functional:
 - Concurrent edits to the **source text** (the CodeMirror buffer) merge without conflicts or lost work.
@@ -163,12 +168,19 @@ after merge — the invariant holds without coordination.
 - **Phase 1 — proof of merge (feature-complete).** `@m/collab`'s `createCollabSession` (Yjs `Y.Doc` =
   source `Y.Text` + overlay `Y.Map`s) implements the `OverlayDoc` port; two-peer convergence is proven by
   tests. In: a **dev WebSocket transport** (`connectTransport`/`webSocketTransport` + the
-  server-authoritative `dev-server.mjs`, `make collab-server`), the **live source binding**
+  server-authoritative relay `modules/collab/server/relay.mjs`, `make collab-server`), the **live source binding**
   (`sourceBinding()` via y-codemirror.next), and **presence** (a y-protocols `Awareness` on a distinct
   transport frame — remote cursors via `setLocalUser`). Two app tabs on `?collab&room=…` now edit the
   **overlay and the diagram text** live and see each other's **cursors**, each re-deriving its diagram
   locally (Playwright covers overlay convergence, source sync, and presence).
-- **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
+- **Phase 2 — durable + secured (in progress).** **Persistence is in:** the relay has a pluggable
+  `RoomStore` (`modules/collab/server/store.mjs`) — an in-memory default plus a file-snapshot store
+  (`PERSIST_DIR`), so rooms survive a restart (verified). The relay also gates every connection through
+  an `authorize(req)` hook (default allow-all) — the seam for the next slice. **Remaining:** the **Auth0
+  OIDC** handshake (JWKS verification) + rooms + RBAC, then the production `RoomStore` (Postgres update
+  log + S3 snapshots). *Sequencing note:* the relay is our own minimal server today; whether to adopt
+  Hocuspocus (§10.5) is the call at the auth slice, where its auth/persistence/scale extensions earn
+  their keep (it implies migrating the client to a Hocuspocus provider).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 
@@ -184,8 +196,8 @@ after merge — the invariant holds without coordination.
    trail), periodic snapshots in S3, Redis pub/sub for cross-instance fan-out. Chosen over a managed
    Yjs service for data-residency/compliance control and no per-seat cost — accepting the larger ops
    commitment.
-4. **Auth / tenancy → OIDC via the existing IdP.** Tenant = org boundary; per-tenant region-pinned
-   storage. **Open item:** confirm the specific IdP (Okta / Entra / Auth0 / Keycloak) before Phase 2.
+4. **Auth / tenancy → OIDC via Auth0** (decided 2026-06-20). JWKS token verification at the WS
+   handshake; tenant = org boundary; per-tenant region-pinned storage.
 5. **Server stack → extend a Node Yjs server (Hocuspocus).** Reuses the Yjs ecosystem and its
    auth/persistence/Redis hooks; the relay is IO-bound, so Node suffices for Phases 1–2. Revisit a
    custom Go/Rust relay only if fan-out becomes the Phase 3 bottleneck. (Exact Hocuspocus API/version

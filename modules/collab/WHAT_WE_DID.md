@@ -47,3 +47,13 @@
   room `Y.Doc` (for late-join) but only relays presence (ephemeral). Pinned `y-protocols` 1.0.7. Tests:
   presence-frame routing + setLocalUser round-trip (unit); a Playwright spec proves a remote cursor from
   one tab shows in the other. Phase 1 is now feature-complete (32 module tests + 109 Playwright green).
+- Phase 2 start — durable persistence + auth seam (server is optional; single-user local untouched).
+  Evolved the dev relay into `server/relay.mjs` + a pluggable `server/store.mjs` (`RoomStore`:
+  `createMemoryStore` + `createFileStore`). The relay loads a room's snapshot on first join and saves
+  it (debounced, flushed on room close), so rooms survive a restart; `PERSIST_DIR` selects the file
+  store (default in-memory, zero-config). `startRelay({ store, authorize })` is injectable; every
+  connection passes an `authorize(req)` hook (default allow) — the Auth0 OIDC seam. Updated the Makefile
+  target + Playwright webServer to `server/relay.mjs`. Tests: a `.mjs` store round-trip incl.
+  fresh-instance-over-same-dir (≈ restart) and path-safe room filenames; the relay's end-to-end restart
+  survival was verified manually (a client wrote text, the relay restarted on the same dir, a new client
+  read it back). Production `RoomStore` (Postgres update log + S3 snapshots) is the same interface.

@@ -14,9 +14,15 @@
   `setLocalUser` labels the client and the source binding tracks the local cursor into awareness, so
   remote carets render in peers' editors. Follow-up: presence on the **canvas** (remote selection
   highlights) + a viewport/active-users indicator.
-- **Production server (Phase 1 → 2 handoff):** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
-  auth (OIDC), rooms + RBAC, and durable persistence (Postgres update log + S3 snapshots + Redis
-  fan-out) — Phases 2–3 of `docs/collab-editor-plan.md`. The client transport is unchanged.
+- *(done)* **Durable persistence:** the relay (`server/relay.mjs`) has a pluggable `RoomStore`
+  (`server/store.mjs`) — memory default + a file-snapshot store (`PERSIST_DIR`); rooms survive a restart.
+  Every connection passes an `authorize(req)` hook (default allow) — the auth seam. The server is
+  optional; single-user local needs none of it.
+- **Auth0 OIDC handshake (next):** verify the connection token against Auth0's JWKS in `authorize`
+  (reject unauthorized); carry the user identity into presence + rooms. Decide here whether to adopt
+  **Hocuspocus** (§10.5) — its auth/persistence/scale extensions vs. the client-provider migration.
+- **Rooms + RBAC, then production `RoomStore`:** per-document roles enforced server-side; swap the file
+  store for Postgres (update log = audit trail) + S3 (snapshots) + Redis fan-out — same interface.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,
   user identity/color) — ephemeral, not persisted.
 - **App source binding:** bind CodeMirror ↔ `Y.Text` (e.g. `y-codemirror.next`) so the `?collab` flag

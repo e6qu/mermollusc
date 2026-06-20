@@ -37,10 +37,11 @@ e2e-ui:
 e2e-api:
 	@echo "no API packages yet; HTTP e2e will run here once an API module exists"
 
-# Dev-only collaborative relay (WebSocket). Run alongside `make -C app/playground run`, then open two
-# tabs at /?collab&room=demo to edit the overlay together. Not a deployable — Phase 1 transport only.
+# Collaborative relay (WebSocket). Run alongside `make -C app/playground run`, then open two tabs at
+# /?collab&room=demo to edit together. Optional — the app runs fully single-user without it. Set
+# PERSIST_DIR to keep rooms across restarts (default: in-memory).
 collab-server:
-	@PORT=$${PORT:-1234} node modules/collab/dev-server.mjs
+	@PORT=$${PORT:-1234} node modules/collab/server/relay.mjs
 
 doctor:
 	@command -v pnpm >/dev/null || { echo "pnpm not found"; exit 1; }

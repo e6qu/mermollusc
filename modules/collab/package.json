@@ -20,6 +20,7 @@
     "@codemirror/view": "catalog:"
   },
   "devDependencies": {
-    "ws": "catalog:"
+    "ws": "catalog:",
+    "@types/node": "catalog:"
   }
 }
