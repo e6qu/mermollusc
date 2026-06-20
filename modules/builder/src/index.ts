@@ -41,5 +41,10 @@ export {
   deleteStateEntity,
 } from "./core/index.js";
 export type { PatchError } from "./core/index.js";
-export { serializeOverlay, decodeOverlay } from "./shell/index.js";
+export {
+  serializeOverlay,
+  decodeOverlay,
+  encodeOverrideEntry,
+  encodeGroupEntry,
+} from "./shell/index.js";
 export type { Overlay } from "./shell/index.js";

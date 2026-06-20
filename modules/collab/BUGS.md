@@ -13,7 +13,11 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
   `Y.Text` merges both inserts. Robust fix needs server-side first-write coordination (the relay owns
   the seed), a later phase.
 
-- **Overlay encoders are hand-written field lists.** `encodeOverride`/`encodeGroup` (`session.ts`) copy
-  a literal set of fields; they're exhaustive for the current `NodeOverride`/`Group` types, but a new
-  field added to those types would be silently dropped on the wire while the local cache keeps it.
-  Latent — guard by deriving the encoder from the type, or round-tripping through `materialize()`.
+Resolved (polish & harden):
+
+- ~~**Overlay encoders are hand-written field lists.**~~ Fixed — `session.ts` no longer carries its own
+  `encodeOverride`/`encodeGroup`; it encodes Y.Map entries through `@m/builder`'s `encodeOverrideEntry`
+  /`encodeGroupEntry`, the same per-entry encoders `serializeOverlay` (JSON persistence) uses — so the
+  two wire shapes can't drift. Each encoder carries a `satisfies Record<keyof NodeOverride|Group, unknown>`
+  guard, so a newly-added domain field is a **compile error** at the encoder instead of a silent
+  wire-drop. (+builder unit test for the per-entry encoders' shape + round-trip.)

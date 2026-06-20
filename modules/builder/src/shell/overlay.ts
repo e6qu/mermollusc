@@ -3,7 +3,7 @@
 // `decode()` and leaves as branded `LayoutOverrides` / `Groups`, or a loud error.
 
 import { brand, decode, type DecodeError, map, point, type Result, size } from "@m/std";
-import type { GroupMember, Groups, LayoutOverrides } from "@m/contracts";
+import type { Group, GroupMember, Groups, LayoutOverrides, NodeOverride } from "@m/contracts";
 import { z } from "zod";
 
 export interface Overlay {
@@ -26,26 +26,31 @@ const OverlayZ = z.object({
   groups: z.array(z.tuple([z.string(), GroupZ])),
 });
 
+// Per-entry wire encoders, branded values flattened to plain numbers/strings. The
+// `satisfies Record<keyof …, unknown>` turns a newly-added domain field into a compile error here (the
+// literal would be missing that key), so a field can never be *silently* dropped on the wire. These are
+// the single source of truth for the overlay's on-the-wire shape — JSON persistence below and the collab
+// Y.Map sync both encode through them, so the two can't drift.
+export const encodeOverrideEntry = (o: NodeOverride) =>
+  ({
+    position: { x: o.position.x, y: o.position.y },
+    size: o.size === null ? null : { width: o.size.width, height: o.size.height },
+    pinned: o.pinned,
+  }) satisfies Record<keyof NodeOverride, unknown>;
+
+export const encodeGroupEntry = (g: Group) =>
+  ({
+    id: g.id,
+    label: g.label,
+    members: g.members.map((m) => ({ kind: m.kind, id: m.id })),
+    locked: g.locked,
+  }) satisfies Record<keyof Group, unknown>;
+
 // Serialise the overlay to a JSON string — branded values are plain numbers/strings on the wire.
 export const serializeOverlay = (overrides: LayoutOverrides, groups: Groups): string =>
   JSON.stringify({
-    overrides: [...overrides].map(([id, o]) => [
-      id,
-      {
-        position: { x: o.position.x, y: o.position.y },
-        size: o.size === null ? null : { width: o.size.width, height: o.size.height },
-        pinned: o.pinned,
-      },
-    ]),
-    groups: [...groups].map(([id, g]) => [
-      id,
-      {
-        id: g.id,
-        label: g.label,
-        members: g.members.map((m) => ({ kind: m.kind, id: m.id })),
-        locked: g.locked,
-      },
-    ]),
+    overrides: [...overrides].map(([id, o]) => [id, encodeOverrideEntry(o)]),
+    groups: [...groups].map(([id, g]) => [id, encodeGroupEntry(g)]),
   });
 
 // Decode an untyped overlay payload (e.g. `JSON.parse(localStorage…)`) back into branded maps.

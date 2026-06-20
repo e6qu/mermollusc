@@ -15,6 +15,8 @@ import {
 import type { Extension } from "@codemirror/state";
 import {
   decodeOverlay,
+  encodeGroupEntry,
+  encodeOverrideEntry,
   group,
   moveNode,
   pruneGroups,
@@ -24,7 +26,7 @@ import {
   setLocked,
   ungroup,
 } from "@m/builder";
-import type { Group, Groups, LayoutOverrides, NodeOverride, OverlayDoc } from "@m/contracts";
+import type { Groups, LayoutOverrides, OverlayDoc } from "@m/contracts";
 import { brand, isOk, type Point, type Size } from "@m/std";
 
 // A collaborative document: the diagram **source text** (a `Y.Text`) and the sidecar **overlay**
@@ -81,19 +83,9 @@ const LOCAL = Symbol("collab/local");
 const REMOTE = Symbol("collab/remote");
 const SEED = Symbol("collab/seed");
 
-const encodeOverride = (o: NodeOverride): unknown => ({
-  position: { x: o.position.x, y: o.position.y },
-  size: o.size === null ? null : { width: o.size.width, height: o.size.height },
-  pinned: o.pinned,
-});
-
-const encodeGroup = (g: Group): unknown => ({
-  id: g.id,
-  label: g.label,
-  members: g.members.map((m) => ({ kind: m.kind, id: m.id })),
-  locked: g.locked,
-});
-
+// Each override/group is one Y.Map value (CRDT merges per-entry), encoded through the builder's shared
+// per-entry encoders — the same source of truth as JSON persistence, so the wire shapes can't drift and
+// a newly-added domain field is a compile error there rather than a silent drop.
 const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 export const createCollabSession = (opts: {
@@ -140,7 +132,7 @@ export const createCollabSession = (opts: {
   const writeOverrides = (next: LayoutOverrides): void => {
     doc.transact(() => {
       for (const [id, o] of next) {
-        const enc = encodeOverride(o);
+        const enc = encodeOverrideEntry(o);
         if (!sameJson(yOverrides.get(id), enc)) yOverrides.set(id, enc);
       }
       for (const k of [...yOverrides.keys()])
@@ -151,7 +143,7 @@ export const createCollabSession = (opts: {
   const writeGroups = (next: Groups): void => {
     doc.transact(() => {
       for (const [id, g] of next) {
-        const enc = encodeGroup(g);
+        const enc = encodeGroupEntry(g);
         if (!sameJson(yGroups.get(id), enc)) yGroups.set(id, enc);
       }
       for (const k of [...yGroups.keys()])
@@ -162,8 +154,8 @@ export const createCollabSession = (opts: {
   // Seed the shared doc with the caller's starting state, outside undo history.
   doc.transact(() => {
     if (opts.initialSource.length > 0) yText.insert(0, opts.initialSource);
-    for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverride(o));
-    for (const [id, g] of opts.initialGroups) yGroups.set(id, encodeGroup(g));
+    for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverrideEntry(o));
+    for (const [id, g] of opts.initialGroups) yGroups.set(id, encodeGroupEntry(g));
   }, SEED);
 
   const undoManager = new UndoManager([yOverrides, yGroups], { trackedOrigins: new Set([LOCAL]) });
