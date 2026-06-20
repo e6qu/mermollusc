@@ -49,6 +49,7 @@ import type {
   GroupMember,
   NetworkSource,
   NodeId,
+  NodeShape,
   OverlayDoc,
   Scene,
   SceneNode,
@@ -2152,6 +2153,72 @@ const duplicateSelection = async (): Promise<void> => {
   updateGroupButtons();
 };
 
+// In-memory node clipboard for ⌘C/⌘V (flowchart). Each entry is a node's label + shape and its offset
+// from the copied group's top-left, so a multi-node paste keeps the arrangement. It persists across
+// edits (copy once, paste repeatedly), and `pasteSeq` cascades successive pastes so a paste doesn't
+// stack exactly on the previous one. Edges aren't copied — the pasted nodes are loose, like Add node.
+let nodeClipboard: ReadonlyArray<{
+  readonly label: string;
+  readonly shape: NodeShape;
+  readonly dx: number;
+  readonly dy: number;
+}> | null = null;
+let clipboardOrigin: Point | null = null;
+let pasteSeq = 0;
+
+const copySelection = (): void => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart" || scene === null) return;
+  const byId = new Map(applyOverrides(scene, doc.overrides()).nodes.map((nd) => [nd.id, nd]));
+  const picked = selectionOrder.flatMap((id) => {
+    const nd = byId.get(id);
+    return nd === undefined ? [] : [nd];
+  });
+  if (picked.length === 0) return;
+  const minX = picked.reduce((m, nd) => Math.min(m, nd.bounds.origin.x), Number.POSITIVE_INFINITY);
+  const minY = picked.reduce((m, nd) => Math.min(m, nd.bounds.origin.y), Number.POSITIVE_INFINITY);
+  nodeClipboard = picked.map((nd) => ({
+    label: nd.label,
+    shape: nd.shape,
+    dx: nd.bounds.origin.x - minX,
+    dy: nd.bounds.origin.y - minY,
+  }));
+  clipboardOrigin = point(minX, minY);
+  pasteSeq = 0;
+  setStatus("ok", `copied ${picked.length} node${picked.length === 1 ? "" : "s"}`);
+};
+
+const pasteClipboard = async (): Promise<void> => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
+  const clip = nodeClipboard;
+  const origin = clipboardOrigin;
+  if (clip === null || origin === null) return;
+  const used = new Set<string>(ast.nodes.map((nd) => nd.id));
+  let next = 1;
+  const created: Array<{ readonly id: SceneNodeId; readonly dx: number; readonly dy: number }> = [];
+  let text = editor.value();
+  for (const c of clip) {
+    while (used.has(`n${next}`)) next++;
+    const newId = `n${next}`;
+    used.add(newId);
+    text = addNode(text, brand<string, "NodeId">(newId), c.label, c.shape);
+    created.push({ id: brand<string, "SceneNodeId">(newId), dx: c.dx, dy: c.dy });
+  }
+  if (created.length === 0) return;
+  pasteSeq += 1;
+  editor.setValue(text);
+  await renderFromText(text);
+  doc.record();
+  const off = 28 * pasteSeq;
+  for (const c of created) {
+    doc.moveNode(c.id, point(origin.x + off + c.dx, origin.y + off + c.dy));
+  }
+  doc.persist();
+  selection = { nodes: new Set(created.map((c) => c.id)), edges: new Set() };
+  selectionOrder = created.map((c) => c.id);
+  paintScene();
+  updateGroupButtons();
+};
+
 // Connect: link the first two shift-selected nodes (in click order), in each family's own edge
 // syntax — directed `-->` (flowchart/block), undirected `--` (network/cloud), `Rel(a,b,"")` (C4),
 // or a `A->>B: message` (sequence).
@@ -2357,6 +2424,18 @@ window.addEventListener("keydown", (ev) => {
     if (viewerMode || selectionOrder.length === 0) return;
     ev.preventDefault();
     void duplicateSelection();
+  } else if (key === "c") {
+    // Copy the selected flowchart node(s) to the in-memory clipboard. With nothing selected (or off
+    // flowchart) we don't preventDefault, so the browser's own copy still works.
+    if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0)
+      return;
+    ev.preventDefault();
+    copySelection();
+  } else if (key === "v") {
+    // Paste the clipboard's node(s) as fresh-id copies; left to the browser when the clipboard is empty.
+    if (viewerMode || nodeClipboard === null) return;
+    ev.preventDefault();
+    void pasteClipboard();
   }
 });
 
