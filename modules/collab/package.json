@@ -15,6 +15,7 @@
     "@m/builder": "workspace:*",
     "yjs": "catalog:",
     "y-codemirror.next": "catalog:",
+    "y-protocols": "catalog:",
     "@codemirror/state": "catalog:",
     "@codemirror/view": "catalog:"
   },

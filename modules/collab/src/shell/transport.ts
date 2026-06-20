@@ -12,20 +12,44 @@ export interface CollabSocket {
   close(): void;
 }
 
-// Bind a session to a socket: on open, send our whole state so the peer/relay can merge us in; apply
-// every inbound update; forward our own local updates outbound. Returns a disconnect fn that stops
-// forwarding and closes the socket. Applied remote updates are not re-forwarded (the session's
-// `onUpdate` only emits local-origin updates), so a relay can't loop.
+// Frame tags: the document (CRDT) and presence (awareness) travel on the same socket as distinct
+// frames, a single leading byte apart. The relay keeps the document but only relays presence.
+const DOC = 0;
+const AWARE = 1;
+
+const framed = (tag: number, payload: Uint8Array): Uint8Array => {
+  const frame = new Uint8Array(payload.byteLength + 1);
+  frame[0] = tag;
+  frame.set(payload, 1);
+  return frame;
+};
+
+// Bind a session to a socket: on open, send our whole document + presence so the peer/relay can merge
+// us in; apply every inbound frame to the matching channel; forward our own local updates outbound.
+// Returns a disconnect fn that stops forwarding and closes the socket. Applied remote updates are not
+// re-forwarded (the session emits only local-origin updates), so a relay can't loop.
 export const connectTransport = (session: CollabSession, socket: CollabSocket): (() => void) => {
-  const sendState = (): void => socket.send(session.state());
+  const sendState = (): void => {
+    socket.send(framed(DOC, session.state()));
+    socket.send(framed(AWARE, session.awarenessState()));
+  };
   if (socket.isOpen()) sendState();
   else socket.onOpen(sendState);
-  socket.onMessage((data) => session.applyUpdate(data));
-  const off = session.onUpdate((update) => {
-    if (socket.isOpen()) socket.send(update);
+  socket.onMessage((data) => {
+    if (data.byteLength === 0) return;
+    const payload = data.subarray(1);
+    if (data[0] === DOC) session.applyUpdate(payload);
+    else if (data[0] === AWARE) session.applyAwarenessUpdate(payload);
+  });
+  const offDoc = session.onUpdate((update) => {
+    if (socket.isOpen()) socket.send(framed(DOC, update));
+  });
+  const offAware = session.onAwarenessUpdate((update) => {
+    if (socket.isOpen()) socket.send(framed(AWARE, update));
   });
   return () => {
-    off();
+    offDoc();
+    offAware();
     socket.close();
   };
 };

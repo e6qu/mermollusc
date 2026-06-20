@@ -20,10 +20,20 @@ const rooms = new Map();
 
 const roomName = (req) => decodeURIComponent((req.url ?? "/").replace(/^\/+/, "")) || "default";
 
-const frame = (data) =>
+// Frames are [tag][payload]: tag 0 = document (CRDT) update, tag 1 = presence (awareness) update.
+const DOC = 0;
+
+const bytes = (data) =>
   data instanceof ArrayBuffer
     ? new Uint8Array(data)
     : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+
+const docFrame = (payload) => {
+  const frame = new Uint8Array(payload.byteLength + 1);
+  frame[0] = DOC;
+  frame.set(payload, 1);
+  return frame;
+};
 
 const wss = new WebSocketServer({ port: PORT });
 
@@ -36,14 +46,16 @@ wss.on("connection", (socket, req) => {
   }
   room.sockets.add(socket);
 
-  // Bring the newcomer up to the room's current state.
-  socket.send(encodeStateAsUpdate(room.doc));
+  // Bring the newcomer up to the room's current document state (presence catches up as peers update).
+  socket.send(docFrame(encodeStateAsUpdate(room.doc)));
 
   socket.on("message", (data) => {
-    const update = frame(data);
-    applyUpdate(room.doc, update); // keep the room doc current for future joiners
+    const frame = bytes(data);
+    if (frame.byteLength === 0) return;
+    // Keep the room document current for future joiners; presence is ephemeral and only relayed.
+    if (frame[0] === DOC) applyUpdate(room.doc, frame.subarray(1));
     for (const peer of room.sockets) {
-      if (peer !== socket && peer.readyState === peer.OPEN) peer.send(update);
+      if (peer !== socket && peer.readyState === peer.OPEN) peer.send(frame);
     }
   });
 

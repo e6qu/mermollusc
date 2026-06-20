@@ -1,8 +1,9 @@
 # Collaborative editor — design & scoping (CRDT)
 
-Status: **Phase 0 done; decisions signed off; Phase 1 nearly complete (CRDT document + dev WebSocket
-transport + live source binding — two `?collab` tabs share overlay *and* text live; only presence
-remains; see `@m/collab`).** This scopes a real-time,
+Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete (CRDT document + dev WebSocket
+transport + live source binding + presence — two `?collab` tabs share overlay *and* text live and see
+each other's cursors; see `@m/collab`). Next: the production server (Phases 2–3).** This scopes a
+real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
 architecture (see *Future bets* in the root `PLAN.md`).
@@ -159,13 +160,14 @@ after merge — the invariant holds without coordination.
 - **Phase 0 — the seam (no infra). ✅ DONE.** `source` behind `Editor`, `overrides`/`groups` behind
   `OverlayDoc` (`app/playground/src/document-model.ts`). Pure refactor; shipped cleaner state
   ownership with zero backend.
-- **Phase 1 — proof of merge (nearly complete).** `@m/collab`'s `createCollabSession` (Yjs `Y.Doc` =
+- **Phase 1 — proof of merge (feature-complete).** `@m/collab`'s `createCollabSession` (Yjs `Y.Doc` =
   source `Y.Text` + overlay `Y.Map`s) implements the `OverlayDoc` port; two-peer convergence is proven by
-  tests. A **dev WebSocket transport** is in (`connectTransport`/`webSocketTransport` + the
-  server-authoritative `dev-server.mjs`, `make collab-server`), and the **live source binding** is in
-  (`sourceBinding()` via y-codemirror.next). Two app tabs on `?collab&room=…` now edit **both the overlay
-  and the diagram text** live, each re-deriving its diagram locally (Playwright covers all three).
-  **Remaining:** awareness/presence (remote cursors/selections).
+  tests. In: a **dev WebSocket transport** (`connectTransport`/`webSocketTransport` + the
+  server-authoritative `dev-server.mjs`, `make collab-server`), the **live source binding**
+  (`sourceBinding()` via y-codemirror.next), and **presence** (a y-protocols `Awareness` on a distinct
+  transport frame — remote cursors via `setLocalUser`). Two app tabs on `?collab&room=…` now edit the
+  **overlay and the diagram text** live and see each other's **cursors**, each re-deriving its diagram
+  locally (Playwright covers overlay convergence, source sync, and presence).
 - **Phase 2 — durable + secured.** Persistence (update log + snapshots), auth handshake, rooms + RBAC.
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.

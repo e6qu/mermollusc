@@ -10,10 +10,11 @@
 - *(done)* **Live source binding:** `sourceBinding()` (y-codemirror.next) two-way-binds the editor to
   the source `Y.Text`; two `?collab` tabs share the diagram text live (character merge, per-user text
   undo). The app drops CodeMirror's own history in collab mode and seeds the room if empty.
-- **Presence (next):** add the Yjs awareness protocol — remote cursors/selections in the editor (and
-  on the canvas), user identity/color, viewport. Wire `yCollab`'s awareness arg + an awareness channel
-  over the transport; ephemeral, not persisted.
-- **Production server:** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
+- *(done)* **Presence:** a y-protocols `Awareness` rides the transport on a distinct frame;
+  `setLocalUser` labels the client and the source binding tracks the local cursor into awareness, so
+  remote carets render in peers' editors. Follow-up: presence on the **canvas** (remote selection
+  highlights) + a viewport/active-users indicator.
+- **Production server (Phase 1 → 2 handoff):** replace the dev relay with a Node Yjs server (Hocuspocus) that owns
   auth (OIDC), rooms + RBAC, and durable persistence (Postgres update log + S3 snapshots + Redis
   fan-out) — Phases 2–3 of `docs/collab-editor-plan.md`. The client transport is unchanged.
 - **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,

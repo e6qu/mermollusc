@@ -379,3 +379,8 @@
   Yjs owns ⌘Z); collab mode starts the editor empty, seeds the room if empty after sync, and no longer
   clears the shared overlay on a text edit (stale overrides are inert). New Playwright spec: edit in
   tab A → tab B's editor + canvas follow.
+- Collab Phase 1 **presence**. On `?collab` the app labels the client via `session.setLocalUser`
+  (random name + colour); the source binding tracks the local cursor into the session's awareness, so
+  remote carets/selections render in peers' editors (document + presence ride one socket as distinct
+  frames). New Playwright spec: a remote cursor from tab A shows in tab B. Phase 1 (CRDT + transport +
+  source binding + presence) is feature-complete.
