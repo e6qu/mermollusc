@@ -39,3 +39,7 @@
   — a list with ≥2 elements where `[0]`/`[1]` are total, so a too-short edge route is unrepresentable.
   The constructor needs no assertion (the tuple-rest literal types itself), and the type is structurally
   a `readonly T[]`, so existing readers are unaffected. +test (order kept, `[0]`/`[1]` present).
+- Added screen-space geometry: `ScreenCoord` (a `Brand<number, "ScreenCoord">`, viewport CSS px) and
+  `ScreenPoint`, with `screenCoord`/`screenPoint` constructors (unvalidated like `coordinate` — an
+  overlay may sit off-screen). The brand is deliberately distinct from the scene `Coordinate`, so the
+  two spaces aren't mutually assignable and the app can require one or the other at a boundary. +test.

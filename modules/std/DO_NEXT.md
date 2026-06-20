@@ -13,6 +13,11 @@
   - (done) **`TwoOrMore<T>` for `SceneEdge.waypoints`** — `[0]`/`[1]` total, `< 2` guards deleted; the
     layout's `routeWaypoints` recovers a degenerate route to a straight line between endpoint centres
     (a defined geometry) rather than failing the layout or silently skipping the edge.
-  - **Full scene/screen coordinate branding.** This pass unified the transform into one `sceneToScreen`
-    pair; full type-enforcement (so a screen `Point` can't be passed where a scene one is wanted) means
-    branding `Point`/`Coordinate` per space in `@m/std`/`@m/contracts` — a broad ripple deferred here.
+  - (done) **Scene/screen coordinate branding.** Added a distinct `ScreenCoord`/`ScreenPoint`;
+    `sceneToScreen` returns `ScreenPoint` and DOM placement goes through `positionOverlay(el,
+    ScreenPoint)`, so a screen point can't be used as a scene coordinate (or vice versa) at a boundary.
+    (Scene-space stays the pervasive `Point`; this brands the *screen* side, which is where the app's
+    raw `clientX/Y`/`getBoundingClientRect` values live. Arithmetic mixing isn't caught by brands — the
+    single `sceneToScreen` function from the earlier pass is what guards that.)
+  - Remaining (low value, both already runtime-defended): finite `TextSpan`/offset (rippley through every
+    source map) and a `[] | [p] | [p, p]` tuple for `GitCommit.parents`.

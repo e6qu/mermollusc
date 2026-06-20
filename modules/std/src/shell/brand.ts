@@ -2,7 +2,15 @@
 // through it so consuming cores call px(n) etc. and never write `as` themselves.
 
 import type { Brand } from "../core/brand.js";
-import type { Coordinate, Length, Point, Rect, Size } from "../core/geometry.js";
+import type {
+  Coordinate,
+  Length,
+  Point,
+  Rect,
+  ScreenCoord,
+  ScreenPoint,
+  Size,
+} from "../core/geometry.js";
 import type { Positive, PositiveInt, TwoOrMore } from "../core/refined.js";
 
 export const brand = <TBase, TTag extends string>(value: TBase): Brand<TBase, TTag> =>
@@ -45,6 +53,14 @@ export const twoOrMore = <T>(first: T, second: T, ...rest: readonly T[]): TwoOrM
   second,
   ...rest,
 ];
+
+// Screen-space (viewport CSS px) — unvalidated like `coordinate` (an overlay can sit off-screen, so
+// negatives are legal), but a distinct brand so it can't be confused with a scene coordinate.
+export const screenCoord = (n: number): ScreenCoord => brand<number, "ScreenCoord">(n);
+export const screenPoint = (x: number, y: number): ScreenPoint => ({
+  x: screenCoord(x),
+  y: screenCoord(y),
+});
 
 export const point = (x: number, y: number): Point => ({ x: coordinate(x), y: coordinate(y) });
 export const size = (width: number, height: number): Size => ({

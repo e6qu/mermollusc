@@ -479,3 +479,10 @@
   of duplicated boilerplate; 118 e2e specs green.
 - Type-system hardening: dropped the `e.waypoints.length < 2` guard in the inline-editor edge-anchor
   path now that `SceneEdge.waypoints` is `TwoOrMore<Point>` (always anchorable).
+- Type-system hardening: **scene vs screen coordinate spaces are now distinct types.** `sceneToScreen`
+  returns a `ScreenPoint` (not a scene `Point`), so its result can't be fed into a scene API
+  (`moveNode`/`hitTest`/…) without an obvious reconversion — feeding a screen-converted point into scene
+  math is now a compile error. DOM-overlay placement goes through a typed `positionOverlay(el, at:
+  ScreenPoint)` seam (so a scene point can't position an element), and the pan gesture's `startX`/`startY`
+  are `ScreenCoord` (minted from `clientX/Y`). Complements the single-`sceneToScreen` consolidation that
+  fixed the original drift bug — branding adds boundary protection that arithmetic-only checks couldn't.
