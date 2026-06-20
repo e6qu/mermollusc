@@ -1,13 +1,14 @@
 # @m/builder — bugs
 
-Open (external review, codex `gpt-5.5`, 2026-06-19):
+Resolved (external review, codex `gpt-5.5`, 2026-06-19):
 
-- **Deleting a brace-bodied entity orphans its body.** The app's `removeNode` falls through to the
-  line-based `deleteNode` for ER/class/requirement (and composite state); for `CUSTOMER { … }` /
-  `class Animal { … }` / `requirement r { … }` that strips only the id line and leaves the `{ … }`
-  rows + closing `}`, corrupting the source. Needs family entity-delete that removes the whole brace
-  block plus incident relationship lines. *(P1; ER/class/requirement fixed here, composite state still
-  open.)*
+- ~~**Deleting a brace-bodied entity orphans its body.**~~ Fixed — the app's `removeNode` routed
+  ER/class/requirement to body-aware deletes but fell through to line-based `deleteNode` for composite
+  `state X { … }`, orphaning the body rows + closing `}`. Now `deleteStateEntity` reuses the shared
+  `deleteEntityWithBody` brace-matcher (declarations `state id` / `state "…" as id` opening a block, the
+  `id : desc` form, transitions `a --> b`, and `note … of id`), so deleting a composite removes its
+  whole block and everything bound to it and the source stays parseable. (+builder integration tests
+  ×2, +app e2e selecting the composite container and Deleting.)
 - ~~**Drag/resize extent only grows right/down.**~~ Fixed — `applyOverrides` now emits the true bounds
   (a negative extent *origin*, not just grown width/height), including edge waypoints. The app offsets
   paint, pointer→scene (`scenePoint`), the minimap, and SVG export (`toSvg` gained an `origin`) by the

@@ -80,3 +80,10 @@
 - Fixed external-review P1 (extent only grew right/down): `applyOverrides` now emits the true bounds —
   a negative extent *origin* (not just grown width/height), including edge waypoints — so a node
   dragged past the top-left is no longer clipped. +1 unit test (negative drag → negative origin).
+- Polish/harden: closed the last piece of the brace-bodied-delete P1 — composite `state X { … }`.
+  Added `deleteStateEntity`, which reuses the shared `deleteEntityWithBody` brace-matcher with
+  state-specific declaration/transition/note recognisers (`state id`, `state "…" as id`, `id : desc`,
+  `a --> b`, `note … of id`), so deleting a composite removes its whole block + incident transitions +
+  description + note and the source stays parseable. The app's `removeNode` now routes `state` here
+  instead of falling through to line-based `deleteNode`. +2 integration cases (composite block gone +
+  re-parses; non-composite drops only its lines).

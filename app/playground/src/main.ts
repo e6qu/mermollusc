@@ -21,6 +21,7 @@ import {
   deleteNode,
   deleteRequirementEntity,
   deleteRequirementRel,
+  deleteStateEntity,
   emptySelection,
   hitTest,
   leafNodes,
@@ -2176,6 +2177,9 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       return deleteClassEntity(text, brand<string, "ClassEntityId">(id));
     case "requirement":
       return deleteRequirementEntity(text, brand<string, "ReqEntityId">(id));
+    // Composite states own a `{ … }` body that line-based `deleteNode` would orphan.
+    case "state":
+      return deleteStateEntity(text, brand<string, "StateId">(id));
     default:
       return deleteNode(text, brand<string, "NodeId">(id));
   }

@@ -6,6 +6,7 @@ import {
   parseRequirementWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
+  parseStateWithSource,
   parseWithSource,
 } from "@m/parser";
 import { describe, expect, it } from "vitest";
@@ -30,6 +31,7 @@ import {
   deleteNode,
   deleteRequirementEntity,
   deleteRequirementRel,
+  deleteStateEntity,
   patchSpan,
   relabelNode,
 } from "../../src/core/patch.js";
@@ -40,6 +42,7 @@ const aid = (s: string) => brand<string, "ActorId">(s);
 const erid = (s: string) => brand<string, "ErEntityId">(s);
 const clid = (s: string) => brand<string, "ClassEntityId">(s);
 const rqid = (s: string) => brand<string, "ReqEntityId">(s);
+const stid = (s: string) => brand<string, "StateId">(s);
 
 const sourceOf = (text: string) => {
   const r = parseWithSource(text);
@@ -215,6 +218,40 @@ describe("relabelNode", () => {
     const parsed = parseRequirementWithSource(removed);
     expect(isOk(parsed)).toBe(true);
     if (isOk(parsed)) expect(parsed.value.ast.entities.map((en) => en.id)).toEqual(["e"]);
+  });
+
+  it("deleteStateEntity removes a composite state's whole block, its transitions, description, and note", () => {
+    const text =
+      "stateDiagram-v2\n" +
+      "  [*] --> Idle\n" +
+      "  state Active {\n    [*] --> Running\n    Running --> [*]\n  }\n" +
+      "  Active : working\n" +
+      "  note right of Active : busy\n" +
+      "  Idle --> Active : go\n" +
+      "  Active --> Idle : stop\n";
+    const removed = deleteStateEntity(text, stid("Active"));
+    // the composite body and its closing brace are gone — not orphaned
+    expect(removed).not.toContain("Running");
+    expect(removed).not.toMatch(/state Active\b/);
+    expect(removed).not.toContain("working");
+    expect(removed).not.toContain("note right of Active");
+    expect(removed).not.toContain("Idle --> Active");
+    expect(removed).not.toContain("Active --> Idle");
+    // the unrelated state and its transition survive
+    expect(removed).toContain("[*] --> Idle");
+    // and the result is still parseable (no dangling `}` / orphaned rows)
+    const parsed = parseStateWithSource(removed);
+    expect(isOk(parsed)).toBe(true);
+    if (isOk(parsed)) expect(parsed.value.ast.states.map((n) => n.id)).not.toContain("Active");
+  });
+
+  it("deleteStateEntity on a non-composite state drops only its transitions and description", () => {
+    const text = "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Done : finish\n  Done : terminal\n";
+    const removed = deleteStateEntity(text, stid("Done"));
+    expect(removed).not.toContain("Idle --> Done");
+    expect(removed).not.toContain("terminal");
+    expect(removed).toContain("[*] --> Idle");
+    expect(isOk(parseStateWithSource(removed))).toBe(true);
   });
 
   it("connectMessage appends a message the sequence parser accepts", () => {

@@ -38,8 +38,9 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
 - ~~**Pipeline goldens omit the state family.**~~ Fixed — added flat (`state`) and `state-composite`
   samples to the pipeline goldens, so composite/`[*]` geometry regressions are now caught.
 
-Delete of brace-bodied entities (ER/class/requirement) is logged under `@m/builder` (dispatch lives
-in `main.ts` `removeNode`, the delete helpers in the builder).
+Delete of brace-bodied entities (ER/class/requirement/composite state) is logged under `@m/builder`
+(dispatch lives in `main.ts` `removeNode`, the delete helpers in the builder) — now fully resolved,
+composite `state X { … }` included.
 
 Checked while wiring Delete across C4 and sequence diagrams.
 

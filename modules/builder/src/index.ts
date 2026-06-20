@@ -38,6 +38,7 @@ export {
   deleteErEntity,
   deleteClassEntity,
   deleteRequirementEntity,
+  deleteStateEntity,
 } from "./core/index.js";
 export type { PatchError } from "./core/index.js";
 export { serializeOverlay, decodeOverlay } from "./shell/index.js";
