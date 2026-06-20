@@ -31,6 +31,8 @@ export interface TextSpan {
 export interface NodeSpans {
   readonly id: TextSpan;
   readonly label: TextSpan;
+  // The whole node declaration (`A`, `A[label]`, `A([label])`, …) — the span a reshape rewrites.
+  readonly decl: TextSpan;
   readonly bracketed: boolean;
 }
 

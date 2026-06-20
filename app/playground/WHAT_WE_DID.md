@@ -479,6 +479,12 @@
   of duplicated boilerplate; 118 e2e specs green.
 - Type-system hardening: dropped the `e.waypoints.length < 2` guard in the inline-editor edge-anchor
   path now that `SceneEdge.waypoints` is `TwoOrMore<Point>` (always anchorable).
+- Editing UX: **change node shape** (the `S` key) — cycles the selected flowchart node(s) through
+  rect → round → stadium → circle → diamond, rewriting each node's bracket syntax in the source via
+  the builder's `reshapeNode` and keeping the label. Multi-select cycles each node, applying the
+  rewrites back-to-front so earlier edits don't shift later offsets. A focused text field keeps the
+  key (the no-modifier handler now also bails on input/textarea focus). Added to the shortcut overlay.
+  +1 e2e (`S` cycles A `[Start]`→`(Start)`→`([Start])`, B untouched); screenshot-verified the diamond.
 - Editing UX: **Connect chains 3+ selected nodes** (A→B→C) in click order — one edge per consecutive
   pair, built in a single action via the per-family `appendEdge` (so it works across every family, not
   just flowchart). Two selected still makes a single edge (the common case). +1 e2e (⌘A-select three

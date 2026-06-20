@@ -17,6 +17,7 @@ export {
 } from "./core/index.js";
 export {
   relabelNode,
+  reshapeNode,
   patchSpan,
   addNode,
   connect,

@@ -78,3 +78,5 @@
   in the AST; the parser mints both through the smart constructors at the parse boundary.
 - `SceneEdge.waypoints` is now `TwoOrMore<Point>` (≥2) — an edge always has two endpoints, so a segment
   can always be drawn; the `< 2` length guards in the renderer/app are no longer needed.
+- `NodeSpans` gained `decl` (the whole `A[label]` declaration span, not just the inner label), so the
+  builder can rewrite a flowchart node's shape brackets in place.

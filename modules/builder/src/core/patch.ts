@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@m/std";
+import { assertNever, err, ok, type Result } from "@m/std";
 import type {
   ActorId,
   C4ElementId,
@@ -367,4 +367,39 @@ export const relabelNode = (
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
   const replacement = spans.bracketed ? label : `${id}[${label}]`;
   return ok(patchSpan(text, spans.label, replacement));
+};
+
+// The bracket syntax for each flowchart node shape (`container` is the C4 boundary; reuse the rect
+// brackets, since it isn't a flowchart node shape the editor cycles to).
+const wrapShape = (shape: NodeShape, label: string): string => {
+  switch (shape) {
+    case "rect":
+      return `[${label}]`;
+    case "round":
+      return `(${label})`;
+    case "stadium":
+      return `([${label}])`;
+    case "circle":
+      return `((${label}))`;
+    case "diamond":
+      return `{${label}}`;
+    case "container":
+      return `[${label}]`;
+    default:
+      return assertNever(shape);
+  }
+};
+
+// Two-way edit: change a flowchart node's shape, rewriting its whole declaration span (`A[x]` →
+// `A((x))` etc.) and keeping the label. A bare node (`A`) becomes `A<brackets>A` (its label is its id).
+export const reshapeNode = (
+  text: string,
+  source: SourceMap,
+  id: NodeId,
+  label: string,
+  shape: NodeShape,
+): Result<string, PatchError> => {
+  const spans = source.nodes.get(id);
+  if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
+  return ok(patchSpan(text, spans.decl, `${id}${wrapShape(shape, label)}`));
 };

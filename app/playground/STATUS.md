@@ -72,8 +72,10 @@
   - **resize**: a single selected node shows corner handles; dragging one resizes it (`resizeNode`
     override, min size, edges re-anchor), one undo step. Locked nodes show no handles.
   - **keyboard affordances** (canvas-focused, so CodeMirror keeps them for the text otherwise):
-    `⌘/Ctrl-A` select all nodes, `Escape` deselect, and `↑↓←→` nudge the selection (Shift = a bigger
-    step; a nudge run is one undo entry; locked groups don't move).
+    `⌘/Ctrl-A` select all nodes, `Escape` deselect, `↑↓←→` nudge the selection (Shift = a bigger
+    step; a nudge run is one undo entry; locked groups don't move), and **`S` cycles the selected
+    flowchart node(s) through the shapes** (rect→round→stadium→circle→diamond, rewriting the source
+    brackets via `reshapeNode`, label preserved).
   - **Arrange** (a popover, enabled on 2+ movable units): align left/center/right/top/middle/bottom
     and distribute horizontally/vertically (3+ units). Each *unit* is a loose node or a whole top
     group, aligned by its bounding box so a group keeps its internal layout; locked groups are

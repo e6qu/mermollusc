@@ -189,3 +189,6 @@
   `> 0` check) and `block-parse` mints `BlockAst.columns` via `positiveInt(max(1, trunc(requested)))`
   (the columns decl is now read defensively, so a non-finite value falls back to ≥1 rather than a NaN
   grid width). The invariants the parser already enforced at runtime are now carried in the types.
+- The flowchart source map now records each node's `decl` span (id + shape brackets), computed per
+  shape from the inner label span + the closing-delimiter length, so the builder can reshape a node
+  (rewrite its brackets) in place.
