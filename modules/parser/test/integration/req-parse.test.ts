@@ -80,6 +80,33 @@ describe("parseRequirement", () => {
     if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("satisfies");
   });
 
+  it("validates risk/verifymethod against their closed domains (case-insensitive)", () => {
+    const r = parseRequirement(
+      "requirementDiagram\n  requirement r {\n    risk: HIGH\n    verifymethod: Test\n  }\n",
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    // input case is normalised to the canonical lowercase union member
+    expect(r.value.entities[0]?.fields).toEqual([
+      { key: "risk", value: "high" },
+      { key: "verifymethod", value: "test" },
+    ]);
+  });
+
+  it("fails loudly (located) on an out-of-domain risk value", () => {
+    const text = "requirementDiagram\n  requirement r {\n    risk: severe\n  }\n";
+    const r = parseRequirement(text);
+    expect(isOk(r)).toBe(false);
+    if (isOk(r)) return;
+    const pos = r.error.positions[0];
+    if (pos !== undefined) expect(text.slice(pos.offset, pos.offset + pos.length)).toContain("severe");
+  });
+
+  it("fails loudly on an invalid verifymethod and on an unknown field key", () => {
+    expect(isOk(parseRequirement("requirementDiagram\n  requirement r { verifymethod: vibes }\n"))).toBe(false);
+    expect(isOk(parseRequirement("requirementDiagram\n  requirement r { priority: high }\n"))).toBe(false);
+  });
+
   it("fails loudly on a malformed relationship", () => {
     expect(isOk(parseRequirement("requirementDiagram\n  a = b\n"))).toBe(false);
   });

@@ -62,6 +62,8 @@ export type {
   ReqKind,
   ReqRelKind,
   ReqField,
+  ReqRisk,
+  ReqVerifyMethod,
   ReqEntity,
   ReqRel,
   RequirementAst,

@@ -212,3 +212,7 @@
 - Gantt `tickInterval` directive: new `TickInterval` keyword token + `tickIntervalLine` rule; the value
   parses as `<n>[day|week]` (a bare number is days, week = 7) to a `PositiveInt`, defaulting to 7 when
   absent and failing loudly on an unsupported unit (e.g. `month`). +2 tests.
+- Requirement field validation: `fieldOf` now returns a `Result` and validates each body line against
+  the closed `ReqField` — `risk`/`verifymethod` matched case-insensitively to their canonical lowercase
+  union member, an unknown key or out-of-domain value failing loudly (located error) rather than being
+  kept as free text. +3 tests (case-normalised ok; bad risk located; bad method / unknown key fail).

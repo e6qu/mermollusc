@@ -106,3 +106,7 @@
 - `GanttAst` gained a **required** `tickIntervalDays: PositiveInt` (axis gridline/caption spacing). Required
   and always concrete — the parser resolves the default (weekly = 7) at the boundary, so the layout reads a
   real value with no `?? 7` fallback in the core (explicit over nullable/optional).
+- Type-hardening: `ReqField` is now a **key-discriminated union** instead of `{ key: string; value: string }`.
+  `risk` carries `ReqRisk` (`low`/`medium`/`high`) and `verifymethod` carries `ReqVerifyMethod`
+  (`analysis`/`inspection`/`test`/`demonstration`) — closed unions, so an out-of-domain value is
+  unrepresentable; `id`/`text`/`type`/`docref` keep free-text values. The key set itself is closed.

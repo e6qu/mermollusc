@@ -331,12 +331,19 @@ export type ReqRelKind =
   | "refines"
   | "traces";
 
-// A `key: value` body line (`id`/`text`/`risk`/`verifymethod` for a requirement; `type`/`docref` for
-// an element). Kept as parsed key + value so the renderer can show them as compartment rows.
-export interface ReqField {
-  readonly key: string;
-  readonly value: string;
-}
+// The closed value domains of the two enumerated requirement fields (SysML). The parser validates
+// against these at the boundary, so an out-of-domain risk/method is unrepresentable in the AST.
+export type ReqRisk = "low" | "medium" | "high";
+export type ReqVerifyMethod = "analysis" | "inspection" | "test" | "demonstration";
+
+// A `key: value` body line, discriminated by key: `risk`/`verifymethod` carry a closed enum; `id`/
+// `text` (requirement) and `type`/`docref` (element) keep their free-text value. The key set is closed
+// — an unknown key fails the parse, like an unknown relationship verb. Kept as parsed key + value so
+// the renderer can show them as compartment rows.
+export type ReqField =
+  | { readonly key: "risk"; readonly value: ReqRisk }
+  | { readonly key: "verifymethod"; readonly value: ReqVerifyMethod }
+  | { readonly key: "id" | "text" | "type" | "docref"; readonly value: string };
 
 export interface ReqEntity {
   readonly id: ReqEntityId;
