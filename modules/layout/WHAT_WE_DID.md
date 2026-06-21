@@ -195,3 +195,5 @@
 - Gantt section bands + excluded columns: emit a `band` decoration per contiguous same-section run (a
   full-width zebra stripe, `section`/`sectionAlt` alternating) and one `excluded` column per non-working
   day in the visible span — behind the gridlines/captions. +3 unit tests.
+- Gantt axis spacing now follows `ast.tickIntervalDays` (was a fixed weekly `DAYS_PER_TICK`) — a wider
+  interval emits fewer gridlines/date captions. +1 unit test (21-day span: weekly 4 ticks, biweekly 2).

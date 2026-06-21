@@ -18,7 +18,6 @@ const BAR_HEIGHT = 22;
 const LABEL_PAD = 12;
 const TOP_AXIS = 22; // band above the bars for the date captions
 const LEFT_GUTTER = 96; // band left of the bars for the section captions
-const DAYS_PER_TICK = 7; // a gridline + date caption every week
 
 // Parse an ISO `YYYY-MM-DD` date to a whole-day number (days since the epoch, UTC so it's
 // timezone-stable). The Gantt subset assumes ISO dates; other `dateFormat`s aren't resolved yet.
@@ -208,8 +207,8 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     }
   }
 
-  // A gridline + date caption every week across the span (the first tick sits on the chart start).
-  for (let day = minDay; day <= maxDay; day += DAYS_PER_TICK) {
+  // A gridline + date caption every `tickIntervalDays` (weekly by default), the first on the chart start.
+  for (let day = minDay; day <= maxDay; day += ast.tickIntervalDays) {
     const x = dayX(day);
     decorations.push({ kind: "rule", from: point(x, TOP_AXIS), to: point(x, bottom) });
     decorations.push({ kind: "caption", at: point(x, 8), text: dayToISO(day), align: "center" });

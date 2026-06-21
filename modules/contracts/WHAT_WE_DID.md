@@ -103,3 +103,6 @@
 - Added a `band` `Decoration` (a filled background `Rect` carrying a `BandFill` = `section`/`sectionAlt`/
   `excluded` closed union) — the first fill primitive in the decoration list. Drawn behind rules/captions
   (array order), it backs a Gantt's section zebra stripes and excluded-day columns. `BandFill` re-exported.
+- `GanttAst` gained a **required** `tickIntervalDays: PositiveInt` (axis gridline/caption spacing). Required
+  and always concrete — the parser resolves the default (weekly = 7) at the boundary, so the layout reads a
+  real value with no `?? 7` fallback in the core (explicit over nullable/optional).

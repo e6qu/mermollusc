@@ -483,6 +483,9 @@ export interface GanttAst {
   readonly title: string | null;
   // The raw `dateFormat` directive (e.g. `YYYY-MM-DD`); the layout interprets dates against it.
   readonly dateFormat: string | null;
+  // Days between axis gridlines/date captions, from the `tickInterval` directive. Required and always
+  // concrete — the parser resolves the default (weekly, 7) at the boundary, so the layout never guesses.
+  readonly tickIntervalDays: PositiveInt;
   // `excludes weekends` → Saturdays/Sundays are non-working: durations skip them, bars stretch across
   // them, and a start landing on one shifts to the next working day. Always present (false = include).
   readonly excludesWeekends: boolean;

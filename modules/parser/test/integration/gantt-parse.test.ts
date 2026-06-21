@@ -82,6 +82,21 @@ describe("parseGantt", () => {
     expect(isOk(parseGantt("gantt\n  Bad : 2024-01-01, soon\n"))).toBe(false);
   });
 
+  it("parses a `tickInterval` directive into days (week → 7), defaulting to weekly", () => {
+    const r = parseGantt("gantt\n  tickInterval 2weeks\n  A : a, 2024-01-01, 2d\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.tickIntervalDays).toBe(14);
+
+    const d = parseGantt("gantt\n  A : a, 2024-01-01, 2d\n");
+    expect(isOk(d) && d.value.tickIntervalDays).toBe(7); // default when absent
+  });
+
+  it("fails loudly on an invalid `tickInterval` (e.g. an unsupported unit)", () => {
+    expect(isOk(parseGantt("gantt\n  tickInterval 1month\n  A : a, 2024-01-01, 2d\n"))).toBe(false);
+    expect(isOk(parseGantt("gantt\n  tickInterval soon\n  A : a, 2024-01-01, 2d\n"))).toBe(false);
+  });
+
   it("parses an `excludes` directive into weekends + holiday dates", () => {
     const r = parseGantt("gantt\n  excludes weekends 2024-01-15, 2024-12-25\n  A : a, 2024-01-01, 2d\n");
     expect(isOk(r)).toBe(true);

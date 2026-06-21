@@ -1,5 +1,5 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, map, ok, oneOrMore, type Result } from "@m/std";
+import { brand, err, map, ok, oneOrMore, positiveInt, type Result } from "@m/std";
 import type {
   GanttAst,
   GanttSource,
@@ -43,6 +43,16 @@ const lineValue = (text: string, keyword: IToken): string => {
 const isStatus = (s: string): s is Exclude<GanttStatus, "normal"> =>
   s === "done" || s === "active" || s === "crit";
 
+// `tickInterval <n>[unit]` → a positive whole number of days (week = 7, day = 1; a bare number is days),
+// else null. A `month` unit isn't supported in the day-grid model — it would parse to null and fail loudly.
+const tickIntervalToDays = (s: string): number | null => {
+  const m = /^(\d+)\s*(weeks?|w|days?|d)?$/i.exec(s.trim());
+  if (m === null) return null;
+  const n = Number(m[1]);
+  if (!Number.isInteger(n) || n < 1) return null;
+  return (m[2] ?? "d").toLowerCase().startsWith("w") ? n * 7 : n;
+};
+
 // `<n>` / `<n>d` / `<n>w` / `<n>h` → a positive number of days, else null (a week is 7 days, an hour 1/24).
 const durationDays = (s: string): number | null => {
   const m = /^(\d+(?:\.\d+)?)\s*([dwh])?$/i.exec(s);
@@ -57,6 +67,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   const root = cst.children;
   let title: string | null = null;
   let dateFormat: string | null = null;
+  let tickIntervalDays = 7; // weekly by default; the `tickInterval` directive overrides it
   let section: string | null = null;
   let excludesWeekends = false;
   const excludeDates: string[] = [];
@@ -77,6 +88,26 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
     if (dfLine !== undefined) {
       const kw = childTokens(dfLine.children, "DateFormat")[0];
       if (kw !== undefined) dateFormat = lineValue(text, kw) || null;
+      continue;
+    }
+
+    const tickLine = childNodes(sc, "tickIntervalLine")[0];
+    if (tickLine !== undefined) {
+      const kw = childTokens(tickLine.children, "TickInterval")[0];
+      if (kw !== undefined) {
+        const value = lineValue(text, kw);
+        const days = tickIntervalToDays(value);
+        if (days === null) {
+          return err(
+            parseErrorAt(
+              `gantt: invalid tickInterval "${value}" (e.g. 1week, 3days)`,
+              kw.startOffset,
+              kw.image.length,
+            ),
+          );
+        }
+        tickIntervalDays = days;
+      }
       continue;
     }
 
@@ -183,7 +214,15 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   }
 
   return ok({
-    ast: { kind: "gantt", title, dateFormat, excludesWeekends, excludeDates, tasks },
+    ast: {
+      kind: "gantt",
+      title,
+      dateFormat,
+      tickIntervalDays: positiveInt(tickIntervalDays),
+      excludesWeekends,
+      excludeDates,
+      tasks,
+    },
     source: { tasks: taskSpans },
   });
 };
