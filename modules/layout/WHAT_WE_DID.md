@@ -188,3 +188,7 @@
   +1 unit test (task → rect, milestone → diamond).
 - Gantt multiple `after` refs: a task starts at the **latest** predecessor's end — fold each ref's end
   through `Result`, failing loudly if any is unknown. +2 unit tests (latest-end pick; one unknown ref fails).
+- Gantt `excludes`: weekends (epoch-day `getUTCDay`) and holiday dates are non-working — a start landing
+  on one shifts to the next working day, and a duration is spent only on working days so the bar stretches
+  across the skipped ones (`workingEnd` walk; identity when nothing is excluded). Invalid excluded dates
+  fail loudly. +4 unit tests (weekend stretch; start shift; holiday; bad date).

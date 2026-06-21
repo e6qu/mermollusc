@@ -82,6 +82,22 @@ describe("parseGantt", () => {
     expect(isOk(parseGantt("gantt\n  Bad : 2024-01-01, soon\n"))).toBe(false);
   });
 
+  it("parses an `excludes` directive into weekends + holiday dates", () => {
+    const r = parseGantt("gantt\n  excludes weekends 2024-01-15, 2024-12-25\n  A : a, 2024-01-01, 2d\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.excludesWeekends).toBe(true);
+    expect(r.value.excludeDates).toEqual(["2024-01-15", "2024-12-25"]);
+  });
+
+  it("defaults to no exclusions when there's no `excludes` directive", () => {
+    const r = parseGantt("gantt\n  A : a, 2024-01-01, 2d\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.excludesWeekends).toBe(false);
+    expect(r.value.excludeDates).toEqual([]);
+  });
+
   it("parses several `after` refs into a non-empty list of predecessors", () => {
     const r = parseGantt("gantt\n  A : a, 2024-01-01, 2d\n  B : b, 2024-01-01, 3d\n  C : c, after a b, 1d\n");
     expect(isOk(r)).toBe(true);

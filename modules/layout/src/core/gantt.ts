@@ -36,11 +36,55 @@ const dayToISO = (day: number): string => {
   return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
 };
 
+// Epoch day 0 (1970-01-01) is a Thursday; `getUTCDay` returns 0 = Sunday … 6 = Saturday.
+const isWeekend = (day: number): boolean => {
+  const dow = new Date(day * 86_400_000).getUTCDay();
+  return dow === 0 || dow === 6;
+};
+
 // Pure timeline layout: each task is a horizontal bar on a day axis — x by its start day, width by its
 // duration, one row per task in document order. `after` starts chain off the referenced task's end
-// (resolved in order, so a task can only follow one declared before it). Bars are widened to fit their
-// label so the text stays readable. No edges — `after` is positional, not a drawn dependency arrow.
+// (resolved in order, so a task can only follow one declared before it). When the diagram `excludes`
+// weekends/holidays, those days are non-working: a start landing on one shifts to the next working day,
+// and a duration is spent only on working days (so the bar stretches across the skipped ones). Bars are
+// widened to fit their label so the text stays readable. No edges — `after` is positional.
 export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, LayoutError> => {
+  const excludeDays = new Set<number>();
+  for (const date of ast.excludeDates) {
+    const day = parseDay(date);
+    if (day === null) {
+      return err({
+        kind: "layout",
+        message: `gantt: excluded date "${date}" is unparseable (expected YYYY-MM-DD)`,
+      });
+    }
+    excludeDays.add(day);
+  }
+  const isExcluded = (day: number): boolean =>
+    excludeDays.has(day) || (ast.excludesWeekends && isWeekend(day));
+  // Advance to the first working day on or after `day` (identity when nothing is excluded).
+  const nextWorking = (day: number): number => {
+    let d = day;
+    while (isExcluded(d)) d += 1;
+    return d;
+  };
+  // The calendar day at which `duration` working days have elapsed from `start` (a working day),
+  // stretching across any excluded days in between. With no exclusions this is exactly `start + duration`.
+  const workingEnd = (start: number, duration: number): number => {
+    let day = start;
+    let worked = 0;
+    while (duration - worked > 1e-9) {
+      if (isExcluded(day)) {
+        day += 1;
+      } else {
+        const step = Math.min(1, duration - worked);
+        worked += step;
+        day += step;
+      }
+    }
+    return day;
+  };
+
   const ends = new Map<string, number>();
   const placed: Array<{
     readonly id: string;
@@ -84,7 +128,9 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       if (!latest.ok) return latest;
       startDay = latest.value;
     }
-    const endDay = startDay + task.durationDays;
+    // Shift a start that lands on a non-working day forward; spend the duration on working days only.
+    startDay = nextWorking(startDay);
+    const endDay = workingEnd(startDay, task.durationDays);
     ends.set(task.id, endDay);
     placed.push({
       id: task.id,

@@ -12,6 +12,7 @@ const StartNewLine = createToken({ name: "StartNewLine", pattern: /\r?\n/, line_
 const Gantt = createToken({ name: "Gantt", pattern: /gantt\b/, push_mode: "body" });
 const Title = createToken({ name: "Title", pattern: /title\b/, push_mode: "body" });
 const DateFormat = createToken({ name: "DateFormat", pattern: /dateFormat\b/, push_mode: "body" });
+const Excludes = createToken({ name: "Excludes", pattern: /excludes\b/, push_mode: "body" });
 const Section = createToken({ name: "Section", pattern: /section\b/, push_mode: "body" });
 const TaskLabel = createToken({ name: "TaskLabel", pattern: /[^:\n]+/, push_mode: "body" });
 
@@ -27,7 +28,7 @@ const BodyText = createToken({ name: "BodyText", pattern: /[^,:\n]+/ });
 
 export const ganttLexer = new Lexer({
   modes: {
-    start: [Comment, StartWs, StartNewLine, Gantt, Title, DateFormat, Section, TaskLabel],
+    start: [Comment, StartWs, StartNewLine, Gantt, Title, DateFormat, Excludes, Section, TaskLabel],
     body: [BodyNewLine, Colon, Comma, BodyText],
   },
   defaultMode: "start",
@@ -38,6 +39,7 @@ export const GtTok = {
   Gantt,
   Title,
   DateFormat,
+  Excludes,
   Section,
   TaskLabel,
   BodyNewLine,
@@ -53,6 +55,7 @@ export const ganttAllTokens: TokenType[] = [
   Gantt,
   Title,
   DateFormat,
+  Excludes,
   Section,
   TaskLabel,
   BodyNewLine,

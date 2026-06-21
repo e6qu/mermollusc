@@ -58,6 +58,8 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   let title: string | null = null;
   let dateFormat: string | null = null;
   let section: string | null = null;
+  let excludesWeekends = false;
+  const excludeDates: string[] = [];
   const tasks: GanttTask[] = [];
   const taskSpans = new Map<GanttTaskId, TextSpan>();
 
@@ -75,6 +77,19 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
     if (dfLine !== undefined) {
       const kw = childTokens(dfLine.children, "DateFormat")[0];
       if (kw !== undefined) dateFormat = lineValue(text, kw) || null;
+      continue;
+    }
+
+    const exLine = childNodes(sc, "excludesLine")[0];
+    if (exLine !== undefined) {
+      const kw = childTokens(exLine.children, "Excludes")[0];
+      // Tokens are space/comma-separated: the literal `weekends`, or a date (a holiday). The layout
+      // validates the date strings — here they're collected verbatim, like a task's start date.
+      const value = kw === undefined ? "" : lineValue(text, kw);
+      for (const tok of value.split(/[\s,]+/).filter((s) => s !== "")) {
+        if (tok === "weekends") excludesWeekends = true;
+        else excludeDates.push(tok);
+      }
       continue;
     }
 
@@ -167,7 +182,10 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
     }
   }
 
-  return ok({ ast: { kind: "gantt", title, dateFormat, tasks }, source: { tasks: taskSpans } });
+  return ok({
+    ast: { kind: "gantt", title, dateFormat, excludesWeekends, excludeDates, tasks },
+    source: { tasks: taskSpans },
+  });
 };
 
 export const parseGanttWithSource = (text: string): Result<ParsedGantt, ParseError> => {
