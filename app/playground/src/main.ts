@@ -46,6 +46,7 @@ import type {
   GitGraphSource,
   TimelineSource,
   MindmapSource,
+  GanttSource,
   GroupId,
   GroupMember,
   NetworkSource,
@@ -76,6 +77,7 @@ import {
   parseStateWithSource,
   parseTimelineWithSource,
   parseMindmapWithSource,
+  parseGanttWithSource,
   parseWithSource,
 } from "@m/parser";
 import {
@@ -236,6 +238,7 @@ let reqSource: ReqSource | null = null;
 let gitSource: GitGraphSource | null = null;
 let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
+let ganttSource: GanttSource | null = null;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
 // On-screen zoom of the diagram sheet. 1 = the canvas is drawn at scene scale (the identity the
@@ -1561,7 +1564,9 @@ const renderFromText = async (text: string): Promise<void> => {
       // pie has no editable source map (no node/edge text spans to patch).
       break;
     case "gantt":
-      // gantt renders + drags, but its task text isn't inline-editable yet (no source map captured).
+      captureSource(parseGanttWithSource(text), (s) => {
+        ganttSource = s;
+      });
       break;
     default:
       assertNever(diagram);
@@ -2119,6 +2124,10 @@ canvas.addEventListener("dblclick", (ev) => {
     hit.kind === "node"
   ) {
     const span = mindmapSource.nodes.get(brand<string, "MindmapNodeId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "gantt" && ganttSource !== null && hit.kind === "node") {
+    // A task bar / milestone relabels through its label span; the day-axis chrome carries no span.
+    const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   }
 
