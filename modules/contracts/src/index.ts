@@ -84,6 +84,11 @@ export type {
   PieSliceId,
   PieSlice,
   PieAst,
+  GanttTaskId,
+  GanttStatus,
+  GanttStart,
+  GanttTask,
+  GanttAst,
   DiagramAst,
   SceneNodeId,
   SceneEdgeId,
@@ -117,5 +122,6 @@ export type {
   TimelineSource,
   MindmapSource,
   PieSource,
+  GanttSource,
 } from "./core/index.js";
 export { sceneNodeId, sceneEdgeId } from "./shell/index.js";

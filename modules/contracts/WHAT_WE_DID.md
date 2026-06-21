@@ -80,3 +80,8 @@
   can always be drawn; the `< 2` length guards in the renderer/app are no longer needed.
 - `NodeSpans` gained `decl` (the whole `A[label]` declaration span, not just the inner label), so the
   builder can rewrite a flowchart node's shape brackets in place.
+- Started the **Gantt** family contract: `GanttAst` (`title`, `dateFormat`, tasks) with `GanttTask`
+  (`id`/`label`/`section`/`status`/`start`/`durationDays`), `GanttStatus`, a `GanttStart` union
+  (`date` | `after <ref>`), and `GanttSource` (task-label spans). Deliberately **not** in the
+  `DiagramAst` union yet — that activation lands once the layout/renderer/app pipeline can handle it,
+  so each Gantt PR stays green (the exhaustive family switches would otherwise force it all at once).
