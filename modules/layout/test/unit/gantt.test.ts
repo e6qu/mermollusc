@@ -1,4 +1,4 @@
-import { brand, oneOrMore } from "@m/std";
+import { brand, oneOrMore, positiveInt } from "@m/std";
 import type { GanttStart, GanttTask, GanttTaskId, GanttAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
@@ -24,10 +24,12 @@ const ast = (
     excludesWeekends: false,
     excludeDates: [],
   },
+  tickIntervalDays = 7,
 ): GanttAst => ({
   kind: "gantt",
   title: null,
   dateFormat: "YYYY-MM-DD",
+  tickIntervalDays: positiveInt(tickIntervalDays),
   excludesWeekends: excludes.excludesWeekends,
   excludeDates: excludes.excludeDates,
   tasks,
@@ -191,6 +193,20 @@ describe("layoutGantt", () => {
     if (!r.ok) throw new Error(r.error.message);
     const excluded = r.value.decorations.filter((d) => d.kind === "band" && d.fill === "excluded");
     expect(excluded).toHaveLength(2); // Saturday + Sunday columns
+  });
+
+  it("spaces axis gridlines by `tickIntervalDays` (a wider interval → fewer ticks)", () => {
+    const tasks = [
+      task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 21 }),
+    ];
+    const weekly = layoutGantt(ast(tasks), heuristicMeasure); // default 7
+    const biweekly = layoutGantt(ast(tasks, undefined, 14), heuristicMeasure);
+    if (!weekly.ok) throw new Error(weekly.error.message);
+    if (!biweekly.ok) throw new Error(biweekly.error.message);
+    const rules = (s: typeof weekly) => (s.ok ? s.value.decorations.filter((d) => d.kind === "rule").length : 0);
+    // a 21-day span: weekly ticks at 0,7,14,21 (4); biweekly at 0,14 (2).
+    expect(rules(weekly)).toBe(4);
+    expect(rules(biweekly)).toBe(2);
   });
 
   it("fails loudly on a non-ISO date", () => {

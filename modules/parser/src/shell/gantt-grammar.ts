@@ -33,6 +33,7 @@ class GanttParser extends CstParser {
     this.OR([
       { ALT: () => this.SUBRULE(this.titleLine) },
       { ALT: () => this.SUBRULE(this.dateFormatLine) },
+      { ALT: () => this.SUBRULE(this.tickIntervalLine) },
       { ALT: () => this.SUBRULE(this.excludesLine) },
       { ALT: () => this.SUBRULE(this.sectionLine) },
       { ALT: () => this.SUBRULE(this.taskLine) },
@@ -57,6 +58,11 @@ class GanttParser extends CstParser {
 
   private readonly dateFormatLine = this.RULE("dateFormatLine", () => {
     this.CONSUME(GtTok.DateFormat);
+    this.SUBRULE(this.rest);
+  });
+
+  private readonly tickIntervalLine = this.RULE("tickIntervalLine", () => {
+    this.CONSUME(GtTok.TickInterval);
     this.SUBRULE(this.rest);
   });
 
