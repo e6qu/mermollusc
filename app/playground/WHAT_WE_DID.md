@@ -511,3 +511,10 @@
   display list). It pins the O(n) behaviour: the runs finish in tens of ms today, so an accidental
   O(n²) (or a crash) would blow vitest's timeout / fail the counts. (The earlier audit confirmed the
   pure layouts and `toDisplayList` are linear; this keeps them that way.)
+- Perf: cut redundant per-frame work in `paintScene` during interactions. (1) The minimap cache is a
+  *second* full render of the scene; rebuilding it every drag/resize/marquee/connect frame doubled the
+  per-frame cost — now it's skipped while interacting and refreshed on release (the minimap goes briefly
+  stale, then snaps correct). (2) The canvas backing store is only re-sized when its pixel dimensions
+  actually change, instead of being reallocated (which clears the canvas) every frame regardless. The
+  release of drag/resize now always repaints so the deferred minimap refreshes. (Profiled the drag
+  frame and targeted the redundant *static* work rather than rewriting the main draw path.)
