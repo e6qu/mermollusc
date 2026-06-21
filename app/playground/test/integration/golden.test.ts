@@ -82,6 +82,8 @@ const r = (n: number): number => Math.round(n);
 const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
   cmds.map((c) => {
     switch (c.kind) {
+      case "band":
+        return `band ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)} ${c.fill}`;
       case "box":
         return `box ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)} r${r(c.radius)}`;
       case "diamond":

@@ -170,8 +170,44 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     };
   });
 
+  const width = nodes.reduce((mx, n) => Math.max(mx, n.bounds.origin.x + n.bounds.size.width), 0);
   const bottom = rowY(placed.length);
+  const rowPad = (ROW_HEIGHT - BAR_HEIGHT) / 2;
   const decorations: Decoration[] = [];
+
+  // Section background bands — a faint zebra stripe behind each contiguous run of same-section rows
+  // (full width so the gutter caption sits on it). Bands come first, so the rest draws on top.
+  let bandIndex = 0;
+  let runStart = 0;
+  const sectionAt = (row: number): string | null => placed[row]?.section ?? null;
+  const closeSectionRun = (endRow: number): void => {
+    if (sectionAt(runStart) !== null) {
+      decorations.push({
+        kind: "band",
+        bounds: rect(0, rowY(runStart) - rowPad, width, (endRow - runStart + 1) * ROW_HEIGHT),
+        fill: bandIndex % 2 === 0 ? "section" : "sectionAlt",
+      });
+      bandIndex += 1;
+    }
+  };
+  for (let row = 1; row <= placed.length; row += 1) {
+    if (row === placed.length || sectionAt(row) !== sectionAt(runStart)) {
+      closeSectionRun(row - 1);
+      runStart = row;
+    }
+  }
+
+  // Excluded-day columns — a greyer band over each non-working calendar day in the visible span.
+  for (let day = minDay; day < Math.ceil(maxDay); day += 1) {
+    if (isExcluded(day)) {
+      decorations.push({
+        kind: "band",
+        bounds: rect(dayX(day), TOP_AXIS, DAY_WIDTH, bottom - TOP_AXIS),
+        fill: "excluded",
+      });
+    }
+  }
+
   // A gridline + date caption every week across the span (the first tick sits on the chart start).
   for (let day = minDay; day <= maxDay; day += DAYS_PER_TICK) {
     const x = dayX(day);
@@ -192,6 +228,5 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     lastSection = p.section;
   });
 
-  const width = nodes.reduce((mx, n) => Math.max(mx, n.bounds.origin.x + n.bounds.size.width), 0);
   return ok({ nodes, edges: [], wedges: [], decorations, extent: rect(0, 0, width, bottom) });
 };

@@ -1,5 +1,5 @@
 import { assertNever } from "@m/std";
-import type { NodeAccent } from "@m/contracts";
+import type { BandFill, NodeAccent } from "@m/contracts";
 import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
@@ -71,6 +71,23 @@ export const accentFill = (accent: NodeAccent, theme: Theme): string => {
       return dark ? "#b91c1c" : "#fecaca";
     default:
       return assertNever(accent);
+  }
+};
+
+// A background band's semantic fill → a concrete colour (theme-aware). The two `section` shades are a
+// faint zebra stripe behind successive Gantt sections; `excluded` is a slightly greyer non-working-day
+// column. All are kept subtler than a node's fill so the bars stay dominant. Exhaustive.
+export const bandFill = (fill: BandFill, theme: Theme): string => {
+  const dark = isDarkTheme(theme);
+  switch (fill) {
+    case "section":
+      return dark ? "#1e293b" : "#f1f5f9";
+    case "sectionAlt":
+      return dark ? "#0f172a" : "#f8fafc";
+    case "excluded":
+      return dark ? "#334155" : "#e5e7eb";
+    default:
+      return assertNever(fill);
   }
 };
 
@@ -313,6 +330,11 @@ export const paint = (
         }
         ctx.font = theme.font;
         ctx.globalAlpha = 1;
+        break;
+      }
+      case "band": {
+        ctx.fillStyle = bandFill(cmd.fill, theme);
+        ctx.fillRect(cmd.x, cmd.y, cmd.width, cmd.height);
         break;
       }
       case "wedge": {

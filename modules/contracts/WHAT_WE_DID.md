@@ -100,3 +100,6 @@
 - `GanttAst` gained `excludesWeekends: boolean` + `excludeDates: readonly string[]` (raw holiday dates,
   resolved by the layout). Models Mermaid's `excludes weekends`/`excludes <date>` non-working days — both
   required/explicit (false / empty when absent), not optional flags.
+- Added a `band` `Decoration` (a filled background `Rect` carrying a `BandFill` = `section`/`sectionAlt`/
+  `excluded` closed union) — the first fill primitive in the decoration list. Drawn behind rules/captions
+  (array order), it backs a Gantt's section zebra stripes and excluded-day columns. `BandFill` re-exported.

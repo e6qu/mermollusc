@@ -2,7 +2,7 @@ import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
-import { accentFill, type Canvas2D, darkTheme, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
+import { accentFill, bandFill, type Canvas2D, darkTheme, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
 
 class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
@@ -40,7 +40,7 @@ class RecordingCtx implements Canvas2D {
     this.fillTextFonts.push(this.font);
   }
   fillRect(): void {
-    this.calls.push("fillRect");
+    this.calls.push(`fillRect:${String(this.fillStyle)}`);
   }
   measureText(text: string): { readonly width: number } {
     return { width: text.length * 7 };
@@ -349,6 +349,31 @@ describe("paint", () => {
     paint(ctx, toDisplayList(iconScene), new Map([["arch/server", fakeImage]]));
     expect(ctx.calls).toContain("drawImage");
     expect(ctx.calls).toContain("fillText:Web");
+  });
+});
+
+describe("band decorations", () => {
+  it("fills a background band rect with its theme-aware band colour", () => {
+    const s: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [],
+      decorations: [{ kind: "band", bounds: rect(0, 20, 120, 30), fill: "section" }],
+      extent: rect(0, 0, 120, 80),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(s), new Map(), defaultTheme);
+    expect(ctx.calls).toContain(`fillRect:${bandFill("section", defaultTheme)}`);
+  });
+});
+
+describe("bandFill", () => {
+  it("maps each band fill to a distinct, theme-aware colour", () => {
+    const light = (["section", "sectionAlt", "excluded"] as const).map((f) => bandFill(f, defaultTheme));
+    const dark = (["section", "sectionAlt", "excluded"] as const).map((f) => bandFill(f, darkTheme));
+    expect(new Set(light).size).toBe(3); // three distinct light shades
+    expect(new Set(dark).size).toBe(3);
+    expect(dark).not.toEqual(light); // the luminance branch is exercised
   });
 });
 

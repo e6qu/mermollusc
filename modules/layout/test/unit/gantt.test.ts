@@ -153,6 +153,46 @@ describe("layoutGantt", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("emits a zebra-striped section background band behind each section's rows", () => {
+    const r = layoutGantt(
+      ast([
+        task({ id: tid("a"), section: "Plan", start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
+        task({ id: tid("b"), section: "Plan", start: { kind: "date", date: "2024-01-03" }, durationDays: 2 }),
+        task({ id: tid("c"), section: "Build", start: { kind: "date", date: "2024-01-05" }, durationDays: 2 }),
+      ]),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    const bands = r.value.decorations.filter((d) => d.kind === "band");
+    // two sections (Plan over 2 rows, Build over 1) → two bands with alternating fills.
+    expect(bands.map((b) => (b.kind === "band" ? b.fill : ""))).toEqual(["section", "sectionAlt"]);
+    // the first band covers both Plan rows: its height is 2 row-heights.
+    expect(bands[0]?.kind === "band" ? bands[0].bounds.size.height : 0).toBe(2 * 30);
+  });
+
+  it("emits no section band for tasks without a section", () => {
+    const r = layoutGantt(
+      ast([task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 })]),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.decorations.filter((d) => d.kind === "band")).toEqual([]);
+  });
+
+  it("emits an `excluded` column band over each non-working day", () => {
+    // 2024-01-04 is a Thursday; a 5d bar spans the visible week, which contains one Sat+Sun.
+    const r = layoutGantt(
+      ast([task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-04" }, durationDays: 5 })], {
+        excludesWeekends: true,
+        excludeDates: [],
+      }),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    const excluded = r.value.decorations.filter((d) => d.kind === "band" && d.fill === "excluded");
+    expect(excluded).toHaveLength(2); // Saturday + Sunday columns
+  });
+
   it("fails loudly on a non-ISO date", () => {
     const r = layoutGantt(
       ast([task({ id: tid("a"), start: { kind: "date", date: "01/02/2024" }, durationDays: 1 })]),

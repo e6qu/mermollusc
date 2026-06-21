@@ -61,6 +61,21 @@ describe("toSvg", () => {
     expect(shifted).toContain('transform="translate(14,4)"'); // 24−10, 24−20
   });
 
+  it("renders a `band` decoration as a filled rect with its band colour", () => {
+    const banded = toSvg(
+      toDisplayList({
+        nodes: [],
+        edges: [],
+        wedges: [],
+        decorations: [{ kind: "band", bounds: rect(0, 10, 80, 30), fill: "excluded" }],
+        extent: rect(0, 0, 80, 60),
+      }),
+      { width: 80, height: 60, origin: { x: 0, y: 0 }, margin: 0, theme: defaultTheme, icons: new Map() },
+    );
+    // a 80×30 rect at (0,10) with no stroke — the excluded-day band fill
+    expect(banded).toMatch(/<rect x="0" y="10" width="80" height="30" fill="#[0-9a-f]{6}"\/>/);
+  });
+
   it("maps each shape kind to its SVG element", () => {
     expect(svg).toContain("<rect"); // the rect node (+ background)
     expect(svg).toContain("<polygon"); // the diamond node
