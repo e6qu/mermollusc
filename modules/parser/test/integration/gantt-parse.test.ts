@@ -29,6 +29,7 @@ describe("parseGantt", () => {
         section: "Planning",
         status: "done",
         start: { kind: "date", date: "2024-01-01" },
+        milestone: false,
         durationDays: 5,
       },
       {
@@ -37,6 +38,7 @@ describe("parseGantt", () => {
         section: "Planning",
         status: "active",
         start: { kind: "after", ref: "r1" },
+        milestone: false,
         durationDays: 7, // 1w
       },
       {
@@ -45,6 +47,7 @@ describe("parseGantt", () => {
         section: "Build",
         status: "normal",
         start: { kind: "after", ref: "d1" },
+        milestone: false,
         durationDays: 14,
       },
       {
@@ -53,6 +56,7 @@ describe("parseGantt", () => {
         section: "Build",
         status: "normal",
         start: { kind: "date", date: "2024-02-01" },
+        milestone: false,
         durationDays: 3,
       },
     ]);
@@ -76,6 +80,25 @@ describe("parseGantt", () => {
 
   it("fails loudly on an unparseable duration", () => {
     expect(isOk(parseGantt("gantt\n  Bad : 2024-01-01, soon\n"))).toBe(false);
+  });
+
+  it("parses a `milestone` task (0d) as a point and normalises its duration to 0", () => {
+    const r = parseGantt("gantt\n  Launch : milestone, ms, 2024-03-01, 0d\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.tasks[0]).toEqual({
+      id: "ms",
+      label: "Launch",
+      section: null,
+      status: "normal",
+      start: { kind: "date", date: "2024-03-01" },
+      milestone: true,
+      durationDays: 0,
+    });
+  });
+
+  it("rejects a 0d duration on an ordinary (non-milestone) task", () => {
+    expect(isOk(parseGantt("gantt\n  Task : 2024-01-01, 0d\n"))).toBe(false);
   });
 
   it("parses an empty gantt (header only)", () => {

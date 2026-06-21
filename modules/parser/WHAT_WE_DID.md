@@ -201,3 +201,6 @@
   `start` (a date string or `after <id>`), and leading `status`/`id` tags. Fails loudly on a task with
   no start+duration or an unparseable duration; tracks each task's label span for later inline editing.
   +5 integration tests. (Standalone for now — not yet wired into `parseDiagram`.)
+- Gantt: **milestones**. A task tagged `milestone` is a point (`0d`); `parseGantt` now accepts a `0d`
+  duration only for a milestone (an ordinary task with `0d` fails loudly) and sets `GanttTask.milestone`.
+  +2 tests (a milestone parses to `durationDays: 0`; a non-milestone `0d` is rejected).

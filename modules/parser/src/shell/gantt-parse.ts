@@ -48,7 +48,7 @@ const durationDays = (s: string): number | null => {
   const m = /^(\d+(?:\.\d+)?)\s*([dwh])?$/i.exec(s);
   if (m === null) return null;
   const n = Number(m[1]);
-  if (!(n > 0)) return null;
+  if (!(n >= 0)) return null; // a milestone is `0d`; a task's positive duration is enforced by the caller
   const unit = (m[2] ?? "d").toLowerCase();
   return unit === "w" ? n * 7 : unit === "h" ? n / 24 : n;
 };
@@ -118,6 +118,17 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       }
       const startRaw = fields[fields.length - 2] ?? "";
       const lead = fields.slice(0, fields.length - 2);
+      const milestone = lead.includes("milestone");
+      // A milestone is a point (0d); an ordinary task must have a positive duration.
+      if (!milestone && dur === 0) {
+        return err(
+          parseErrorAt(
+            `gantt: task "${label}" needs a positive duration (only a milestone is 0d)`,
+            labelTok.startOffset,
+            labelLen,
+          ),
+        );
+      }
       const status: GanttStatus = lead.find(isStatus) ?? "normal";
       const idField = lead.find((f) => !isStatus(f) && f !== "milestone");
       const id = brand<string, "GanttTaskId">(idField ?? `t${tasks.length}`);
@@ -126,7 +137,15 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
         after !== null
           ? { kind: "after", ref: brand<string, "GanttTaskId">(after[1] ?? "") }
           : { kind: "date", date: startRaw };
-      tasks.push({ id, label, section, status, start, durationDays: dur });
+      tasks.push({
+        id,
+        label,
+        section,
+        status,
+        start,
+        milestone,
+        durationDays: milestone ? 0 : dur,
+      });
       taskSpans.set(id, trimmedSpan(labelTok));
     }
   }
