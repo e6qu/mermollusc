@@ -10,6 +10,7 @@ const task = (over: Partial<GanttTask> & Pick<GanttTask, "id" | "start" | "durat
   label: over.label ?? "Task",
   section: over.section ?? null,
   status: over.status ?? "normal",
+  milestone: over.milestone ?? false,
   ...over,
 });
 
@@ -83,6 +84,25 @@ describe("layoutGantt", () => {
     );
     if (!r.ok) throw new Error(r.error.message);
     expect(r.value.nodes[0]?.bounds.size.width ?? 0).toBeGreaterThan(1 * 16);
+  });
+
+  it("renders a milestone as a diamond centred on its date, not a bar", () => {
+    const r = layoutGantt(
+      ast([
+        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 5 }),
+        task({
+          id: tid("m"),
+          label: "Launch",
+          milestone: true,
+          start: { kind: "after", ref: tid("a") },
+          durationDays: 0,
+        }),
+      ]),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.nodes[0]?.shape).toBe("rect"); // the ordinary task is a bar
+    expect(r.value.nodes[1]?.shape).toBe("diamond"); // the milestone is a diamond
   });
 
   it("returns an empty scene for a task-less gantt", () => {

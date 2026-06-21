@@ -184,3 +184,5 @@
   date `caption` every 7 days across the span) and a **section gutter** (a left-aligned `caption` per
   section). Bars shifted past a left gutter + top axis band to make room. +2 unit tests (relative bar
   offsets; gridline/caption counts + texts). The chart now reads as a proper Gantt.
+- Gantt milestones: a `milestone` task lays out as a **diamond** centred on its date (not a bar).
+  +1 unit test (task → rect, milestone → diamond).

@@ -471,7 +471,9 @@ export interface GanttTask {
   readonly section: string | null;
   readonly status: GanttStatus;
   readonly start: GanttStart;
-  // Duration in days (the parser normalises `w`/`h` suffixes); always > 0.
+  // A `milestone` task is a point in time (a `0d` event), drawn as a diamond marker rather than a bar.
+  readonly milestone: boolean;
+  // Duration in days (the parser normalises `w`/`h` suffixes); > 0 for a task, 0 for a milestone.
   readonly durationDays: number;
 }
 export interface GanttAst {

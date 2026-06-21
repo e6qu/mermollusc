@@ -47,6 +47,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     readonly label: string;
     readonly section: string | null;
     readonly accent: NodeAccent;
+    readonly milestone: boolean;
     readonly startDay: number;
     readonly endDay: number;
   }> = [];
@@ -79,6 +80,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       label: task.label,
       section: task.section,
       accent: STATUS_ACCENT[task.status],
+      milestone: task.milestone,
       startDay,
       endDay,
     });
@@ -94,12 +96,14 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   const dayX = (day: number): number => LEFT_GUTTER + (day - minDay) * DAY_WIDTH;
 
   const nodes: SceneNode[] = placed.map((p, i) => {
-    const barWidth = Math.max((p.endDay - p.startDay) * DAY_WIDTH, measure(p.label) + LABEL_PAD);
+    // A task is a bar (start..end); a milestone is a diamond centred on its single date.
+    const w = Math.max((p.endDay - p.startDay) * DAY_WIDTH, measure(p.label) + LABEL_PAD);
+    const x = p.milestone ? dayX(p.startDay) - w / 2 : dayX(p.startDay);
     return {
       id: sceneNodeId(p.id),
-      bounds: rect(dayX(p.startDay), rowY(i), barWidth, BAR_HEIGHT),
+      bounds: rect(x, rowY(i), w, BAR_HEIGHT),
       label: p.label,
-      shape: "rect",
+      shape: p.milestone ? "diamond" : "rect",
       parent: null,
       icon: null,
       rows: null,

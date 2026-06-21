@@ -1399,7 +1399,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "gantt",
-    "gantt\n  title Project Plan\n  dateFormat YYYY-MM-DD\n  section Planning\n    Research :done, res, 2024-01-01, 5d\n    Design :active, des, after res, 1w\n  section Build\n    Implement :impl, after des, 2w\n    Test :test, after impl, 5d\n",
+    "gantt\n  title Project Plan\n  dateFormat YYYY-MM-DD\n  section Planning\n    Research :done, res, 2024-01-01, 5d\n    Design :active, des, after res, 1w\n  section Build\n    Implement :impl, after des, 2w\n    Test :test, after impl, 5d\n    Launch :milestone, ml, after test, 0d\n",
   ],
   [
     "dot",

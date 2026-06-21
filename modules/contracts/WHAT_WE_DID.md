@@ -93,3 +93,4 @@
   line or a standalone `caption`) drawn behind the content, for a Gantt's day-axis gridlines + date /
   section labels. A first-class, explicit list (empty for most families, like `wedges`), so a family
   that needs axis decoration doesn't smuggle it through fake nodes/edges.
+- `GanttTask` gained `milestone: boolean` — a point-in-time event (`0d`), distinct from a duration task.
