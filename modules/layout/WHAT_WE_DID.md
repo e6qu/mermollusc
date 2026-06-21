@@ -171,3 +171,9 @@
   when ELK returns a degenerate (<2-point) route — a defined geometry, not the old silent skip and not a
   blanked diagram. The flowchart (`transform.ts`) and ELK (`elk.ts`) edge builders route through it
   (using the just-built node centres); the timeline spine uses `twoOrMore` directly. +route.ts tests.
+- New family (Gantt) — layout. `layoutGantt` (pure) turns a `GanttAst` into a timeline of bars: each
+  task is a rect, x by its start day, width by its duration, one row each in document order. `date`
+  starts parse ISO `YYYY-MM-DD` to a UTC day number; `after` starts chain off the referenced task's end
+  (resolved in declaration order). Bars are widened to fit their label; no edges (`after` is positional,
+  not a drawn arrow). Fails loudly on an unknown `after` ref or a non-ISO date. +6 unit tests.
+  (Standalone — `layoutDiagram` doesn't dispatch to it until the family is activated into `DiagramAst`.)
