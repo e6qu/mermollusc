@@ -43,3 +43,6 @@
   `ScreenPoint`, with `screenCoord`/`screenPoint` constructors (unvalidated like `coordinate` — an
   overlay may sit off-screen). The brand is deliberately distinct from the scene `Coordinate`, so the
   two spaces aren't mutually assignable and the app can require one or the other at a boundary. +test.
+- Added `OneOrMore<T>` (`readonly [T, ...T[]]`) next to `TwoOrMore`, with an `oneOrMore(first, ...rest)`
+  shell constructor — a non-empty list whose first slot is total, so a consumer folds it without an
+  empty-list guard. Backs a Gantt task's `after a b c` predecessors. +exports through both barrels.

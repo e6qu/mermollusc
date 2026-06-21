@@ -26,5 +26,5 @@ export type {
   ScreenCoord,
   ScreenPoint,
 } from "./geometry.js";
-export type { Positive, PositiveInt, TwoOrMore } from "./refined.js";
+export type { Positive, PositiveInt, TwoOrMore, OneOrMore } from "./refined.js";
 export type { LogLevel, LogRecord, Logger } from "./log.js";

@@ -15,3 +15,8 @@ export type PositiveInt = Brand<number, "PositiveInt">;
 // it's structurally a `readonly T[]`, so anything reading the list as one still works. The `twoOrMore`
 // constructor (shell) builds it from an explicit first + second + rest, so no unsafe assertion is needed.
 export type TwoOrMore<T> = readonly [T, T, ...(readonly T[])];
+
+// A list with at least one element — e.g. a Gantt task's `after a b c` predecessors. `[0]` is total
+// (the required slot), so a consumer can always read a first element and fold the rest without a
+// possibly-empty guard. Like `TwoOrMore`, the `oneOrMore` constructor builds it from first + rest.
+export type OneOrMore<T> = readonly [T, ...(readonly T[])];

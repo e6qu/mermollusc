@@ -47,6 +47,10 @@ import type {
 // the calling thread under Node, where there's no `Worker` — e.g. tests). So `elk.layout` is genuinely
 // off the main thread in the app: the heavy graph computation never blocks rendering/interaction.
 // (Don't wrap this in another Worker — nesting elk.bundled's inlined worker breaks under bundlers.)
+// elk.bundled is ≈1.5 MB; it's eagerly imported (not a dynamic `import()`) so the inlined worker is
+// ready before the first layout — deferring it to a fetched async chunk delays first render enough to
+// race the app's initial paint. It's the dominant term in the bundle, but irreducible (a single
+// transpiled-Java module that can't be split below the chunk-size advisory).
 const elk = new ELK();
 
 const PointZ = z.object({ x: z.number(), y: z.number() });

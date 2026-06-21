@@ -204,3 +204,5 @@
 - Gantt: **milestones**. A task tagged `milestone` is a point (`0d`); `parseGantt` now accepts a `0d`
   duration only for a milestone (an ordinary task with `0d` fails loudly) and sets `GanttTask.milestone`.
   +2 tests (a milestone parses to `durationDays: 0`; a non-milestone `0d` is rejected).
+- Gantt `after a b c`: parse the whole start field, split on whitespace into one-or-more predecessor
+  ids minted through `oneOrMore`, and fail loudly on an empty `after`. +1 test (two refs → `["a","b"]`).

@@ -37,7 +37,7 @@ describe("parseGantt", () => {
         label: "Design",
         section: "Planning",
         status: "active",
-        start: { kind: "after", ref: "r1" },
+        start: { kind: "after", refs: ["r1"] },
         milestone: false,
         durationDays: 7, // 1w
       },
@@ -46,7 +46,7 @@ describe("parseGantt", () => {
         label: "Implement",
         section: "Build",
         status: "normal",
-        start: { kind: "after", ref: "d1" },
+        start: { kind: "after", refs: ["d1"] },
         milestone: false,
         durationDays: 14,
       },
@@ -80,6 +80,13 @@ describe("parseGantt", () => {
 
   it("fails loudly on an unparseable duration", () => {
     expect(isOk(parseGantt("gantt\n  Bad : 2024-01-01, soon\n"))).toBe(false);
+  });
+
+  it("parses several `after` refs into a non-empty list of predecessors", () => {
+    const r = parseGantt("gantt\n  A : a, 2024-01-01, 2d\n  B : b, 2024-01-01, 3d\n  C : c, after a b, 1d\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.tasks[2]?.start).toEqual({ kind: "after", refs: ["a", "b"] });
   });
 
   it("parses a `milestone` task (0d) as a point and normalises its duration to 0", () => {

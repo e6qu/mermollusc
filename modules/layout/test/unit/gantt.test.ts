@@ -1,10 +1,14 @@
-import { brand } from "@m/std";
-import type { GanttAst, GanttTask } from "@m/contracts";
+import { brand, oneOrMore } from "@m/std";
+import type { GanttStart, GanttTask, GanttTaskId, GanttAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutGantt } from "../../src/core/gantt.js";
 
 const tid = (s: string) => brand<string, "GanttTaskId">(s);
+const aft = (first: GanttTaskId, ...rest: readonly GanttTaskId[]): GanttStart => ({
+  kind: "after",
+  refs: oneOrMore(first, ...rest),
+});
 
 const task = (over: Partial<GanttTask> & Pick<GanttTask, "id" | "start" | "durationDays">): GanttTask => ({
   label: over.label ?? "Task",
@@ -44,7 +48,7 @@ describe("layoutGantt", () => {
     const r = layoutGantt(
       ast([
         task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 3 }),
-        task({ id: tid("b"), start: { kind: "after", ref: tid("a") }, durationDays: 2 }),
+        task({ id: tid("b"), start: aft(tid("a")), durationDays: 2 }),
       ]),
       heuristicMeasure,
     );
@@ -54,9 +58,36 @@ describe("layoutGantt", () => {
     expect((r.value.nodes[1]?.bounds.origin.x ?? 0) - ax).toBe(48);
   });
 
+  it("starts a multi-`after` task at the latest predecessor's end", () => {
+    const r = layoutGantt(
+      ast([
+        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
+        task({ id: tid("b"), start: { kind: "date", date: "2024-01-01" }, durationDays: 6 }),
+        // c waits on both a (ends day 2) and b (ends day 6) → starts on day 6, the later end.
+        task({ id: tid("c"), start: aft(tid("a"), tid("b")), durationDays: 1 }),
+      ]),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    const ax = r.value.nodes[0]?.bounds.origin.x ?? 0;
+    // c starts on day 6 → 6 days * 16 = 96 px past the day-0 start (a/b both start on day 0).
+    expect((r.value.nodes[2]?.bounds.origin.x ?? 0) - ax).toBe(96);
+  });
+
+  it("fails loudly when any one of several `after` refs is unknown", () => {
+    const r = layoutGantt(
+      ast([
+        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
+        task({ id: tid("b"), start: aft(tid("a"), tid("ghost")), durationDays: 1 }),
+      ]),
+      heuristicMeasure,
+    );
+    expect(r.ok).toBe(false);
+  });
+
   it("fails loudly on an `after` reference to an unknown task", () => {
     const r = layoutGantt(
-      ast([task({ id: tid("a"), start: { kind: "after", ref: tid("ghost") }, durationDays: 1 })]),
+      ast([task({ id: tid("a"), start: aft(tid("ghost")), durationDays: 1 })]),
       heuristicMeasure,
     );
     expect(r.ok).toBe(false);
@@ -94,7 +125,7 @@ describe("layoutGantt", () => {
           id: tid("m"),
           label: "Launch",
           milestone: true,
-          start: { kind: "after", ref: tid("a") },
+          start: aft(tid("a")),
           durationDays: 0,
         }),
       ]),
@@ -116,7 +147,7 @@ describe("layoutGantt", () => {
     const r = layoutGantt(
       ast([
         task({ id: tid("a"), section: "Plan", start: { kind: "date", date: "2024-01-01" }, durationDays: 10 }),
-        task({ id: tid("b"), section: "Build", start: { kind: "after", ref: tid("a") }, durationDays: 3 }),
+        task({ id: tid("b"), section: "Build", start: aft(tid("a")), durationDays: 3 }),
       ]),
       heuristicMeasure,
     );

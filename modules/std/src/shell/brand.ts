@@ -11,7 +11,7 @@ import type {
   ScreenPoint,
   Size,
 } from "../core/geometry.js";
-import type { Positive, PositiveInt, TwoOrMore } from "../core/refined.js";
+import type { OneOrMore, Positive, PositiveInt, TwoOrMore } from "../core/refined.js";
 
 export const brand = <TBase, TTag extends string>(value: TBase): Brand<TBase, TTag> =>
   value as Brand<TBase, TTag>;
@@ -53,6 +53,10 @@ export const twoOrMore = <T>(first: T, second: T, ...rest: readonly T[]): TwoOrM
   second,
   ...rest,
 ];
+
+// Build a `OneOrMore<T>` from an explicit first (+ any rest). Like `twoOrMore`, the tuple-rest literal
+// types itself as `[T, ...T[]]`, so no assertion is needed and a caller can't pass an empty list.
+export const oneOrMore = <T>(first: T, ...rest: readonly T[]): OneOrMore<T> => [first, ...rest];
 
 // Screen-space (viewport CSS px) — unvalidated like `coordinate` (an overlay can sit off-screen, so
 // negatives are legal), but a distinct brand so it can't be confused with a scene coordinate.

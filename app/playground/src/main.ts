@@ -1399,7 +1399,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "gantt",
-    "gantt\n  title Project Plan\n  dateFormat YYYY-MM-DD\n  section Planning\n    Research :done, res, 2024-01-01, 5d\n    Design :active, des, after res, 1w\n  section Build\n    Implement :impl, after des, 2w\n    Test :test, after impl, 5d\n    Launch :milestone, ml, after test, 0d\n",
+    "gantt\n  title Project Plan\n  dateFormat YYYY-MM-DD\n  section Planning\n    Research :done, res, 2024-01-01, 5d\n    Design :active, des, after res, 1w\n  section Build\n    Implement :impl, after des, 2w\n    Docs :docs, after des, 1w\n    Test :test, after impl docs, 5d\n    Launch :milestone, ml, after test, 0d\n",
   ],
   [
     "dot",
@@ -3091,10 +3091,10 @@ if (collabSession !== null) {
   const applyRole = (role: string): void => {
     viewerMode = role === "viewer";
     editor.setReadOnly(viewerMode);
-    document.body.dataset["role"] = role;
+    document.body.setAttribute("data-role", role);
     if (roleBadge !== null) {
       roleBadge.textContent = viewerMode ? "view only" : role;
-      roleBadge.dataset["role"] = role;
+      roleBadge.setAttribute("data-role", role);
       roleBadge.hidden = false;
     }
     updateGroupButtons();

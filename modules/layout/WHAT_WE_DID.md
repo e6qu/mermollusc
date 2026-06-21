@@ -186,3 +186,5 @@
   offsets; gridline/caption counts + texts). The chart now reads as a proper Gantt.
 - Gantt milestones: a `milestone` task lays out as a **diamond** centred on its date (not a bar).
   +1 unit test (task → rect, milestone → diamond).
+- Gantt multiple `after` refs: a task starts at the **latest** predecessor's end — fold each ref's end
+  through `Result`, failing loudly if any is unknown. +2 unit tests (latest-end pick; one unknown ref fails).
