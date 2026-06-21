@@ -106,6 +106,15 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 ]
 `;
 
+exports[`pipeline goldens > lays out gantt to a stable display list 1`] = `
+[
+  "box 0,0 80x22 r0",
+  "label "Research" 40,11 center",
+  "box 80,30 112x22 r0",
+  "label "Build" 136,41 center",
+]
+`;
+
 exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 [
   "polyline 116,30 218,92 dashed=false from=l0p0c0 to=l0p0c0",

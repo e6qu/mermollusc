@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows); `make check` + Playwright (105 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; gantt task bars on a day axis with `after`-chains); `make check` + Playwright (123 specs) green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -28,7 +28,7 @@
   of the collaborative-editor plan
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
-- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fourteen
+- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fifteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
@@ -45,7 +45,7 @@
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
 
 - `main.ts`: source editor (CodeMirror) ↔ canvas.
-  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all fourteen families; gitGraph is
+  - edit text → re-render via `parseDiagram` + `layoutDiagram` (all fifteen families; gitGraph is
     render + inline commit-id relabel, timeline render + inline period/event relabel, mindmap render +
     inline node relabel — no structural edit for those three; pie is render-only);
   - click → hit-test + select (blue highlight); shift/⌘-click → multi-select; drag → move a node

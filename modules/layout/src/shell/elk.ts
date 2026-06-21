@@ -23,6 +23,7 @@ import {
   layoutBlock,
   layoutC4,
   layoutCloud,
+  layoutGantt,
   layoutGitGraph,
   layoutMindmap,
   layoutNetwork,
@@ -549,5 +550,7 @@ export const layoutDiagram = async (
       return layoutMindmap(ast, measure);
     case "pie":
       return layoutPie(ast, measure);
+    case "gantt":
+      return layoutGantt(ast, measure);
   }
 };
