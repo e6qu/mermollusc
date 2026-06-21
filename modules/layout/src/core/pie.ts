@@ -23,7 +23,13 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   // An empty pie (header only) or an all-zero total has nothing to draw; return an empty scene rather
   // than dividing by zero. The parser already rejects non-positive slice values.
   if (total <= 0) {
-    return ok({ nodes: [], edges: [], wedges: [], extent: rect(0, 0, discSpan, discSpan) });
+    return ok({
+      nodes: [],
+      edges: [],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, discSpan, discSpan),
+    });
   }
 
   const TWO_PI = Math.PI * 2;
@@ -84,6 +90,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     nodes: [],
     edges: [],
     wedges: [...slices, ...legend],
+    decorations: [],
     extent: rect(0, 0, width, height),
   });
 };

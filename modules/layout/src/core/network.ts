@@ -76,5 +76,5 @@ export const layoutNetwork = (
   const usedColumns = Math.min(columns, Math.max(1, ast.nodes.length));
   const width = usedColumns * cellWidth + (usedColumns - 1) * GAP;
   const height = Math.max(1, rows) * NODE_HEIGHT + Math.max(0, rows - 1) * GAP;
-  return ok({ nodes, edges, wedges: [], extent: rect(0, 0, width, height) });
+  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
 };

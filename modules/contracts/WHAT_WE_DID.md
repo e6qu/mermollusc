@@ -89,3 +89,7 @@
   semantic fill the renderer colours (a Gantt bar's status today). Made it an explicit closed-union
   member (`none`), not a nullable/optional field, so every node states its accent and the renderer
   handles every case exhaustively — no implicit default to forget or mis-test.
+- `Scene` gained a **required** `decorations: readonly Decoration[]` — diagram "chrome" (a `rule` guide
+  line or a standalone `caption`) drawn behind the content, for a Gantt's day-axis gridlines + date /
+  section labels. A first-class, explicit list (empty for most families, like `wedges`), so a family
+  that needs axis decoration doesn't smuggle it through fake nodes/edges.

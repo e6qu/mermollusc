@@ -180,3 +180,7 @@
 - Gantt polish: `layoutGantt` sets each bar's `accent` from the task status via `STATUS_ACCENT`
   (`done→muted`, `active→active`, `crit→danger`, `normal→none`), so the renderer can colour bars by
   status.
+- Gantt axis: `layoutGantt` now emits `decorations` — a **weekly date axis** (a `rule` gridline + a
+  date `caption` every 7 days across the span) and a **section gutter** (a left-aligned `caption` per
+  section). Bars shifted past a left gutter + top axis band to make room. +2 unit tests (relative bar
+  offsets; gridline/caption counts + texts). The chart now reads as a proper Gantt.

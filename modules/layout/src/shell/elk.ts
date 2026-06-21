@@ -389,6 +389,7 @@ const layoutCompartments = async (
       nodes,
       edges: sceneEdges,
       wedges: [],
+      decorations: [],
       extent: rect(0, 0, positioned.width, positioned.height),
     });
   } catch (e) {

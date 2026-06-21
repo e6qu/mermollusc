@@ -1,6 +1,7 @@
 import { coordinate, length, point } from "@m/std";
 import type { Coordinate, Length, Point } from "@m/std";
 import type {
+  Decoration,
   EdgeEnd,
   IconRef,
   NodeAccent,
@@ -475,7 +476,27 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   }
   const nodes = scene.nodes.flatMap(nodeCmds);
   const wedges = scene.wedges.flatMap(wedgeCmds);
-  return [...wedges, ...edges, ...nodes, ...labels];
+  const decorations = scene.decorations.map(decorationCmd);
+  // Decorations (axis chrome) draw first, behind everything else.
+  return [...decorations, ...wedges, ...edges, ...nodes, ...labels];
+};
+
+// Axis chrome → existing draw commands: a `rule` is a markerless dashed polyline (a guide line); a
+// `caption` is a plain (plateless) label. Exhaustive over `Decoration`.
+const decorationCmd = (d: Decoration): DrawCmd => {
+  switch (d.kind) {
+    case "rule":
+      return {
+        kind: "polyline",
+        points: [d.from, d.to],
+        dashed: true,
+        fromMarker: EMPTY_MARKER,
+        toMarker: EMPTY_MARKER,
+        curved: false,
+      };
+    case "caption":
+      return { kind: "label", x: d.at.x, y: d.at.y, text: d.text, align: d.align, plate: false };
+  }
 };
 
 const FULL_CIRCLE = Math.PI * 2 - 1e-6;

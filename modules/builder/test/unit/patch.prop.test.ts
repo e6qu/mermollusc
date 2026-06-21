@@ -24,7 +24,7 @@ const sceneOf = (ids: readonly string[]): Scene => ({
   })),
   edges: [],
   wedges: [],
-  extent: rect(0, 0, ids.length * 10 + 60, 40),
+  decorations: [], extent: rect(0, 0, ids.length * 10 + 60, 40),
 });
 
 describe("patchSpan — splice invariants (property-based)", () => {

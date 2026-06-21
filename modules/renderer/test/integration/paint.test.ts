@@ -83,7 +83,7 @@ const scene: Scene = {
     },
   ],
   wedges: [],
-  extent: rect(0, 0, 60, 120),
+  decorations: [], extent: rect(0, 0, 60, 120),
 };
 
 const iconScene: Scene = {
@@ -100,7 +100,7 @@ const iconScene: Scene = {
   ],
   edges: [],
   wedges: [],
-  extent: rect(0, 0, 80, 48),
+  decorations: [], extent: rect(0, 0, 80, 48),
 };
 
 describe("paint", () => {
@@ -136,7 +136,7 @@ describe("paint", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 60, 140),
+      decorations: [], extent: rect(0, 0, 60, 140),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(er));
@@ -193,7 +193,7 @@ describe("paint", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 150),
+      decorations: [], extent: rect(0, 0, 120, 150),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(cls));
@@ -213,7 +213,7 @@ describe("paint", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 90, 56),
+      decorations: [], extent: rect(0, 0, 90, 56),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(ml), new Map(), { ...defaultTheme, font: "14px sans-serif" });
@@ -238,7 +238,7 @@ describe("paint", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 60, 40),
+      decorations: [], extent: rect(0, 0, 60, 40),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(nodeOnly), new Map(), theme);
@@ -263,7 +263,7 @@ describe("paint", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 120, 70),
+      decorations: [], extent: rect(0, 0, 120, 70),
     };
     const sketchy = new RecordingCtx();
     paint(sketchy, toDisplayList(comp), new Map(), { ...defaultTheme, sketch: true });
@@ -306,7 +306,7 @@ describe("paint", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 80),
+      decorations: [], extent: rect(0, 0, 120, 80),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(curved));
@@ -330,7 +330,7 @@ describe("paint", () => {
           colorIndex: 0,
         },
       ],
-      extent: rect(0, 0, 200, 200),
+      decorations: [], extent: rect(0, 0, 200, 200),
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(pie));

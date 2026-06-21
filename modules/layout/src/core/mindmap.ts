@@ -40,7 +40,13 @@ export const layoutMindmap = (
   measure: MeasureText,
 ): Result<Scene, LayoutError> => {
   if (ast.nodes.length === 0) {
-    return ok({ nodes: [], edges: [], wedges: [], extent: rect(0, 0, 2 * MARGIN, 2 * MARGIN) });
+    return ok({
+      nodes: [],
+      edges: [],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 2 * MARGIN, 2 * MARGIN),
+    });
   }
 
   const byParent = new Map<string, MindmapNode[]>();
@@ -168,6 +174,7 @@ export const layoutMindmap = (
     nodes,
     edges,
     wedges: [],
+    decorations: [],
     extent: rect(0, 0, maxX - minX + 2 * MARGIN, maxY - minY + 2 * MARGIN),
   });
 };
