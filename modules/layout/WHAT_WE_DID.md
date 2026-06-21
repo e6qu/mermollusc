@@ -197,3 +197,7 @@
   day in the visible span — behind the gridlines/captions. +3 unit tests.
 - Gantt axis spacing now follows `ast.tickIntervalDays` (was a fixed weekly `DAYS_PER_TICK`) — a wider
   interval emits fewer gridlines/date captions. +1 unit test (21-day span: weekly 4 ticks, biweekly 2).
+- Gantt `parseDay` is now total (`GanttDate → number`): since dates are validated at the parse boundary,
+  its two date-format failure paths (a bad task start date, a bad excluded date) were dead and are
+  removed — the date branch and the excludeDates loop no longer return a `Result` error. (The two
+  layout-level bad-date tests moved to the parser, where the validation now lives.)

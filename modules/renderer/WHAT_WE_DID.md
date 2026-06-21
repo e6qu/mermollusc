@@ -125,3 +125,7 @@
 - Added a `band` `DrawCmd` (filled, strokeless background rect) + a theme-aware `bandFill(fill, theme)`
   (mirrors `accentFill`): `section`/`sectionAlt` faint zebra shades and a greyer `excluded`. `decorationCmd`
   maps a `band` decoration to it; both canvas + SVG backends render it. +display/paint/svg tests.
+- Type-correctness nits from the core audit: `toDot` now omits a default (`normal`) arrowtail instead of
+  coalescing `null → "normal"`, mirroring the arrowhead (consistent null-means-default handling); and
+  `WEDGE_PALETTE` is typed as a non-empty tuple so `wedgeColor`'s in-range fallback names the definite
+  first slot rather than duplicating a colour literal. +1 dot test (default vs named tail).

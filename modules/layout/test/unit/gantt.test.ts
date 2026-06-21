@@ -1,10 +1,17 @@
 import { brand, oneOrMore, positiveInt } from "@m/std";
-import type { GanttStart, GanttTask, GanttTaskId, GanttAst } from "@m/contracts";
+import { ganttDate } from "@m/contracts";
+import type { GanttDate, GanttStart, GanttTask, GanttTaskId, GanttAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutGantt } from "../../src/core/gantt.js";
 
 const tid = (s: string) => brand<string, "GanttTaskId">(s);
+// Mint a validated Gantt date for fixtures; an invalid literal is a test-authoring bug, so throw.
+const gd = (s: string): GanttDate => {
+  const d = ganttDate(s);
+  if (d === null) throw new Error(`test fixture has an invalid date: ${s}`);
+  return d;
+};
 const aft = (first: GanttTaskId, ...rest: readonly GanttTaskId[]): GanttStart => ({
   kind: "after",
   refs: oneOrMore(first, ...rest),
@@ -39,8 +46,8 @@ describe("layoutGantt", () => {
   it("places each task as a bar — x by start day, width by duration, one row each", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), label: "A", start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
-        task({ id: tid("b"), label: "B", start: { kind: "date", date: "2024-01-03" }, durationDays: 4 }),
+        task({ id: tid("a"), label: "A", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 }),
+        task({ id: tid("b"), label: "B", start: { kind: "date", date: gd("2024-01-03") }, durationDays: 4 }),
       ]),
       heuristicMeasure,
     );
@@ -57,7 +64,7 @@ describe("layoutGantt", () => {
   it("chains an `after` task off the referenced task's end", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 3 }),
+        task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 3 }),
         task({ id: tid("b"), start: aft(tid("a")), durationDays: 2 }),
       ]),
       heuristicMeasure,
@@ -71,8 +78,8 @@ describe("layoutGantt", () => {
   it("starts a multi-`after` task at the latest predecessor's end", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
-        task({ id: tid("b"), start: { kind: "date", date: "2024-01-01" }, durationDays: 6 }),
+        task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 }),
+        task({ id: tid("b"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 6 }),
         // c waits on both a (ends day 2) and b (ends day 6) → starts on day 6, the later end.
         task({ id: tid("c"), start: aft(tid("a"), tid("b")), durationDays: 1 }),
       ]),
@@ -87,7 +94,7 @@ describe("layoutGantt", () => {
   it("fails loudly when any one of several `after` refs is unknown", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
+        task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 }),
         task({ id: tid("b"), start: aft(tid("a"), tid("ghost")), durationDays: 1 }),
       ]),
       heuristicMeasure,
@@ -106,7 +113,7 @@ describe("layoutGantt", () => {
   it("with `excludes weekends`, a bar stretches across the skipped weekend days", () => {
     // 2024-01-04 is a Thursday; 5 working days spill across Sat+Sun into the next week.
     const tasks = [
-      task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-04" }, durationDays: 5 }),
+      task({ id: tid("a"), label: "T", start: { kind: "date", date: gd("2024-01-04") }, durationDays: 5 }),
     ];
     const plain = layoutGantt(ast(tasks), heuristicMeasure);
     const excl = layoutGantt(
@@ -122,8 +129,8 @@ describe("layoutGantt", () => {
 
   it("with `excludes weekends`, a start landing on a weekend shifts to the next working day", () => {
     const tasks = [
-      task({ id: tid("a"), label: "A", start: { kind: "date", date: "2024-01-01" }, durationDays: 1 }), // Mon, anchors minDay
-      task({ id: tid("b"), label: "B", start: { kind: "date", date: "2024-01-06" }, durationDays: 1 }), // Sat → shifts to Mon 01-08
+      task({ id: tid("a"), label: "A", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 1 }), // Mon, anchors minDay
+      task({ id: tid("b"), label: "B", start: { kind: "date", date: gd("2024-01-06") }, durationDays: 1 }), // Sat → shifts to Mon 01-08
     ];
     const r = layoutGantt(ast(tasks, { excludesWeekends: true, excludeDates: [] }), heuristicMeasure);
     if (!r.ok) throw new Error(r.error.message);
@@ -135,10 +142,10 @@ describe("layoutGantt", () => {
   it("treats an `excludes <date>` holiday as a non-working day", () => {
     // 2024-01-01 is a Monday; 2024-01-02 (Tuesday) is a declared holiday.
     const tasks = [
-      task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-01" }, durationDays: 3 }),
+      task({ id: tid("a"), label: "T", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 3 }),
     ];
     const r = layoutGantt(
-      ast(tasks, { excludesWeekends: false, excludeDates: ["2024-01-02"] }),
+      ast(tasks, { excludesWeekends: false, excludeDates: [gd("2024-01-02")] }),
       heuristicMeasure,
     );
     if (!r.ok) throw new Error(r.error.message);
@@ -146,21 +153,12 @@ describe("layoutGantt", () => {
     expect(r.value.nodes[0]?.bounds.size.width ?? 0).toBe(4 * 16);
   });
 
-  it("fails loudly on an unparseable excluded date", () => {
-    const tasks = [task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 1 })];
-    const r = layoutGantt(
-      ast(tasks, { excludesWeekends: false, excludeDates: ["01/02/2024"] }),
-      heuristicMeasure,
-    );
-    expect(r.ok).toBe(false);
-  });
-
   it("emits a zebra-striped section background band behind each section's rows", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), section: "Plan", start: { kind: "date", date: "2024-01-01" }, durationDays: 2 }),
-        task({ id: tid("b"), section: "Plan", start: { kind: "date", date: "2024-01-03" }, durationDays: 2 }),
-        task({ id: tid("c"), section: "Build", start: { kind: "date", date: "2024-01-05" }, durationDays: 2 }),
+        task({ id: tid("a"), section: "Plan", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 }),
+        task({ id: tid("b"), section: "Plan", start: { kind: "date", date: gd("2024-01-03") }, durationDays: 2 }),
+        task({ id: tid("c"), section: "Build", start: { kind: "date", date: gd("2024-01-05") }, durationDays: 2 }),
       ]),
       heuristicMeasure,
     );
@@ -174,7 +172,7 @@ describe("layoutGantt", () => {
 
   it("emits no section band for tasks without a section", () => {
     const r = layoutGantt(
-      ast([task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 2 })]),
+      ast([task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 })]),
       heuristicMeasure,
     );
     if (!r.ok) throw new Error(r.error.message);
@@ -184,7 +182,7 @@ describe("layoutGantt", () => {
   it("emits an `excluded` column band over each non-working day", () => {
     // 2024-01-04 is a Thursday; a 5d bar spans the visible week, which contains one Sat+Sun.
     const r = layoutGantt(
-      ast([task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-04" }, durationDays: 5 })], {
+      ast([task({ id: tid("a"), label: "T", start: { kind: "date", date: gd("2024-01-04") }, durationDays: 5 })], {
         excludesWeekends: true,
         excludeDates: [],
       }),
@@ -197,7 +195,7 @@ describe("layoutGantt", () => {
 
   it("spaces axis gridlines by `tickIntervalDays` (a wider interval → fewer ticks)", () => {
     const tasks = [
-      task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 21 }),
+      task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 21 }),
     ];
     const weekly = layoutGantt(ast(tasks), heuristicMeasure); // default 7
     const biweekly = layoutGantt(ast(tasks, undefined, 14), heuristicMeasure);
@@ -209,21 +207,13 @@ describe("layoutGantt", () => {
     expect(rules(biweekly)).toBe(2);
   });
 
-  it("fails loudly on a non-ISO date", () => {
-    const r = layoutGantt(
-      ast([task({ id: tid("a"), start: { kind: "date", date: "01/02/2024" }, durationDays: 1 })]),
-      heuristicMeasure,
-    );
-    expect(r.ok).toBe(false);
-  });
-
   it("widens a short bar to fit its label", () => {
     const r = layoutGantt(
       ast([
         task({
           id: tid("a"),
           label: "A very long task label",
-          start: { kind: "date", date: "2024-01-01" },
+          start: { kind: "date", date: gd("2024-01-01") },
           durationDays: 1,
         }),
       ]),
@@ -236,7 +226,7 @@ describe("layoutGantt", () => {
   it("renders a milestone as a diamond centred on its date, not a bar", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 5 }),
+        task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 5 }),
         task({
           id: tid("m"),
           label: "Launch",
@@ -262,7 +252,7 @@ describe("layoutGantt", () => {
   it("emits axis decorations: a weekly gridline + date caption, and a caption per section", () => {
     const r = layoutGantt(
       ast([
-        task({ id: tid("a"), section: "Plan", start: { kind: "date", date: "2024-01-01" }, durationDays: 10 }),
+        task({ id: tid("a"), section: "Plan", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 10 }),
         task({ id: tid("b"), section: "Build", start: aft(tid("a")), durationDays: 3 }),
       ]),
       heuristicMeasure,

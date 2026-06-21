@@ -464,6 +464,9 @@ export interface PieAst {
 }
 
 export type GanttTaskId = Brand<string, "GanttTaskId">;
+// An ISO `YYYY-MM-DD` date validated to a real calendar day by the `ganttDate` smart constructor, so an
+// invalid date can't reach the AST and the layout resolves it with a total (never-failing) `parseDay`.
+export type GanttDate = Brand<string, "GanttDate">;
 // Mermaid's task state tags; `normal` is an unstyled task.
 export type GanttStatus = "normal" | "done" | "active" | "crit";
 // A task starts either on an absolute date (a raw string in the diagram's `dateFormat`, resolved by
@@ -471,7 +474,7 @@ export type GanttStatus = "normal" | "done" | "active" | "crit";
 // starts at the latest predecessor's end, so `refs` is a non-empty list (`after` with no id is a parse
 // error, never an empty list here).
 export type GanttStart =
-  | { readonly kind: "date"; readonly date: string }
+  | { readonly kind: "date"; readonly date: GanttDate }
   | { readonly kind: "after"; readonly refs: OneOrMore<GanttTaskId> };
 export interface GanttTask {
   readonly id: GanttTaskId;
@@ -496,9 +499,9 @@ export interface GanttAst {
   // `excludes weekends` → Saturdays/Sundays are non-working: durations skip them, bars stretch across
   // them, and a start landing on one shifts to the next working day. Always present (false = include).
   readonly excludesWeekends: boolean;
-  // `excludes <date…>` holidays — raw date strings (the layout resolves them like a task's start date),
-  // also treated as non-working days. Empty when none are declared.
-  readonly excludeDates: readonly string[];
+  // `excludes <date…>` holidays — validated dates (resolved like a task's start date), also treated as
+  // non-working days. Empty when none are declared.
+  readonly excludeDates: readonly GanttDate[];
   readonly tasks: readonly GanttTask[];
 }
 

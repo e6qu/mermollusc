@@ -80,6 +80,36 @@ describe("toDot", () => {
     expect(dot).toContain("arrowhead=onormal");
   });
 
+  it("emits dir=both for a double-ended edge, naming the tail only when it isn't the default", () => {
+    const edge = (fromEnd: Scene["edges"][number]["fromEnd"]): Scene => ({
+      nodes: [node("a", "A", "rect"), node("b", "B", "rect")],
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("a"),
+          to: snid("b"),
+          waypoints: [point(0, 0), point(1, 1)],
+          label: null,
+          stroke: "solid",
+          fromEnd,
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+        },
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 100, 100),
+    });
+    // `arrow` tail is DOT's default `normal`: dir=both, but no arrowtail attribute (mirrors the head).
+    const dflt = toDot(edge("arrow"), null);
+    expect(dflt).toContain("dir=both");
+    expect(dflt).not.toContain("arrowtail");
+    // a non-default tail (UML triangle) is named explicitly.
+    expect(toDot(edge("triangle"), null)).toContain("arrowtail=onormal");
+  });
+
   it("escapes quotes and newlines in ids and labels", () => {
     const scene: Scene = {
       nodes: [node('a"x', 'two\nlines', "rect")],
