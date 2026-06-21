@@ -1357,8 +1357,26 @@ const setNavActive = (index: number): void => {
 diagramNav.addEventListener("focus", () => {
   if (navActiveId === null) setNavActive(0);
 });
+const ARROW_DELTA: Record<string, readonly [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
+
 diagramNav.addEventListener("keydown", (ev) => {
   if (scene === null || scene.nodes.length === 0) return;
+  // Alt+Arrow nudges the active node (keyboard parity with drag; Shift = a bigger step); the move drives
+  // the same override path as dragging, so it shares one undo entry per run.
+  const delta = ARROW_DELTA[ev.key];
+  if (ev.altKey && delta !== undefined && navActiveId !== null && !viewerMode) {
+    ev.preventDefault();
+    const step = ev.shiftKey ? 10 : 1;
+    nudgeSelection(delta[0] * step, delta[1] * step);
+    const node = scene.nodes.find((n) => n.id === navActiveId);
+    announce(`moved ${node !== undefined && node.label.length > 0 ? node.label : "node"}`);
+    return;
+  }
   const current = navActiveId === null ? -1 : scene.nodes.findIndex((n) => n.id === navActiveId);
   if (ev.key === "ArrowDown" || ev.key === "ArrowRight") {
     ev.preventDefault();
@@ -2690,6 +2708,9 @@ window.addEventListener("keydown", (ev) => {
   // A focused text field (icon-filter, inline rename) keeps its own keys — never hijack a letter/arrow.
   const active = document.activeElement;
   if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+  // The keyboard node navigator owns arrow keys when focused (plain = move between nodes, Alt = nudge),
+  // so don't also run the global nudge — that would move a node on every navigation step.
+  if (active === diagramNav) return;
   const step = ev.shiftKey ? 10 : 1;
   switch (ev.key) {
     case "ArrowLeft":
