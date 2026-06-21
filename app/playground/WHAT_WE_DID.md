@@ -556,3 +556,8 @@
 - Accessibility — spoken topology: the node navigator now announces each node's connections alongside
   its label and position ("Beta, 2 of 3. to Gamma; from Alpha", capped so a hub stays concise, or "no
   connections"), so a screen-reader user grasps the graph structure, not just a flat node list. +1 e2e.
+- Accessibility — motion + focus polish: a comprehensive `prefers-reduced-motion` media query now collapses
+  every animation/transition (the entrance rise, the error-bar shake, UI transitions) to ~0 (WCAG 2.3.3);
+  the example `<select>` regained a keyboard `:focus-visible` ring; and the visually-hidden node navigator
+  now rings the stage (`.kbd-focus` on `#stage-wrap`, toggled on focus/blur) so a sighted keyboard user
+  sees focus is in the diagram. Navigator blur also clears an in-progress Connect. +2 e2e.
