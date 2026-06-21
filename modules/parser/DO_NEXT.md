@@ -1,9 +1,9 @@
 # @m/parser — do next
 
 - **Gantt family arc** (in progress). Done: standalone `parseGantt` (subset — sections, tasks with
-  status/id/date-or-`after` start/duration). Next PRs: (1) `layoutGantt` (GanttAst → Scene: resolve
-  dates/`after` chains to a timeline, bars as rect nodes on a day axis); (2) any renderer support (bars
-  are likely plain rects + labels — may need a date-axis draw); (3) **activation** — add `GanttAst` to
+  status/id/date-or-`after` start/duration) **and `layoutGantt`** (bars on a day axis; ISO dates +
+  `after` chains). Next PRs: (1) any renderer support (bars are plain rect + label nodes — likely
+  renders as-is; a date-axis/section-band draw is later polish); (2) **activation** — add `GanttAst` to
   the `DiagramAst` union, wire `parseGantt` into `parseDiagram`, and fill the now-exhaustive app
   switches (`removeNode`/`removeEdge`/`appendEdge`/render-switch) + `layoutDiagram` + an app example +
   golden. Parser follow-ups for the subset: `milestone` tasks (0-duration), multiple `after` refs,
