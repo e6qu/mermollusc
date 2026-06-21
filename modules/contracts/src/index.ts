@@ -87,6 +87,7 @@ export type {
   PieSlice,
   PieAst,
   GanttTaskId,
+  GanttDate,
   GanttStatus,
   GanttStart,
   GanttTask,
@@ -129,4 +130,4 @@ export type {
   PieSource,
   GanttSource,
 } from "./core/index.js";
-export { sceneNodeId, sceneEdgeId } from "./shell/index.js";
+export { sceneNodeId, sceneEdgeId, ganttDate } from "./shell/index.js";

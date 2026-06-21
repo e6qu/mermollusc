@@ -1,7 +1,9 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, oneOrMore, positiveInt, type Result } from "@m/std";
+import { ganttDate } from "@m/contracts";
 import type {
   GanttAst,
+  GanttDate,
   GanttSource,
   GanttStart,
   GanttStatus,
@@ -70,7 +72,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   let tickIntervalDays = 7; // weekly by default; the `tickInterval` directive overrides it
   let section: string | null = null;
   let excludesWeekends = false;
-  const excludeDates: string[] = [];
+  const excludeDates: GanttDate[] = [];
   const tasks: GanttTask[] = [];
   const taskSpans = new Map<GanttTaskId, TextSpan>();
 
@@ -114,12 +116,23 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
     const exLine = childNodes(sc, "excludesLine")[0];
     if (exLine !== undefined) {
       const kw = childTokens(exLine.children, "Excludes")[0];
-      // Tokens are space/comma-separated: the literal `weekends`, or a date (a holiday). The layout
-      // validates the date strings — here they're collected verbatim, like a task's start date.
+      // Tokens are space/comma-separated: the literal `weekends`, or a date (a holiday). Each date is
+      // validated here through `ganttDate`, so a malformed holiday fails the parse loudly.
       const value = kw === undefined ? "" : lineValue(text, kw);
+      const at = kw === undefined ? 0 : kw.startOffset;
+      const len = kw === undefined ? 0 : kw.image.length;
       for (const tok of value.split(/[\s,]+/).filter((s) => s !== "")) {
-        if (tok === "weekends") excludesWeekends = true;
-        else excludeDates.push(tok);
+        if (tok === "weekends") {
+          excludesWeekends = true;
+          continue;
+        }
+        const date = ganttDate(tok);
+        if (date === null) {
+          return err(
+            parseErrorAt(`gantt: invalid excluded date "${tok}" (expected YYYY-MM-DD)`, at, len),
+          );
+        }
+        excludeDates.push(date);
       }
       continue;
     }
@@ -198,7 +211,17 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
         }
         start = { kind: "after", refs: oneOrMore(first, ...refs.slice(1)) };
       } else {
-        start = { kind: "date", date: startRaw };
+        const date = ganttDate(startRaw);
+        if (date === null) {
+          return err(
+            parseErrorAt(
+              `gantt: task "${label}" has an invalid start date "${startRaw}" (expected YYYY-MM-DD)`,
+              labelTok.startOffset,
+              labelLen,
+            ),
+          );
+        }
+        start = { kind: "date", date };
       }
       tasks.push({
         id,

@@ -97,6 +97,16 @@ describe("parseGantt", () => {
     expect(isOk(parseGantt("gantt\n  tickInterval soon\n  A : a, 2024-01-01, 2d\n"))).toBe(false);
   });
 
+  it("fails loudly on an invalid task start date (bad format or non-calendar day)", () => {
+    expect(isOk(parseGantt("gantt\n  A : a, 01/02/2024, 2d\n"))).toBe(false); // not ISO
+    expect(isOk(parseGantt("gantt\n  A : a, 2024-13-01, 2d\n"))).toBe(false); // month 13
+    expect(isOk(parseGantt("gantt\n  A : a, 2024-02-31, 2d\n"))).toBe(false); // Feb 31 rolls over
+  });
+
+  it("fails loudly on an invalid excluded date", () => {
+    expect(isOk(parseGantt("gantt\n  excludes 2024-02-31\n  A : a, 2024-01-01, 2d\n"))).toBe(false);
+  });
+
   it("parses an `excludes` directive into weekends + holiday dates", () => {
     const r = parseGantt("gantt\n  excludes weekends 2024-01-15, 2024-12-25\n  A : a, 2024-01-01, 2d\n");
     expect(isOk(r)).toBe(true);

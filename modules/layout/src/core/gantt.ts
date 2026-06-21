@@ -1,6 +1,14 @@
 import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId } from "@m/contracts";
-import type { Decoration, GanttAst, GanttStatus, NodeAccent, Scene, SceneNode } from "@m/contracts";
+import type {
+  Decoration,
+  GanttAst,
+  GanttDate,
+  GanttStatus,
+  NodeAccent,
+  Scene,
+  SceneNode,
+} from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 
 // A task's status maps to a fill accent the renderer colours: done is muted, active highlighted, crit
@@ -19,13 +27,16 @@ const LABEL_PAD = 12;
 const TOP_AXIS = 22; // band above the bars for the date captions
 const LEFT_GUTTER = 96; // band left of the bars for the section captions
 
-// Parse an ISO `YYYY-MM-DD` date to a whole-day number (days since the epoch, UTC so it's
-// timezone-stable). The Gantt subset assumes ISO dates; other `dateFormat`s aren't resolved yet.
-const parseDay = (date: string): number | null => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (m === null) return null;
-  const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return Number.isFinite(ms) ? Math.round(ms / 86_400_000) : null;
+// A validated `GanttDate` (ISO `YYYY-MM-DD`, a real calendar day) → a whole-day number (days since the
+// epoch, UTC so it's timezone-stable). Total: the `ganttDate` smart constructor already guaranteed the
+// format at the parse boundary, so there's no failure path here.
+const parseDay = (date: GanttDate): number => {
+  const ms = Date.UTC(
+    Number(date.slice(0, 4)),
+    Number(date.slice(5, 7)) - 1,
+    Number(date.slice(8, 10)),
+  );
+  return Math.round(ms / 86_400_000);
 };
 
 // The inverse: a whole-day number back to its ISO date (for the axis captions).
@@ -48,17 +59,7 @@ const isWeekend = (day: number): boolean => {
 // and a duration is spent only on working days (so the bar stretches across the skipped ones). Bars are
 // widened to fit their label so the text stays readable. No edges — `after` is positional.
 export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, LayoutError> => {
-  const excludeDays = new Set<number>();
-  for (const date of ast.excludeDates) {
-    const day = parseDay(date);
-    if (day === null) {
-      return err({
-        kind: "layout",
-        message: `gantt: excluded date "${date}" is unparseable (expected YYYY-MM-DD)`,
-      });
-    }
-    excludeDays.add(day);
-  }
+  const excludeDays = new Set<number>(ast.excludeDates.map(parseDay));
   const isExcluded = (day: number): boolean =>
     excludeDays.has(day) || (ast.excludesWeekends && isWeekend(day));
   // Advance to the first working day on or after `day` (identity when nothing is excluded).
@@ -98,14 +99,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   for (const task of ast.tasks) {
     let startDay: number;
     if (task.start.kind === "date") {
-      const day = parseDay(task.start.date);
-      if (day === null) {
-        return err({
-          kind: "layout",
-          message: `gantt: task "${task.label}" has an unparseable date "${task.start.date}" (expected YYYY-MM-DD)`,
-        });
-      }
-      startDay = day;
+      startDay = parseDay(task.start.date);
     } else {
       // Start at the latest predecessor's end, so `after a b c` waits on all of them.
       const endOf = (ref: string): Result<number, LayoutError> => {

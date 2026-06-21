@@ -72,11 +72,14 @@ export const toDot = (scene: Scene, rankdir: FlowDirection | null): string => {
     const attrs: string[] = [];
     if (edge.label !== null) attrs.push(`label="${esc(edge.label)}"`);
     if (edge.stroke === "dashed") attrs.push('style="dashed"');
+    // A `null` arrowtype is DOT's default `normal`, emitted by omitting the attribute — head and tail
+    // are handled the same way (the tail's `dir=both` already yields a normal tail when none is named).
     const head = ARROWTYPE[edge.toEnd];
     if (head !== null) attrs.push(`arrowhead=${head}`);
     if (edge.fromEnd !== "none") {
       attrs.push("dir=both");
-      attrs.push(`arrowtail=${ARROWTYPE[edge.fromEnd] ?? "normal"}`);
+      const tailArrow = ARROWTYPE[edge.fromEnd];
+      if (tailArrow !== null) attrs.push(`arrowtail=${tailArrow}`);
     }
     const tail = attrs.length === 0 ? "" : ` [${attrs.join(", ")}]`;
     lines.push(`  "${esc(edge.from)}" -> "${esc(edge.to)}"${tail};`);

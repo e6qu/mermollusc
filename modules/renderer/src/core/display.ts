@@ -106,7 +106,7 @@ export type DrawCmd =
 
 // Categorical palette for pie slices, cycled by `colorIndex`. Shared by the canvas and SVG backends so
 // a slice is the same colour in both. Chosen for legibility on the light and dark canvas backgrounds.
-const WEDGE_PALETTE: readonly string[] = [
+const WEDGE_PALETTE: readonly [string, ...string[]] = [
   "#4e79a7",
   "#f28e2b",
   "#59a14f",
@@ -122,7 +122,9 @@ const WEDGE_PALETTE: readonly string[] = [
 export const wedgeColor = (index: number): string => {
   const c =
     WEDGE_PALETTE[((index % WEDGE_PALETTE.length) + WEDGE_PALETTE.length) % WEDGE_PALETTE.length];
-  return c ?? "#4e79a7";
+  // The modulo is always in range; `WEDGE_PALETTE[0]` is the tuple's definite first slot (not a copied
+  // literal), so this names the single source of truth rather than duplicating a colour.
+  return c ?? WEDGE_PALETTE[0];
 };
 
 const EMPTY_MARKER: EndMarker = { lines: [], polygons: [], circle: null };

@@ -110,3 +110,7 @@
   `risk` carries `ReqRisk` (`low`/`medium`/`high`) and `verifymethod` carries `ReqVerifyMethod`
   (`analysis`/`inspection`/`test`/`demonstration`) — closed unions, so an out-of-domain value is
   unrepresentable; `id`/`text`/`type`/`docref` keep free-text values. The key set itself is closed.
+- Type-hardening: added a `GanttDate` brand (`Brand<string,"GanttDate">`) + a `ganttDate` smart
+  constructor (contracts shell) that validates ISO `YYYY-MM-DD` *and* a real calendar day (rejects a
+  rolled-over `2024-02-31`). `GanttStart.date` and `GanttAst.excludeDates` are now `GanttDate`, so an
+  invalid date can't reach the AST and the layout resolves it with a total `parseDay`.

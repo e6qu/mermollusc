@@ -87,6 +87,7 @@ export type {
   PieSlice,
   PieAst,
   GanttTaskId,
+  GanttDate,
   GanttStatus,
   GanttStart,
   GanttTask,
