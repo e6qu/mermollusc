@@ -337,6 +337,18 @@ export const deleteNode = (text: string, id: NodeId): string =>
     .filter((line) => !line.replace(LABELS, "").split(NON_IDENT).includes(id))
     .join("\n");
 
+// Removes the whole source line (with its line break) containing `span`. Used to delete a Gantt task
+// by its label span: a task's id may be auto-generated (`t0`…) and absent from the text, so the span
+// is the reliable key — id-matching like `deleteNode` can't find an auto-id task. When several tasks
+// are deleted at once the caller applies these bottom-up, so each span stays valid against the prior
+// edit (removing a lower line never shifts an earlier one's offset).
+export const deleteGanttTask = (text: string, span: TextSpan): string => {
+  const lineStart = text.lastIndexOf("\n", span.start - 1) + 1; // 0 when the span is on the first line
+  const nl = text.indexOf("\n", span.start);
+  const lineEnd = nl === -1 ? text.length : nl + 1; // include the trailing newline, if any
+  return text.slice(0, lineStart) + text.slice(lineEnd);
+};
+
 const identTokens = (line: string): string[] =>
   line
     .replace(LABELS, "")

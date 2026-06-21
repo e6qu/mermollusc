@@ -3,6 +3,7 @@ import {
   parseC4WithSource,
   parseClassWithSource,
   parseErWithSource,
+  parseGanttWithSource,
   parseRequirementWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
@@ -27,6 +28,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
+  deleteGanttTask,
   deleteMessage,
   deleteNode,
   deleteRequirementEntity,
@@ -309,6 +311,37 @@ describe("relabelNode", () => {
   it("deleteNode does not match an id that only appears inside a label", () => {
     const text = "flowchart TD\n  A[mentions B]\n  C --> A\n";
     expect(deleteNode(text, nid("B"))).toBe(text);
+  });
+
+  it("deleteGanttTask removes a task line by its label span, including an auto-id task", () => {
+    const text = "gantt\n  dateFormat YYYY-MM-DD\n  Design :des, 2024-01-01, 5d\n  Review : after des, 2d\n";
+    const r = parseGanttWithSource(text);
+    if (!isOk(r)) throw new Error(`parse failed: ${r.error.errors.join("; ")}`);
+    // "Review" is auto-numbered (no explicit id), so only its label span can find it.
+    const review = r.value.ast.tasks.find((t) => t.label === "Review");
+    expect(review).toBeDefined();
+    if (review === undefined) return;
+    const span = r.value.source.tasks.get(review.id);
+    expect(span).toBeDefined();
+    if (span === undefined) return;
+    const next = deleteGanttTask(text, span);
+    expect(next).not.toContain("Review");
+    expect(next).toContain("Design :des"); // the other task and the directives survive
+    const after = parseGanttWithSource(next);
+    expect(isOk(after)).toBe(true);
+    if (!isOk(after)) return;
+    expect(after.value.ast.tasks.map((t) => t.label)).toEqual(["Design"]);
+  });
+
+  it("deleteGanttTask removes only the spanned line, leaving the first and last lines intact", () => {
+    const text = "gantt\n  A :a, 2024-01-01, 1d\n  B :b, 2024-01-02, 1d\n";
+    const r = parseGanttWithSource(text);
+    if (!isOk(r)) throw new Error("parse failed");
+    const a = r.value.ast.tasks.find((t) => t.label === "A");
+    if (a === undefined) throw new Error("no A");
+    const span = r.value.source.tasks.get(a.id);
+    if (span === undefined) throw new Error("no span");
+    expect(deleteGanttTask(text, span)).toBe("gantt\n  B :b, 2024-01-02, 1d\n");
   });
 
   it("deleteEdge removes the standalone edge line, keeping declarations and other edges", () => {

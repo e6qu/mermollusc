@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectSourceMatches, setSource } from "./support/source.js";
+import { expectSourceMatches, expectSourceNotMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -25,4 +25,27 @@ test("double-click relabels a Gantt task and writes back to the source text", as
   await editor.press("Enter");
 
   await expectSourceMatches(page, /Build core :b, 2024-01-01, 5d/);
+});
+
+test("Delete removes the selected Gantt task line from the source", async ({ page }) => {
+  await page.goto("/");
+  const canvas = page.locator("#stage");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  // Two independent tasks, so deleting the first leaves a valid (still-rendering) chart.
+  await setSource(
+    page,
+    "gantt\n  dateFormat YYYY-MM-DD\n  Design :des, 2024-01-01, 5d\n  Review :rev, 2024-01-08, 2d\n",
+  );
+  await expect(page.locator("#kind")).toHaveText("gantt");
+
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  // Select the first bar (Design, first row), then Delete.
+  await page.mouse.click(box.x + 160, box.y + 57);
+  await page.keyboard.press("Delete");
+
+  await expectSourceNotMatches(page, /Design/);
+  await expectSourceMatches(page, /Review :rev, 2024-01-08, 2d/); // the other task survives
 });
