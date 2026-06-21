@@ -38,8 +38,10 @@
   stereotypes (`<<interface>>`/`<<abstract>>` → `ClassEntity.stereotype`, rendered as a `«…»`
   subtitle) + *(done)* generics (`List~T~` → `List<T>` for display, raw id preserved). Still: namespaces. (multiplicity: done)
 - Requirement: *(done)* `requirementDiagram` — requirement/element bodies (`key: value`) + the seven
-  relationship verbs (both arrow directions). Still: requirement `id`/`risk`/`verifymethod` enum
-  validation (currently free text), and the `style`/`class` styling directives.
+  relationship verbs (both arrow directions) + *(done)* a **closed `ReqField`**: the body key set is
+  closed and `risk`/`verifymethod` carry validated closed unions (`ReqRisk`/`ReqVerifyMethod`, matched
+  case-insensitively), so an unknown key or out-of-domain value fails the parse loudly instead of being
+  kept as free text. Still: the `style`/`class` styling directives.
 - gitGraph: *(done — `commit`/`branch`/`checkout`/`switch`/`merge` with `id:`/`tag:`/`type:` and
   `LR`/`TB`/`BT` directions)*. Still: `cherry-pick`, commit `type: REVERSE`/`HIGHLIGHT` distinct glyphs
   (parsed; only HIGHLIGHT→rect is rendered today), and explicit `gitGraph` config (e.g. `mainBranchName`).

@@ -8,6 +8,8 @@ import type {
   ReqRel,
   ReqRelId,
   ReqRelKind,
+  ReqRisk,
+  ReqVerifyMethod,
   RequirementAst,
   ReqSource,
   TextSpan,
@@ -53,16 +55,41 @@ const REL_KINDS: readonly ReqRelKind[] = [
 const kindOf = (s: string): ReqKind | null => KINDS.find((k) => k === s) ?? null;
 const relKindOf = (s: string): ReqRelKind | null => REL_KINDS.find((k) => k === s) ?? null;
 
-// `key: value` — split on the first colon; the value keeps any later colons. Lines without a colon
-// are skipped (null) rather than guessed at.
-const fieldOf = (raw: string): ReqField | null => {
-  const t = raw.trim();
-  const colon = t.indexOf(":");
-  if (colon < 0) return null;
-  const key = t.slice(0, colon).trim();
-  const value = t.slice(colon + 1).trim();
-  if (key === "") return null;
-  return { key, value };
+const RISKS: readonly ReqRisk[] = ["low", "medium", "high"];
+const METHODS: readonly ReqVerifyMethod[] = ["analysis", "inspection", "test", "demonstration"];
+const FREE_KEYS = ["id", "text", "type", "docref"] as const;
+
+// `key: value` — split on the first colon; the value keeps any later colons. A line with no colon (a
+// blank line, the closing brace) is skipped (ok(null)). The key set is closed and the two enumerated
+// fields' values are validated (case-insensitively) against their domain — an unknown key or an
+// out-of-domain risk/method fails the parse loudly rather than being kept as free text.
+const fieldOf = (tok: IToken): Result<ReqField | null, ParseError> => {
+  const raw = tok.image.trim();
+  const colon = raw.indexOf(":");
+  if (colon < 0) return ok(null);
+  const key = raw.slice(0, colon).trim();
+  const value = raw.slice(colon + 1).trim();
+  if (key === "") return ok(null);
+  const at = (msg: string): Result<ReqField | null, ParseError> =>
+    err(parseErrorAt(msg, tok.startOffset, tok.image.length));
+  if (key === "risk") {
+    const risk = RISKS.find((r) => r === value.toLowerCase());
+    return risk === undefined
+      ? at(`requirement: invalid risk "${value}" (expected low/medium/high)`)
+      : ok({ key: "risk", value: risk });
+  }
+  if (key === "verifymethod") {
+    const method = METHODS.find((m) => m === value.toLowerCase());
+    return method === undefined
+      ? at(
+          `requirement: invalid verifymethod "${value}" (expected analysis/inspection/test/demonstration)`,
+        )
+      : ok({ key: "verifymethod", value: method });
+  }
+  const free = FREE_KEYS.find((k) => k === key);
+  return free === undefined
+    ? at(`requirement: unknown field "${key}" (expected id/text/risk/verifymethod/type/docref)`)
+    : ok({ key: free, value });
 };
 
 const buildResult = (cst: CstNode): Result<ParsedRequirement, ParseError> => {
@@ -80,14 +107,14 @@ const buildResult = (cst: CstNode): Result<ParsedRequirement, ParseError> => {
       const kind = kindOf(kindTok.image);
       if (kind === null) continue;
       const block = childNodes(decl.children, "reqBody")[0];
-      const fields =
-        block === undefined
-          ? []
-          : childTokens(block.children, "ReqFieldText").reduce<ReqField[]>((acc, t) => {
-              const f = fieldOf(t.image);
-              if (f !== null) acc.push(f);
-              return acc;
-            }, []);
+      const fields: ReqField[] = [];
+      if (block !== undefined) {
+        for (const t of childTokens(block.children, "ReqFieldText")) {
+          const f = fieldOf(t);
+          if (!f.ok) return f;
+          if (f.value !== null) fields.push(f.value);
+        }
+      }
       const id = brand<string, "ReqEntityId">(nameTok.image);
       entities.push({ id, name: nameTok.image, kind, fields });
       if (!entitySpans.has(id)) entitySpans.set(id, tokenSpan(nameTok));
