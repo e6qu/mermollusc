@@ -534,3 +534,9 @@
   `ganttSource` label span (so auto-id tasks delete too). Multiple selected tasks are deleted bottom-up
   (descending span offset) so each span stays valid against the prior edit. +1 e2e. Gantt now has full
   relabel + delete parity with the other families.
+- Accessibility — keyboard node navigator (foundation): the diagram is now operable without a mouse. A
+  visually-hidden focusable `listbox` (`#diagram-nav`) mirrors the scene's nodes (rebuilt each render);
+  focus + arrow keys move the active option, which drives the canvas selection (so the node highlights
+  and the existing Delete handler removes it), centres it in view (reusing the minimap's scroll math via
+  a factored `scrollToLogical`), and a polite live region (`#diagram-live`) announces "label, N of M".
+  +1 e2e (focus → activedescendant + announcement → arrow → Delete). Next a11y steps below.
