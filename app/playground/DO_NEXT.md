@@ -70,8 +70,8 @@
   (parser-led): class stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
 - **Accessibility arc** (started — keyboard node navigator landed). Next:
   - Edge navigation + a way to reach edges from a node (and announce connections).
-  - Keyboard operation parity: *(done)* Enter on the active node opens the inline relabel. Still: a key
-    to start Connect from the active node, and arrow-nudge of the selected node (today drag-only).
+  - Keyboard operation parity: *(done)* Enter relabels the active node; *(done)* Alt+Arrow nudges it
+    (plain arrows navigate). Still: a key to start Connect from the active node.
   - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
   - Polish: `prefers-reduced-motion` (skip the nudge animation), a visible focus indicator for the
     navigator beyond the canvas highlight, and a contrast pass on the accent/band palettes.

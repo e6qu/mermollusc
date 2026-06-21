@@ -3,6 +3,13 @@ import { setSource, sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
+const overrideCount = (page: Page) =>
+  page.evaluate(() => {
+    const raw = localStorage.getItem("mermollusc-overlay");
+    if (raw === null) return 0;
+    const parsed = JSON.parse(raw) as { overrides?: unknown[] };
+    return parsed.overrides?.length ?? 0;
+  });
 
 test("the diagram canvas exposes a text alternative for screen readers", async ({ page }) => {
   await page.goto("/");
@@ -54,6 +61,28 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
   await nav.press("Delete");
   await expect.poll(() => sourceValue(page)).not.toContain(activeLabel);
   await expect(live).toHaveText(/deleted 1 item/);
+});
+
+test("the navigator separates navigation from movement: plain arrows navigate, Alt+arrow nudges", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Alpha] --> B[Beta]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  await nav.focus();
+  // Plain arrows only navigate — they must NOT move a node (no override written). Regression guard for
+  // the double-fire where the global nudge also ran while the listbox was focused.
+  await nav.press("ArrowDown");
+  await nav.press("ArrowUp");
+  expect(await overrideCount(page)).toBe(0);
+
+  // Alt+Arrow nudges the active node → one override, and the live region confirms the move.
+  await nav.press("Alt+ArrowRight");
+  await expect.poll(() => overrideCount(page)).toBe(1);
+  await expect(page.locator("#diagram-live")).toHaveText(/^moved /);
 });
 
 test("Enter on the active node opens the inline relabel editor (keyboard parity)", async ({ page }) => {

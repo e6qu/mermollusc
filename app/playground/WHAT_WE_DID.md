@@ -544,3 +544,8 @@
   double-click relabel into a reusable `beginRelabel(shown, hit, groupHit)`, so pressing **Enter** on the
   navigator's active node opens the inline editor (keyboard parity with a double-click). Delete now
   announces its outcome ("deleted N items") through the live region. +2 e2e (Enter→relabel; delete announce).
+- Accessibility — keyboard move + a double-fire fix: **Alt+Arrow** now nudges the navigator's active node
+  (⇧ = larger step), reusing the same override/undo path as a drag, with a "moved <label>" announcement.
+  Fixed a latent bug from the navigator landing: the global arrow-nudge handler also fired while the
+  listbox was focused, so plain-arrow *navigation* moved the node every step — it now yields arrows to the
+  focused navigator. Added the keyboard shortcuts to the help panel. +1 e2e (navigate ≠ move; Alt nudges).
