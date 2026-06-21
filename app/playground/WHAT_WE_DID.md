@@ -506,3 +506,8 @@
   `Math.max(...rights)`, whose argument spread throws once the selection is large enough — a select-all
   (⌘A) then align on a big diagram would `RangeError`. Replaced with fold-based `minOf`/`maxOf`, the
   same convention the gitgraph/pie layouts already use.
+- Robustness (perf track): added a **big-graph stress / linearity guard** (`test/integration/stress.test.ts`)
+  — 3000-node network and block diagrams driven through the full pure pipeline (parse → layout →
+  display list). It pins the O(n) behaviour: the runs finish in tens of ms today, so an accidental
+  O(n²) (or a crash) would blow vitest's timeout / fail the counts. (The earlier audit confirmed the
+  pure layouts and `toDisplayList` are linear; this keeps them that way.)
