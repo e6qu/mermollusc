@@ -85,6 +85,27 @@ test("the navigator separates navigation from movement: plain arrows navigate, A
   await expect(page.locator("#diagram-live")).toHaveText(/^moved /);
 });
 
+test("two-step `c` connects the active node to a target from the keyboard", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  // Three bare nodes, no edges yet.
+  await setSource(page, "flowchart TD\n  A[Alpha]\n  B[Beta]\n  C[Gamma]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  const live = page.locator("#diagram-live");
+  await nav.focus(); // active node 0 (the source)
+
+  await nav.press("c");
+  await expect(live).toHaveText(/^connecting from .* press c$/);
+
+  await nav.press("ArrowDown"); // move to a different node (the target)
+  await nav.press("c");
+  await expect(live).toHaveText(/^connected .* to .*$/);
+  // an edge line now exists in the source (none did before)
+  await expect.poll(() => sourceValue(page)).toMatch(/-->/);
+});
+
 test("Enter on the active node opens the inline relabel editor (keyboard parity)", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

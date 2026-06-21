@@ -549,3 +549,7 @@
   Fixed a latent bug from the navigator landing: the global arrow-nudge handler also fired while the
   listbox was focused, so plain-arrow *navigation* moved the node every step — it now yields arrows to the
   focused navigator. Added the keyboard shortcuts to the help panel. +1 e2e (navigate ≠ move; Alt nudges).
+- Accessibility — keyboard Connect: a two-step `c` from the node navigator picks the active node as the
+  source (announced), then after navigating to a target, `c` again draws the edge in the family's own
+  syntax via the existing `appendEdge` (parity with an Alt-drag); Escape cancels. This completes keyboard
+  operation parity (navigate · relabel · move · connect · delete). +1 e2e; help panel updated.
