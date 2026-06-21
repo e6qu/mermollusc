@@ -553,3 +553,6 @@
   source (announced), then after navigating to a target, `c` again draws the edge in the family's own
   syntax via the existing `appendEdge` (parity with an Alt-drag); Escape cancels. This completes keyboard
   operation parity (navigate · relabel · move · connect · delete). +1 e2e; help panel updated.
+- Accessibility — spoken topology: the node navigator now announces each node's connections alongside
+  its label and position ("Beta, 2 of 3. to Gamma; from Alpha", capped so a hub stays concise, or "no
+  connections"), so a screen-reader user grasps the graph structure, not just a flat node list. +1 e2e.

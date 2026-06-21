@@ -1327,6 +1327,20 @@ const navLabel = (id: SceneNodeId): string => {
   return node !== undefined && node.label.length > 0 ? node.label : "node";
 };
 
+// A spoken summary of a node's edges, so a screen-reader user grasps the topology, not just the node
+// list: "to Gamma; from Alpha" (capped so a hub node stays concise), or "no connections".
+const describeConnections = (id: SceneNodeId): string => {
+  if (scene === null) return "";
+  const outgoing = scene.edges.filter((e) => e.from === id).map((e) => navLabel(e.to));
+  const incoming = scene.edges.filter((e) => e.to === id).map((e) => navLabel(e.from));
+  const list = (xs: readonly string[]): string =>
+    xs.length <= 3 ? xs.join(", ") : `${xs.slice(0, 3).join(", ")} and ${xs.length - 3} more`;
+  const parts: string[] = [];
+  if (outgoing.length > 0) parts.push(`to ${list(outgoing)}`);
+  if (incoming.length > 0) parts.push(`from ${list(incoming)}`);
+  return parts.length === 0 ? "no connections" : parts.join("; ");
+};
+
 const rebuildNav = (): void => {
   diagramNav.replaceChildren();
   diagramNav.removeAttribute("aria-activedescendant");
@@ -1358,9 +1372,8 @@ const setNavActive = (index: number): void => {
   selectionOrder = [node.id];
   paintScene();
   centerOnNode(node.id);
-  announce(
-    `${node.label.length > 0 ? node.label : `node ${clamped + 1}`}, ${clamped + 1} of ${scene.nodes.length}`,
-  );
+  const name = node.label.length > 0 ? node.label : `node ${clamped + 1}`;
+  announce(`${name}, ${clamped + 1} of ${scene.nodes.length}. ${describeConnections(node.id)}`);
 };
 
 diagramNav.addEventListener("focus", () => {
