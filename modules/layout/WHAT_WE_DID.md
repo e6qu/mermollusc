@@ -192,3 +192,6 @@
   on one shifts to the next working day, and a duration is spent only on working days so the bar stretches
   across the skipped ones (`workingEnd` walk; identity when nothing is excluded). Invalid excluded dates
   fail loudly. +4 unit tests (weekend stretch; start shift; holiday; bad date).
+- Gantt section bands + excluded columns: emit a `band` decoration per contiguous same-section run (a
+  full-width zebra stripe, `section`/`sectionAlt` alternating) and one `excluded` column per non-working
+  day in the visible span — behind the gridlines/captions. +3 unit tests.

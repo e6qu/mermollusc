@@ -95,6 +95,7 @@ export type {
   EdgeStroke,
   NodeAccent,
   Decoration,
+  BandFill,
   EdgeEnd,
   IconRef,
   SceneNode,

@@ -90,11 +90,19 @@ export interface SceneWedge {
   readonly colorIndex: number;
 }
 
-// Diagram "chrome" drawn behind the nodes/edges: a guide line (`rule`) or a standalone caption — a
-// Gantt's day-axis gridlines + date/section labels today. A first-class, explicit list (empty for most
-// families, like `wedges`), so a family that needs axis decoration doesn't smuggle it through fake
-// nodes/edges.
+// A `band`'s semantic fill, coloured theme-aware by the renderer (like `NodeAccent`): two faint shades
+// that alternate behind successive Gantt sections (`section`/`sectionAlt`, a zebra stripe), and a
+// greyer `excluded` for non-working day columns. A closed union, not a raw colour, so the palette
+// stays the renderer's to own per theme.
+export type BandFill = "section" | "sectionAlt" | "excluded";
+
+// Diagram "chrome" drawn behind the nodes/edges: a filled background `band`, a guide line (`rule`), or
+// a standalone caption — a Gantt's section stripes, day-axis gridlines, and date/section labels today.
+// A first-class, explicit list (empty for most families, like `wedges`), so a family that needs axis
+// decoration doesn't smuggle it through fake nodes/edges. Drawn in array order, so a scene lists bands
+// before the rules/captions that should sit on top of them.
 export type Decoration =
+  | { readonly kind: "band"; readonly bounds: Rect; readonly fill: BandFill }
   | { readonly kind: "rule"; readonly from: Point; readonly to: Point }
   | {
       readonly kind: "caption";

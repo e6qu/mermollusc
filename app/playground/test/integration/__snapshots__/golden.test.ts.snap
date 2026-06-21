@@ -108,6 +108,7 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out gantt to a stable display list 1`] = `
 [
+  "band 0,18 310x120 section",
   "polyline 96,22 96,142 dashed=true from=l0p0c0 to=l0p0c0",
   "label "2024-01-01" 96,8 center",
   "polyline 208,22 208,142 dashed=true from=l0p0c0 to=l0p0c0",
@@ -126,6 +127,11 @@ exports[`pipeline goldens > lays out gantt to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out gantt-excludes to a stable display list 1`] = `
 [
+  "band 0,18 288x60 section",
+  "band 128,22 16x60 excluded",
+  "band 144,22 16x60 excluded",
+  "band 240,22 16x60 excluded",
+  "band 256,22 16x60 excluded",
   "polyline 96,22 96,82 dashed=true from=l0p0c0 to=l0p0c0",
   "label "2024-01-04" 96,8 center",
   "polyline 208,22 208,82 dashed=true from=l0p0c0 to=l0p0c0",

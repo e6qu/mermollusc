@@ -122,3 +122,6 @@
 - `Scene.decorations`: `toDisplayList` maps each `Decoration` to an existing draw command (a `rule` → a
   markerless dashed polyline, a `caption` → a plateless label), prepended so the chrome draws behind
   the nodes/edges. No new `DrawCmd` kinds — `decorationCmd` is exhaustive-by-return. +decoration test.
+- Added a `band` `DrawCmd` (filled, strokeless background rect) + a theme-aware `bandFill(fill, theme)`
+  (mirrors `accentFill`): `section`/`sectionAlt` faint zebra shades and a greyer `excluded`. `decorationCmd`
+  maps a `band` decoration to it; both canvas + SVG backends render it. +display/paint/svg tests.

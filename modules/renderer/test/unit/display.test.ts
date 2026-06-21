@@ -440,6 +440,35 @@ describe("decorations", () => {
       cmds.findIndex((c) => c.kind === "box"),
     );
   });
+
+  it("renders a `band` as a filled background rect carrying its fill, behind content", () => {
+    const s: Scene = {
+      nodes: [
+        {
+          id: snid("A"),
+          bounds: rect(40, 40, 60, 22),
+          label: "A",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rows: null,
+          rowDivider: null,
+          subtitle: null,
+          accent: "none",
+        },
+      ],
+      edges: [],
+      wedges: [],
+      decorations: [{ kind: "band", bounds: rect(0, 30, 120, 30), fill: "section" }],
+      extent: rect(0, 0, 120, 80),
+    };
+    const cmds = toDisplayList(s);
+    const band = cmds.find((c) => c.kind === "band");
+    expect(band?.kind === "band" ? band.fill : null).toBe("section");
+    expect(band?.kind === "band" ? [band.x, band.y, band.width, band.height] : []).toEqual([0, 30, 120, 30]);
+    // the band draws before (behind) the node box
+    expect(cmds.findIndex((c) => c.kind === "band")).toBeLessThan(cmds.findIndex((c) => c.kind === "box"));
+  });
 });
 
 describe("bezierControls", () => {

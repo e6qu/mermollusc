@@ -1,6 +1,7 @@
 import { coordinate, length, point } from "@m/std";
 import type { Coordinate, Length, Point } from "@m/std";
 import type {
+  BandFill,
   Decoration,
   EdgeEnd,
   IconRef,
@@ -80,6 +81,16 @@ export type DrawCmd =
       // Draw a background plate behind the text (edge labels), so the routed line/markers don't
       // strike through it. Node/title/row labels sit on a filled box already and set this false.
       readonly plate: boolean;
+    }
+  | {
+      // A filled background rectangle (no stroke, no label) drawn behind the content — a Gantt section
+      // stripe or an excluded-day column. The painter fills it theme-aware from `fill`.
+      readonly kind: "band";
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly width: Length;
+      readonly height: Length;
+      readonly fill: BandFill;
     }
   | {
       // A filled pie slice. Angles are in canvas convention (radians from +x, clockwise); the painter
@@ -481,10 +492,19 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   return [...decorations, ...wedges, ...edges, ...nodes, ...labels];
 };
 
-// Axis chrome → existing draw commands: a `rule` is a markerless dashed polyline (a guide line); a
-// `caption` is a plain (plateless) label. Exhaustive over `Decoration`.
+// Axis chrome → draw commands: a `band` is a filled background rect; a `rule` is a markerless dashed
+// polyline (a guide line); a `caption` is a plain (plateless) label. Exhaustive over `Decoration`.
 const decorationCmd = (d: Decoration): DrawCmd => {
   switch (d.kind) {
+    case "band":
+      return {
+        kind: "band",
+        x: d.bounds.origin.x,
+        y: d.bounds.origin.y,
+        width: d.bounds.size.width,
+        height: d.bounds.size.height,
+        fill: d.fill,
+      };
     case "rule":
       return {
         kind: "polyline",
