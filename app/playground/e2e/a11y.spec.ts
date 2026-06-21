@@ -44,15 +44,16 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
   // The listbox mirrors the three nodes as options.
   await expect(nav.locator('[role="option"]')).toHaveCount(3);
 
-  // Focusing activates the first node: aria-activedescendant points at it and the live region names it.
+  // Focusing activates the first node: aria-activedescendant points at it and the live region names it
+  // (label, position, and a spoken summary of its connections).
   await nav.focus();
   await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-node-0");
-  await expect(live).toHaveText(/, 1 of 3$/);
+  await expect(live).toHaveText(/, 1 of 3\. /);
 
   // Arrow keys move the active node.
   await nav.press("ArrowDown");
   await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-node-1");
-  await expect(live).toHaveText(/, 2 of 3$/);
+  await expect(live).toHaveText(/, 2 of 3\. /);
   const announced = (await live.textContent()) ?? "";
   const activeLabel = announced.split(",")[0] ?? "";
   expect(activeLabel.length).toBeGreaterThan(0);
@@ -83,6 +84,25 @@ test("the navigator separates navigation from movement: plain arrows navigate, A
   await nav.press("Alt+ArrowRight");
   await expect.poll(() => overrideCount(page)).toBe(1);
   await expect(page.locator("#diagram-live")).toHaveText(/^moved /);
+});
+
+test("the navigator announces each node's connections (topology, not just labels)", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Alpha] --> B[Beta]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  const live = page.locator("#diagram-live");
+  // Visit both nodes, collecting their spoken summaries (node order is the layout's, so don't assume it).
+  await nav.focus();
+  const heard: string[] = [(await live.textContent()) ?? ""];
+  await nav.press("ArrowDown");
+  heard.push((await live.textContent()) ?? "");
+
+  const all = heard.join(" | ");
+  expect(all).toContain("to Beta"); // Alpha's outgoing edge
+  expect(all).toContain("from Alpha"); // Beta's incoming edge
 });
 
 test("two-step `c` connects the active node to a target from the keyboard", async ({ page }) => {

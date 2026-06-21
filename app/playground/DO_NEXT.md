@@ -69,7 +69,8 @@
   `26-class` shots flow captures it. Connect/Delete/relabel work on classes + relationships. Still
   (parser-led): class stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
 - **Accessibility arc** (started — keyboard node navigator landed). Next:
-  - Edge navigation + a way to reach edges from a node (and announce connections).
+  - *(done)* announce a node's connections as you navigate. Still: reach/focus the edges themselves
+    from the navigator (the listbox covers nodes only).
   - Keyboard operation parity *(done)*: navigate · Enter relabel · Alt+Arrow move · two-step `c` connect ·
     Delete remove.
   - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
