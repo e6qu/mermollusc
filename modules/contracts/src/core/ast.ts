@@ -1,6 +1,6 @@
 // AST contract: the parser's output and the layout's input.
 
-import type { Brand, Positive, PositiveInt } from "@m/std";
+import type { Brand, OneOrMore, Positive, PositiveInt } from "@m/std";
 import type { IconRef } from "./scene.js";
 
 export type NodeId = Brand<string, "NodeId">;
@@ -460,10 +460,12 @@ export type GanttTaskId = Brand<string, "GanttTaskId">;
 // Mermaid's task state tags; `normal` is an unstyled task.
 export type GanttStatus = "normal" | "done" | "active" | "crit";
 // A task starts either on an absolute date (a raw string in the diagram's `dateFormat`, resolved by
-// the layout) or right after another task ends (`after <id>`).
+// the layout) or right after one or more other tasks end (`after <id…>`). With several refs the task
+// starts at the latest predecessor's end, so `refs` is a non-empty list (`after` with no id is a parse
+// error, never an empty list here).
 export type GanttStart =
   | { readonly kind: "date"; readonly date: string }
-  | { readonly kind: "after"; readonly ref: GanttTaskId };
+  | { readonly kind: "after"; readonly refs: OneOrMore<GanttTaskId> };
 export interface GanttTask {
   readonly id: GanttTaskId;
   readonly label: string;

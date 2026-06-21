@@ -1,5 +1,5 @@
 import type { CstElement, CstNode, IToken } from "chevrotain";
-import { brand, err, map, ok, type Result } from "@m/std";
+import { brand, err, map, ok, oneOrMore, type Result } from "@m/std";
 import type {
   GanttAst,
   GanttSource,
@@ -132,11 +132,28 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       const status: GanttStatus = lead.find(isStatus) ?? "normal";
       const idField = lead.find((f) => !isStatus(f) && f !== "milestone");
       const id = brand<string, "GanttTaskId">(idField ?? `t${tasks.length}`);
-      const after = /^after\s+(\S+)/.exec(startRaw);
-      const start: GanttStart =
-        after !== null
-          ? { kind: "after", ref: brand<string, "GanttTaskId">(after[1] ?? "") }
-          : { kind: "date", date: startRaw };
+      // `after a b c` — one or more predecessor ids; the task starts at the latest one's end.
+      const after = /^after\s+(\S.*)$/.exec(startRaw);
+      let start: GanttStart;
+      if (after !== null) {
+        const refs = (after[1] ?? "")
+          .split(/\s+/)
+          .filter((s) => s !== "")
+          .map((s) => brand<string, "GanttTaskId">(s));
+        const first = refs[0];
+        if (first === undefined) {
+          return err(
+            parseErrorAt(
+              `gantt: task "${label}" has an empty "after" (expected one or more task ids)`,
+              labelTok.startOffset,
+              labelLen,
+            ),
+          );
+        }
+        start = { kind: "after", refs: oneOrMore(first, ...refs.slice(1)) };
+      } else {
+        start = { kind: "date", date: startRaw };
+      }
       tasks.push({
         id,
         label,

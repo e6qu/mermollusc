@@ -64,14 +64,25 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       }
       startDay = day;
     } else {
-      const predEnd = ends.get(task.start.ref);
-      if (predEnd === undefined) {
-        return err({
-          kind: "layout",
-          message: `gantt: task "${task.label}" starts after unknown task "${task.start.ref}"`,
-        });
+      // Start at the latest predecessor's end, so `after a b c` waits on all of them.
+      const endOf = (ref: string): Result<number, LayoutError> => {
+        const predEnd = ends.get(ref);
+        return predEnd === undefined
+          ? err({
+              kind: "layout",
+              message: `gantt: task "${task.label}" starts after unknown task "${ref}"`,
+            })
+          : ok(predEnd);
+      };
+      // `refs[0]` is the OneOrMore tuple's total first slot, so it seeds the max with no empty guard.
+      let latest = endOf(task.start.refs[0]);
+      for (const ref of task.start.refs.slice(1)) {
+        if (!latest.ok) break;
+        const next = endOf(ref);
+        latest = next.ok ? ok(Math.max(latest.value, next.value)) : next;
       }
-      startDay = predEnd;
+      if (!latest.ok) return latest;
+      startDay = latest.value;
     }
     const endDay = startDay + task.durationDays;
     ends.set(task.id, endDay);

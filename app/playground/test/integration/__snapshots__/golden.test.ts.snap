@@ -108,17 +108,19 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out gantt to a stable display list 1`] = `
 [
-  "polyline 96,22 96,112 dashed=true from=l0p0c0 to=l0p0c0",
+  "polyline 96,22 96,142 dashed=true from=l0p0c0 to=l0p0c0",
   "label "2024-01-01" 96,8 center",
-  "polyline 208,22 208,112 dashed=true from=l0p0c0 to=l0p0c0",
+  "polyline 208,22 208,142 dashed=true from=l0p0c0 to=l0p0c0",
   "label "2024-01-08" 208,8 center",
   "label "Work" 8,33 left",
   "box 96,22 80x22 r0",
   "label "Research" 136,33 center",
   "box 176,52 112x22 r0",
   "label "Build" 232,63 center",
-  "diamond 288,93 44x22",
-  "label "Ship" 288,93 center",
+  "box 96,82 48x22 r0",
+  "label "Docs" 120,93 center",
+  "diamond 288,123 44x22",
+  "label "Ship" 288,123 center",
 ]
 `;
 

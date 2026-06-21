@@ -63,7 +63,7 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
   },
   {
     name: "gantt",
-    text: "gantt\n  title Plan\n  dateFormat YYYY-MM-DD\n  section Work\n    Research :a, 2024-01-01, 5d\n    Build :b, after a, 1w\n    Ship :milestone, m, after b, 0d\n",
+    text: "gantt\n  title Plan\n  dateFormat YYYY-MM-DD\n  section Work\n    Research :a, 2024-01-01, 5d\n    Build :b, after a, 1w\n    Docs :d, 2024-01-01, 3d\n    Ship :milestone, m, after b d, 0d\n",
   },
   {
     name: "dot",

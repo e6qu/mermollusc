@@ -94,3 +94,6 @@
   section labels. A first-class, explicit list (empty for most families, like `wedges`), so a family
   that needs axis decoration doesn't smuggle it through fake nodes/edges.
 - `GanttTask` gained `milestone: boolean` — a point-in-time event (`0d`), distinct from a duration task.
+- `GanttStart`'s `after` variant now carries `refs: OneOrMore<GanttTaskId>` (was a single `ref`) — a
+  task can wait on several predecessors (`after a b c`), starting at the latest one's end. Non-empty by
+  type, so an `after` with no id is a parse error, never an empty list in the AST.

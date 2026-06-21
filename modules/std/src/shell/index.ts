@@ -5,6 +5,7 @@ export {
   positive,
   positiveInt,
   twoOrMore,
+  oneOrMore,
   point,
   screenCoord,
   screenPoint,
