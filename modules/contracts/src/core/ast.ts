@@ -483,6 +483,12 @@ export interface GanttAst {
   readonly title: string | null;
   // The raw `dateFormat` directive (e.g. `YYYY-MM-DD`); the layout interprets dates against it.
   readonly dateFormat: string | null;
+  // `excludes weekends` → Saturdays/Sundays are non-working: durations skip them, bars stretch across
+  // them, and a start landing on one shifts to the next working day. Always present (false = include).
+  readonly excludesWeekends: boolean;
+  // `excludes <date…>` holidays — raw date strings (the layout resolves them like a task's start date),
+  // also treated as non-working days. Empty when none are declared.
+  readonly excludeDates: readonly string[];
   readonly tasks: readonly GanttTask[];
 }
 

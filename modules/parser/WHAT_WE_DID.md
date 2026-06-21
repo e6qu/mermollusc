@@ -206,3 +206,6 @@
   +2 tests (a milestone parses to `durationDays: 0`; a non-milestone `0d` is rejected).
 - Gantt `after a b c`: parse the whole start field, split on whitespace into one-or-more predecessor
   ids minted through `oneOrMore`, and fail loudly on an empty `after`. +1 test (two refs → `["a","b"]`).
+- Gantt `excludes` directive: new `Excludes` keyword token + `excludesLine` grammar rule; the value is
+  split on whitespace/commas into the literal `weekends` (→ `excludesWeekends`) and date strings (→
+  `excludeDates`). +2 tests (weekends + holidays parsed; default empty when absent).

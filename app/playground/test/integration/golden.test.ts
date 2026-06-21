@@ -66,6 +66,12 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     text: "gantt\n  title Plan\n  dateFormat YYYY-MM-DD\n  section Work\n    Research :a, 2024-01-01, 5d\n    Build :b, after a, 1w\n    Docs :d, 2024-01-01, 3d\n    Ship :milestone, m, after b d, 0d\n",
   },
   {
+    name: "gantt-excludes",
+    // 2024-01-04 is a Thursday; with weekends excluded the bars stretch across Sat/Sun and `after`
+    // starts shift onto the next working day.
+    text: "gantt\n  title Sprint\n  dateFormat YYYY-MM-DD\n  excludes weekends\n  section Work\n    Build :b, 2024-01-04, 5d\n    Test :t, after b, 3d\n",
+  },
+  {
     name: "dot",
     text: 'digraph { rankdir=LR\n  a [shape=box]\n  a -> b -> c\n  b [label="middle"]\n}\n',
   },

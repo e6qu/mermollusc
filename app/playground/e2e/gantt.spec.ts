@@ -26,6 +26,23 @@ test("renders a Gantt chart (sections, dates, after-chains) from the textarea", 
   expect(errors).toEqual([]);
 });
 
+test("renders a Gantt chart with `excludes weekends` (working-day bars)", async ({ page }) => {
+  const errors = watchPipelineErrors(page);
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  await setSource(
+    page,
+    "gantt\n  title Sprint\n  dateFormat YYYY-MM-DD\n  excludes weekends\n  section Work\n    Build :b, 2024-01-04, 5d\n    Test :t, after b, 3d\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^gantt diagram:.*Build.*Test/);
+  await expect(page.locator("#kind")).toHaveText("gantt");
+  expect(errors).toEqual([]);
+});
+
 test("the Gantt example loads and parses", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));

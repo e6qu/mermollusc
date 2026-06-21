@@ -18,10 +18,18 @@ const task = (over: Partial<GanttTask> & Pick<GanttTask, "id" | "start" | "durat
   ...over,
 });
 
-const ast = (tasks: readonly GanttTask[]): GanttAst => ({
+const ast = (
+  tasks: readonly GanttTask[],
+  excludes: Pick<GanttAst, "excludesWeekends" | "excludeDates"> = {
+    excludesWeekends: false,
+    excludeDates: [],
+  },
+): GanttAst => ({
   kind: "gantt",
   title: null,
   dateFormat: "YYYY-MM-DD",
+  excludesWeekends: excludes.excludesWeekends,
+  excludeDates: excludes.excludeDates,
   tasks,
 });
 
@@ -88,6 +96,58 @@ describe("layoutGantt", () => {
   it("fails loudly on an `after` reference to an unknown task", () => {
     const r = layoutGantt(
       ast([task({ id: tid("a"), start: aft(tid("ghost")), durationDays: 1 })]),
+      heuristicMeasure,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("with `excludes weekends`, a bar stretches across the skipped weekend days", () => {
+    // 2024-01-04 is a Thursday; 5 working days spill across Sat+Sun into the next week.
+    const tasks = [
+      task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-04" }, durationDays: 5 }),
+    ];
+    const plain = layoutGantt(ast(tasks), heuristicMeasure);
+    const excl = layoutGantt(
+      ast(tasks, { excludesWeekends: true, excludeDates: [] }),
+      heuristicMeasure,
+    );
+    if (!plain.ok) throw new Error(plain.error.message);
+    if (!excl.ok) throw new Error(excl.error.message);
+    // 5 calendar days normally; 7 with the weekend skipped → 2 extra days * 16 px.
+    const dw = (excl.value.nodes[0]?.bounds.size.width ?? 0) - (plain.value.nodes[0]?.bounds.size.width ?? 0);
+    expect(dw).toBe(2 * 16);
+  });
+
+  it("with `excludes weekends`, a start landing on a weekend shifts to the next working day", () => {
+    const tasks = [
+      task({ id: tid("a"), label: "A", start: { kind: "date", date: "2024-01-01" }, durationDays: 1 }), // Mon, anchors minDay
+      task({ id: tid("b"), label: "B", start: { kind: "date", date: "2024-01-06" }, durationDays: 1 }), // Sat → shifts to Mon 01-08
+    ];
+    const r = layoutGantt(ast(tasks, { excludesWeekends: true, excludeDates: [] }), heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    // minDay is Mon 01-01; B shifts from Sat (day+5) to Mon (day+7) → 7 * 16 px past A's start.
+    const ax = r.value.nodes[0]?.bounds.origin.x ?? 0;
+    expect((r.value.nodes[1]?.bounds.origin.x ?? 0) - ax).toBe(7 * 16);
+  });
+
+  it("treats an `excludes <date>` holiday as a non-working day", () => {
+    // 2024-01-01 is a Monday; 2024-01-02 (Tuesday) is a declared holiday.
+    const tasks = [
+      task({ id: tid("a"), label: "T", start: { kind: "date", date: "2024-01-01" }, durationDays: 3 }),
+    ];
+    const r = layoutGantt(
+      ast(tasks, { excludesWeekends: false, excludeDates: ["2024-01-02"] }),
+      heuristicMeasure,
+    );
+    if (!r.ok) throw new Error(r.error.message);
+    // Mon worked, Tue skipped, Wed+Thu worked → 3 working days span 4 calendar days.
+    expect(r.value.nodes[0]?.bounds.size.width ?? 0).toBe(4 * 16);
+  });
+
+  it("fails loudly on an unparseable excluded date", () => {
+    const tasks = [task({ id: tid("a"), start: { kind: "date", date: "2024-01-01" }, durationDays: 1 })];
+    const r = layoutGantt(
+      ast(tasks, { excludesWeekends: false, excludeDates: ["01/02/2024"] }),
       heuristicMeasure,
     );
     expect(r.ok).toBe(false);

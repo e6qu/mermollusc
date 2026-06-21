@@ -6,9 +6,12 @@
   and a **weekly date axis + section gutter** (via the `Scene.decorations` primitive). Subset
   follow-ups (optional polish): section *background bands* (needs a light-fill draw command), inline
   task relabel (capture the gantt source map in the app), structural task delete (a task-line patcher),
-  `excludes`/weekend handling, `tickInterval`.
+  `tickInterval`, section *background bands* (needs a light-fill draw command), and a visual cue for
+  excluded days (greyed columns — also wants a fill primitive).
   Done: **milestones** (a `0d` task → diamond marker); **multiple `after` refs** (`after a b c` → the
-  task starts at the latest predecessor's end; `GanttStart.after` carries a `OneOrMore<GanttTaskId>`).
+  task starts at the latest predecessor's end; `GanttStart.after` carries a `OneOrMore<GanttTaskId>`);
+  **`excludes weekends`/`excludes <date>`** (non-working days: durations skip them, bars stretch across
+  them, and a start landing on one shifts to the next working day; `GanttAst.excludesWeekends`/`excludeDates`).
 - `ParseError.positions` now carries `{ offset, length }` per error (lexer + recognition); could add
   a coarse expected-token hint for recognition errors to make messages friendlier.
 - Grow the subset: quoted labels, more link styles. *(stadium `([…])` + circle `((…))` shapes and

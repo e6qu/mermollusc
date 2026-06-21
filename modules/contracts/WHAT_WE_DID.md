@@ -97,3 +97,6 @@
 - `GanttStart`'s `after` variant now carries `refs: OneOrMore<GanttTaskId>` (was a single `ref`) — a
   task can wait on several predecessors (`after a b c`), starting at the latest one's end. Non-empty by
   type, so an `after` with no id is a parse error, never an empty list in the AST.
+- `GanttAst` gained `excludesWeekends: boolean` + `excludeDates: readonly string[]` (raw holiday dates,
+  resolved by the layout). Models Mermaid's `excludes weekends`/`excludes <date>` non-working days — both
+  required/explicit (false / empty when absent), not optional flags.
