@@ -62,6 +62,10 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
     text: 'pie\n  title Pets\n  "Dogs" : 75\n  "Cats" : 25\n',
   },
   {
+    name: "gantt",
+    text: "gantt\n  title Plan\n  dateFormat YYYY-MM-DD\n  section Work\n    Research :a, 2024-01-01, 5d\n    Build :b, after a, 1w\n",
+  },
+  {
     name: "dot",
     text: 'digraph { rankdir=LR\n  a [shape=box]\n  a -> b -> c\n  b [label="middle"]\n}\n',
   },

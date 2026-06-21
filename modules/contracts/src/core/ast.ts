@@ -497,4 +497,5 @@ export type DiagramAst =
   | GitGraphAst
   | TimelineAst
   | MindmapAst
-  | PieAst;
+  | PieAst
+  | GanttAst;

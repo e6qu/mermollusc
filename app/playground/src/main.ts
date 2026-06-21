@@ -1398,6 +1398,10 @@ const EXAMPLES = new Map<string, string>([
     'pie showData\n  title Favourite pets\n  "Dogs" : 386\n  "Cats" : 247\n  "Rabbits" : 89\n  "Birds" : 52\n',
   ],
   [
+    "gantt",
+    "gantt\n  title Project Plan\n  dateFormat YYYY-MM-DD\n  section Planning\n    Research :done, res, 2024-01-01, 5d\n    Design :active, des, after res, 1w\n  section Build\n    Implement :impl, after des, 2w\n    Test :test, after impl, 5d\n",
+  ],
+  [
     "dot",
     'digraph G {\n  rankdir=LR\n  start [shape=box]\n  start -> parse\n  subgraph cluster_core {\n    label="core"\n    parse -> layout -> render\n  }\n  layout -> parse [label="relax"]\n  render [shape=diamond]\n}\n',
   ],
@@ -1555,6 +1559,9 @@ const renderFromText = async (text: string): Promise<void> => {
       break;
     case "pie":
       // pie has no editable source map (no node/edge text spans to patch).
+      break;
+    case "gantt":
+      // gantt renders + drags, but its task text isn't inline-editable yet (no source map captured).
       break;
     default:
       assertNever(diagram);
@@ -2310,6 +2317,9 @@ const appendEdge = (
         brand<string, "NodeId">(second),
         "arrow",
       );
+    // gantt has no drawn-edge concept (`after` is positional), so Connect is a no-op.
+    case "gantt":
+      return text;
     default:
       return assertNever(kind);
   }
@@ -2343,6 +2353,9 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "mindmap":
     case "pie":
       return deleteNode(text, brand<string, "NodeId">(id));
+    // gantt task-delete via the canvas isn't supported yet (it would need a task-line patcher); no-op.
+    case "gantt":
+      return text;
     default:
       return assertNever(kind);
   }
@@ -2384,6 +2397,9 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
     case "mindmap":
     case "pie":
       return deleteEdge(text, brand<string, "NodeId">(from), brand<string, "NodeId">(to));
+    // gantt has no drawn edges to remove.
+    case "gantt":
+      return text;
     default:
       return assertNever(kind);
   }

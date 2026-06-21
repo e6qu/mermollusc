@@ -5,6 +5,7 @@ import { parseC4 } from "./c4-parse.js";
 import { parseClass } from "./class-parse.js";
 import { parseCloud } from "./cloud-parse.js";
 import { parseEr } from "./er-parse.js";
+import { parseGantt } from "./gantt-parse.js";
 import { parseGitGraph } from "./git-parse.js";
 import { parseDot } from "./dot-parse.js";
 import { parseMindmap } from "./mindmap-parse.js";
@@ -37,6 +38,7 @@ export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   if (header.startsWith("timeline")) return parseTimeline(text);
   if (header.startsWith("mindmap")) return parseMindmap(text);
   if (header.startsWith("pie")) return parsePie(text);
+  if (header.startsWith("gantt")) return parseGantt(text);
   // Graphviz DOT. `digraph`/`strict` are DOT-only; bare `graph` also starts a Mermaid flowchart
   // (`graph TD`), so only treat `graph` as DOT when its header line carries the opening brace — a
   // Mermaid `graph TD` never does (its `{` only appears later, in a decision-node label).

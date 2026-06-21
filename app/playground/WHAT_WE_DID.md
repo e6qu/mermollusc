@@ -511,6 +511,14 @@
   display list). It pins the O(n) behaviour: the runs finish in tens of ms today, so an accidental
   O(n²) (or a crash) would blow vitest's timeout / fail the counts. (The earlier audit confirmed the
   pure layouts and `toDisplayList` are linear; this keeps them that way.)
+- New family (Gantt) — **activation**. Added `GanttAst` to the `DiagramAst` union and wired the family
+  end-to-end: `parseDiagram` routes `gantt`, `layoutDiagram` dispatches to `layoutGantt`, and the app's
+  exhaustive family switches got `gantt` arms (Connect/Delete are no-ops — gantt is render+drag for now,
+  no edge concept or task-line patcher yet; the render path captures no source map, like pie). Added a
+  Gantt example to the menu, a pipeline golden, and +2 e2e (render with `after`-chains; example loads).
+  The type-hardening exhaustiveness made this a self-checklist — it wouldn't compile until every
+  dispatch site handled `gantt`. Renders as task bars on a day axis; screenshot-verified the `after`
+  staircase. (Renderer needed no change — bars are plain rect+label nodes.)
 - Perf: cut redundant per-frame work in `paintScene` during interactions. (1) The minimap cache is a
   *second* full render of the scene; rebuilding it every drag/resize/marquee/connect frame doubled the
   per-frame cost — now it's skipped while interacting and refreshed on release (the minimap goes briefly
