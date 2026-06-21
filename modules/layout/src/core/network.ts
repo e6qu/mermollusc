@@ -43,6 +43,7 @@ export const layoutNetwork = (
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     };
   });
 

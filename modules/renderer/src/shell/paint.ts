@@ -1,4 +1,5 @@
 import { assertNever } from "@m/std";
+import type { NodeAccent } from "@m/contracts";
 import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
@@ -45,6 +46,33 @@ export interface Theme {
   // When true, shapes are drawn with wobbly, double-stroked "hand-drawn" outlines (no fill).
   readonly sketch: boolean;
 }
+
+// Background relative luminance < 0.4 → a dark theme, so accents use deeper fills that read on it.
+const isDarkTheme = (theme: Theme): boolean => {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(theme.background);
+  if (m === null) return false;
+  const c = (i: number): number => Number.parseInt(m[i] ?? "0", 16) / 255;
+  return 0.299 * c(1) + 0.587 * c(2) + 0.114 * c(3) < 0.4;
+};
+
+// A node's semantic fill accent → a concrete colour (theme-aware). `none` is the ordinary node fill;
+// the rest tint a Gantt bar by status (done muted, active highlighted, crit flagged). Exhaustive, so a
+// new accent must be handled here.
+export const accentFill = (accent: NodeAccent, theme: Theme): string => {
+  const dark = isDarkTheme(theme);
+  switch (accent) {
+    case "none":
+      return theme.nodeFill;
+    case "muted":
+      return dark ? "#475569" : "#e2e8f0";
+    case "active":
+      return dark ? "#1d4ed8" : "#bfdbfe";
+    case "danger":
+      return dark ? "#b91c1c" : "#fecaca";
+    default:
+      return assertNever(accent);
+  }
+};
 
 export const defaultTheme: Theme = {
   background: "#ffffff",
@@ -177,7 +205,7 @@ export const paint = (
           sketchRect(ctx, cmd.x, cmd.y, cmd.width, cmd.height, seedOf(cmd.x, cmd.y, cmd.width));
           break;
         }
-        ctx.fillStyle = theme.nodeFill;
+        ctx.fillStyle = accentFill(cmd.accent, theme);
         ctx.beginPath();
         ctx.roundRect(cmd.x, cmd.y, cmd.width, cmd.height, cmd.radius);
         ctx.fill();

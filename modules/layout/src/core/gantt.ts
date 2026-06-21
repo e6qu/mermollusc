@@ -1,7 +1,16 @@
 import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId } from "@m/contracts";
-import type { GanttAst, Scene, SceneNode } from "@m/contracts";
+import type { GanttAst, GanttStatus, NodeAccent, Scene, SceneNode } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+
+// A task's status maps to a fill accent the renderer colours: done is muted, active highlighted, crit
+// flagged; a normal task takes the ordinary fill (`none`).
+const STATUS_ACCENT: Record<GanttStatus, NodeAccent> = {
+  normal: "none",
+  done: "muted",
+  active: "active",
+  crit: "danger",
+};
 
 const DAY_WIDTH = 16; // px per day on the time axis
 const ROW_HEIGHT = 30;
@@ -26,6 +35,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   const placed: Array<{
     readonly id: string;
     readonly label: string;
+    readonly accent: NodeAccent;
     readonly startDay: number;
     readonly endDay: number;
   }> = [];
@@ -53,7 +63,13 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     }
     const endDay = startDay + task.durationDays;
     ends.set(task.id, endDay);
-    placed.push({ id: task.id, label: task.label, startDay, endDay });
+    placed.push({
+      id: task.id,
+      label: task.label,
+      accent: STATUS_ACCENT[task.status],
+      startDay,
+      endDay,
+    });
   }
 
   if (placed.length === 0)
@@ -73,6 +89,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: p.accent,
     };
   });
 

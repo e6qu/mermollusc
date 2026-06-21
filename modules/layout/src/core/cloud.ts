@@ -127,6 +127,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     });
   }
 

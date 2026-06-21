@@ -139,6 +139,7 @@ export const layoutMindmap = (
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     });
   }
 

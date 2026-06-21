@@ -114,3 +114,8 @@
 - `SceneEdge.waypoints` is now `TwoOrMore<Point>`: `toDisplayList` dropped its `if (pts.length < 2)
   continue` (a silent skip — an edge that didn't draw) and the now-redundant first/second undefined
   guards, since `waypoints[0]`/`[1]` are total.
+- Node fill accents: the `box` draw command carries a node's `accent`, and a new `accentFill(accent,
+  theme)` maps it to a theme-aware colour (luminance-picked light/dark palette, like `wedgeColor`),
+  exhaustive with `assertNever`. `none` is the ordinary fill; `muted`/`active`/`danger` tint a Gantt
+  bar by status in both the canvas painter and the SVG backend. +accentFill test (all accents, both
+  themes, distinctness).

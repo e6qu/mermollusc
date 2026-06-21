@@ -1,6 +1,14 @@
 import { coordinate, length, point } from "@m/std";
 import type { Coordinate, Length, Point } from "@m/std";
-import type { EdgeEnd, IconRef, NodeShape, Scene, SceneNode, SceneWedge } from "@m/contracts";
+import type {
+  EdgeEnd,
+  IconRef,
+  NodeAccent,
+  NodeShape,
+  Scene,
+  SceneNode,
+  SceneWedge,
+} from "@m/contracts";
 
 const ICON_SIZE = 20;
 
@@ -35,6 +43,8 @@ export type DrawCmd =
       readonly width: Length;
       readonly height: Length;
       readonly radius: Length;
+      // Semantic fill accent (a node's `accent`); `none` draws the ordinary node fill.
+      readonly accent: NodeAccent;
     }
   | {
       readonly kind: "diamond";
@@ -263,6 +273,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         width: size.width,
         height: size.height,
         radius: length(4),
+        accent: "none",
       },
       {
         kind: "label",
@@ -281,6 +292,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     width: size.width,
     height: size.height,
     radius: length(cornerRadius(node.shape, size.width, size.height)),
+    accent: node.accent,
   } satisfies DrawCmd;
   if (node.rows !== null) {
     // A compartment box (ER entity / UML class): an optional `«stereotype»` subtitle, the title, a
