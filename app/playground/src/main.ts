@@ -152,6 +152,8 @@ const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
 const statusEl = document.querySelector<HTMLElement>("#status");
 const stageWrap = document.querySelector<HTMLElement>("#stage-wrap");
+const diagramNav = document.querySelector<HTMLUListElement>("#diagram-nav");
+const diagramLive = document.querySelector<HTMLElement>("#diagram-live");
 const inlineEl = document.querySelector<HTMLInputElement>("#inline-edit");
 const iconsToggle = document.querySelector<HTMLButtonElement>("#icons-toggle");
 const iconsClose = document.querySelector<HTMLButtonElement>("#icons-close");
@@ -203,6 +205,8 @@ if (
   kindEl === null ||
   statusEl === null ||
   stageWrap === null ||
+  diagramNav === null ||
+  diagramLive === null ||
   inlineEl === null ||
   iconsToggle === null ||
   iconsClose === null ||
@@ -1259,19 +1263,24 @@ window.addEventListener("resize", drawMinimap);
 
 // Click or drag in the minimap to centre the stage viewport on that point. Maps minimap px →
 // logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
-let minimapDragging = false;
-const minimapNavigate = (ev: PointerEvent): void => {
-  if (lastRender === null || minimap.hidden) return;
-  const rect = minimap.getBoundingClientRect();
-  const miniScale = rect.width / lastRender.logicalWidth;
-  const logicalX = (ev.clientX - rect.left) / miniScale;
-  const logicalY = (ev.clientY - rect.top) / miniScale;
+// Centre the stage viewport on a point given in the diagram's logical px (the sheet coordinate space,
+// origin at the sheet's top-left including the margin). Shared by minimap navigation and the keyboard
+// node navigator.
+const scrollToLogical = (logicalX: number, logicalY: number): void => {
   const canvasRect = canvas.getBoundingClientRect();
   const wrapRect = stageWrap.getBoundingClientRect();
   const canvasContentLeft = stageWrap.scrollLeft + (canvasRect.left - wrapRect.left);
   const canvasContentTop = stageWrap.scrollTop + (canvasRect.top - wrapRect.top);
   stageWrap.scrollLeft = canvasContentLeft + logicalX * viewScale - stageWrap.clientWidth / 2;
   stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
+};
+
+let minimapDragging = false;
+const minimapNavigate = (ev: PointerEvent): void => {
+  if (lastRender === null || minimap.hidden) return;
+  const rect = minimap.getBoundingClientRect();
+  const miniScale = rect.width / lastRender.logicalWidth;
+  scrollToLogical((ev.clientX - rect.left) / miniScale, (ev.clientY - rect.top) / miniScale);
 };
 minimap.addEventListener("pointerdown", (ev) => {
   minimapDragging = true;
@@ -1284,6 +1293,86 @@ minimap.addEventListener("pointermove", (ev) => {
 minimap.addEventListener("pointerup", (ev) => {
   minimapDragging = false;
   minimap.releasePointerCapture(ev.pointerId);
+});
+
+// ---- Keyboard node navigator ----
+// A focusable listbox (sr-only, in index.html) mirrors the scene's nodes so the diagram is operable
+// without a mouse. Arrow keys move the active option, which drives the canvas selection (so the node
+// highlights and Delete operates on it) and centres it in view; a live region announces it.
+const announce = (message: string): void => {
+  diagramLive.textContent = message;
+};
+
+const centerOnNode = (id: SceneNodeId): void => {
+  if (lastRender === null) return;
+  const node = lastRender.scene.nodes.find((n) => n.id === id);
+  if (node === undefined) return;
+  const cx = node.bounds.origin.x + node.bounds.size.width / 2;
+  const cy = node.bounds.origin.y + node.bounds.size.height / 2;
+  scrollToLogical(
+    MARGIN - lastRender.scene.extent.origin.x + cx,
+    MARGIN - lastRender.scene.extent.origin.y + cy,
+  );
+};
+
+// The id of the node the listbox's active option points at (its `aria-activedescendant`), or null when
+// nothing is active yet. Distinct from the canvas selection, which it sets.
+let navActiveId: SceneNodeId | null = null;
+
+const rebuildNav = (): void => {
+  diagramNav.replaceChildren();
+  diagramNav.removeAttribute("aria-activedescendant");
+  navActiveId = null;
+  if (scene === null) return;
+  scene.nodes.forEach((node, i) => {
+    const option = document.createElement("li");
+    option.id = `diagram-node-${i}`;
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", "false");
+    option.textContent = node.label.length > 0 ? node.label : `node ${i + 1}`;
+    diagramNav.appendChild(option);
+  });
+};
+
+const setNavActive = (index: number): void => {
+  if (scene === null || scene.nodes.length === 0) return;
+  const clamped = Math.max(0, Math.min(index, scene.nodes.length - 1));
+  const node = scene.nodes[clamped];
+  const option = diagramNav.children[clamped];
+  if (node === undefined || option === undefined) return;
+  for (const child of Array.from(diagramNav.children)) child.setAttribute("aria-selected", "false");
+  option.setAttribute("aria-selected", "true");
+  diagramNav.setAttribute("aria-activedescendant", option.id);
+  navActiveId = node.id;
+  // Drive the canvas selection so the node highlights and the existing Delete handler can remove it.
+  selection = { nodes: new Set([node.id]), edges: new Set() };
+  selectionOrder = [node.id];
+  paintScene();
+  centerOnNode(node.id);
+  announce(
+    `${node.label.length > 0 ? node.label : `node ${clamped + 1}`}, ${clamped + 1} of ${scene.nodes.length}`,
+  );
+};
+
+diagramNav.addEventListener("focus", () => {
+  if (navActiveId === null) setNavActive(0);
+});
+diagramNav.addEventListener("keydown", (ev) => {
+  if (scene === null || scene.nodes.length === 0) return;
+  const current = navActiveId === null ? -1 : scene.nodes.findIndex((n) => n.id === navActiveId);
+  if (ev.key === "ArrowDown" || ev.key === "ArrowRight") {
+    ev.preventDefault();
+    setNavActive(current + 1);
+  } else if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") {
+    ev.preventDefault();
+    setNavActive(current <= 0 ? 0 : current - 1);
+  } else if (ev.key === "Home") {
+    ev.preventDefault();
+    setNavActive(0);
+  } else if (ev.key === "End") {
+    ev.preventDefault();
+    setNavActive(scene.nodes.length - 1);
+  }
 });
 
 // Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
@@ -1460,6 +1549,8 @@ const renderFromText = async (text: string): Promise<void> => {
   );
   ast = diagram;
   scene = laid.value;
+  // Rebuild the keyboard node navigator to mirror the new scene (resets the active node).
+  rebuildNav();
   // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
   // resurrect onto reused ids later. (Overrides are cleared on edit; groups otherwise persist.)
   if (doc.pruneGroupsTo(new Set(laid.value.nodes.map((n) => n.id)))) {

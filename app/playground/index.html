@@ -257,6 +257,19 @@
       .arrange-menu[hidden] { display: none; }
       .arrange-menu button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 
+      /* Visually hidden but exposed to assistive tech + focusable (the keyboard node navigator). */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
       /* ---- stage: drafting table with the diagram as a sheet ---- */
       /* The column holds the scrolling stage plus a corner-pinned minimap overlay (which must sit
          outside the scroll container so it stays put while the sheet scrolls). */
@@ -595,6 +608,17 @@
               <canvas id="stage" width="400" height="300" role="img" aria-label="Diagram"></canvas>
             </div>
           </div>
+          <!-- Keyboard node navigator: a focusable listbox mirroring the scene's nodes (rebuilt each
+               render) so the diagram is operable without a mouse. Arrow keys move the active node;
+               it drives the canvas selection (highlight + Delete). The live region announces it. -->
+          <ul
+            id="diagram-nav"
+            class="sr-only"
+            role="listbox"
+            aria-label="Diagram nodes — use arrow keys to navigate"
+            tabindex="0"
+          ></ul>
+          <div id="diagram-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
           <canvas
             id="minimap"
             class="minimap"
