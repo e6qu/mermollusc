@@ -150,6 +150,7 @@ export const layoutTimeline = (
     nodes,
     edges,
     wedges: [],
+    decorations: [],
     extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
   });
 };

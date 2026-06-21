@@ -119,3 +119,6 @@
   exhaustive with `assertNever`. `none` is the ordinary fill; `muted`/`active`/`danger` tint a Gantt
   bar by status in both the canvas painter and the SVG backend. +accentFill test (all accents, both
   themes, distinctness).
+- `Scene.decorations`: `toDisplayList` maps each `Decoration` to an existing draw command (a `rule` → a
+  markerless dashed polyline, a `caption` → a plateless label), prepended so the chrome draws behind
+  the nodes/edges. No new `DrawCmd` kinds — `decorationCmd` is exhaustive-by-return. +decoration test.

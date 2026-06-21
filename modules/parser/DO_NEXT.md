@@ -2,10 +2,11 @@
 
 - **Gantt family arc** — **done & activated** (parser #104, layout #105, activation: union +
   `parseDiagram` + `layoutDiagram` + app switches + example + golden + e2e). It renders as task bars on
-  a day axis with `after`-chains, **status-coloured bars** (done/active/crit via the node `accent`).
-  Subset follow-ups (optional polish): a day-axis/section-band draw, inline task relabel (capture the
-  gantt source map in the app), structural task delete (a task-line patcher), `milestone` tasks
-  (0-duration), multiple `after` refs, `excludes`/`tickInterval`.
+  a day axis with `after`-chains, **status-coloured bars** (done/active/crit via the node `accent`),
+  and a **weekly date axis + section gutter** (via the `Scene.decorations` primitive). Subset
+  follow-ups (optional polish): section *background bands* (needs a light-fill draw command), inline
+  task relabel (capture the gantt source map in the app), structural task delete (a task-line patcher),
+  `milestone` tasks (0-duration), multiple `after` refs, `excludes`/`tickInterval`.
 - `ParseError.positions` now carries `{ offset, length }` per error (lexer + recognition); could add
   a coarse expected-token hint for recognition errors to make messages friendlier.
 - Grow the subset: quoted labels, more link styles. *(stadium `([…])` + circle `((…))` shapes and

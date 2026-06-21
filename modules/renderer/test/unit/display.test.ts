@@ -27,7 +27,7 @@ const scene: Scene = {
     },
   ],
   wedges: [],
-  extent: rect(0, 0, 60, 120),
+  decorations: [], extent: rect(0, 0, 60, 120),
 };
 
 describe("toDisplayList", () => {
@@ -82,7 +82,7 @@ describe("toDisplayList", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 80, 48),
+      decorations: [], extent: rect(0, 0, 80, 48),
     };
     const out = toDisplayList(withIcon);
     const icons = out.filter((c) => c.kind === "icon");
@@ -106,7 +106,7 @@ describe("toDisplayList", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 120, 70),
+      decorations: [], extent: rect(0, 0, 120, 70),
     };
     const out = toDisplayList(er);
     const labels = out.filter((c) => c.kind === "label");
@@ -142,7 +142,7 @@ describe("toDisplayList", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 120, 86),
+      decorations: [], extent: rect(0, 0, 120, 86),
     };
     const out = toDisplayList(cls);
     const labels = out.filter((c) => c.kind === "label");
@@ -189,7 +189,7 @@ describe("toDisplayList", () => {
           },
         ],
         wedges: [],
-        extent: rect(0, 0, 40, 120),
+        decorations: [], extent: rect(0, 0, 40, 120),
       };
       const poly = toDisplayList(s).find((c) => c.kind === "polyline");
       return poly?.kind === "polyline" ? poly.toMarker : null;
@@ -228,7 +228,7 @@ describe("toDisplayList", () => {
           },
         ],
         wedges: [],
-        extent: rect(0, 0, 40, 120),
+        decorations: [], extent: rect(0, 0, 40, 120),
       };
       const poly = toDisplayList(s).find((c) => c.kind === "polyline");
       return poly?.kind === "polyline" ? poly.fromMarker : null;
@@ -263,7 +263,7 @@ describe("toDisplayList", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 40, 40),
+      decorations: [], extent: rect(0, 0, 40, 40),
     };
     const poly = toDisplayList(s).find((c) => c.kind === "polyline");
     const tri = poly?.kind === "polyline" ? (poly.toMarker.polygons[0]?.points ?? null) : null;
@@ -309,7 +309,7 @@ describe("toDisplayList", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 80),
+      decorations: [], extent: rect(0, 0, 120, 80),
     };
     const cmds = toDisplayList(s);
     const poly = cmds.find((c) => c.kind === "polyline");
@@ -334,7 +334,7 @@ describe("toDisplayList", () => {
           colorIndex: 0,
         },
       ],
-      extent: rect(0, 0, 200, 200),
+      decorations: [], extent: rect(0, 0, 200, 200),
     };
     const cmds = toDisplayList(s);
     const wedge = cmds.find((c) => c.kind === "wedge");
@@ -361,7 +361,7 @@ describe("toDisplayList", () => {
           colorIndex: 2,
         },
       ],
-      extent: rect(0, 0, 200, 200),
+      decorations: [], extent: rect(0, 0, 200, 200),
     };
     const label = toDisplayList(s).find((c) => c.kind === "label");
     if (label?.kind !== "label") throw new Error("no label");
@@ -390,7 +390,7 @@ describe("toDisplayList", () => {
         ],
         edges: [],
         wedges: [],
-        extent: rect(0, 0, 80, 40),
+        decorations: [], extent: rect(0, 0, 80, 40),
       };
       const box = toDisplayList(s).find((c) => c.kind === "box");
       return box?.kind === "box" ? box.radius : Number.NaN;
@@ -400,6 +400,45 @@ describe("toDisplayList", () => {
     expect(radiusOf("stadium")).toBe(20); // height / 2
     expect(radiusOf("circle")).toBe(20); // min(w, h) / 2
     expect(radiusOf("container")).toBe(4);
+  });
+});
+
+describe("decorations", () => {
+  it("renders a `rule` as a dashed markerless polyline and a `caption` as a plain label, behind content", () => {
+    const s: Scene = {
+      nodes: [
+        {
+          id: snid("A"),
+          bounds: rect(40, 40, 60, 22),
+          label: "A",
+          shape: "rect",
+          parent: null,
+          icon: null,
+          rows: null,
+          rowDivider: null,
+          subtitle: null,
+          accent: "none",
+        },
+      ],
+      edges: [],
+      wedges: [],
+      decorations: [
+        { kind: "rule", from: point(20, 0), to: point(20, 80) },
+        { kind: "caption", at: point(8, 10), text: "2024-01-01", align: "left" },
+      ],
+      extent: rect(0, 0, 120, 80),
+    };
+    const cmds = toDisplayList(s);
+    // the rule is a dashed polyline with no end markers; the caption a plateless label
+    const rule = cmds.find((c) => c.kind === "polyline");
+    expect(rule?.kind === "polyline" ? rule.dashed : false).toBe(true);
+    expect(rule?.kind === "polyline" ? rule.toMarker.lines : null).toEqual([]);
+    const caption = cmds.find((c) => c.kind === "label" && c.text === "2024-01-01");
+    expect(caption?.kind === "label" ? caption.plate : true).toBe(false);
+    // decorations draw first (behind the node box)
+    expect(cmds.findIndex((c) => c.kind === "polyline")).toBeLessThan(
+      cmds.findIndex((c) => c.kind === "box"),
+    );
   });
 });
 

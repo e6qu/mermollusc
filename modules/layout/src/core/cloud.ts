@@ -162,5 +162,5 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return ok({ nodes, edges, wedges: [], extent: rect(0, 0, width, height) });
+  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
 };

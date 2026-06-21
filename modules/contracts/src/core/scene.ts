@@ -90,10 +90,25 @@ export interface SceneWedge {
   readonly colorIndex: number;
 }
 
+// Diagram "chrome" drawn behind the nodes/edges: a guide line (`rule`) or a standalone caption — a
+// Gantt's day-axis gridlines + date/section labels today. A first-class, explicit list (empty for most
+// families, like `wedges`), so a family that needs axis decoration doesn't smuggle it through fake
+// nodes/edges.
+export type Decoration =
+  | { readonly kind: "rule"; readonly from: Point; readonly to: Point }
+  | {
+      readonly kind: "caption";
+      readonly at: Point;
+      readonly text: string;
+      readonly align: "left" | "center";
+    };
+
 export interface Scene {
   readonly nodes: readonly SceneNode[];
   readonly edges: readonly SceneEdge[];
   // Filled sectors for radial diagrams (pie charts); empty for every node/edge family.
   readonly wedges: readonly SceneWedge[];
+  // Axis lines + standalone captions drawn behind the content; empty for most families.
+  readonly decorations: readonly Decoration[];
   readonly extent: Rect;
 }

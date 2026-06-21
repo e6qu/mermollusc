@@ -29,7 +29,7 @@ const scene: Scene = {
     },
   ],
   wedges: [],
-  extent: rect(0, 0, 60, 120),
+  decorations: [], extent: rect(0, 0, 60, 120),
 };
 
 describe("toSvg", () => {
@@ -97,7 +97,7 @@ describe("toSvg", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 140),
+      decorations: [], extent: rect(0, 0, 120, 140),
     };
     const out = toSvg(toDisplayList(er), { width: 120, height: 140, origin: { x: 0, y: 0 },
  margin: 0, theme: defaultTheme, icons: new Map() });
@@ -150,7 +150,7 @@ describe("toSvg", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 150),
+      decorations: [], extent: rect(0, 0, 120, 150),
     };
     const out = toSvg(toDisplayList(cls), {
       width: 120,
@@ -176,7 +176,7 @@ describe("toSvg", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 90, 56),
+      decorations: [], extent: rect(0, 0, 90, 56),
     };
     const out = toSvg(toDisplayList(ml), { width: 90, height: 56, origin: { x: 0, y: 0 },
  margin: 0, theme: defaultTheme, icons: new Map() });
@@ -202,7 +202,7 @@ describe("toSvg", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 60, 40),
+      decorations: [], extent: rect(0, 0, 60, 40),
     };
     const withIcon = toSvg(toDisplayList(iconScene), {
       width: 108,
@@ -232,7 +232,7 @@ describe("toSvg", () => {
           colorIndex: 0,
         },
       ],
-      extent: rect(0, 0, 200, 200),
+      decorations: [], extent: rect(0, 0, 200, 200),
     };
     const svg = toSvg(toDisplayList(pieScene), {
       width: 248,
@@ -266,7 +266,7 @@ describe("toSvg", () => {
         },
       ],
       wedges: [],
-      extent: rect(0, 0, 120, 80),
+      decorations: [], extent: rect(0, 0, 120, 80),
     };
     const out = toSvg(toDisplayList(curvedScene), {
       width: 120,
@@ -297,7 +297,7 @@ describe("toSvg", () => {
       ],
       edges: [],
       wedges: [],
-      extent: rect(0, 0, 60, 40),
+      decorations: [], extent: rect(0, 0, 60, 40),
     };
     const out = toSvg(toDisplayList(missing), {
       width: 60,
@@ -333,7 +333,7 @@ describe("toSvg", () => {
           colorIndex: 0,
         },
       ],
-      extent: rect(0, 0, 200, 60),
+      decorations: [], extent: rect(0, 0, 200, 60),
     };
     const svg = toSvg(toDisplayList(swatchScene), {
       width: 248,

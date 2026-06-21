@@ -27,7 +27,7 @@ const scene: Scene = {
     },
   ],
   wedges: [],
-  extent: rect(0, 0, 60, 140),
+  decorations: [], extent: rect(0, 0, 60, 140),
 };
 
 describe("hitTest", () => {

@@ -107,5 +107,5 @@ export const layoutSequence = (
     });
   }
 
-  return ok({ nodes, edges, wedges: [], extent: rect(0, 0, width, bottomY) });
+  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, bottomY) });
 };
