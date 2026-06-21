@@ -526,3 +526,7 @@
   actually change, instead of being reallocated (which clears the canvas) every frame regardless. The
   release of drag/resize now always repaints so the deferred minimap refreshes. (Profiled the drag
   frame and targeted the redundant *static* work rather than rewriting the main draw path.)
+- Gantt inline relabel: capture the `GanttSource` map (a `parseGanttWithSource` pass alongside the
+  render, like the other families) into `ganttSource`, and add a relabel branch — double-clicking a task
+  bar / milestone opens the inline editor on its label span and patches the source. Brings Gantt to
+  relabel parity with the other families (its structural edits were no-ops). +1 e2e (gantt-edit).
