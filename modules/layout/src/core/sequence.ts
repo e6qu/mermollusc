@@ -58,6 +58,7 @@ export const layoutSequence = (
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     });
     edges.push({
       id: sceneEdgeId(`lifeline:${actor.id}`),

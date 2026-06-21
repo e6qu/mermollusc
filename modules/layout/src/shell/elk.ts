@@ -355,6 +355,7 @@ const layoutCompartments = async (
         rows: b.rows.length > 0 ? b.rows : null,
         rowDivider: b.rowDivider,
         subtitle: b.subtitle,
+        accent: "none",
       });
     }
     const centerById = new Map<string, Point>(

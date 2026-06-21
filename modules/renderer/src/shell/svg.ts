@@ -1,6 +1,6 @@
 import { bezierControls, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
-import { defaultTheme, type Theme } from "./paint.js";
+import { accentFill, defaultTheme, type Theme } from "./paint.js";
 
 // A vector SVG backend that consumes the same `DrawCmd[]` display list as the canvas painter, so an
 // export stays in sync with what's on screen. It renders the *crisp* shapes (no sketch jitter — the
@@ -60,7 +60,7 @@ const labelLineHeight = (font: string): number => {
 const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>): string => {
   switch (cmd.kind) {
     case "box":
-      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${theme.nodeFill}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
+      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${accentFill(cmd.accent, theme)}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
     case "diamond": {
       const hw = cmd.width / 2;
       const hh = cmd.height / 2;

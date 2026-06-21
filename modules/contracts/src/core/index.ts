@@ -95,6 +95,7 @@ export type {
   SceneNodeId,
   SceneEdgeId,
   EdgeStroke,
+  NodeAccent,
   EdgeEnd,
   IconRef,
   SceneNode,

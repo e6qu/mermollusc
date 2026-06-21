@@ -8,8 +8,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
   ],
   edges: [
     {
@@ -77,7 +77,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "arch", name: "server" },
-      rowDivider: null, subtitle: null, rows: null,
+      rowDivider: null, subtitle: null, accent: "none", rows: null,
         },
       ],
       edges: [],
@@ -101,7 +101,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, rows: ["string name PK", "int age"],
+          rowDivider: null, subtitle: null, accent: "none", rows: ["string name PK", "int age"],
         },
       ],
       edges: [],
@@ -136,6 +136,7 @@ describe("toDisplayList", () => {
           icon: null,
           rowDivider: null,
           subtitle: "«interface»",
+          accent: "none",
           rows: ["+draw() void"],
         },
       ],
@@ -169,8 +170,8 @@ describe("toDisplayList", () => {
     const markerOf = (end: (typeof ends)[number]) => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
         ],
         edges: [
           {
@@ -208,8 +209,8 @@ describe("toDisplayList", () => {
     const markerOf = (end: "triangle" | "diamondFilled" | "diamondHollow" | "arrowOpen") => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
         ],
         edges: [
           {
@@ -244,7 +245,7 @@ describe("toDisplayList", () => {
   it("falls back to a stable marker direction for a degenerate (zero-length) edge", () => {
     const s: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
       ],
       edges: [
         {
@@ -383,6 +384,7 @@ describe("toDisplayList", () => {
             icon: null,
             rowDivider: null,
             subtitle: null,
+            accent: "none",
             rows: null,
           },
         ],

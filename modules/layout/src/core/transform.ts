@@ -138,6 +138,7 @@ export const toScene = (
         rows: null,
         rowDivider: null,
         subtitle: null,
+        accent: "none",
       });
       continue;
     }
@@ -153,6 +154,7 @@ export const toScene = (
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     });
   }
 

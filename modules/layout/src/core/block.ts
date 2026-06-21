@@ -53,6 +53,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       rows: null,
       rowDivider: null,
       subtitle: null,
+      accent: "none",
     };
   });
 

@@ -2,7 +2,7 @@ import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
-import { type Canvas2D, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
+import { accentFill, type Canvas2D, darkTheme, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
 
 class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
@@ -64,8 +64,8 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
   ],
   edges: [
     {
@@ -95,7 +95,7 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "arch", name: "server" },
-      rowDivider: null, subtitle: null, rows: null,
+      rowDivider: null, subtitle: null, accent: "none", rows: null,
     },
   ],
   edges: [],
@@ -117,8 +117,8 @@ describe("paint", () => {
   it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
       ],
       edges: [
         {
@@ -163,7 +163,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: 1, subtitle: null,
+          rowDivider: 1, subtitle: null, accent: "none",
           rows: ["+int age", "+move() void"],
         },
         {
@@ -173,7 +173,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null,
+          rowDivider: null, subtitle: null, accent: "none",
           rows: null,
         },
       ],
@@ -209,7 +209,7 @@ describe("paint", () => {
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
       ],
       edges: [],
       wedges: [],
@@ -234,7 +234,7 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
       ],
       edges: [],
       wedges: [],
@@ -257,7 +257,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null,
+          rowDivider: null, subtitle: null, accent: "none",
           rows: ["string name PK", "int age"],
         },
       ],
@@ -349,5 +349,20 @@ describe("paint", () => {
     paint(ctx, toDisplayList(iconScene), new Map([["arch/server", fakeImage]]));
     expect(ctx.calls).toContain("drawImage");
     expect(ctx.calls).toContain("fillText:Web");
+  });
+});
+
+describe("accentFill", () => {
+  it("maps `none` to the theme node fill and each status accent to a distinct, theme-aware colour", () => {
+    expect(accentFill("none", defaultTheme)).toBe(defaultTheme.nodeFill);
+    expect(accentFill("none", darkTheme)).toBe(darkTheme.nodeFill);
+
+    const light = (["muted", "active", "danger"] as const).map((a) => accentFill(a, defaultTheme));
+    const dark = (["muted", "active", "danger"] as const).map((a) => accentFill(a, darkTheme));
+    // each accent is distinct from the plain fill and from the others, in both themes
+    expect(new Set([defaultTheme.nodeFill, ...light]).size).toBe(4);
+    expect(new Set([darkTheme.nodeFill, ...dark]).size).toBe(4);
+    // dark-theme accents differ from light-theme ones (the luminance branch is exercised)
+    expect(dark).not.toEqual(light);
   });
 });

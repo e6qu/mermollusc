@@ -6,7 +6,11 @@ import { toDot } from "../../src/core/dot.js";
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
-const node = (id: string, label: string, shape: Scene["nodes"][number]["shape"]) => ({
+const node = (
+  id: string,
+  label: string,
+  shape: Scene["nodes"][number]["shape"],
+): Scene["nodes"][number] => ({
   id: snid(id),
   bounds: rect(0, 0, 60, 40),
   label,
@@ -16,6 +20,7 @@ const node = (id: string, label: string, shape: Scene["nodes"][number]["shape"])
   rows: null,
   rowDivider: null,
   subtitle: null,
+  accent: "none",
 });
 
 describe("toDot", () => {

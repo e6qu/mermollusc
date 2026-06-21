@@ -177,3 +177,6 @@
   (resolved in declaration order). Bars are widened to fit their label; no edges (`after` is positional,
   not a drawn arrow). Fails loudly on an unknown `after` ref or a non-ISO date. +6 unit tests.
   (Standalone — `layoutDiagram` doesn't dispatch to it until the family is activated into `DiagramAst`.)
+- Gantt polish: `layoutGantt` sets each bar's `accent` from the task status via `STATUS_ACCENT`
+  (`done→muted`, `active→active`, `crit→danger`, `normal→none`), so the renderer can colour bars by
+  status.

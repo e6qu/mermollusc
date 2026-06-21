@@ -85,3 +85,7 @@
   (`date` | `after <ref>`), and `GanttSource` (task-label spans). Deliberately **not** in the
   `DiagramAst` union yet — that activation lands once the layout/renderer/app pipeline can handle it,
   so each Gantt PR stays green (the exhaustive family switches would otherwise force it all at once).
+- `SceneNode` gained a **required** `accent: NodeAccent` (`"none" | "muted" | "active" | "danger"`) — a
+  semantic fill the renderer colours (a Gantt bar's status today). Made it an explicit closed-union
+  member (`none`), not a nullable/optional field, so every node states its accent and the renderer
+  handles every case exhaustively — no implicit default to forget or mis-test.

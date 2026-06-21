@@ -7,6 +7,10 @@ export type SceneNodeId = Brand<string, "SceneNodeId">;
 export type SceneEdgeId = Brand<string, "SceneEdgeId">;
 
 export type EdgeStroke = "solid" | "dashed";
+// A semantic node-fill accent the renderer maps to a theme-aware colour (Gantt task status today).
+// `none` is the ordinary node fill — an explicit member, not an implicit/absent default, so every node
+// states its accent and the renderer handles every case exhaustively.
+export type NodeAccent = "none" | "muted" | "active" | "danger";
 // A marker drawn at one end of an edge:
 //   - `none` / `arrow` (filled arrowhead, flowchart/state/C4/sequence);
 //   - UML class heads: `arrowOpen` (association/dependency V), `triangle` (hollow inheritance/
@@ -47,6 +51,9 @@ export interface SceneNode {
   // A small, dimmed line drawn *above* the title (a UML class `«interface»` stereotype); null for
   // none. Widens the title band so it doesn't crowd the name or the divider.
   readonly subtitle: string | null;
+  // A semantic fill accent (the renderer maps it to a theme-aware colour) — e.g. a Gantt bar's status.
+  // `none` for the ordinary fill; required, so every node states it explicitly.
+  readonly accent: NodeAccent;
 }
 
 export interface SceneEdge {
