@@ -194,3 +194,10 @@
   (rewrite its brackets) in place.
 - Robustness: the canonical node-order walk appends a subgraph's node ids with a loop, not
   `push(...s.nodes)` — a spread of a very large subgraph would exceed the argument-count limit and throw.
+- New family (Gantt) — parser. `parseGantt`/`parseGanttWithSource` (`gantt-tokens`/`-grammar`/`-parse`)
+  mirror the timeline's two-mode lexer: a leading keyword (`gantt`/`title`/`dateFormat`/`section`) or a
+  task label (text up to the first `:`) opens the line body. The task meta after the `:` is
+  comma-separated and interpreted positionally — trailing `duration` (`5d`/`2w`/bare = days), preceding
+  `start` (a date string or `after <id>`), and leading `status`/`id` tags. Fails loudly on a task with
+  no start+duration or an unparseable duration; tracks each task's label span for later inline editing.
+  +5 integration tests. (Standalone for now — not yet wired into `parseDiagram`.)

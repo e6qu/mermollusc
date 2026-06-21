@@ -19,6 +19,7 @@ import type {
   ErRelId,
   MessageId,
   NodeId,
+  GanttTaskId,
   StateId,
   StateTransitionId,
 } from "./ast.js";
@@ -117,6 +118,11 @@ export interface MindmapSource {
 // Editable text spans for a pie chart: each slice's label (the inner text of its `"…"`).
 export interface PieSource {
   readonly slices: ReadonlyMap<PieSliceId, TextSpan>;
+}
+
+// Editable text spans for a Gantt chart: each task's label (the text before its `:`).
+export interface GanttSource {
+  readonly tasks: ReadonlyMap<GanttTaskId, TextSpan>;
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service

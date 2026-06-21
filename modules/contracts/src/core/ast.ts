@@ -456,6 +456,32 @@ export interface PieAst {
   readonly slices: readonly PieSlice[];
 }
 
+export type GanttTaskId = Brand<string, "GanttTaskId">;
+// Mermaid's task state tags; `normal` is an unstyled task.
+export type GanttStatus = "normal" | "done" | "active" | "crit";
+// A task starts either on an absolute date (a raw string in the diagram's `dateFormat`, resolved by
+// the layout) or right after another task ends (`after <id>`).
+export type GanttStart =
+  | { readonly kind: "date"; readonly date: string }
+  | { readonly kind: "after"; readonly ref: GanttTaskId };
+export interface GanttTask {
+  readonly id: GanttTaskId;
+  readonly label: string;
+  // The `section` the task sits under (null = before any `section`).
+  readonly section: string | null;
+  readonly status: GanttStatus;
+  readonly start: GanttStart;
+  // Duration in days (the parser normalises `w`/`h` suffixes); always > 0.
+  readonly durationDays: number;
+}
+export interface GanttAst {
+  readonly kind: "gantt";
+  readonly title: string | null;
+  // The raw `dateFormat` directive (e.g. `YYYY-MM-DD`); the layout interprets dates against it.
+  readonly dateFormat: string | null;
+  readonly tasks: readonly GanttTask[];
+}
+
 // Grows one variant per family. The `kind` tag discriminates.
 export type DiagramAst =
   | FlowchartAst
