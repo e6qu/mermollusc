@@ -34,7 +34,7 @@ import {
   toggle,
   topGroupOfNode,
 } from "@m/builder";
-import type { Selection } from "@m/builder";
+import type { HitTarget, Selection } from "@m/builder";
 import type {
   BlockSource,
   C4Source,
@@ -1372,6 +1372,10 @@ diagramNav.addEventListener("keydown", (ev) => {
   } else if (ev.key === "End") {
     ev.preventDefault();
     setNavActive(scene.nodes.length - 1);
+  } else if (ev.key === "Enter" && navActiveId !== null && !viewerMode) {
+    // Open the inline relabel editor on the active node — keyboard parity with a canvas double-click.
+    ev.preventDefault();
+    beginRelabel(applyOverrides(scene, doc.overrides()), { kind: "node", id: navActiveId }, null);
   }
 });
 
@@ -2075,16 +2079,11 @@ const anchorFor = (
 };
 
 // Two-way edit: rename what was double-clicked and write the patch back into the source text.
-canvas.addEventListener("dblclick", (ev) => {
-  if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
-  const shown = applyOverrides(scene, doc.overrides());
-  const at = scenePoint(ev);
-  const hit = hitTest(shown, at);
-  const groupHit =
-    hit === null
-      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
-      : null;
-
+// Open the inline relabel editor for a hit (a node/edge, or a group title) — shared by the canvas
+// double-click and the keyboard navigator's Enter. `ast`/source maps are read from module state.
+// Returns true when an editor was opened.
+const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | null): boolean => {
+  if (ast === null) return false;
   // Most families edit a `TextSpan` via `patchSpan`; flowchart nodes relabel through the source map.
   const patchAt = (
     span: TextSpan,
@@ -2223,10 +2222,23 @@ canvas.addEventListener("dblclick", (ev) => {
     if (span !== undefined) pending = patchAt(span);
   }
 
-  if (pending === null) return;
+  if (pending === null) return false;
   anchor = anchor ?? (hit === null ? null : anchorFor(shown, hit));
-  if (anchor === null) return;
+  if (anchor === null) return false;
   openInlineEditor(anchor, pending.text, pending.commit);
+  return true;
+};
+
+canvas.addEventListener("dblclick", (ev) => {
+  if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
+  const shown = applyOverrides(scene, doc.overrides());
+  const at = scenePoint(ev);
+  const hit = hitTest(shown, at);
+  const groupHit =
+    hit === null
+      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
+      : null;
+  beginRelabel(shown, hit, groupHit);
 });
 
 // Add node: append a fresh rect node to the flowchart text (flowchart only for now).
@@ -2535,6 +2547,7 @@ window.addEventListener("keydown", (ev) => {
     kind === "gantt" && ganttSource !== null
       ? [...selectionOrder].sort((a, b) => ganttLineStart(b) - ganttLineStart(a))
       : selectionOrder;
+  const removedCount = order.length + selection.edges.size;
   for (const id of order) text = removeNode(kind, text, id);
   if (scene !== null) {
     for (const edgeId of selection.edges) {
@@ -2546,6 +2559,8 @@ window.addEventListener("keydown", (ev) => {
   selectionOrder = [];
   editor.setValue(text);
   void renderFromText(text);
+  // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
+  announce(`deleted ${removedCount} item${removedCount === 1 ? "" : "s"}`);
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only

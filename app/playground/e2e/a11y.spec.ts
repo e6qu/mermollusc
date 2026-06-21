@@ -53,6 +53,27 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
   // The active node is the canvas selection, so Delete (with the listbox focused) removes it.
   await nav.press("Delete");
   await expect.poll(() => sourceValue(page)).not.toContain(activeLabel);
+  await expect(live).toHaveText(/deleted 1 item/);
+});
+
+test("Enter on the active node opens the inline relabel editor (keyboard parity)", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Alpha] --> B[Beta]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  await nav.focus(); // activates the first node
+  const label = ((await page.locator("#diagram-live").textContent()) ?? "").split(",")[0] ?? "";
+
+  await nav.press("Enter");
+  const editor = page.locator("#inline-edit");
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveValue(label); // seeded with the active node's label
+  await editor.fill("Renamed");
+  await editor.press("Enter");
+
+  await expect.poll(() => sourceValue(page)).toContain("Renamed");
 });
 
 test("every visible interactive control has an accessible name", async ({ page }) => {

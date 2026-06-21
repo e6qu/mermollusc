@@ -540,3 +540,7 @@
   and the existing Delete handler removes it), centres it in view (reusing the minimap's scroll math via
   a factored `scrollToLogical`), and a polite live region (`#diagram-live`) announces "label, N of M".
   +1 e2e (focus → activedescendant + announcement → arrow → Delete). Next a11y steps below.
+- Accessibility — keyboard operation (Enter relabel + action announcements): extracted the canvas
+  double-click relabel into a reusable `beginRelabel(shown, hit, groupHit)`, so pressing **Enter** on the
+  navigator's active node opens the inline editor (keyboard parity with a double-click). Delete now
+  announces its outcome ("deleted N items") through the live region. +2 e2e (Enter→relabel; delete announce).
