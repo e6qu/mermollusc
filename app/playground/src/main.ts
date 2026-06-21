@@ -1318,11 +1318,20 @@ const centerOnNode = (id: SceneNodeId): void => {
 // The id of the node the listbox's active option points at (its `aria-activedescendant`), or null when
 // nothing is active yet. Distinct from the canvas selection, which it sets.
 let navActiveId: SceneNodeId | null = null;
+// The chosen source while a keyboard Connect is in progress (press `c` to pick it, navigate, `c` again
+// to connect to the target). Cleared on connect, cancel, or any re-render.
+let navConnectSource: SceneNodeId | null = null;
+
+const navLabel = (id: SceneNodeId): string => {
+  const node = scene?.nodes.find((n) => n.id === id);
+  return node !== undefined && node.label.length > 0 ? node.label : "node";
+};
 
 const rebuildNav = (): void => {
   diagramNav.replaceChildren();
   diagramNav.removeAttribute("aria-activedescendant");
   navActiveId = null;
+  navConnectSource = null;
   if (scene === null) return;
   scene.nodes.forEach((node, i) => {
     const option = document.createElement("li");
@@ -1393,7 +1402,40 @@ diagramNav.addEventListener("keydown", (ev) => {
   } else if (ev.key === "Enter" && navActiveId !== null && !viewerMode) {
     // Open the inline relabel editor on the active node — keyboard parity with a canvas double-click.
     ev.preventDefault();
+    navConnectSource = null;
     beginRelabel(applyOverrides(scene, doc.overrides()), { kind: "node", id: navActiveId }, null);
+  } else if (
+    (ev.key === "c" || ev.key === "C") &&
+    navActiveId !== null &&
+    ast !== null &&
+    !viewerMode
+  ) {
+    // Two-step keyboard Connect: `c` picks the active node as the source, navigate to a target, `c`
+    // again draws the edge in the family's own syntax (parity with an Alt-drag between nodes).
+    ev.preventDefault();
+    if (navConnectSource === null) {
+      navConnectSource = navActiveId;
+      announce(`connecting from ${navLabel(navActiveId)} — move to a target and press c`);
+    } else if (navConnectSource === navActiveId) {
+      announce("connect cancelled");
+      navConnectSource = null;
+    } else {
+      const from = navLabel(navConnectSource);
+      const to = navLabel(navActiveId);
+      const text = appendEdge(ast.kind, editor.value(), navConnectSource, navActiveId);
+      navConnectSource = null;
+      if (text === editor.value()) {
+        announce("connect isn't available for this diagram");
+      } else {
+        editor.setValue(text);
+        void renderFromText(text);
+        announce(`connected ${from} to ${to}`);
+      }
+    }
+  } else if (ev.key === "Escape" && navConnectSource !== null) {
+    ev.preventDefault();
+    navConnectSource = null;
+    announce("connect cancelled");
   }
 });
 
