@@ -530,3 +530,7 @@
   render, like the other families) into `ganttSource`, and add a relabel branch — double-clicking a task
   bar / milestone opens the inline editor on its label span and patches the source. Brings Gantt to
   relabel parity with the other families (its structural edits were no-ops). +1 e2e (gantt-edit).
+- Gantt structural delete: the Delete key now removes a selected task via `deleteGanttTask` keyed by the
+  `ganttSource` label span (so auto-id tasks delete too). Multiple selected tasks are deleted bottom-up
+  (descending span offset) so each span stays valid against the prior edit. +1 e2e. Gantt now has full
+  relabel + delete parity with the other families.

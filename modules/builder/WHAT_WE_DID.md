@@ -100,3 +100,6 @@
 - Robustness: `leafNodes` flattens a nested group's leaves with a loop, not `push(...leafNodes(...))` —
   a spread of a very large nested group would exceed the argument-count limit and throw. +unit test
   (a 200k-leaf nested group flattens without overflow).
+- Added `deleteGanttTask(text, span)` — removes the whole source line containing a label span. Keyed by
+  span (not id) because a Gantt task may be auto-numbered (`t0`…) and carry no id in the text, which the
+  id-matching `deleteNode` can't find. +2 integration tests (auto-id task; exact line removal).

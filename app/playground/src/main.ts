@@ -17,6 +17,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
+  deleteGanttTask,
   deleteMessage,
   deleteNode,
   deleteRequirementEntity,
@@ -2362,9 +2363,13 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "mindmap":
     case "pie":
       return deleteNode(text, brand<string, "NodeId">(id));
-    // gantt task-delete via the canvas isn't supported yet (it would need a task-line patcher); no-op.
-    case "gantt":
-      return text;
+    // gantt: a task has no id in the text when it's auto-numbered, so delete its line by the label
+    // span from the source map. Multi-delete is ordered bottom-up by the caller so spans stay valid.
+    case "gantt": {
+      if (ganttSource === null) return text;
+      const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(id));
+      return span === undefined ? text : deleteGanttTask(text, span);
+    }
     default:
       return assertNever(kind);
   }
@@ -2414,6 +2419,10 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
   }
 };
 
+// The source offset of a Gantt task's label span (−1 if unknown) — orders multi-task deletes bottom-up.
+const ganttLineStart = (id: SceneNodeId): number =>
+  ganttSource?.tasks.get(brand<string, "GanttTaskId">(id))?.start ?? -1;
+
 // Delete key removes the selected nodes (and their edges) from the text, in the active family's
 // syntax. Guarded on the editor not being focused so it never hijacks a Backspace while editing.
 window.addEventListener("keydown", (ev) => {
@@ -2429,7 +2438,13 @@ window.addEventListener("keydown", (ev) => {
   ev.preventDefault();
   const kind = ast.kind;
   let text = editor.value();
-  for (const id of selectionOrder) text = removeNode(kind, text, id);
+  // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
+  // earlier line's offset, keeping each remaining span valid against the prior edit.
+  const order =
+    kind === "gantt" && ganttSource !== null
+      ? [...selectionOrder].sort((a, b) => ganttLineStart(b) - ganttLineStart(a))
+      : selectionOrder;
+  for (const id of order) text = removeNode(kind, text, id);
   if (scene !== null) {
     for (const edgeId of selection.edges) {
       const edge = scene.edges.find((e) => e.id === edgeId);

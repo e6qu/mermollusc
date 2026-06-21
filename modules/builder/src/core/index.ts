@@ -28,6 +28,7 @@ export {
   connectClass,
   connectRequirement,
   deleteNode,
+  deleteGanttTask,
   deleteEdge,
   deleteC4,
   deleteC4Rel,
