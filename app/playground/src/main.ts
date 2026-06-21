@@ -503,10 +503,17 @@ const paintScene = (): void => {
   // displays. The CSS size pins the on-screen box; the dpr·zoom scale fills the larger backing store
   // and keeps the diagram crisp at any zoom (we re-render, not bitmap-scale).
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(logicalWidth * dpr * viewScale);
-  canvas.height = Math.round(logicalHeight * dpr * viewScale);
-  canvas.style.width = `${cssWidth}px`;
-  canvas.style.height = `${cssHeight}px`;
+  // Only (re)size the backing store when it actually changed: assigning `canvas.width` reallocates and
+  // clears the canvas, so doing it every frame — including each drag frame where the size is unchanged
+  // — is wasted work. `clearRect` below clears regardless, so skipping the resize is safe.
+  const backingW = Math.round(logicalWidth * dpr * viewScale);
+  const backingH = Math.round(logicalHeight * dpr * viewScale);
+  if (canvas.width !== backingW || canvas.height !== backingH) {
+    canvas.width = backingW;
+    canvas.height = backingH;
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+  }
   const active = activeTheme();
   canvas.style.backgroundColor = active.background;
   // Build the display list once and reuse it for both the main canvas and the minimap overview.
@@ -596,9 +603,14 @@ const paintScene = (): void => {
   }
   ctx.restore();
   lastRender = { scene: shown, logicalWidth, logicalHeight };
-  // The scene/theme changed, so rebuild the minimap's static-content cache; a scroll only redraws the
-  // viewport scrim over the cached content (see `drawMinimap`).
-  buildMinimapCache();
+  // Rebuilding the minimap cache is a *second* full render of the scene (to an offscreen canvas). During
+  // an active interaction (drag/resize/marquee/connect) the canvas repaints every frame, so doing that
+  // each frame doubles the per-frame cost on a large diagram. Skip it while interacting — the minimap
+  // goes briefly stale and the release (which repaints with no interaction in flight) refreshes it. A
+  // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
+  const interacting =
+    drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
+  if (!interacting) buildMinimapCache();
   drawMinimap();
 };
 
@@ -1842,11 +1854,9 @@ canvas.addEventListener("pointerup", (ev) => {
     canvas.releasePointerCapture(ev.pointerId);
     resize = null;
     snapTargets = null;
-    if (snapGuides.vx !== null || snapGuides.hy !== null) {
-      snapGuides = { vx: null, hy: null };
-      requestPaint(); // clear the guide lines now the resize has ended
-    }
+    snapGuides = { vx: null, hy: null };
     doc.persist();
+    requestPaint(); // clear any guides + refresh the minimap (deferred during the resize)
     return;
   }
   if (marquee !== null) {
@@ -1887,11 +1897,9 @@ canvas.addEventListener("pointerup", (ev) => {
     canvas.releasePointerCapture(ev.pointerId);
     drag = null;
     snapTargets = null;
-    if (snapGuides.vx !== null || snapGuides.hy !== null) {
-      snapGuides = { vx: null, hy: null };
-      requestPaint(); // clear the guide lines now the drag has ended
-    }
+    snapGuides = { vx: null, hy: null };
     doc.persist();
+    requestPaint(); // clear any guides + refresh the minimap (deferred during the drag)
   }
 });
 
