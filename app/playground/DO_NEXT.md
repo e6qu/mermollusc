@@ -74,5 +74,6 @@
   - Keyboard operation parity *(done)*: navigate · Enter relabel · Alt+Arrow move · two-step `c` connect ·
     Delete remove.
   - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
-  - Polish: *(done)* `prefers-reduced-motion` collapses all motion; *(done)* a visible navigator focus
-    ring on the stage. Still: a contrast pass / measurement on the accent + band palettes (WCAG 1.4.3/1.4.11).
+  - Polish *(done)*: `prefers-reduced-motion` collapses all motion; a visible navigator focus ring on the
+    stage; a contrast audit (every label/stroke pair clears WCAG AA, guarded by a renderer test).
+  - Only remaining (optional, bigger): reach/focus the edges themselves from the navigator (nodes only today).
