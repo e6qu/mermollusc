@@ -223,3 +223,33 @@ test("every visible interactive control has an accessible name", async ({ page }
   });
   expect(unnamed).toEqual([]);
 });
+
+test("canvas actions announce their outcomes in the diagram live region", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Alpha]\n  B[Beta]\n  C[Gamma]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const live = page.locator("#diagram-live");
+  await page.locator("#stage").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("Control+a");
+
+  await page.keyboard.press("Control+c");
+  await expect(live).toHaveText(/copied 3 nodes/);
+
+  await page.keyboard.press("Control+v");
+  await expect(live).toHaveText(/pasted 3 nodes/);
+
+  await page.locator("#arrange").click();
+  await page.locator("#align-left").click();
+  await expect(live).toHaveText(/arranged /);
+
+  await page.locator("#group").click();
+  await expect(live).toHaveText(/grouped /);
+
+  await page.locator("#lock").click();
+  await expect(live).toHaveText("locked group");
+
+  await page.locator("#share-link").click();
+  await expect(live).toHaveText(/shareable link/);
+});

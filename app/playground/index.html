@@ -402,6 +402,7 @@
         box-shadow: var(--shadow);
       }
       #icon-picker[hidden] { display: none; }
+      #icon-picker:focus { outline: none; }
       .picker-head { display: flex; align-items: center; justify-content: space-between; }
       .picker-head strong { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
       #icons-close { padding: 2px 9px; }
@@ -652,7 +653,7 @@
         <section class="stage-col">
           <div class="stage-wrap" id="stage-wrap">
             <div class="stage-inner">
-              <canvas id="stage" width="400" height="300" role="img" aria-label="Diagram"></canvas>
+              <canvas id="stage" width="400" height="300" role="img" aria-label="Diagram" tabindex="-1"></canvas>
             </div>
           </div>
           <!-- Keyboard diagram navigator: a focusable listbox mirroring the scene's nodes and edges
@@ -682,7 +683,7 @@
         </span>
       </footer>
       <input id="inline-edit" type="text" spellcheck="false" hidden />
-      <aside id="icon-picker" aria-label="Icon picker" hidden>
+      <aside id="icon-picker" role="dialog" aria-modal="true" aria-label="Icon picker" hidden>
         <div class="picker-head">
           <strong>Insert icon</strong>
           <button id="icons-close" type="button" aria-label="Close icon picker">✕</button>

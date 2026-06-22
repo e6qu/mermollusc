@@ -573,3 +573,12 @@
   overflow at 390px while preserving stage-internal scrolling for the diagram sheet. Also updated the
   keyboard-help and hidden navigator copy from "node list" to node+edge "diagram items". +1 responsive
   e2e plus a11y/help copy assertions.
+- UI/UX quality sweep: broadened live-region feedback so screen-reader users hear outcomes for canvas
+  and shell actions beyond the original relabel/delete/connect path (copy/paste, grouping, lock,
+  arrange, theme/sketch, icon load/insert, export/copy/share, layout undo/redo). The help modal and icon
+  picker now trap Tab while open, close on Escape, and restore focus to their trigger. Mobile coverage now
+  drives real phone-width workflows (navigator relabel, help, icon drawer, stage pan/zoom), and
+  `make shots` gained a 390px responsive shell capture. The shot target is explicitly phony so it runs
+  even when the generated `shots/` directory exists; the icon-picker shot captures the viewport instead
+  of a huge full-page registry image, avoiding screenshot timeouts while still showing the open drawer.
+  Measured the remaining production bundle warning: one JS chunk at about 2.8 MB minified / 845 kB gzip.

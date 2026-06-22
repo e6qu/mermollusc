@@ -423,10 +423,16 @@ const applyRestored = (): void => {
   updateGroupButtons();
 };
 const undoOverlay = (): void => {
-  if (doc.undo()) applyRestored();
+  if (doc.undo()) {
+    applyRestored();
+    announce("layout undone");
+  }
 };
 const redoOverlay = (): void => {
-  if (doc.redo()) applyRestored();
+  if (doc.redo()) {
+    applyRestored();
+    announce("layout redone");
+  }
 };
 
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
@@ -992,6 +998,7 @@ const applyArrange = (kind: AlignKind): void => {
   }
   doc.persist();
   paintScene();
+  announce(`arranged ${units.length} item${units.length === 1 ? "" : "s"}`);
 };
 
 const closeArrange = (): void => {
@@ -1048,6 +1055,7 @@ const groupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  announce(`grouped ${units.length} item${units.length === 1 ? "" : "s"}`);
 };
 
 const ungroupSelection = (): void => {
@@ -1059,6 +1067,7 @@ const ungroupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  announce("ungrouped selection");
 };
 
 const toggleLockSelection = (): void => {
@@ -1071,6 +1080,7 @@ const toggleLockSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  announce(g.locked ? "unlocked group" : "locked group");
 };
 
 groupBtn.addEventListener("click", groupSelection);
@@ -1536,6 +1546,15 @@ const setStatus = (
   // The canvas (role="img") needs a text alternative for screen readers — the status line is the
   // baseline; `renderFromText` enriches it with node labels on a successful render.
   canvas.setAttribute("aria-label", level === "error" ? `Diagram error: ${message}` : message);
+};
+
+const setStatusAndAnnounce = (
+  level: "ok" | "error",
+  message: string,
+  range: { readonly offset: number; readonly length: number } | null = null,
+): void => {
+  setStatus(level, message, range);
+  announce(message);
 };
 
 statusEl.addEventListener("click", () => {
@@ -2131,7 +2150,12 @@ canvas.addEventListener("pointerup", (ev) => {
 type Anchor = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 let closeEditor: ((apply: boolean) => void) | null = null;
 
-const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) => void): void => {
+const openInlineEditor = (
+  anchor: Anchor,
+  value: string,
+  commit: (next: string) => void,
+  announceCommit: (next: string) => void,
+): void => {
   closeEditor?.(false);
   inlineEl.value = value;
   // The anchor is in scene coordinates; map it to screen through the shared `sceneToScreen` (the sole
@@ -2157,7 +2181,10 @@ const openInlineEditor = (anchor: Anchor, value: string, commit: (next: string) 
     inlineEl.hidden = true;
     inlineEl.onkeydown = null;
     inlineEl.onblur = null;
-    if (apply) commit(inlineEl.value);
+    if (apply) {
+      commit(inlineEl.value);
+      if (inlineEl.value !== value) announceCommit(inlineEl.value);
+    }
   };
   inlineEl.onkeydown = (e) => {
     // Stop Enter/Escape from also reaching the window handler (which would clear the selection).
@@ -2339,7 +2366,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
   if (pending === null) return false;
   anchor = anchor ?? (hit === null ? null : anchorFor(shown, hit));
   if (anchor === null) return false;
-  openInlineEditor(anchor, pending.text, pending.commit);
+  openInlineEditor(anchor, pending.text, pending.commit, () => announce("relabel committed"));
   return true;
 };
 
@@ -2363,6 +2390,7 @@ addBtn.addEventListener("click", () => {
   while (used.has(`n${n}`)) n++;
   editor.setValue(addNode(editor.value(), brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect"));
   void renderFromText(editor.value());
+  announce(`added node ${n}`);
 });
 
 // Duplicate the selected flowchart node(s) (⌘D): append a fresh-id copy of each (same label + shape)
@@ -2401,6 +2429,7 @@ const duplicateSelection = async (): Promise<void> => {
   selectionOrder = pairs.map((p) => p.to);
   paintScene();
   updateGroupButtons();
+  announce(`duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
 };
 
 // In-memory node clipboard for ⌘C/⌘V (flowchart). Each entry is a node's label + shape and its offset
@@ -2434,7 +2463,7 @@ const copySelection = (): void => {
   }));
   clipboardOrigin = point(minX, minY);
   pasteSeq = 0;
-  setStatus("ok", `copied ${picked.length} node${picked.length === 1 ? "" : "s"}`);
+  setStatusAndAnnounce("ok", `copied ${picked.length} node${picked.length === 1 ? "" : "s"}`);
 };
 
 const pasteClipboard = async (): Promise<void> => {
@@ -2467,6 +2496,7 @@ const pasteClipboard = async (): Promise<void> => {
   selectionOrder = created.map((c) => c.id);
   paintScene();
   updateGroupButtons();
+  announce(`pasted ${created.length} node${created.length === 1 ? "" : "s"}`);
 };
 
 // Connect: chain the shift-selected nodes in click order — one edge per consecutive pair
@@ -2475,6 +2505,7 @@ const pasteClipboard = async (): Promise<void> => {
 // edge (the common case); 3+ builds the whole chain in one action.
 connectBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || selectionOrder.length < 2) return;
+  const before = editor.value();
   let text = editor.value();
   for (let i = 0; i + 1 < selectionOrder.length; i++) {
     const from = selectionOrder[i];
@@ -2482,8 +2513,15 @@ connectBtn.addEventListener("click", () => {
     if (from === undefined || to === undefined) continue;
     text = appendEdge(ast.kind, text, from, to);
   }
+  if (text === before) {
+    announce("connect isn't available for this diagram");
+    return;
+  }
   editor.setValue(text);
   void renderFromText(text);
+  announce(
+    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}`,
+  );
 });
 
 const appendEdge = (
@@ -2674,7 +2712,7 @@ window.addEventListener("keydown", (ev) => {
   editor.setValue(text);
   void renderFromText(text);
   // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
-  announce(`deleted ${removedCount} item${removedCount === 1 ? "" : "s"}`);
+  setStatusAndAnnounce("ok", `deleted ${removedCount} item${removedCount === 1 ? "" : "s"}`);
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
@@ -2787,6 +2825,7 @@ const cycleShape = async (): Promise<void> => {
   selectionOrder = keep;
   paintScene();
   updateGroupButtons();
+  canvas.focus({ preventScroll: true });
 };
 
 window.addEventListener("keydown", (ev) => {
@@ -2861,6 +2900,7 @@ themeBtn.addEventListener("click", () => {
   localStorage.setItem(THEME_KEY, theme === darkTheme ? "dark" : "light");
   syncThemeLabel();
   paintScene();
+  announce(`${theme === darkTheme ? "dark" : "light"} theme`);
 });
 syncThemeLabel();
 
@@ -2879,6 +2919,7 @@ exampleEl.addEventListener("change", () => {
   doc.persist();
   editor.setValue(text);
   void renderFromText(text);
+  announce("loaded example");
 });
 
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
@@ -2887,6 +2928,7 @@ sketchBtn.addEventListener("click", () => {
   sketch = !sketch;
   sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
   void renderFromText(editor.value());
+  announce(sketch ? "sketch mode" : "crisp mode");
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
@@ -2900,19 +2942,19 @@ const loadPack = async (file: File): Promise<void> => {
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     console.error("pack parse failed:", detail);
-    setStatus("error", `icon pack is not valid JSON — ${detail}`);
+    setStatusAndAnnounce("error", `icon pack is not valid JSON — ${detail}`);
     return;
   }
   const decoded = decodePack(json);
   if (!isOk(decoded)) {
     const detail = decoded.error.issues.join("; ");
     console.error("pack decode failed:", detail);
-    setStatus("error", `icon pack rejected — ${detail}`);
+    setStatusAndAnnounce("error", `icon pack rejected — ${detail}`);
     return;
   }
   registry = registerPack(registry, decoded.value);
   iconImages.clear(); // drop stale glyphs so overridden packs re-rasterise
-  setStatus("ok", `loaded icon pack "${decoded.value.meta.id}"`);
+  setStatusAndAnnounce("ok", `loaded icon pack "${decoded.value.meta.id}"`);
   void renderFromText(editor.value());
 };
 
@@ -2931,6 +2973,7 @@ const insertIconRef = (packId: string, name: string): void => {
   doc.clearOverrides();
   doc.persist();
   void renderFromText(editor.value());
+  announce(`inserted icon ${packId}/${name}`);
 };
 
 const buildIconGrid = (filter: string): void => {
@@ -2977,33 +3020,90 @@ const buildIconGrid = (filter: string): void => {
   }
 };
 
+const focusableIn = (root: HTMLElement): readonly HTMLElement[] =>
+  Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((el) => !el.hidden && !el.hasAttribute("disabled"));
+
+const trapTab = (root: HTMLElement, ev: KeyboardEvent): void => {
+  if (ev.key !== "Tab") return;
+  const items = focusableIn(root);
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (first === undefined || last === undefined) {
+    ev.preventDefault();
+    root.focus();
+    return;
+  }
+  const active = document.activeElement;
+  if (ev.shiftKey && active === first) {
+    ev.preventDefault();
+    last.focus();
+  } else if (!ev.shiftKey && active === last) {
+    ev.preventDefault();
+    first.focus();
+  }
+};
+
+const activeElement = (): HTMLElement | null =>
+  document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
 let pickerOpen = false;
+let pickerReturnFocus: HTMLElement | null = null;
 const setPickerOpen = (open: boolean): void => {
+  if (pickerOpen === open) return;
   pickerOpen = open;
   iconPicker.hidden = !open;
   iconsToggle.setAttribute("aria-expanded", open ? "true" : "false");
-  if (open) buildIconGrid(iconFilter.value);
+  if (open) {
+    pickerReturnFocus = activeElement();
+    buildIconGrid(iconFilter.value);
+    iconFilter.focus();
+  } else {
+    const focusBack = pickerReturnFocus;
+    pickerReturnFocus = null;
+    if (focusBack !== null) focusBack.focus();
+  }
 };
 
 iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
 iconsClose.addEventListener("click", () => setPickerOpen(false));
 iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
+iconPicker.addEventListener("keydown", (ev) => {
+  trapTab(iconPicker, ev);
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    setPickerOpen(false);
+  }
+});
 
 // Keyboard & mouse shortcut reference. `?` opens it (unless typing); Escape / the ✕ / a backdrop click
 // close it. The Escape handler is capture-phase so closing the panel doesn't also clear the canvas
 // selection (the bubble-phase Escape handler).
 let helpOpen = false;
+let helpReturnFocus: HTMLElement | null = null;
 const setHelpOpen = (open: boolean): void => {
+  if (helpOpen === open) return;
   helpOpen = open;
   helpOverlay.hidden = !open;
   helpToggle.setAttribute("aria-expanded", open ? "true" : "false");
-  if (open) helpClose.focus();
+  if (open) {
+    helpReturnFocus = activeElement();
+    helpClose.focus();
+  } else {
+    const focusBack = helpReturnFocus;
+    helpReturnFocus = null;
+    if (focusBack !== null) focusBack.focus();
+  }
 };
 helpToggle.addEventListener("click", () => setHelpOpen(!helpOpen));
 helpClose.addEventListener("click", () => setHelpOpen(false));
 helpOverlay.addEventListener("click", (ev) => {
   if (ev.target === helpOverlay) setHelpOpen(false); // a click on the backdrop, not the panel
 });
+helpOverlay.addEventListener("keydown", (ev) => trapTab(helpOverlay, ev));
 window.addEventListener(
   "keydown",
   (ev) => {
@@ -3065,17 +3165,17 @@ exportBtn.addEventListener("click", () => {
   const out = compositeCanvas();
   if (out === null) {
     console.error("export failed: 2d context unavailable");
-    setStatus("error", "PNG export failed — no 2D context");
+    setStatusAndAnnounce("error", "PNG export failed — no 2D context");
     return;
   }
   out.toBlob((blob) => {
     if (blob === null) {
       console.error("export failed: toBlob returned null");
-      setStatus("error", "PNG export failed");
+      setStatusAndAnnounce("error", "PNG export failed");
       return;
     }
     downloadBlob(blob, "mermollusc.png");
-    setStatus("ok", "exported mermollusc.png");
+    setStatusAndAnnounce("ok", "exported mermollusc.png");
   }, "image/png");
 });
 
@@ -3087,26 +3187,26 @@ copyBtn.addEventListener("click", () => {
   const clip = navigator.clipboard;
   const ItemCtor = window.ClipboardItem;
   if (clip === undefined || typeof clip.write !== "function" || ItemCtor === undefined) {
-    setStatus("ok", "copying images isn't supported here — use PNG to download");
+    setStatusAndAnnounce("ok", "copying images isn't supported here — use PNG to download");
     return;
   }
   const out = compositeCanvas();
   if (out === null) {
     console.error("copy failed: 2d context unavailable");
-    setStatus("error", "copy failed — no 2D context");
+    setStatusAndAnnounce("error", "copy failed — no 2D context");
     return;
   }
   out.toBlob((blob) => {
     if (blob === null) {
       console.error("copy failed: toBlob returned null");
-      setStatus("error", "copy failed");
+      setStatusAndAnnounce("error", "copy failed");
       return;
     }
     void clip.write([new ItemCtor({ "image/png": blob })]).then(
-      () => setStatus("ok", "diagram image copied to clipboard"),
+      () => setStatusAndAnnounce("ok", "diagram image copied to clipboard"),
       (e: unknown) => {
         console.error("copy to clipboard failed:", e instanceof Error ? e.message : String(e));
-        setStatus("ok", "clipboard was blocked — use PNG to download instead");
+        setStatusAndAnnounce("ok", "clipboard was blocked — use PNG to download instead");
       },
     );
   }, "image/png");
@@ -3175,7 +3275,7 @@ exportPdfBtn.addEventListener("click", () => {
   const out = compositeCanvas();
   if (out === null) {
     console.error("export failed: 2d context unavailable");
-    setStatus("error", "PDF export failed — no 2D context");
+    setStatusAndAnnounce("error", "PDF export failed — no 2D context");
     return;
   }
   const dataUrl = out.toDataURL("image/jpeg", 0.92);
@@ -3189,7 +3289,7 @@ exportPdfBtn.addEventListener("click", () => {
     Math.round(out.height / dpr),
   );
   downloadBlob(pdf, "mermollusc.pdf");
-  setStatus("ok", "exported mermollusc.pdf");
+  setStatusAndAnnounce("ok", "exported mermollusc.pdf");
 });
 
 // SVG export, true vector: serialise the same display list the canvas paints, via the renderer's
@@ -3197,7 +3297,7 @@ exportPdfBtn.addEventListener("click", () => {
 // resolved here because the renderer can't depend on `@m/icons`.
 exportSvgBtn.addEventListener("click", () => {
   if (scene === null) {
-    setStatus("error", "nothing to export yet");
+    setStatusAndAnnounce("error", "nothing to export yet");
     return;
   }
   const shown = applyOverrides(scene, doc.overrides());
@@ -3219,19 +3319,19 @@ exportSvgBtn.addEventListener("click", () => {
     icons,
   });
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "mermollusc.svg");
-  setStatus("ok", "exported mermollusc.svg");
+  setStatusAndAnnounce("ok", "exported mermollusc.svg");
 });
 
 // DOT export: the Scene is the universal graph IR, so any node/edge family exports to Graphviz DOT
 // (a pie chart, having no nodes, exports as an empty graph). The reverse of the DOT import path.
 exportDotBtn.addEventListener("click", () => {
   if (scene === null) {
-    setStatus("error", "nothing to export yet");
+    setStatusAndAnnounce("error", "nothing to export yet");
     return;
   }
   const dot = toDot(applyOverrides(scene, doc.overrides()), lastDirection);
   downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
-  setStatus("ok", "exported mermollusc.dot");
+  setStatusAndAnnounce("ok", "exported mermollusc.dot");
 });
 
 // Share: encode the current source in the URL hash (so the link reproduces the diagram) and copy it
@@ -3245,12 +3345,12 @@ shareBtn.addEventListener("click", () => {
   history.replaceState(null, "", url);
   const clip = navigator.clipboard;
   if (clip === undefined) {
-    setStatus("ok", "shareable link is in the address bar");
+    setStatusAndAnnounce("ok", "shareable link is in the address bar");
     return;
   }
   void clip.writeText(url).then(
-    () => setStatus("ok", "shareable link copied to clipboard"),
-    () => setStatus("ok", "shareable link is in the address bar"),
+    () => setStatusAndAnnounce("ok", "shareable link copied to clipboard"),
+    () => setStatusAndAnnounce("ok", "shareable link is in the address bar"),
   );
 });
 

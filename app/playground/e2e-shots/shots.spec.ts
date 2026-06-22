@@ -8,6 +8,8 @@ import { expect, type Page, test } from "@playwright/test";
 type Flow = {
   readonly name: string;
   readonly about: string;
+  readonly viewport?: { readonly width: number; readonly height: number };
+  readonly fullPage?: boolean;
   readonly drive: (page: Page) => Promise<void>;
 };
 
@@ -44,6 +46,14 @@ const clickCanvas = async (page: Page, dx: number, dy: number): Promise<void> =>
 };
 
 const FLOWS: readonly Flow[] = [
+  {
+    name: "01-mobile",
+    about: "phone-width responsive shell: stacked topbar, editor, stage, and wrapped status",
+    viewport: { width: 390, height: 844 },
+    drive: async (page) => {
+      await settled(page);
+    },
+  },
   {
     name: "01-launch",
     about: "default flowchart on first load (light theme)",
@@ -145,6 +155,7 @@ const FLOWS: readonly Flow[] = [
   {
     name: "12-icon-picker",
     about: "the icon picker drawer browsing the registry",
+    fullPage: false,
     drive: async (page) => {
       await settled(page);
       await page.locator("#icons-toggle").click();
@@ -361,8 +372,9 @@ const FLOWS: readonly Flow[] = [
 
 for (const flow of FLOWS) {
   test(`shot: ${flow.name} — ${flow.about}`, async ({ page }) => {
+    if (flow.viewport !== undefined) await page.setViewportSize(flow.viewport);
     await page.goto("/");
     await flow.drive(page);
-    await page.screenshot({ path: `shots/${flow.name}.png`, fullPage: true });
+    await page.screenshot({ path: `shots/${flow.name}.png`, fullPage: flow.fullPage ?? true });
   });
 }
