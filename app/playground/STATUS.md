@@ -42,6 +42,9 @@
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) — for visual review / design iteration, not a gate. It includes a phone-width
   responsive shell flow so mobile layout regressions are visible during review.
+- **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
+  builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
+  local-only and never opens the collaboration relay.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.

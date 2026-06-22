@@ -582,3 +582,7 @@
   even when the generated `shots/` directory exists; the icon-picker shot captures the viewport instead
   of a huge full-page registry image, avoiding screenshot timeouts while still showing the open drawer.
   Measured the remaining production bundle warning: one JS chunk at about 2.8 MB minified / 845 kB gzip.
+- GitHub Pages demo: added a root presentation page under `site/`, a `make pages-build` artifact build
+  that places the playground at `/demo/`, and a Pages workflow using the current GitHub Actions
+  artifact deploy path. The demo build sets `VITE_BACKEND_FREE_DEMO=1`, so even `?collab` stays
+  local-only and reports that collaboration is disabled.

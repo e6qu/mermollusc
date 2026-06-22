@@ -9,6 +9,8 @@ Resolved (collab-era audit sweep):
 - ~~**Modal/drawer keyboard focus could leak back to the page.**~~ Fixed — the shortcuts dialog and icon
   picker now keep Tab inside while open, close on Escape, and restore focus to the triggering control.
   Focus regressions are pinned in the help and icon-picker specs.
+- ~~**The public demo build could try to use a collaboration relay if `?collab` was appended.**~~ Fixed
+  — the Pages demo build disables collab at compile time and reports that it is backend-free.
 - ~~**`make shots` skipped when the generated `shots/` directory existed.**~~ Fixed — the app Makefile
   now marks `shots` as phony, so the visual review harness always invokes Playwright.
 - ~~**The icon-picker visual shot could time out rasterizing the full registry page.**~~ Fixed — that

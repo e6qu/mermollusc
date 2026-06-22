@@ -391,9 +391,12 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // (the dev WebSocket server), two tabs on the same `?collab&room=…` edit the overlay live. In collab
 // mode the shared Y.Doc is the source of truth, so the session is kept (to wire the transport +
 // remote-repaint at the end of this file) and the persisted localStorage overlay is *not* restored
-// (it would clobber the room). Default off, so existing single-user flows are untouched.
+// (it would clobber the room). Default off, and disabled entirely in the backend-free Pages demo, so
+// the public demo never attempts to open a relay socket.
 const saveOverlay = (serialized: string): void => localStorage.setItem(OVERLAY_KEY, serialized);
-const useCollab = new URLSearchParams(location.search).has("collab");
+const collabRequested = new URLSearchParams(location.search).has("collab");
+const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
+const useCollab = collabRequested && !backendFreeDemo;
 let collabSession: CollabSession | null = null;
 let doc: OverlayDoc;
 if (useCollab) {
@@ -3467,4 +3470,9 @@ if (collabSession !== null) {
   }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
   window.__collabSetRole = applyRole; // e2e hook: drive the role without a real RBAC server
+} else if (collabRequested && backendFreeDemo) {
+  console.error("collab: disabled in the backend-free demo build");
+  window.setTimeout(() => {
+    setStatusAndAnnounce("ok", "collaboration is disabled in this backend-free demo");
+  }, 0);
 }
