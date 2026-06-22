@@ -23,6 +23,15 @@ describe("parsePie", () => {
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.value.showData).toBe(true);
+    expect(r.value.donut).toBe(false);
+  });
+
+  it("reads the donut modifier on the header", () => {
+    const r = parsePie('pie donut showData\n  "A" : 1\n');
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.donut).toBe(true);
+    expect(r.value.showData).toBe(true);
   });
 
   it("parses with no title", () => {

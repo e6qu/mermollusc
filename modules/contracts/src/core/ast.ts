@@ -188,6 +188,7 @@ export type StateTransitionId = Brand<string, "StateTransitionId">;
 // A real state, one of the `[*]` pseudo-states (initial when a transition's source, final when its
 // target — small circles, no label), or a `<<fork>>`/`<<join>>` bar or `<<choice>>` diamond.
 export type StateKind = "state" | "start" | "end" | "fork" | "join" | "choice";
+export type StateNoteSide = "right" | "left" | "over";
 
 export interface StateNode {
   readonly id: StateId;
@@ -216,6 +217,7 @@ export interface StateComposite {
 export interface StateNote {
   readonly id: StateId;
   readonly target: StateId;
+  readonly side: StateNoteSide;
   readonly text: string;
 }
 
@@ -459,6 +461,8 @@ export interface PieAst {
   readonly title: string | null;
   // `pie showData` — show the raw value alongside each slice's percentage.
   readonly showData: boolean;
+  // `pie donut` — render slices as a ring rather than a filled disc.
+  readonly donut: boolean;
   // Slices in source order; rendered clockwise from 12 o'clock.
   readonly slices: readonly PieSlice[];
 }

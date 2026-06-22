@@ -361,6 +361,7 @@ describe("toDisplayList", () => {
         {
           center: point(100, 100),
           radius: 80,
+          innerRadius: 0,
           startAngle: -Math.PI / 2,
           endAngle: Math.PI / 2,
           label: "Half",
@@ -375,9 +376,34 @@ describe("toDisplayList", () => {
     const wedge = cmds.find((c) => c.kind === "wedge");
     const label = cmds.find((c) => c.kind === "label");
     expect(wedge?.kind === "wedge" ? wedge.colorIndex : -1).toBe(0);
+    expect(wedge?.kind === "wedge" ? wedge.innerRadius : -1).toBe(0);
     // A partial slice's on-slice label is just the percentage (centred); the name lives in the legend.
     expect(label?.kind === "label" ? label.text : "").toBe("50%");
     expect(label?.kind === "label" ? label.align : "").toBe("center");
+  });
+
+  it("passes a donut slice's inner radius into the wedge command", () => {
+    const s: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          innerRadius: 36,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 0,
+        },
+      ],
+      decorations: [],
+      extent: rect(0, 0, 200, 200),
+    };
+    const wedge = toDisplayList(s).find((c) => c.kind === "wedge");
+    expect(wedge?.kind === "wedge" ? wedge.innerRadius : -1).toBe(36);
   });
 
   it("renders a full-circle wedge as a legend swatch with its label to the right", () => {
@@ -388,6 +414,7 @@ describe("toDisplayList", () => {
         {
           center: point(50, 50),
           radius: 7,
+          innerRadius: 0,
           startAngle: 0,
           endAngle: Math.PI * 2,
           label: "Dogs  75",

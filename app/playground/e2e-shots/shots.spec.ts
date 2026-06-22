@@ -45,6 +45,9 @@ const clickCanvas = async (page: Page, dx: number, dy: number): Promise<void> =>
   await page.mouse.click(box.x + dx, box.y + dy);
 };
 
+const STATE_POLISH_SOURCE =
+  "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n  note left of Cache : cached locally\n  note over Ready : publish completion\n";
+
 const FLOWS: readonly Flow[] = [
   {
     name: "01-mobile",
@@ -360,22 +363,16 @@ const FLOWS: readonly Flow[] = [
   },
   {
     name: "29-state-polish",
-    about: "state diagram pseudo-states, fork/join bars, choice diamond, and note fold",
+    about: "state diagram pseudo-states, fork/join bars, choice diamond, and left/right/over notes",
     drive: async (page) => {
-      await setSource(
-        page,
-        "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
-      );
+      await setSource(page, STATE_POLISH_SOURCE);
     },
   },
   {
     name: "30-sketch-state",
     about: "sketch mode over the polished state sample with filled hand-drawn boxes",
     drive: async (page) => {
-      await setSource(
-        page,
-        "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
-      );
+      await setSource(page, STATE_POLISH_SOURCE);
       await page.locator("#sketch").click();
       await settled(page);
     },
@@ -387,6 +384,16 @@ const FLOWS: readonly Flow[] = [
       await setSource(
         page,
         "requirementDiagram\n  requirement user_req {\n    id: 1\n    text: shall log in.\n    risk: high\n  }\n  element login_form {\n    type: simulation\n  }\n  login_form - satisfies -> user_req\n",
+      );
+    },
+  },
+  {
+    name: "32-pie-donut",
+    about: "donut pie chart with data labels and legend swatches",
+    drive: async (page) => {
+      await setSource(
+        page,
+        'pie showData donut\n  title Diagram family coverage\n  "Flow / state" : 34\n  "Structure" : 28\n  "Planning" : 18\n  "Architecture" : 20\n',
       );
     },
   },

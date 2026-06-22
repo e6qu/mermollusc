@@ -203,13 +203,13 @@ exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out pie to a stable display list 1`] = `
 [
-  "wedge 174,174 r150 -1.571..3.142 c0",
+  "wedge 174,174 r150/72 -1.571..3.142 c0",
   "label "75%" 240,240 center",
-  "wedge 174,174 r150 3.142..4.712 c1",
+  "wedge 174,174 r150/72 3.142..4.712 c1",
   "label "25%" 108,108 center",
-  "wedge 383,31 r7 0.000..6.283 c0",
+  "wedge 383,31 r7/0 0.000..6.283 c0",
   "label "Dogs" 398,31 left",
-  "wedge 383,57 r7 0.000..6.283 c1",
+  "wedge 383,57 r7/0 0.000..6.283 c1",
   "label "Cats" 398,57 left",
 ]
 `;

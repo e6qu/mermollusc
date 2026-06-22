@@ -1,4 +1,17 @@
-import { assertNever, brand, decode, err, map, ok, rect, type Point, type Result } from "@m/std";
+import {
+  assertNever,
+  brand,
+  decode,
+  err,
+  map,
+  ok,
+  point,
+  rect,
+  twoOrMore,
+  type Point,
+  type Rect,
+  type Result,
+} from "@m/std";
 import { boxCenter, routeWaypoints } from "../core/route.js";
 import type {
   ClassAst,
@@ -16,6 +29,7 @@ import type {
   SceneEdge,
   SceneNode,
   SceneNodeRole,
+  StateNote,
   StateAst,
 } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
@@ -281,20 +295,113 @@ const stateRole = (kind: StateKind): SceneNodeRole => {
   }
 };
 
-const applyStateRoles = (scene: Scene, ast: StateAst): Scene => {
+const boxCenterPoint = (bounds: Rect): Point =>
+  point(bounds.origin.x + bounds.size.width / 2, bounds.origin.y + bounds.size.height / 2);
+
+const edgePoint = (from: Rect, to: Rect): Point => {
+  const c = boxCenterPoint(from);
+  const t = boxCenterPoint(to);
+  const dx = t.x - c.x;
+  const dy = t.y - c.y;
+  if (dx === 0 && dy === 0) return c;
+  const sx = dx === 0 ? Number.POSITIVE_INFINITY : from.size.width / 2 / Math.abs(dx);
+  const sy = dy === 0 ? Number.POSITIVE_INFINITY : from.size.height / 2 / Math.abs(dy);
+  const scale = Math.min(sx, sy);
+  return point(c.x + dx * scale, c.y + dy * scale);
+};
+
+const noteBounds = (note: SceneNode, target: SceneNode, stateNote: StateNote): Rect => {
+  const gap = 32;
+  const noteWidth = note.bounds.size.width;
+  const noteHeight = note.bounds.size.height;
+  const targetLeft = target.bounds.origin.x;
+  const targetTop = target.bounds.origin.y;
+  const targetWidth = target.bounds.size.width;
+  switch (stateNote.side) {
+    case "right":
+      return rect(targetLeft + targetWidth + gap, targetTop, noteWidth, noteHeight);
+    case "left":
+      return rect(targetLeft - noteWidth - gap, targetTop, noteWidth, noteHeight);
+    case "over":
+      return rect(
+        targetLeft + targetWidth / 2 - noteWidth / 2,
+        targetTop - noteHeight - gap,
+        noteWidth,
+        noteHeight,
+      );
+    default:
+      return assertNever(stateNote.side);
+  }
+};
+
+const sceneExtent = (
+  nodes: readonly SceneNode[],
+  edges: readonly SceneEdge[],
+  base: Rect,
+): Rect => {
+  let minX: number = base.origin.x;
+  let minY: number = base.origin.y;
+  let maxX: number = base.origin.x + base.size.width;
+  let maxY: number = base.origin.y + base.size.height;
+  for (const node of nodes) {
+    minX = Math.min(minX, node.bounds.origin.x);
+    minY = Math.min(minY, node.bounds.origin.y);
+    maxX = Math.max(maxX, node.bounds.origin.x + node.bounds.size.width);
+    maxY = Math.max(maxY, node.bounds.origin.y + node.bounds.size.height);
+  }
+  for (const edge of edges) {
+    for (const p of edge.waypoints) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  return rect(minX, minY, maxX - minX, maxY - minY);
+};
+
+const applyStateSemantics = (scene: Scene, ast: StateAst): Scene => {
   const roles = new Map<string, SceneNodeRole>([
     ...ast.states.map((s): readonly [string, SceneNodeRole] => [s.id, stateRole(s.kind)]),
     ...ast.notes.map((n): readonly [string, SceneNodeRole] => [n.id, "stateNote"]),
   ]);
-  return {
-    ...scene,
-    nodes: scene.nodes.map(
-      (node): SceneNode => ({
-        ...node,
-        role: roles.get(node.id) ?? "normal",
-      }),
-    ),
-  };
+  const noteById = new Map<string, StateNote>(ast.notes.map((n) => [n.id, n]));
+  const targetByNote = new Map<string, string>(ast.notes.map((n) => [n.id, n.target]));
+  const originalById = new Map<string, SceneNode>(scene.nodes.map((node) => [node.id, node]));
+  for (const note of ast.notes) {
+    if (!originalById.has(note.id)) throw new Error(`state note missing from scene: ${note.id}`);
+    if (!originalById.has(note.target))
+      throw new Error(`state note target missing from scene: ${note.target}`);
+  }
+  const nodes = scene.nodes.map((node): SceneNode => {
+    const role = roles.get(node.id) ?? "normal";
+    const stateNote = noteById.get(node.id);
+    if (stateNote === undefined) return { ...node, role };
+    const target = originalById.get(stateNote.target);
+    if (target === undefined)
+      throw new Error(`state note target missing from scene: ${stateNote.target}`);
+    return { ...node, role, bounds: noteBounds(node, target, stateNote) };
+  });
+  const byId = new Map<string, SceneNode>(nodes.map((node) => [node.id, node]));
+  const edges = scene.edges.map((edge): SceneEdge => {
+    const noteId = edge.id.startsWith("note-edge:") ? edge.id.slice("note-edge:".length) : null;
+    if (noteId === null) return edge;
+    const targetId = targetByNote.get(noteId);
+    if (targetId === undefined) throw new Error(`state note edge has no note: ${noteId}`);
+    const target = byId.get(targetId);
+    const note = byId.get(noteId);
+    if (target === undefined)
+      throw new Error(`state note edge target missing from scene: ${targetId}`);
+    if (note === undefined) throw new Error(`state note edge note missing from scene: ${noteId}`);
+    return {
+      ...edge,
+      waypoints: twoOrMore(
+        edgePoint(target.bounds, note.bounds),
+        edgePoint(note.bounds, target.bounds),
+      ),
+    };
+  });
+  return { ...scene, nodes, edges, extent: sceneExtent(nodes, edges, scene.extent) };
 };
 
 // One attribute per row, e.g. `string name PK "the customer's name"`.
@@ -578,7 +685,7 @@ export const layoutDiagram = async (
       return layoutCloud(ast, measure);
     case "state":
       return map(await layout(stateToFlow(ast), new Map(), measure), (scene) =>
-        applyStateRoles(scene, ast),
+        applyStateSemantics(scene, ast),
       );
     case "er":
       return layoutEr(ast, measure);

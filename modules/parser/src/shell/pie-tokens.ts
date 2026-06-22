@@ -8,6 +8,7 @@ const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /[ \t]+/, group: L
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Pie = createToken({ name: "Pie", pattern: /pie\b/ });
 const ShowData = createToken({ name: "ShowData", pattern: /showData\b/ });
+const Donut = createToken({ name: "Donut", pattern: /donut\b/ });
 const Title = createToken({ name: "Title", pattern: /title\b/, push_mode: "titleMode" });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const Colon = createToken({ name: "Colon", pattern: /:/ });
@@ -23,7 +24,18 @@ const TitleNewLine = createToken({
 
 export const pieLexer = new Lexer({
   modes: {
-    main: [Comment, WhiteSpace, NewLine, Pie, ShowData, Title, QuotedString, Colon, NumberLit],
+    main: [
+      Comment,
+      WhiteSpace,
+      NewLine,
+      Pie,
+      ShowData,
+      Donut,
+      Title,
+      QuotedString,
+      Colon,
+      NumberLit,
+    ],
     titleMode: [TitleNewLine, TitleText],
   },
   defaultMode: "main",
@@ -33,6 +45,7 @@ export const PieTok = {
   NewLine,
   Pie,
   ShowData,
+  Donut,
   Title,
   QuotedString,
   Colon,
@@ -47,6 +60,7 @@ export const pieAllTokens: TokenType[] = [
   NewLine,
   Pie,
   ShowData,
+  Donut,
   Title,
   QuotedString,
   Colon,

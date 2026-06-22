@@ -8,7 +8,7 @@ runs single-user with no relay/persistence/auth.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
   Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/
-  clear, undo/redo via `Y.UndoManager`, persist via injected `save`). Source channel:
+  replaceOverrides/clear, undo/redo via `Y.UndoManager`, persist via injected `save`). Source channel:
   `source`/`setSource`/`spliceSource` + `onSourceChange`. Binary sync: `state`/`applyUpdate`/`onUpdate`.
 - **Transport:** `connectTransport(session, socket)` binds the binary-sync seam to any `CollabSocket`;
   `webSocketTransport(url)`/`connectWebSocket(session, url)` use the platform `WebSocket`.

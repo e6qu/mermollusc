@@ -93,6 +93,7 @@ export interface SceneEdge {
 export interface SceneWedge {
   readonly center: Point;
   readonly radius: number;
+  readonly innerRadius: number;
   readonly startAngle: number;
   readonly endAngle: number;
   readonly label: string;

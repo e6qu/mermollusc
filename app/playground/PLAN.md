@@ -21,6 +21,8 @@ canvas, and hosts the e2e / golden tests.
   flows, including phone-width, sketch, and family-polish shots, and writes PNGs for design review.
 - Support the backend-free GitHub Pages demo build at `/demo/`: the app stays single-user/local-only
   there even if a visitor appends `?collab`.
+- Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
+  icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
 
 ## Public API (stable surface)

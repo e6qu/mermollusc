@@ -3,6 +3,8 @@
 - *(done)* Phase 1 document: `createCollabSession` (Yjs `Y.Doc` = source `Y.Text` + overlay `Y.Map`s),
   `OverlayDoc`-compatible `overlay`, undo/redo via `Y.UndoManager`, binary-sync seam, in-memory
   convergence tests.
+- *(done)* `OverlayDoc.replaceOverrides` is implemented by the Yjs overlay, keeping collaborative and
+  local regenerate behavior aligned.
 - *(done)* **Dev transport:** `connectTransport`/`webSocketTransport`/`connectWebSocket` bind the
   binary-sync seam to a `WebSocket`; `dev-server.mjs` is a server-authoritative relay (rooms, per-room
   `Y.Doc`, state-on-join + broadcast). Two `?collab` tabs converge live (Playwright). No auth/persistence

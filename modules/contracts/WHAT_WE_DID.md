@@ -118,3 +118,9 @@
   family can preserve semantic rendering intent after sharing a generic layout path. State diagrams use
   it to render real initial/final markers, fork/join bars, and folded-note boxes without adding fake AST
   fields to unrelated families.
+- Added `OverlayDoc.replaceOverrides(overrides)`, so callers can atomically replace the manual-layout
+  override map while preserving selected entries (the app uses it to keep pinned positions across
+  Regenerate; the collab implementation applies the same port).
+- `StateNote` gained `side` (`right`/`left`/`over`), preserving the source annotation for layout.
+  `PieAst` gained `donut`, and `SceneWedge` gained `innerRadius`, so donut pies are a first-class
+  contract instead of a renderer-only convention.

@@ -40,7 +40,8 @@
   subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
   `state X { … }` (recursive; each composite scopes its own `[*]`, mirrors `FlowSubgraph` membership/
-  nesting → `StateAst.composites`). Source spans cover each state's label and each transition's label.
+  nesting → `StateAst.composites`), plus notes with explicit `right`/`left`/`over` side. Source spans
+  cover each state's label and each transition's label.
 - `parseEr(text)` / `parseErWithSource(text)` → `ErAst` (+ `ErSource`: entity-id and relationship-label
   spans): `erDiagram` subset — the crow's-foot operator (`||--o{` etc.) is lexed whole and split into
   normalised `fromCard`/`toCard` + identifying (`--`) vs non-identifying (`..`); entities come from

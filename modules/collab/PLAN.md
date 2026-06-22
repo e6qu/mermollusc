@@ -27,6 +27,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   `setLocalUser()`, `onSourceChange()/onOverlayChange()`, the binary-sync seam
   (`state()/applyUpdate()/onUpdate()` + `awarenessState()/applyAwarenessUpdate()/onAwarenessUpdate()`),
   `destroy()`.
+- `overlay.replaceOverrides(overrides)` applies whole-map override replacement through the same
+  decoded Y.Map storage as point edits, so local and collaborative documents match the app's regenerate
+  semantics.
 - Transport: `connectTransport(session, socket, hooks?)` / `webSocketTransport(url)` /
   `connectWebSocket(session, url, hooks?)` — frames document, presence, and server→client control
   (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket.

@@ -137,3 +137,5 @@
   markers, ringed final markers, fork/join bars, and folded state notes. Canvas and SVG both render the
   commands, and sketch-mode boxes keep a subtle fill under the wobbly outline so large diagrams no
   longer look hollow. +display/paint/svg tests.
+- Donut wedges: the `wedge` display command now carries `innerRadius`; canvas and SVG draw annular
+  sectors when it is non-zero while keeping full-circle legend swatches as discs. +display/SVG tests.

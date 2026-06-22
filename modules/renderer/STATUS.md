@@ -9,10 +9,10 @@
   glyph above the label — for nodes carrying a `SceneNode.icon`). Emitted in three layers — edge
   lines + markers, then nodes, then edge labels — so nodes occlude crossing links while labels stay on top.
 - **Pie wedges:** a `wedge` `DrawCmd` (filled circular sector) renders `scene.wedges` — the canvas
-  painter draws an `arc` sector, the SVG backend a `<path>` sector, both filled from a shared
-  categorical palette (`wedgeColor(colorIndex)`) so a slice matches across backends. `toDisplayList`
-  pairs each wedge with a centred name+percentage label. Node/edge families carry no wedges, so they're
-  unaffected.
+  painter draws an `arc` sector (or annular sector for donuts), the SVG backend a `<path>` sector,
+  both filled from a shared categorical palette (`wedgeColor(colorIndex)`) so a slice matches across
+  backends. `toDisplayList` pairs each slice with a centred percentage label and each full-disc legend
+  swatch with a left-aligned label. Node/edge families carry no wedges, so they're unaffected.
 - **Edge-end markers:** the polyline `DrawCmd` carries a `fromMarker`/`toMarker` `EndMarker`,
   precomputed from `SceneEdge.fromEnd`/`toEnd` — backend-agnostic geometry: stroked `lines` (the
   open-arrow V, the `|` bars, the three-prong "many" fan), `polygons` (`{ points, fill }` — `solid`

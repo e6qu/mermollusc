@@ -1,6 +1,6 @@
 # @m/app (playground) — status
 
-**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; gantt task bars on a day axis with `after`-chains); `make check` + Playwright (138 specs) green.
+**State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; pie donuts; gantt task bars on a day axis with `after`-chains); `make check` green.
 
 - **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
@@ -41,7 +41,8 @@
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) — for visual review / design iteration, not a gate. It includes a phone-width
-  responsive shell flow plus state/sketch flows so marker and hand-drawn polish is visible during review.
+  responsive shell flow plus state/sketch/donut flows so marker, hand-drawn, and radial polish is
+  visible during review.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay.
@@ -62,7 +63,8 @@
   - structural edits: **Connect** (selected nodes → family-specific edge/relation/message; 3+ selected
     chain in click order A→B→C in one action) and
     **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
-    all ten families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all.
+    all ten families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all and
+    preserves pinned manual overrides while replacing unpinned ones.
   - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors
     open at the visible label location.
   - group outlines are selectable: clicking an outline selects all leaf nodes in that group, enabling
@@ -127,7 +129,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 138 specs — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

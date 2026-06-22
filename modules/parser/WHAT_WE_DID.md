@@ -219,3 +219,8 @@
 - Gantt dates now minted through `ganttDate` at the parse boundary — a task start date and each
   `excludes` holiday are validated there, failing the parse loudly (located) on a bad format or
   non-calendar day, instead of the layout catching it later. +2 tests (bad start date; bad holiday).
+- State notes now parse their requested side (`note right of`, `note left of`, `note over`) into
+  `StateNote.side`; the default stays `right` because that is the token-free form already accepted by
+  the grammar.
+- Pie headers now accept a local `donut` modifier alongside `showData` (`pie donut`, `pie showData
+  donut`, or the reverse order), and `PieAst.donut` carries that through the pipeline. +integration test.

@@ -387,9 +387,21 @@ export const paint = (
         ctx.strokeStyle = theme.background;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        if (!full) ctx.moveTo(cmd.cx, cmd.cy);
-        ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
-        if (!full) ctx.closePath();
+        if (cmd.innerRadius > 0) {
+          const outerStartX = cmd.cx + cmd.radius * Math.cos(cmd.startAngle);
+          const outerStartY = cmd.cy + cmd.radius * Math.sin(cmd.startAngle);
+          const innerEndX = cmd.cx + cmd.innerRadius * Math.cos(cmd.endAngle);
+          const innerEndY = cmd.cy + cmd.innerRadius * Math.sin(cmd.endAngle);
+          ctx.moveTo(outerStartX, outerStartY);
+          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
+          ctx.lineTo(innerEndX, innerEndY);
+          ctx.arc(cmd.cx, cmd.cy, cmd.innerRadius, cmd.endAngle, cmd.startAngle);
+          ctx.closePath();
+        } else {
+          if (!full) ctx.moveTo(cmd.cx, cmd.cy);
+          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
+          if (!full) ctx.closePath();
+        }
         ctx.fill();
         ctx.stroke();
         ctx.lineWidth = 1.5;

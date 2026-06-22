@@ -3,6 +3,7 @@ import type { PieAst, Scene, SceneWedge } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 
 const RADIUS = 150;
+const DONUT_INNER_RADIUS = 72;
 const MARGIN = 24;
 const SWATCH_R = 7; // legend colour-disc radius
 const LEGEND_GAP = 28; // between the pie's right edge and the legend column
@@ -58,6 +59,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     slices.push({
       center,
       radius: RADIUS,
+      innerRadius: ast.donut ? DONUT_INNER_RADIUS : 0,
       startAngle,
       endAngle,
       label: slice.label,
@@ -70,6 +72,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     legend.push({
       center: point(legendX0 + col * colPitch, MARGIN + SWATCH_R + row * ROW_H),
       radius: SWATCH_R,
+      innerRadius: 0,
       startAngle: 0,
       endAngle: TWO_PI,
       label: legendText(slice.label, slice.value),

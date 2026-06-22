@@ -20,6 +20,8 @@
   boilerplate. A future compartment family is now a small AST→spec mapper.
 - *(done)* State diagrams preserve semantic Scene roles after `stateToFlow`, so start/end markers,
   fork/join bars, and notes can render distinctly while still sharing the ELK flowchart path.
+- *(done)* State note side is now honoured after ELK layout: `right`, `left`, and `over` notes are
+  placed on the requested side and their note connectors are re-anchored.
 - gitGraph: *(done — deterministic lane layout, LR/TB/BT; label-sized rounded pills; branch/merge
   connectors are curved beziers)*. Follow-up: orthogonal (elbow) routing as an alternative style.
 - timeline: *(done — column layout with a period spine, stacked events, section bands)*. Follow-up:
@@ -28,4 +30,4 @@
   radius, forest rings a virtual hub)*. Follow-up: collision-avoidance for very wide labels at the same radius. (curved spokes: done)
 - pie: *(done — radial wedge layout, slices clockwise from 12 o'clock; **side legend** with colour-disc
   swatches + `showData` raw values; on-slice label is just the percentage; the legend **wraps into
-  columns** when it would run past the disc)*. Follow-up: an optional donut (inner radius).
+  columns** when it would run past the disc; `donut` adds an inner radius to slices only)*.

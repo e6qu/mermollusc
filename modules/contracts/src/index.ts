@@ -35,6 +35,7 @@ export type {
   StateId,
   StateTransitionId,
   StateKind,
+  StateNoteSide,
   StateNode,
   StateTransition,
   StateComposite,

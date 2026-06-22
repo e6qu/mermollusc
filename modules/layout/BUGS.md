@@ -32,4 +32,5 @@ Checked while routing composite states through flowchart subgraphs.
 
 Checked while routing ER diagrams through the ELK path.
 Checked while restoring state Scene roles after flowchart-backed layout.
+Checked while placing state notes by side and adding pie donut inner radii.
 Checked while adding the empty-graph / self-loop layout robustness suite (no crashes found).

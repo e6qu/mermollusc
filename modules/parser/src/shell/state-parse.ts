@@ -7,6 +7,7 @@ import type {
   StateKind,
   StateNode,
   StateNote,
+  StateNoteSide,
   StateSource,
   StateTransition,
   StateTransitionId,
@@ -21,6 +22,12 @@ const ANNOTATION_KIND: Record<string, StateKind> = {
   fork: "fork",
   join: "join",
   choice: "choice",
+};
+
+const noteSide = (note: CstNode): StateNoteSide => {
+  if (childTokens(note.children, "StateLeftOf").length > 0) return "left";
+  if (childTokens(note.children, "StateOver").length > 0) return "over";
+  return "right";
 };
 
 export interface ParsedState {
@@ -167,6 +174,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
           notes.push({
             id: brand<string, "StateId">(`__note_${notes.length}`),
             target: brand<string, "StateId">(target.image),
+            side: noteSide(note),
             text: text.image.trim(),
           });
         }

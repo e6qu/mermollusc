@@ -204,3 +204,8 @@
 - State layout now restores semantic `SceneNode.role` values after converting the state AST to the
   shared flowchart/ELK path: `[*]` start/end, `<<fork>>`/`<<join>>`, and notes survive as renderer-facing
   roles instead of being indistinguishable generic circles/rects.
+- State layout now also honours `StateNote.side`: after ELK places the shared graph, notes are moved
+  to the requested right/left/over side of their target, note edges are re-anchored, and the scene extent
+  is recalculated. +integration test.
+- Pie layout now maps `PieAst.donut` to a non-zero `SceneWedge.innerRadius` for slices while keeping
+  legend swatches as full discs. +unit test.

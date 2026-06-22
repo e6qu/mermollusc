@@ -11,7 +11,8 @@
 
 ## Public API (stable surface)
 
-- `layout(ast: FlowchartAst): Promise<Result<Scene, LayoutError>>` — fail-loud.
+- `layout(ast, seed, measure): Promise<Result<Scene, LayoutError>>` — fail-loud flowchart layout with
+  explicit manual-position seed and text metric.
 - `toElkGraph` / `toScene` (pure) are exported for testing and reuse.
 - `layoutDiagram(ast, measure)` preserves family-specific Scene semantics such as state node roles
   while sharing the generic ELK path where appropriate.
@@ -23,3 +24,5 @@
 - Node sizing is a heuristic; callers that need visual fidelity pass the same `MeasureText` they use
   for the active renderer theme.
 - `LayoutOverrides` seeds are consumed by the flowchart relax path.
+- Family post-passes may refine shared layout output when the source carries semantic geometry, such
+  as state-note side placement.

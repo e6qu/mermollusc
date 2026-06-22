@@ -118,6 +118,7 @@ export type DrawCmd =
       readonly cx: Coordinate;
       readonly cy: Coordinate;
       readonly radius: Length;
+      readonly innerRadius: Length;
       readonly startAngle: number;
       readonly endAngle: number;
       readonly colorIndex: number;
@@ -605,6 +606,7 @@ const wedgeCmds = (wedge: SceneWedge): DrawCmd[] => {
     cx: coordinate(wedge.center.x),
     cy: coordinate(wedge.center.y),
     radius: length(wedge.radius),
+    innerRadius: length(wedge.innerRadius),
     startAngle: wedge.startAngle,
     endAngle: wedge.endAngle,
     colorIndex: wedge.colorIndex,
