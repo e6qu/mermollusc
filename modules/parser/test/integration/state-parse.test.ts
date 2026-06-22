@@ -83,13 +83,14 @@ describe("parseState", () => {
 
   it("captures `note right of`/`left of`/`over` annotations", () => {
     const text =
-      "stateDiagram-v2\n  A --> B\n  note right of A : starts here\n  note over B : the end\n";
+      "stateDiagram-v2\n  A --> B\n  note right of A : starts here\n  note left of A : before\n  note over B : the end\n";
     const r = parseState(text);
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
-    expect(r.value.notes.map((n) => [n.target, n.text])).toEqual([
-      ["A", "starts here"],
-      ["B", "the end"],
+    expect(r.value.notes.map((n) => [n.target, n.side, n.text])).toEqual([
+      ["A", "right", "starts here"],
+      ["A", "left", "before"],
+      ["B", "over", "the end"],
     ]);
   });
 

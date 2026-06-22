@@ -18,7 +18,7 @@
   interface in `src/document-model.ts`; `createLocalDocument` is the single-user, localStorage-backed
   implementation, and `main.ts` reads/mutates the overlay only through that seam. This mirrors how the
   source text already sits behind the `Editor` interface (`src/editor.ts`). Pure refactor —
-  behavior-neutral (all 105 Playwright specs green). A future collaborative backend plugs in as a
+  behavior-neutral (the then-current Playwright suite was green). A future collaborative backend plugs in as a
   second `OverlayDoc` implementation (Yjs-backed, edits broadcast via the injected `save` sink)
   **without touching call sites**. Full phased plan in [`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)
   and the root `PLAN.md` Future bets; this is **Phase 0 of 4**.
@@ -36,10 +36,10 @@
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
 - *(done)* GitHub Pages demo deployment: root Pages is reserved for presentation content, `/demo/`
   hosts the backend-free playground build, and `/docs/` + `/storybook/` are reserved for later sites.
-- The production app still builds as one large JS chunk: `make build` reports
-  `dist/assets/index-*.js` at about **2.8 MB minified / 845 kB gzip**, past Vite's 500 kB warning.
-  Consider code-splitting if startup weight matters; likely targets are the editor surface and/or
-  bundled icon packs. Do not suppress the warning without a deliberate size budget.
+- *(done)* The production app no longer builds as one monolithic chunk: Vite manual chunking splits
+  editor, pipeline, collab, icons, and the ELK layout engine. The build still reports large icon and
+  layout-engine chunks, so a later startup-weight pass should use real lazy-loading or a size budget,
+  not warning suppression.
 - *(done)* Responsive shell polish: the topbar/workbench/status bar no longer force page-level
   horizontal scrolling on phone-width viewports; the editor and stage stack vertically, with the
   diagram sheet still scrolling inside the stage.
@@ -60,10 +60,9 @@
   *(done — click a group outline to select the whole group)*; *(done — editable group label/title)*.
 - *(done)* Connect and Delete dispatch across all six families, including C4 boundary blocks and
   sequence actors/messages.
-- State diagrams now render composite/nested states, fork/join, choice, notes, and distinct start/end
-  markers. Follow-up: carry note side (`left/right/over`) through layout so note positioning matches
-  the source annotation more closely. Connect/Delete/relabel work on real states; the merged `[*]`
-  pseudo-states aren't meaningfully editable from the canvas.
+- State diagrams now render composite/nested states, fork/join, choice, notes, distinct start/end
+  markers, and side-aware notes (`left`/`right`/`over`). Connect/Delete/relabel work on real states; the
+  merged `[*]` pseudo-states aren't meaningfully editable from the canvas.
 - *(done)* ER renders crow's-foot cardinality end markers (per-end `EdgeEnd`) and entity attribute
   compartments (`SceneNode.rows`); the `er` example shows attribute blocks and a `25-er` shots flow
   captures it. Connect/Delete/relabel already work on entities + relationships. The shared `EndMarker`

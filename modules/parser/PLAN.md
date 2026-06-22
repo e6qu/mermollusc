@@ -1,6 +1,7 @@
 # @m/parser — plan
 
-`text → AST` and `AST → text` (printer) for Mermaid diagrams; round-trip tested.
+`text → AST` and `AST → text` (printer) for Mermaid-like diagram families; round-trip tested where
+the family has a printer.
 
 ## Responsibility
 
@@ -11,11 +12,12 @@
 
 ## Public API (stable surface)
 
-- `parse(text: string): Result<FlowchartAst, ParseError>` — fail-loud, never throws.
+- `parse(text: string): Result<FlowchartAst, ParseError>` and family-specific parsers such as
+  `parseState`, `parsePie`, and `parseDiagram` — fail-loud, never throw.
 - `print(ast: FlowchartAst): string` — pure.
-- `ParseError = { kind: "parse"; errors: readonly string[] }`.
+- `ParseError = { kind: "parse"; errors: readonly string[]; positions: readonly ErrorPosition[] }`.
 
 ## Notes / known limits
 
 - Direction must be a keyword right after `flowchart`/`graph`, else a node on the header line is
-  mis-read as a direction. Source spans for two-way sync are not attached yet (see DO_NEXT).
+  mis-read as a direction.

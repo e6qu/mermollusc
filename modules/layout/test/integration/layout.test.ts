@@ -24,6 +24,7 @@ const errid = (s: string) => brand<string, "ErRelId">(s);
 const cid = (s: string) => brand<string, "ClassEntityId">(s);
 const crid = (s: string) => brand<string, "ClassRelId">(s);
 const mmid = (s: string) => brand<string, "MindmapNodeId">(s);
+const snid = (s: string) => brand<string, "SceneNodeId">(s);
 
 const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
@@ -162,6 +163,33 @@ describe("layout", () => {
     expect(laid.value.nodes.find((n) => n.id === "__state_start")?.shape).toBe("circle");
     expect(laid.value.nodes.find((n) => n.id === "__state_start")?.role).toBe("stateStart");
     expect(laid.value.edges).toHaveLength(1);
+  });
+
+  it("places state notes on the requested side of their target", async () => {
+    const stateAst: StateAst = {
+      kind: "state",
+      states: [{ id: sid("Idle"), label: "Idle", kind: "state" }],
+      transitions: [],
+      composites: [],
+      notes: [
+        { id: sid("__note_0"), target: sid("Idle"), side: "right", text: "right note" },
+        { id: sid("__note_1"), target: sid("Idle"), side: "left", text: "left note" },
+        { id: sid("__note_2"), target: sid("Idle"), side: "over", text: "over note" },
+      ],
+    };
+    const laid = await layoutDiagram(stateAst, heuristicMeasure);
+    expect(isOk(laid)).toBe(true);
+    if (!isOk(laid)) return;
+    const byId = new Map(laid.value.nodes.map((n) => [n.id, n]));
+    const idle = byId.get(snid("Idle"));
+    const right = byId.get(snid("__note_0"));
+    const left = byId.get(snid("__note_1"));
+    const over = byId.get(snid("__note_2"));
+    if (idle === undefined || right === undefined || left === undefined || over === undefined)
+      throw new Error("missing state note nodes");
+    expect(right.bounds.origin.x).toBeGreaterThan(idle.bounds.origin.x + idle.bounds.size.width);
+    expect(left.bounds.origin.x + left.bounds.size.width).toBeLessThan(idle.bounds.origin.x);
+    expect(over.bounds.origin.y + over.bounds.size.height).toBeLessThan(idle.bounds.origin.y);
   });
 
   it("layoutDiagram lays out a mindmap as an arrowless radial tree", async () => {

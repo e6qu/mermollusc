@@ -121,8 +121,16 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
     }
     case "wedge": {
       // A full-circle sweep is a legend swatch — a `<circle>` (an SVG arc can't close a full turn).
-      if (cmd.endAngle - cmd.startAngle >= Math.PI * 2 - 1e-6) {
+      if (cmd.endAngle - cmd.startAngle >= Math.PI * 2 - 1e-6 && cmd.innerRadius === 0) {
         return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(cmd.radius)}" fill="${wedgeColor(cmd.colorIndex)}" stroke="${theme.background}" stroke-width="2"/>`;
+      }
+      if (cmd.endAngle - cmd.startAngle >= Math.PI * 2 - 1e-6 && cmd.innerRadius > 0) {
+        const outerRight = `${num(cmd.cx + cmd.radius)} ${num(cmd.cy)}`;
+        const outerLeft = `${num(cmd.cx - cmd.radius)} ${num(cmd.cy)}`;
+        const innerRight = `${num(cmd.cx + cmd.innerRadius)} ${num(cmd.cy)}`;
+        const innerLeft = `${num(cmd.cx - cmd.innerRadius)} ${num(cmd.cy)}`;
+        const d = `M ${outerRight} A ${num(cmd.radius)} ${num(cmd.radius)} 0 1 1 ${outerLeft} A ${num(cmd.radius)} ${num(cmd.radius)} 0 1 1 ${outerRight} M ${innerRight} A ${num(cmd.innerRadius)} ${num(cmd.innerRadius)} 0 1 0 ${innerLeft} A ${num(cmd.innerRadius)} ${num(cmd.innerRadius)} 0 1 0 ${innerRight}`;
+        return `<path d="${d}" fill="${wedgeColor(cmd.colorIndex)}" fill-rule="evenodd" stroke="${theme.background}" stroke-width="2"/>`;
       }
       // A sector as an SVG path: line out to the start angle, arc to the end angle, close to centre.
       // Same canvas-convention angles + point formula as the painter, so the two backends agree.
@@ -131,6 +139,14 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const x1 = cmd.cx + cmd.radius * Math.cos(cmd.endAngle);
       const y1 = cmd.cy + cmd.radius * Math.sin(cmd.endAngle);
       const largeArc = cmd.endAngle - cmd.startAngle > Math.PI ? 1 : 0;
+      if (cmd.innerRadius > 0) {
+        const ix0 = cmd.cx + cmd.innerRadius * Math.cos(cmd.startAngle);
+        const iy0 = cmd.cy + cmd.innerRadius * Math.sin(cmd.startAngle);
+        const ix1 = cmd.cx + cmd.innerRadius * Math.cos(cmd.endAngle);
+        const iy1 = cmd.cy + cmd.innerRadius * Math.sin(cmd.endAngle);
+        const d = `M ${num(x0)} ${num(y0)} A ${num(cmd.radius)} ${num(cmd.radius)} 0 ${largeArc} 1 ${num(x1)} ${num(y1)} L ${num(ix1)} ${num(iy1)} A ${num(cmd.innerRadius)} ${num(cmd.innerRadius)} 0 ${largeArc} 0 ${num(ix0)} ${num(iy0)} Z`;
+        return `<path d="${d}" fill="${wedgeColor(cmd.colorIndex)}" stroke="${theme.background}" stroke-width="2"/>`;
+      }
       const d = `M ${num(cmd.cx)} ${num(cmd.cy)} L ${num(x0)} ${num(y0)} A ${num(cmd.radius)} ${num(cmd.radius)} 0 ${largeArc} 1 ${num(x1)} ${num(y1)} Z`;
       return `<path d="${d}" fill="${wedgeColor(cmd.colorIndex)}" stroke="${theme.background}" stroke-width="2"/>`;
     }

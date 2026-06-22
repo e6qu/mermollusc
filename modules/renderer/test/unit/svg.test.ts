@@ -262,6 +262,7 @@ describe("toSvg", () => {
         {
           center: point(100, 100),
           radius: 80,
+          innerRadius: 0,
           startAngle: -Math.PI / 2,
           endAngle: Math.PI / 2,
           label: "Half",
@@ -283,6 +284,71 @@ describe("toSvg", () => {
     expect(svg).toContain("<path");
     expect(svg).toContain(" A 80 80 0 "); // an arc of the wedge radius
     expect(svg).toContain("50%");
+  });
+
+  it("renders a donut wedge with an inner arc", () => {
+    const donut: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          innerRadius: 36,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 0,
+        },
+      ],
+      decorations: [],
+      extent: rect(0, 0, 200, 200),
+    };
+    const svg = toSvg(toDisplayList(donut), {
+      width: 248,
+      height: 248,
+      origin: { x: 0, y: 0 },
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(svg).toContain(" A 80 80 0 ");
+    expect(svg).toContain(" A 36 36 0 ");
+  });
+
+  it("renders a full donut wedge as an even-odd ring path", () => {
+    const donut: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          innerRadius: 36,
+          startAngle: 0,
+          endAngle: Math.PI * 2,
+          label: "All",
+          value: 100,
+          percent: 100,
+          colorIndex: 0,
+        },
+      ],
+      decorations: [],
+      extent: rect(0, 0, 200, 200),
+    };
+    const svg = toSvg(toDisplayList(donut), {
+      width: 248,
+      height: 248,
+      origin: { x: 0, y: 0 },
+      margin: 24,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    expect(svg).toContain('fill-rule="evenodd"');
+    expect(svg).toContain(" A 80 80 0 1 1 ");
+    expect(svg).toContain(" A 36 36 0 1 0 ");
   });
 
   it("renders a curved 2-point connector as a bezier <path> (matching the canvas painter)", () => {
@@ -364,6 +430,7 @@ describe("toSvg", () => {
         {
           center: point(40, 40),
           radius: 7,
+          innerRadius: 0,
           startAngle: 0,
           endAngle: Math.PI * 2,
           label: "Dogs",

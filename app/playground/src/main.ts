@@ -50,6 +50,7 @@ import type {
   GanttSource,
   GroupId,
   GroupMember,
+  LayoutOverrides,
   NetworkSource,
   NodeId,
   NodeShape,
@@ -1628,7 +1629,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "pie",
-    'pie showData\n  title Diagram family coverage\n  "Flow / state" : 34\n  "Structure" : 28\n  "Planning" : 18\n  "Architecture" : 20\n',
+    'pie showData donut\n  title Diagram family coverage\n  "Flow / state" : 34\n  "Structure" : 28\n  "Planning" : 18\n  "Architecture" : 20\n',
   ],
   [
     "gantt",
@@ -2882,12 +2883,15 @@ relaxBtn.addEventListener("click", () => {
   if (viewerMode) return;
   void relax();
 });
-// Regenerate: drop manual positions and lay out cleanly from the text. Undoable — so a regenerate
-// that throws away a hand-tuned layout can be taken back (the groups are kept either way).
+// Regenerate: preserve pinned manual positions and lay out everything else cleanly from the text.
+// Undoable — so the previous overlay can be restored (the groups are kept either way).
+const pinnedOverrides = (overrides: LayoutOverrides): LayoutOverrides =>
+  new Map([...overrides].filter(([, override]) => override.pinned));
+
 regenBtn.addEventListener("click", () => {
   if (viewerMode) return;
   if (doc.overrides().size > 0) doc.record();
-  doc.clearOverrides();
+  doc.replaceOverrides(pinnedOverrides(doc.overrides()));
   doc.persist();
   void renderFromText(editor.value());
 });

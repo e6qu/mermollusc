@@ -24,6 +24,7 @@ const innerSpan = (t: IToken): TextSpan => ({
 const buildResult = (cst: CstNode): Result<ParsedPie, ParseError> => {
   const root = cst.children;
   const showData = childTokens(root, "ShowData").length > 0;
+  const donut = childTokens(root, "Donut").length > 0;
   let title: string | null = null;
   const slices: PieSlice[] = [];
   const sliceSpans = new Map<PieSliceId, TextSpan>();
@@ -54,7 +55,10 @@ const buildResult = (cst: CstNode): Result<ParsedPie, ParseError> => {
     sliceSpans.set(id, innerSpan(labelTok));
   }
 
-  return ok({ ast: { kind: "pie", title, showData, slices }, source: { slices: sliceSpans } });
+  return ok({
+    ast: { kind: "pie", title, showData, donut, slices },
+    source: { slices: sliceSpans },
+  });
 };
 
 export const parsePieWithSource = (text: string): Result<ParsedPie, ParseError> => {

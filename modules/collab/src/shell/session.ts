@@ -213,6 +213,10 @@ export const createCollabSession = (opts: {
       writeOverrides(next);
       cache = { overrides: next, groups: cache.groups };
     },
+    replaceOverrides: (overrides) => {
+      writeOverrides(overrides);
+      cache = { overrides, groups: cache.groups };
+    },
     groupNodes: (units) => {
       const next = group(cache.groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
       writeGroups(next);

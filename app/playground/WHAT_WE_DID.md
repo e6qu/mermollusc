@@ -353,7 +353,7 @@
   `doc.overrides()`/`doc.groups()` and mutates it via `doc.moveNode`/`resizeNode`/`groupNodes`/
   `ungroupAt`/`setGroupLocked`/`setGroupLabel`/`pruneGroupsTo`/`clearOverrides`/`replace`, with
   `record`/`undo`/`redo`/`clearHistory`/`persist` for history + save. Pure, behavior-neutral refactor
-  (typecheck + lint + format clean; all 105 Playwright specs green; launch screenshot verified). The
+  (typecheck + lint + format clean; the then-current Playwright suite green; launch screenshot verified). The
   seam mirrors the existing `Editor` seam for source text, and is the plug-in point for a future
   Yjs-backed CRDT implementation (the `save` sink becomes a broadcast) — no call sites change. Full
   phased plan recorded in `docs/collab-editor-plan.md` and the root `PLAN.md` Future bets (Phase 0
@@ -590,3 +590,10 @@
   choice/notes, ER defines every relationship endpoint, and sequence/timeline/pie tell richer stories.
   Added state-polish and sketch-state screenshot flows so the visual review pass captures the new
   marker and hand-drawn behavior.
+- Production build polish: added a Vite config that separates editor, pipeline, collab, icon, and ELK
+  layout-engine chunks; build output now exposes the remaining large icon/layout targets instead of one
+  undifferentiated app chunk.
+- Regenerate now preserves pinned manual node overrides by replacing the overlay override map with only
+  pinned entries before re-layout; unpinned manual positions still clear. +e2e.
+- Family polish: the pie example now showcases `pie showData donut`, the display-list golden records
+  donut inner radii, and screenshot flows cover side-aware state notes plus a donut chart.

@@ -21,3 +21,5 @@ Resolved (polish & harden):
   two wire shapes can't drift. Each encoder carries a `satisfies Record<keyof NodeOverride|Group, unknown>`
   guard, so a newly-added domain field is a **compile error** at the encoder instead of a silent
   wire-drop. (+builder unit test for the per-entry encoders' shape + round-trip.)
+
+Checked while adding overlay override replacement for regenerate.

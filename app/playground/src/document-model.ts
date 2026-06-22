@@ -57,6 +57,9 @@ export const createLocalDocument = (opts: {
     clearOverrides: () => {
       overrides = new Map();
     },
+    replaceOverrides: (nextOverrides) => {
+      overrides = nextOverrides;
+    },
     groupNodes: (units) => {
       groups = group(groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
     },

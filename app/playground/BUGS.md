@@ -101,3 +101,4 @@ Checked while fuzzing each family for odd-input crashes.
 Checked interactive-control accessible names and canvas labelling (a11y pass).
 
 Checked while adding the ER-diagram family.
+Checked while preserving pinned overrides on Regenerate and adding donut/state-note visual coverage.

@@ -103,3 +103,6 @@
   JSON persistence uses), so the wire shapes can't drift and a new `NodeOverride`/`Group` field is a
   compile error at the encoder's `satisfies` guard rather than a silent wire-drop. Resolves the audit's
   hand-written-encoder finding.
+- Implemented `OverlayDoc.replaceOverrides` for the Yjs-backed overlay by clearing and repopulating the
+  override map in one local transaction. This keeps collab mode aligned with the app's pinned-regenerate
+  behavior.

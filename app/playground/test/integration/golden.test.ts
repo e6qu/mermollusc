@@ -59,7 +59,7 @@ const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> =
   },
   {
     name: "pie",
-    text: 'pie\n  title Pets\n  "Dogs" : 75\n  "Cats" : 25\n',
+    text: 'pie donut\n  title Pets\n  "Dogs" : 75\n  "Cats" : 25\n',
   },
   {
     name: "gantt",
@@ -104,7 +104,7 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
       case "label":
         return `label "${c.text}" ${r(c.x)},${r(c.y)} ${c.align}`;
       case "wedge":
-        return `wedge ${r(c.cx)},${r(c.cy)} r${r(c.radius)} ${c.startAngle.toFixed(3)}..${c.endAngle.toFixed(3)} c${c.colorIndex}`;
+        return `wedge ${r(c.cx)},${r(c.cy)} r${r(c.radius)}/${r(c.innerRadius)} ${c.startAngle.toFixed(3)}..${c.endAngle.toFixed(3)} c${c.colorIndex}`;
     }
   });
 

@@ -19,6 +19,15 @@ test("renders a pie chart (title, slices) from the textarea", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+test("renders a donut pie chart from the textarea", async ({ page }) => {
+  const errors = watchPipelineErrors(page);
+  await page.goto("/");
+  await setSource(page, 'pie donut\n  title Pets\n  "Dogs" : 386\n  "Cats" : 85\n');
+  await expect(page.locator("#stage")).toHaveAttribute("aria-label", /^pie diagram:/);
+  await expect(page.locator("#kind")).toHaveText("pie");
+  expect(errors).toEqual([]);
+});
+
 test("the Pie example loads and parses", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));

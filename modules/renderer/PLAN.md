@@ -16,6 +16,7 @@
 - `paint(ctx: Canvas2D, cmds: readonly DrawCmd[]): void`.
 - `toSvg(cmds, opts): string` shares the display list with the canvas backend for export.
 - `Canvas2D` — structural subset of `CanvasRenderingContext2D`; a real context is assignable.
+- Pie/donut wedges render through the same display-list `wedge` command in canvas and SVG.
 
 ## Notes
 

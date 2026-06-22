@@ -346,6 +346,7 @@ describe("paint", () => {
         {
           center: point(100, 100),
           radius: 80,
+          innerRadius: 0,
           startAngle: -Math.PI / 2,
           endAngle: Math.PI / 2,
           label: "Half",

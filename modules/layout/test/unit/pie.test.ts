@@ -14,6 +14,7 @@ const ast: PieAst = {
   kind: "pie",
   title: "Pets",
   showData: false,
+  donut: false,
   slices: [
     { id: sid("s0"), label: "Dogs", value: positive(75) },
     { id: sid("s1"), label: "Cats", value: positive(25) },
@@ -66,11 +67,21 @@ describe("layoutPie", () => {
     expect(labels).toEqual(["Dogs  75", "Cats  25"]);
   });
 
+  it("sets an inner radius for donut slices but not legend swatches", () => {
+    const donut = layoutPie({ ...ast, donut: true }, heuristicMeasure);
+    if (!donut.ok) throw new Error(donut.error.message);
+    const donutSlices = donut.value.wedges.filter(isSlice);
+    const swatches = donut.value.wedges.filter(isLegend);
+    expect(donutSlices.every((w) => w.innerRadius > 0)).toBe(true);
+    expect(swatches.every((w) => w.innerRadius === 0)).toBe(true);
+  });
+
   it("wraps the legend into a second column when there are too many slices for one", () => {
     const many: PieAst = {
       kind: "pie",
       title: null,
       showData: false,
+  donut: false,
       slices: Array.from({ length: 20 }, (_, i) => ({
         id: sid(`s${i}`),
         label: `slice ${i}`,
@@ -89,7 +100,8 @@ describe("layoutPie", () => {
 
   it("returns an empty (but valid) scene for a title-only pie", () => {
     const empty = layoutPie(
-      { kind: "pie", title: "Empty", showData: false, slices: [] },
+      { kind: "pie", title: "Empty", showData: false,
+  donut: false, slices: [] },
       heuristicMeasure,
     );
     if (!empty.ok) throw new Error(empty.error.message);

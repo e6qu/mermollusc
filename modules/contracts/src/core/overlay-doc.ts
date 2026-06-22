@@ -21,6 +21,7 @@ export interface OverlayDoc {
   moveNode(id: SceneNodeId, to: Point): void;
   resizeNode(id: SceneNodeId, origin: Point, dim: Size): void;
   clearOverrides(): void;
+  replaceOverrides(overrides: LayoutOverrides): void;
   groupNodes(units: readonly GroupMember[]): void;
   ungroupAt(top: GroupId): void;
   setGroupLocked(top: GroupId, locked: boolean): void;

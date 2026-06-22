@@ -36,15 +36,16 @@
   per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
   (async; state via `stateToFlow` and then restores `SceneNode.role` for initial/final/fork/join/note
-  glyphs, ER via `layoutEr`, class via `layoutClass`, requirement via `layoutRequirement`); the rest
+  glyphs and repositions notes according to `right`/`left`/`over`, ER via `layoutEr`, class via
+  `layoutClass`, requirement via `layoutRequirement`); the rest
   (sequence, C4, block, network, cloud, **gitGraph**, **timeline**,
   **mindmap**, **pie**) → pure layouts.
 - **mindmap (`layoutMindmap`):** a deterministic **radial** layout (no ELK) — the root sits at the
   centre and each subtree fans into an angular sector sized by its leaf count, depth → radius; a forest
   rings its roots around a virtual hub. Nodes are shaped (hexagon → diamond), edges arrowless spokes.
 - **pie (`layoutPie`):** a deterministic radial layout — slices sized by share of the total, laid
-  clockwise from 12 o'clock. Output is a `Scene` carrying only `wedges` (the new SceneGraph primitive);
-  no nodes/edges.
+  clockwise from 12 o'clock. `pie donut` slices get an inner radius while legend swatches stay full
+  discs. Output is a `Scene` carrying only `wedges` (the SceneGraph radial primitive); no nodes/edges.
 - **gitGraph (`layoutGitGraph`):** deterministic lane layout — commits in creation order along the main
   axis, one lane per branch on the cross axis (`LR` default; `TB`/`BT` swap/flip the axes); commits are
   circle nodes (`HIGHLIGHT` → rect), branch names round head nodes, one edge per parent (fork out at a

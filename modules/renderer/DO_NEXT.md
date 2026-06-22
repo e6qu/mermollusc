@@ -22,8 +22,10 @@
   `triangle` for arrowheads, a stroked `circle` for the optional "zero" ring) so `paint` and `toSvg`
   draw identical glyphs. The same mechanism would serve class-diagram UML arrowheads. ER attribute
   rows render as compartment boxes (`SceneNode.rows`: title band + divider + left-aligned rows).
-- State-marker follow-up: tune note placement once the state layout carries note direction
-  (`left/right/over`) into the layout spec instead of using a generic open connector.
+- *(done)* State-note placement is layout-owned now: note direction (`left`/`right`/`over`) reaches the
+  scene and connectors re-anchor to the moved note boxes.
+- *(done)* Donut pie slices render as annular sectors in both canvas and SVG; legend swatches remain
+  full discs.
 - DOT export: *(done — `toDot(scene, rankdir)` Graphviz backend; carries `rankdir`; `container` nodes
   re-emit as `cluster_*` subgraphs)*.
 - curve primitive: *(done — polyline `curved` flag → cubic bezier in canvas + SVG; powers mindmap

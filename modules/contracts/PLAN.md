@@ -11,6 +11,8 @@ AST and SceneGraph IR type definitions — the two seams of the pipeline.
 ## Public API (stable surface)
 
 - Branded AST ids and `DiagramAst`.
-- `Scene`, `SceneNode`, `SceneNodeRole`, `SceneEdge`.
+- `Scene`, `SceneNode`, `SceneNodeRole`, `SceneEdge`, and `SceneWedge`.
 - `LayoutOverrides`, `Groups`, `Group`.
+- `OverlayDoc`, including whole-map override replacement for regenerate flows that preserve pinned
+  manual positions.
 - Source span maps for two-way text patches.
