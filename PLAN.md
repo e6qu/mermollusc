@@ -50,8 +50,8 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- 
 - **Sync model:** text/CST is authoritative for structure; structural canvas edits patch text
   ranges (formatting/comments survive). Manual geometry lives in a **sidecar overrides layer**
   (`nodeId → position/size/pinned`), never in the text. *Relax* = re-run ELK semi-interactive
-  seeded by current positions; *Regenerate* = clean re-layout (drops overrides). Refining
-  regenerate to unpinned-only is future (ELK can't cleanly fix a subset).
+  seeded by current positions; *Regenerate* = clean re-layout for unpinned nodes while preserving
+  pinned overrides in the sidecar.
 - **Supply chain:** pin only stable releases ≥24h old; `make deps-check` audits the catalog.
 - **License:** AGPL-3.0-or-later (verbatim FSF `LICENSE`); every `package.json` carries the SPDX
   field. Bundled icon packs must be AGPL-compatible + attributed; vendor cloud packs stay
@@ -64,24 +64,30 @@ elkjs 0.11.1 · fast-check 4.8.0 · @types/node 25.9.3 · pnpm 11.6.0 · chevrot
 
 ## Status — what's built
 
-**Fourteen families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
-class (UML), requirement (SysML), gitGraph, timeline, mindmap, and pie — and the first ten are fully
-two-way** (double-click → patch the source text); gitGraph/timeline/mindmap are render + inline relabel
-of their node/period/event labels; pie is render-only (a chart, not an editable node/edge diagram).
-Every node/edge family has drag/resize/align, connect, and delete; flowchart also has relax/regenerate
-and add. Network nodes show built-in glyphs; cloud nodes show **vendored simple-icons brand marks**
-(CC0, pinned). Icons-in-nodes is wired end-to-end.
+**Fifteen families render in the browser — flowchart, sequence, C4, block, network, cloud, state, ER,
+class (UML), requirement (SysML), gitGraph, timeline, mindmap, pie, and Gantt.** The editable graph
+families are two-way where they have meaningful nodes/edges (double-click -> source patch, structural
+Connect/Delete where the family has a structural syntax). gitGraph/timeline/mindmap/Gantt support
+inline relabel for their text-bearing elements; pie is render-only (a chart, not an editable node/edge
+diagram). Every node/edge family has drag/resize/align, connect where meaningful, and delete; flowchart
+also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
+simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
 | module | state | tests |
 |--------|-------|-------|
-| `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, `Coordinate`/`Length` geometry (validated), Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 26 |
-| `@m/contracts` | ✅ flowchart/sequence/C4/block/network/cloud/state/ER AST, Scene IR (+shape, edge stroke/arrow, icon ref, flowchart subgraphs), overrides, source-maps (incl. flowchart edge spans) | (types) |
-| `@m/parser` | ✅ flowchart (node+edge spans) · sequence · C4 · block · network · cloud · state (`stateDiagram-v2`, composites) · ER (`erDiagram`) — +spans; icon override on network/cloud/block · stadium/circle shapes · subgraph grouping · ✅ routing · property round-trip · `ParseError.positions` (offset/length) | 54 |
-| `@m/layout` | ✅ flowchart + state + ER (ELK) + relax · sequence · C4/cloud nested-box · block/network grid · injectable text measurer + square circle nodes + subgraph ELK hierarchy · ✅ routing · property tests | 36 |
-| `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
-| `@m/builder` | ✅ hit-test, selection, overrides (move + connector re-anchor + extent growth), two-way relabel/add · connect (all families) + delete (flowchart/block/network/cloud) · sidecar group model (nestable, move-only lock) · overlay codec (persist) (+ property-based) | 41 |
+| `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, `Coordinate`/`Length` geometry (validated), Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 34 |
+| `@m/contracts` | ✅ all active family ASTs, Scene IR (nodes/edges/wedges/decorations), overrides, groups, source maps, and `OverlayDoc` | (types) |
+| `@m/parser` | ✅ all active family parsers + source spans where editable; flowchart printer/property round-trip; DOT import; located `ParseError.positions` | 135 |
+| `@m/layout` | ✅ all active family layouts; ELK graph families, pure grid/nested/radial/timeline/Gantt engines, relax, state-note side placement, property tests | 88 |
+| `@m/renderer` | ✅ Scene -> display list -> canvas/SVG/DOT (markers, compartments, decorations, pies/donuts, light/dark/sketch themes); html-in-canvas detect | 65 |
+| `@m/builder` | ✅ hit-test, selection, overlays, grouping, source patching, connect/delete/relabel/reshape helpers, overlay codec (+ property-based) | 68 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all fifteen families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness with a phone-width shot + per-family pipeline goldens + PNG/PDF/SVG/DOT export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + connect across all families + default-off collab UI + backend-free Pages demo at `/demo/` | 26 vitest + 138 Playwright |
+| `@m/collab` | ✅ Yjs overlay/source CRDT, presence, WebSocket transport, optional relay with persistence/auth/RBAC, role-aware client hooks | 58 |
+| `@m/app` | ✅ renders + two-way edits all fifteen families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regenerate/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness with phone-width/family-polish shots + per-family pipeline goldens + PNG/PDF/SVG/DOT export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + default-off collab UI + backend-free Pages demo at `/demo/` | 26 vitest + 140 Playwright |
+
+User stories and the UX/API test coverage contract live in
+[`docs/user_stories.md`](docs/user_stories.md). New user-facing behavior should update that file and
+map to a deterministic test or an explicit visual review shot.
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
@@ -107,9 +113,10 @@ reserved for `/docs/` and `/storybook/`.
    Chromium (detection — `htmlInCanvasSupported()` — is wired; the API is flag-only today, so a
    backend can't be verified here). *(Light/dark + sketch themes + device-pixel-ratio + real text
    measurement done.)*
-3. **App polish**: CodeMirror editor (span-aware edits, inline parse errors), pixel/golden tests.
-   *(Theme persistence done.)*
-4. **Cross-cutting**: regenerate unpinned-only; raise coverage ratchets as coverage climbs.
+3. **App polish**: keep `docs/user_stories.md` as the UX/API contract; let it drive Playwright,
+   display-list golden, and visual-shot coverage. *(CodeMirror, inline parse errors, theme persistence,
+   and deterministic display-list goldens are done.)*
+4. **Cross-cutting**: raise coverage ratchets as coverage climbs.
    *(Property-based tests — Result laws, builder patches, block/network/ELK layout invariants, and
    the parser print→parse round-trip — plus `make cov` per-module coverage thresholds are wired.)*
 
@@ -220,11 +227,12 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
 2. For any module: its `STATUS.md` is the one-glance current state, `DO_NEXT.md` the next concrete
    actions, `BUGS.md` known issues, `WHAT_WE_DID.md` the work log.
    **Current focus:** capability parity (Mermaid families) is **done** (gitGraph, timeline, mindmap,
-   pie), and DOT **round-trip** interop (import + export) too. The **collaborative-editor Phase 0 seam**
-   is **done** (the `OverlayDoc` document model in the app — see Future bets). Next candidates: the
-   collaborative-editor Phase 2 continuation (browser Auth0 login + production store),
-   HTML-in-Canvas backend selection, or bundle/startup code-splitting. The *External review backlog*
-   is resolved.
+   pie), DOT **round-trip** interop (import + export), and the Gantt activation are done. The
+   **collaborative-editor Phase 0 seam** is done (the `OverlayDoc` document model in the app — see
+   Future bets), and Phase 2 server work is partially landed. Next candidates: keep
+   `docs/user_stories.md` aligned with UX/API behavior, continue collaborative-editor Phase 2
+   (browser Auth0 login + production store), build HTML-in-Canvas backend selection once the platform
+   API is stable, or do deeper bundle/startup lazy-loading. The *External review backlog* is resolved.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).

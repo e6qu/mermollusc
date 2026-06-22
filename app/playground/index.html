@@ -5,55 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>mermollusc — text → diagram, both ways</title>
     <style>
-      /* Blueprint drafting-table aesthetic: diagrams are "sheets" laid on a drafting surface.
-         Fonts are deliberately self-contained (no CDN) to honour this repo's pinned-asset rules —
-         characterful system faces (serif display, geometric-humanist UI, a real mono editor). */
+      /* Computational notebook/workbench aesthetic: compact command groups, input/output panels, and
+         a restrained technical palette. Fonts are deliberately self-contained (no CDN) to honour this
+         repo's pinned-asset rules. */
       :root {
-        --font-display: "Hoefler Text", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        color-scheme: light;
+        --font-display: "Avenir Next", "Segoe UI", system-ui, sans-serif;
         --font-ui: "Avenir Next", "Segoe UI", system-ui, sans-serif;
         --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, "Cascadia Code", monospace;
 
-        --bg: #f3efe6;
-        --table: #e7e0d1;
-        --surface: #fffdf8;
-        --ink: #182529;
-        --ink-soft: #5a6a6c;
-        --line: #d8d0bf;
-        --primary: #0f6f74;
-        --primary-strong: #0a4d50;
-        --accent: #d2602c;
-        --accent-soft: #f3e3d6;
-        --grid: rgba(15, 111, 116, 0.09);
-        --grid-strong: rgba(15, 111, 116, 0.16);
-        --ok: #0f6f74;
-        --err: #c0392b;
-        --err-soft: #f6e0dc;
-        --shadow: 0 1px 2px rgba(24, 37, 41, 0.06), 0 8px 24px rgba(24, 37, 41, 0.08);
-        --radius: 10px;
+        --bg: #f5f4f1;
+        --table: #eeece7;
+        --surface: #fffefa;
+        --panel: #ffffff;
+        --ink: #171a1f;
+        --ink-soft: #626976;
+        --line: #d8d3ca;
+        --line-strong: #bfb7aa;
+        --primary: #c83a25;
+        --primary-strong: #9f2819;
+        --accent: #0d7182;
+        --accent-soft: #f7e5df;
+        --grid: rgba(50, 62, 72, 0.055);
+        --grid-strong: rgba(13, 113, 130, 0.13);
+        --ok: #0d7182;
+        --err: #b82418;
+        --err-soft: #fae2de;
+        --shadow: 0 1px 2px rgba(23, 26, 31, 0.06), 0 12px 30px rgba(23, 26, 31, 0.08);
+        --radius: 8px;
         --cm-keyword: var(--primary-strong);
-        --cm-string: var(--accent);
+        --cm-string: #7b4b00;
         --cm-comment: var(--ink-soft);
-        --cm-operator: #8a4fd0;
+        --cm-operator: var(--accent);
         --cm-bracket: var(--ink-soft);
       }
       html[data-theme="dark"] {
-        --bg: #0b1418;
-        --table: #07100f;
-        --surface: #0f1c21;
-        --ink: #e6efe9;
-        --ink-soft: #8aa0a0;
-        --line: #1d3239;
-        --primary: #4cc2c4;
-        --primary-strong: #7fe0e0;
-        --accent: #f0894e;
-        --accent-soft: #2a1d15;
-        --grid: rgba(76, 194, 196, 0.08);
-        --grid-strong: rgba(76, 194, 196, 0.15);
-        --ok: #4cc2c4;
-        --err: #ef6f63;
-        --err-soft: #2a1614;
+        color-scheme: dark;
+        --bg: #111418;
+        --table: #161a20;
+        --surface: #1a1f26;
+        --panel: #20262e;
+        --ink: #eef1f4;
+        --ink-soft: #9ba5b2;
+        --line: #343b45;
+        --line-strong: #4c5663;
+        --primary: #ff6a4e;
+        --primary-strong: #ff8a72;
+        --accent: #55c6da;
+        --accent-soft: #3a211d;
+        --grid: rgba(238, 241, 244, 0.045);
+        --grid-strong: rgba(85, 198, 218, 0.13);
+        --ok: #55c6da;
+        --err: #ff766b;
+        --err-soft: #3a1f1d;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
-        --cm-operator: #c4a3ff;
+        --cm-string: #f0c36d;
       }
 
       * { box-sizing: border-box; }
@@ -69,7 +75,7 @@
       .app {
         height: 100vh;
         display: grid;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
         animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
       @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -86,51 +92,73 @@
 
       /* ---- top bar ---- */
       .topbar {
-        display: flex;
+        display: grid;
+        grid-template-columns: max-content 1fr;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 12px 20px;
+        gap: 18px;
+        padding: 10px 18px;
         background: var(--surface);
         border-bottom: 1px solid var(--line);
       }
-      .brand { display: flex; align-items: center; gap: 12px; }
-      .mark { width: 34px; height: 34px; color: var(--primary); flex: none; }
+      .brand { display: flex; align-items: center; gap: 10px; min-width: 250px; }
+      .mark { width: 30px; height: 30px; color: var(--primary); flex: none; }
       .brand-text h1 {
         margin: 0;
         font-family: var(--font-display);
-        font-size: 22px;
-        font-weight: 600;
-        letter-spacing: 0.01em;
+        font-size: 21px;
+        font-weight: 750;
+        letter-spacing: 0;
         line-height: 1;
       }
       .brand-text p {
         margin: 3px 0 0;
-        font-size: 11px;
-        letter-spacing: 0.16em;
+        font-size: 10px;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
         color: var(--ink-soft);
       }
       /* Wrap rather than overflow the viewport once enough controls (export formats etc.) are present. */
-      .topbar-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
-      .zoom { display: inline-flex; align-items: center; gap: 2px; }
+      .topbar-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+      .toolbar-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0;
+        background: color-mix(in srgb, var(--surface) 78%, var(--bg) 22%);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .toolbar-group > button,
+      .toolbar-group > .filebtn,
+      .toolbar-group > .select-field {
+        border: 0;
+        border-radius: 0;
+        border-right: 1px solid var(--line);
+        background: transparent;
+        box-shadow: none;
+      }
+      .toolbar-group > :last-child { border-right: 0; }
+      .zoom { display: inline-flex; align-items: center; gap: 0; }
       .zoom button { padding: 7px 9px; }
-      .zoom #zoom-reset { min-width: 52px; font-variant-numeric: tabular-nums; }
+      .zoom #zoom-reset { min-width: 54px; font-variant-numeric: tabular-nums; }
 
       /* ---- controls ---- */
       button {
+        appearance: none;
+        -webkit-appearance: none;
         font-family: var(--font-ui);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 700;
         color: var(--ink);
-        background: var(--surface);
+        background-color: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 7px 13px;
+        border-color: var(--line);
+        border-radius: var(--radius);
+        padding: 7px 12px;
         cursor: pointer;
         transition: transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
       }
-      button:hover:not(:disabled) { border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow); }
+      button:hover:not(:disabled) { color: var(--primary-strong); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
       button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
       button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
       /* The example <select> clears its outline for mouse use; restore a ring for keyboard focus. */
@@ -141,26 +169,29 @@
       button:disabled { opacity: 0.42; cursor: not-allowed; }
 
       /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
-      #theme::before { content: "◐"; margin-right: 7px; color: var(--primary); }
-      #sketch::before { content: "✎"; margin-right: 7px; color: var(--accent); }
+      #theme::before { content: "◐"; margin-right: 7px; color: var(--accent); }
+      #sketch::before { content: "✎"; margin-right: 7px; color: var(--primary); }
       #export-png::before, #export-pdf::before, #export-svg::before, #export-dot::before { content: "⤓"; margin-right: 7px; color: var(--primary); }
       #share-link::before { content: "↗"; margin-right: 7px; color: var(--accent); }
 
       .select-field, .filebtn {
+        appearance: none;
+        -webkit-appearance: none;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 700;
         color: var(--ink);
-        background: var(--surface);
+        background-color: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 6px 11px;
+        border-color: var(--line);
+        border-radius: var(--radius);
+        padding: 7px 11px;
         cursor: pointer;
       }
       .select-field span, .filebtn { letter-spacing: 0.01em; }
-      .select-field span { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+      .select-field span { color: var(--primary-strong); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
       .filebtn:hover, .select-field:hover { border-color: var(--primary); }
       select#example {
         font-family: var(--font-ui);
@@ -173,49 +204,64 @@
         outline: none;
       }
       .filebtn input[type="file"] { display: none; }
+      html[data-theme="dark"] button,
+      html[data-theme="dark"] .select-field,
+      html[data-theme="dark"] .filebtn {
+        background: #1a1f26 !important;
+        border-color: #343b45 !important;
+        box-shadow: inset 0 0 0 999px #1a1f26;
+      }
+      html[data-theme="dark"] button:hover:not(:disabled) {
+        box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--primary) 12%, #1a1f26);
+      }
 
       /* ---- workbench ---- */
       .workbench {
         display: grid;
-        grid-template-columns: minmax(320px, 30%) 1fr;
-        gap: 16px;
-        padding: 16px 20px;
+        grid-template-columns: minmax(340px, 32%) minmax(0, 1fr);
+        gap: 14px;
+        padding: 14px 18px;
         min-height: 0;
+        background:
+          linear-gradient(90deg, color-mix(in srgb, var(--line) 45%, transparent) 1px, transparent 1px) 0 0 / 48px 48px,
+          linear-gradient(var(--bg), var(--bg));
       }
 
       .editor {
         display: flex;
         flex-direction: column;
-        background: var(--surface);
-        border: 1px solid var(--line);
+        background: var(--panel);
+        border: 1px solid var(--line-strong);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         overflow: hidden;
         min-height: 0;
+        position: relative;
       }
       .editor-head {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 9px 13px;
+        padding: 8px 12px;
         border-bottom: 1px solid var(--line);
-        font-size: 11px;
+        font-size: 10px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: var(--ink-soft);
+        background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
       }
-      .editor-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+      .editor-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
       .editor-head .grow { flex: 1; }
       .kind-badge {
         font-family: var(--font-mono);
-        font-size: 11px;
+        font-size: 10.5px;
         letter-spacing: 0.04em;
         text-transform: none;
-        color: var(--primary-strong);
+        color: var(--accent);
         background: var(--accent-soft);
         border: 1px solid var(--line);
         border-radius: 999px;
-        padding: 2px 10px;
+        padding: 2px 9px;
       }
       .role-badge {
         font-family: var(--font-mono);
@@ -238,17 +284,17 @@
         min-height: 0;
         width: 100%;
         overflow: hidden;
-        background: var(--surface);
+        background: var(--panel);
       }
       #editor:focus-within { box-shadow: inset 3px 0 0 var(--primary); }
       .cm-editor { height: 100%; }
       .editor-tools {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        padding: 11px 13px;
+        gap: 7px;
+        padding: 10px 12px;
         border-top: 1px solid var(--line);
-        background: color-mix(in srgb, var(--surface) 92%, var(--ink) 8%);
+        background: color-mix(in srgb, var(--panel) 82%, var(--bg) 18%);
       }
       /* Arrange popover: opens upward from its button (the toolbar sits at the bottom of the editor),
          a 3-column grid of align/distribute actions shown only while it's open. */
@@ -262,9 +308,9 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 6px;
         padding: 8px;
-        background: var(--surface);
+        background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 10px;
+        border-radius: var(--radius);
         box-shadow: var(--shadow);
         z-index: 50;
       }
@@ -284,15 +330,32 @@
         border: 0;
       }
 
-      /* ---- stage: drafting table with the diagram as a sheet ---- */
+      /* ---- stage: output work area with the diagram as a sheet ---- */
       /* The column holds the scrolling stage plus a corner-pinned minimap overlay (which must sit
          outside the scroll container so it stays put while the sheet scrolls). */
       .stage-col { position: relative; min-height: 0; display: flex; }
+      .stage-col::before {
+        content: "output";
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        z-index: 2;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        background: color-mix(in srgb, var(--surface) 88%, transparent);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 8px;
+        pointer-events: none;
+      }
       .stage-wrap {
         position: relative;
         flex: 1;
         border-radius: var(--radius);
-        border: 1px solid var(--line);
+        border: 1px solid var(--line-strong);
         overflow: auto;
         background-color: var(--table);
         background-image:
@@ -300,18 +363,19 @@
           linear-gradient(90deg, var(--grid) 1px, transparent 1px),
           linear-gradient(var(--grid-strong) 1px, transparent 1px),
           linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
-        background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+        background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
       }
       .stage-inner {
         min-width: 100%;
         min-height: 100%;
         display: grid;
         place-items: center;
-        padding: 36px;
+        padding: 44px 36px 36px;
       }
       #stage {
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(24, 37, 41, 0.14), 0 18px 40px rgba(24, 37, 41, 0.16);
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(23, 26, 31, 0.18), 0 14px 34px rgba(23, 26, 31, 0.14);
         transition: opacity 0.18s ease, filter 0.18s ease;
       }
       /* When the source no longer parses, the sheet shows a stale render — dim it so the canvas
@@ -326,7 +390,7 @@
         bottom: 16px;
         border: 1px solid var(--line);
         border-radius: 6px;
-        background: var(--surface);
+        background: var(--panel);
         box-shadow: var(--shadow);
         cursor: pointer;
         opacity: 0.9;
@@ -360,7 +424,7 @@
       .hints kbd {
         font-family: var(--font-mono);
         font-size: 10.5px;
-        background: var(--bg);
+        background: color-mix(in srgb, var(--surface) 70%, var(--bg) 30%);
         border: 1px solid var(--line);
         border-radius: 4px;
         padding: 1px 5px;
@@ -376,9 +440,9 @@
         font-family: var(--font-mono);
         font-size: 13px;
         color: var(--ink);
-        background: var(--surface);
+        background: var(--panel);
         border: 2px solid var(--primary);
-        border-radius: 6px;
+        border-radius: var(--radius);
         box-shadow: var(--shadow);
         outline: none;
       }
@@ -397,7 +461,7 @@
         flex-direction: column;
         gap: 12px;
         padding: 16px;
-        background: var(--surface);
+        background: var(--panel);
         border-left: 1px solid var(--line);
         box-shadow: var(--shadow);
       }
@@ -411,7 +475,7 @@
         font-size: 13px;
         padding: 8px 11px;
         color: var(--ink);
-        background: var(--bg);
+        background: color-mix(in srgb, var(--panel) 78%, var(--bg) 22%);
         border: 1px solid var(--line);
         border-radius: 8px;
         outline: none;
@@ -431,7 +495,7 @@
         place-items: center;
         aspect-ratio: 1;
         padding: 7px;
-        background: var(--bg);
+        background: color-mix(in srgb, var(--panel) 78%, var(--bg) 22%);
         border: 1px solid var(--line);
         border-radius: 8px;
         cursor: pointer;
@@ -454,7 +518,7 @@
         background: var(--surface);
         color: var(--ink);
         border: 1px solid var(--line);
-        border-radius: 14px;
+        border-radius: var(--radius);
         box-shadow: 0 18px 50px rgba(7, 16, 15, 0.28);
         padding: 18px 20px 20px;
         max-width: 640px;
@@ -515,14 +579,21 @@
       @media (max-width: 760px) {
         .app { grid-template-rows: auto minmax(0, 1fr) auto; }
         .topbar {
-          flex-direction: column;
+          grid-template-columns: 1fr;
           align-items: flex-start;
           padding: 12px;
         }
+        .brand { min-width: 0; }
         .topbar-actions {
           width: 100%;
           justify-content: flex-start;
           gap: 8px;
+        }
+        .toolbar-group { flex-wrap: wrap; align-self: stretch; }
+        .toolbar-group > button,
+        .toolbar-group > .filebtn,
+        .toolbar-group > .select-field {
+          flex: 1 1 auto;
         }
         .workbench {
           grid-template-columns: 1fr;
@@ -535,7 +606,7 @@
         .stage-col {
           min-width: 0;
         }
-        .stage-inner { padding: 18px; }
+        .stage-inner { padding: 40px 18px 18px; }
         .statusbar {
           flex-wrap: wrap;
           gap: 6px 12px;
@@ -562,56 +633,62 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <label class="select-field">
-            <span>Example</span>
-            <select id="example" title="Load a starter diagram for each family">
-              <option value="">Examples…</option>
-              <option value="flowchart">Flowchart</option>
-              <option value="sequence">Sequence</option>
-              <option value="c4">C4 context</option>
-              <option value="block">Block</option>
-              <option value="network">Network</option>
-              <option value="cloud">Cloud</option>
-              <option value="state">State</option>
-              <option value="er">ER</option>
-              <option value="class">Class</option>
-              <option value="requirement">Requirement</option>
-              <option value="gitGraph">Git graph</option>
-              <option value="timeline">Timeline</option>
-              <option value="mindmap">Mindmap</option>
-              <option value="pie">Pie</option>
-              <option value="gantt">Gantt</option>
-              <option value="dot">DOT (Graphviz)</option>
-            </select>
-          </label>
-          <div class="zoom" role="group" aria-label="Zoom">
+          <div class="toolbar-group">
+            <label class="select-field">
+              <span>Example</span>
+              <select id="example" title="Load a starter diagram for each family">
+                <option value="">Examples…</option>
+                <option value="flowchart">Flowchart</option>
+                <option value="sequence">Sequence</option>
+                <option value="c4">C4 context</option>
+                <option value="block">Block</option>
+                <option value="network">Network</option>
+                <option value="cloud">Cloud</option>
+                <option value="state">State</option>
+                <option value="er">ER</option>
+                <option value="class">Class</option>
+                <option value="requirement">Requirement</option>
+                <option value="gitGraph">Git graph</option>
+                <option value="timeline">Timeline</option>
+                <option value="mindmap">Mindmap</option>
+                <option value="pie">Pie</option>
+                <option value="gantt">Gantt</option>
+                <option value="dot">DOT (Graphviz)</option>
+              </select>
+            </label>
+          </div>
+          <div class="toolbar-group zoom" role="group" aria-label="Zoom">
             <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
             <button id="zoom-reset" type="button" title="Reset zoom to 100%">100%</button>
             <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
             <button id="zoom-fit" type="button" title="Fit the whole diagram in view">Fit</button>
           </div>
-          <button id="theme" type="button">Dark</button>
-          <button id="sketch" type="button">Sketch</button>
-          <button id="icons-toggle" type="button" aria-expanded="false"
-            title="Browse icon packs and insert an icon &quot;pack/name&quot; override at the cursor">Icons</button>
-          <button id="copy-png" type="button"
-            title="Copy the diagram to the clipboard as an image (paste into docs, chat, issues)">Copy</button>
-          <button id="export-png" type="button"
-            title="Download the current diagram as a PNG (at the screen's pixel density)">PNG</button>
-          <button id="export-pdf" type="button"
-            title="Download the current diagram as a one-page PDF">PDF</button>
-          <button id="export-svg" type="button"
-            title="Download the current diagram as a vector SVG">SVG</button>
-          <button id="export-dot" type="button"
-            title="Download the current diagram as a Graphviz DOT file">DOT</button>
-          <button id="share-link" type="button"
-            title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
-          <button id="help-toggle" type="button" aria-expanded="false"
-            title="Keyboard &amp; mouse shortcuts (?)">?</button>
-          <label class="filebtn"
-            title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
-            <input id="load-pack" type="file" accept="application/json" />
-          </label>
+          <div class="toolbar-group">
+            <button id="theme" type="button">Dark</button>
+            <button id="sketch" type="button">Sketch</button>
+            <button id="icons-toggle" type="button" aria-expanded="false"
+              title="Browse icon packs and insert an icon &quot;pack/name&quot; override at the cursor">Icons</button>
+            <button id="help-toggle" type="button" aria-expanded="false"
+              title="Keyboard &amp; mouse shortcuts (?)">?</button>
+          </div>
+          <div class="toolbar-group">
+            <button id="copy-png" type="button"
+              title="Copy the diagram to the clipboard as an image (paste into docs, chat, issues)">Copy</button>
+            <button id="export-png" type="button"
+              title="Download the current diagram as a PNG (at the screen's pixel density)">PNG</button>
+            <button id="export-pdf" type="button"
+              title="Download the current diagram as a one-page PDF">PDF</button>
+            <button id="export-svg" type="button"
+              title="Download the current diagram as a vector SVG">SVG</button>
+            <button id="export-dot" type="button"
+              title="Download the current diagram as a Graphviz DOT file">DOT</button>
+            <button id="share-link" type="button"
+              title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
+            <label class="filebtn"
+              title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
+              <input id="load-pack" type="file" accept="application/json" />
+            </label>
+          </div>
         </div>
       </header>
 

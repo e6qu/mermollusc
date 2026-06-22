@@ -46,6 +46,11 @@
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.
+- *(done)* The Examples menu catalog is parse-checked directly: `src/examples.ts` feeds both the UI
+  and `test/integration/examples.test.ts`, so a broken starter cannot hide behind a stale canvas.
+- *(done)* Redesign the shell into a computational notebook/workbench: grouped command toolbar,
+  source/input and output panels, quieter graph surface, light/dark control polish, and screenshot
+  review across desktop, mobile, and dark mode.
 - *(done — already worked)* Drag-to-move spans every family: the sidecar overrides + `applyOverrides`
   are family-agnostic, so dragging any family's nodes persists and survives reload (verified + e2e).
 - *(done)* Undo/redo for canvas actions (`⌘Z` / `⌘⇧Z`): an overlay-history stack covers drag,
