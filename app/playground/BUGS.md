@@ -2,6 +2,14 @@
 
 Resolved (collab-era audit sweep):
 
+- ~~**The sequence Examples menu entry failed to parse.**~~ Fixed — the sample used
+  `participant W as Web App`, but the current sequence grammar accepts one identifier after `as`.
+  The starter now uses `WebApp`, and `test/integration/examples.test.ts` parses every Examples menu
+  entry so future catalog drift fails the app test suite.
+- ~~**The reshape e2e used stale canvas coordinates after a layout-changing keyboard command.**~~ Fixed
+  — after the first `S` reshape, the spec now relies on the app's restored keyboard selection and
+  presses `S` again instead of re-clicking an old pixel location. This keeps the test aligned with the
+  keyboard UX and avoids false failures after shell/layout redesigns.
 - ~~**Phone-width app shell scrolled sideways.**~~ Fixed — below 760px the topbar stacks, the workbench
   changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
   clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than

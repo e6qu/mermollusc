@@ -71,6 +71,9 @@
 - Family-aware UI: an **Examples** `<select>` loads a known-good starter per family; `applyKind`
   updates the kind badge and disables the flowchart-only Add/Connect/Relax off-flowchart (Regenerate
   stays enabled). All 29 gating Playwright flows stay green (IDs + button text preserved).
+- Extracted the Examples menu catalog to `src/examples.ts`, fixed the sequence starter to use the
+  parser-supported single-token participant label (`WebApp`), and added an integration test that runs
+  every menu example through `parseDiagram`.
 - Parse-error locating: `setStatus` takes an optional range from `ParseError.positions[0]`; the status
   bar shows `parse error (line L:C) — … · click to locate` and clicking it focuses the textarea and
   selects the range (`lineColOf` derives line/col). The caret is never moved automatically — the parse
@@ -597,3 +600,11 @@
   pinned entries before re-layout; unpinned manual positions still clear. +e2e.
 - Family polish: the pie example now showcases `pie showData donut`, the display-list golden records
   donut inner radii, and screenshot flows cover side-aware state notes plus a donut chart.
+- Computational workbench redesign: shifted the app chrome away from the drafting-table look toward a
+  denser professional notebook/workbench interface without copying a proprietary product. The header
+  controls are grouped into command clusters, the editor/stage read as source input and output, the
+  graph-paper surface is quieter, the palette is neutral with a restrained red/orange accent plus teal
+  success/action colour, and dark mode resets native controls so button labels stay readable. Verified
+  with desktop, phone-width, and dark-mode screenshots plus the full Playwright UI suite.
+- Test polish from the redesign: the reshape e2e now presses `S` through the restored keyboard
+  selection instead of re-clicking a stale hard-coded canvas coordinate after re-layout.

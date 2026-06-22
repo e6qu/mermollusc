@@ -25,9 +25,8 @@ test("S cycles the selected node's shape, rewriting its brackets in place", asyn
   await expectSourceMatches(page, /\n {2}A\(Start\) --> B\[End\]\n/);
   await expect(page.locator("#stage")).toBeFocused();
 
-  // round → stadium (the label is preserved across the reshape; B is untouched). Re-select A first —
-  // it re-renders at the same spot — so the second press isn't racing the first reshape's restore.
-  await page.mouse.click(cx, box.y + 44);
+  // round → stadium (the label is preserved across the reshape; B is untouched). The app restores
+  // the reshaped node selection after re-render, so the next keyboard command should keep working.
   await page.keyboard.press("s");
   await expectSourceMatches(page, /\n {2}A\(\[Start\]\) --> B\[End\]\n/);
 });

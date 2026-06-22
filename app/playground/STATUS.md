@@ -2,12 +2,14 @@
 
 **State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; pie donuts; gantt task bars on a day axis with `after`-chains); `make check` green.
 
-- **Design:** a blueprint drafting-table UI — header (nautilus wordmark) · framed source editor
-  (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
-  a status bar. Self-contained type system (serif display / geometric-humanist UI / mono editor —
-  no CDN, per the repo's pinned-asset rules); cohesive light + dark, driven by a `data-theme` attr
-  synced to the theme toggle. Narrow viewports stack the editor above the stage and wrap topbar/status
-  controls so the page itself does not scroll sideways.
+- **Design:** a computational notebook/workbench UI — compact command groups in the header, a framed
+  **source/input** panel, a labelled **output** stage, quieter graph-paper geometry, and a status bar.
+  The palette is neutral technical chrome with a controlled red/orange accent and teal success/action
+  colour, avoiding proprietary trade dress while nodding to computational tools. Self-contained type
+  system (geometric-humanist UI / mono editor — no CDN, per the repo's pinned-asset rules); cohesive
+  light + dark driven by a `data-theme` attr synced to the theme toggle, including native-control
+  resets so dark controls stay readable. Narrow viewports stack the editor above the stage and wrap
+  grouped topbar/status controls so the page itself does not scroll sideways.
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
   silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`. A parse
@@ -30,7 +32,8 @@
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
 - **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
-  families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
+  families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the catalog lives in
+  `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses; the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
   preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s) and **⌘C / ⌘V**
