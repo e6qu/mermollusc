@@ -561,3 +561,9 @@
   the example `<select>` regained a keyboard `:focus-visible` ring; and the visually-hidden node navigator
   now rings the stage (`.kbd-focus` on `#stage-wrap`, toggled on focus/blur) so a sighted keyboard user
   sees focus is in the diagram. Navigator blur also clears an in-progress Connect. +2 e2e.
+- Accessibility - edge targets in the keyboard navigator: the hidden listbox now mirrors nodes followed
+  by edges, so screen-reader users can reach the relationships themselves instead of only hearing them
+  from adjacent nodes. Edge items select/highlight the edge, announce readable endpoints plus the edge
+  label, centre on the routed label anchor, support Enter relabel through the existing inline editor, and
+  Delete removes the edge while leaving endpoint nodes intact. +1 e2e; updated the existing navigator
+  coverage from 3 node-only options to 3 nodes + 2 edges.

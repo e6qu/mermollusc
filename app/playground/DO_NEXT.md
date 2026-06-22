@@ -68,12 +68,13 @@
   association/dependency heads (reusing the `EndMarker` machinery). The `class` example shows them, a
   `26-class` shots flow captures it. Connect/Delete/relabel work on classes + relationships. Still
   (parser-led): class stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
-- **Accessibility arc** (started — keyboard node navigator landed). Next:
-  - *(done)* announce a node's connections as you navigate. Still: reach/focus the edges themselves
-    from the navigator (the listbox covers nodes only).
+- **Accessibility arc** (keyboard diagram navigator landed). Next:
+  - *(done)* announce a node's connections as you navigate.
+  - *(done)* reach/focus edges from the navigator; edges are announced by endpoints, can be relabelled
+    with Enter, and Delete removes the selected edge while leaving endpoint nodes intact.
   - Keyboard operation parity *(done)*: navigate · Enter relabel · Alt+Arrow move · two-step `c` connect ·
     Delete remove.
   - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
   - Polish *(done)*: `prefers-reduced-motion` collapses all motion; a visible navigator focus ring on the
     stage; a contrast audit (every label/stroke pair clears WCAG AA, guarded by a renderer test).
-  - Only remaining (optional, bigger): reach/focus the edges themselves from the navigator (nodes only today).
+  - Remaining polish: broader action announcements beyond relabel/delete/connect/group.

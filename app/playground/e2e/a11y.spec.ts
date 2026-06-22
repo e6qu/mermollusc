@@ -41,19 +41,19 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
 
   const nav = page.locator("#diagram-nav");
   const live = page.locator("#diagram-live");
-  // The listbox mirrors the three nodes as options.
-  await expect(nav.locator('[role="option"]')).toHaveCount(3);
+  // The listbox mirrors all three nodes plus the two edges as options.
+  await expect(nav.locator('[role="option"]')).toHaveCount(5);
 
   // Focusing activates the first node: aria-activedescendant points at it and the live region names it
   // (label, position, and a spoken summary of its connections).
   await nav.focus();
-  await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-node-0");
-  await expect(live).toHaveText(/, 1 of 3\. /);
+  await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-item-0");
+  await expect(live).toHaveText(/, 1 of 5\. /);
 
-  // Arrow keys move the active node.
+  // Arrow keys move the active item.
   await nav.press("ArrowDown");
-  await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-node-1");
-  await expect(live).toHaveText(/, 2 of 3\. /);
+  await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-item-1");
+  await expect(live).toHaveText(/, 2 of 5\. /);
   const announced = (await live.textContent()) ?? "";
   const activeLabel = announced.split(",")[0] ?? "";
   expect(activeLabel.length).toBeGreaterThan(0);
@@ -62,6 +62,42 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
   await nav.press("Delete");
   await expect.poll(() => sourceValue(page)).not.toContain(activeLabel);
   await expect(live).toHaveText(/deleted 1 item/);
+});
+
+test("edges are first-class navigator targets: reachable, announced, relabel + delete", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  // Declare the nodes on their own lines so deleting the edge line leaves them intact.
+  await setSource(page, "flowchart TD\n  A[Alpha]\n  B[Beta]\n  A -->|go| B\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  const live = page.locator("#diagram-live");
+  // Two nodes + one edge = three options; the edge is the last one.
+  await expect(nav.locator('[role="option"]')).toHaveCount(3);
+
+  await nav.focus(); // node 0
+  await nav.press("End"); // jump to the edge (last item)
+  await expect(nav).toHaveAttribute("aria-activedescendant", "diagram-item-2");
+  await expect(live).toHaveText(/Alpha to Beta.*edge, 3 of 3/);
+
+  // Enter relabels the edge (its label span), writing back to the source.
+  await nav.press("Enter");
+  const editor = page.locator("#inline-edit");
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveValue("go");
+  await editor.fill("retry");
+  await editor.press("Enter");
+  await expect.poll(() => sourceValue(page)).toContain("retry");
+
+  // Re-focus the edge and Delete it: the arrow goes, the nodes stay.
+  await nav.focus();
+  await nav.press("End");
+  await nav.press("Delete");
+  await expect.poll(() => sourceValue(page)).not.toMatch(/-->/);
+  await expect.poll(() => sourceValue(page)).toContain("Alpha");
 });
 
 test("the navigator separates navigation from movement: plain arrows navigate, Alt+arrow nudges", async ({
