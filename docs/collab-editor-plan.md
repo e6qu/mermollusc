@@ -20,7 +20,7 @@ path plugs in as alternate implementations without touching call sites.
 | 2 | Sync model | **Server-authoritative WebSocket** |
 | 3 | Persistence / hosting | **Self-hosted: Postgres (update log) + S3 (snapshots) + Redis (fan-out)** |
 | 4 | Auth / tenancy | **OIDC via Auth0** (JWKS token verification at the WS handshake); tenant = org; region-pinned storage. |
-| 5 | Server stack | **Extend a Node Yjs server (Hocuspocus)** for Phases 1–2; revisit Go/Rust only if Phase 3 fan-out demands it |
+| 5 | Server stack | **Extend the repo's minimal Node relay** for Phases 1–2; keep Hocuspocus as a fallback; revisit Go/Rust only if Phase 3 fan-out demands it |
 
 The rest of this doc records the design these decisions resolve.
 
@@ -114,8 +114,8 @@ after merge — the invariant holds without coordination.
   bindings, awareness, and the offline buffer behind a small API. The CRDT/network lives at the
   **shell** boundary; the functional core stays pure and collaboration-unaware. DAG: `collab` depends
   on `contracts` (overlay/source types); the **app** wires it. Existing `core`/`shell` split preserved.
-- **Sync server (new service)** — a **server-authoritative** WebSocket relay built by extending a Node
-  Yjs server (**Hocuspocus**, §10.5): it authenticates the connection, authorizes the room (RBAC),
+- **Sync server (new service)** — a **server-authoritative** WebSocket relay built by extending the
+  repo's minimal Node relay (§10.5): it authenticates the connection, authorizes the room (RBAC),
   relays/merges updates, persists them, and emits audit + metrics. Not the static app — a separate
   deployable.
 - **Phase-0 seam — built.** Today's local `source` sits behind `Editor` and `overrides`/`groups`

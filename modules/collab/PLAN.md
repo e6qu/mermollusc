@@ -49,5 +49,7 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 ## Roadmap
 
-Phase 1 (this module): the document + in-memory convergence. Next: a server-authoritative WebSocket
-transport, awareness/presence, then durability + auth (Phases 2–3 of the plan).
+Phase 1 (this module): done — the Yjs document, in-memory convergence, transport, source binding, and
+presence. Phase 2 is in progress on the repo's relay: persistence, Auth0 verification, rooms/RBAC, and
+role-aware UI are in; browser login and the production store remain. Phase 3 covers pub/sub,
+audit/observability, offline buffering, compaction, and compliance hooks.

@@ -22,12 +22,11 @@
   second `OverlayDoc` implementation (Yjs-backed, edits broadcast via the injected `save` sink)
   **without touching call sites**. Full phased plan in [`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)
   and the root `PLAN.md` Future bets; this is **Phase 0 of 4**.
-  - **Phase 1 (next, needs sign-off):** Yjs in-memory + dev `y-websocket`; text + overlay CRDT +
-    presence; local-first + reconnect. Blocked on the 5 decision points in the doc §10 (CRDT choice,
-    sync model, persistence backend, auth/tenancy, server stack).
-  - **Phase 2:** persistence (update log + snapshots), auth handshake, rooms + RBAC.
-  - **Phase 3:** pub/sub fan-out, per-tenant isolation, audit export, observability/SLOs, offline
-    buffer, compaction, compliance hooks.
+  - **Phase 1:** done — Yjs in-memory CRDT, dev transport, source binding, and presence.
+  - **Phase 2:** in progress — persistence, Auth0 handshake, rooms/RBAC, and role-aware UI are in;
+    browser login and the production store remain.
+  - **Phase 3:** pub/sub fan-out, audit export, observability/SLOs, offline buffer, compaction, and
+    compliance hooks.
 - *(done)* Swapped the textarea for **CodeMirror 6**: family-aware syntax highlighting, and the
   parser's `line:col` parse error is mirrored inline as a lint diagnostic (gutter marker + underline
   + hover message) on top of the existing click-to-locate. `main.ts` talks to a small `Editor`

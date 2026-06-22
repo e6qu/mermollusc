@@ -60,5 +60,6 @@ runs single-user with no relay/persistence/auth.
   two tabs on `?collab&room=…` edit the **overlay and the text** live and see each other's **cursors**
   (Playwright covers the single-tab Yjs path, two-tab overlay convergence, source sync, and presence).
 
-**Phase 1 is feature-complete.** **Next:** the production server (Hocuspocus) with auth/persistence —
-Phases 2–3 of `docs/collab-editor-plan.md`.
+**Phase 1 is feature-complete.** **Phase 2 is in progress.** Landed: the repo's relay, persistence,
+Auth0 verification, rooms/RBAC, and role-aware app UI. Next: browser login and the production store;
+Phase 3 covers pub/sub, audit/observability, offline buffering, compaction, and compliance hooks.

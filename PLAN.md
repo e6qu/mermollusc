@@ -189,8 +189,8 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   deliberate departure from the current client-only design.
 
   **Decisions signed off (2026-06-20, doc §10):** Yjs · server-authoritative WebSocket · self-hosted
-  Postgres + S3 + Redis · OIDC via the existing IdP (specific provider TBD) · extend a Node Yjs server
-  (Hocuspocus). **Phased roadmap** (doc §9):
+  Postgres + S3 + Redis · OIDC via the existing IdP (specific provider TBD) · extend the repo's Node
+  relay rather than Hocuspocus. **Phased roadmap** (doc §9):
   - **Phase 0 — the seam (no infra). ✅ DONE.** Overlay state (overrides + groups + history)
     extracted behind the `OverlayDoc` document-model interface in the app
     (`app/playground/src/document-model.ts`), with `createLocalDocument` as the single-user
@@ -199,8 +199,7 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
     sites.
   - **Phase 1 — proof of merge (feature-complete).** `@m/collab` Yjs document (overlay + source) + a dev
     WebSocket transport/relay + the live `Y.Text`↔CodeMirror source binding + presence; two `?collab`
-    tabs share overlay **and** text live and see each other's cursors. (Open before Phase 2: confirm the
-    specific OIDC IdP.)
+    tabs share overlay **and** text live and see each other's cursors.
   - **Phase 2 — durable + secured (in progress).** Landed: a pluggable `RoomStore` (memory + file
     snapshots; rooms survive restart), **Auth0 OIDC verification** at the relay handshake (JWKS via
     `jose`, env-gated), and **rooms + RBAC** (server-enforced per-document roles + tenant isolation;
@@ -223,8 +222,9 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
    **Current focus:** capability parity (Mermaid families) is **done** (gitGraph, timeline, mindmap,
    pie), and DOT **round-trip** interop (import + export) too. The **collaborative-editor Phase 0 seam**
    is **done** (the `OverlayDoc` document model in the app — see Future bets). Next candidates: the
-   collab decision points + Phase 1 (needs sign-off), more software-architecture families, or Gantt.
-   The *External review backlog* is resolved.
+   collaborative-editor Phase 2 continuation (browser Auth0 login + production store),
+   HTML-in-Canvas backend selection, or bundle/startup code-splitting. The *External review backlog*
+   is resolved.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at
    `e6qu/mermollusc` (push via the `github.com-e6qu` SSH alias).
