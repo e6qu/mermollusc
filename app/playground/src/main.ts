@@ -1583,7 +1583,7 @@ const EXAMPLES = new Map<string, string>([
   ["flowchart", SAMPLE],
   [
     "sequence",
-    "sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello\n  B-->>A: Hi there\n",
+    "sequenceDiagram\n  participant U as User\n  participant W as Web App\n  participant A as API\n  participant D as Database\n  U->>W: submit order\n  W->>A: POST /orders\n  A->>D: insert order\n  D-->>A: id\n  A-->>W: created\n  W-->>U: confirmation\n",
   ],
   [
     "c4",
@@ -1600,11 +1600,11 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "state",
-    "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Loading : fetch\n  Loading --> Ready : ok\n  Loading --> Idle : error\n  Ready --> [*]\n",
+    "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
   ],
   [
     "er",
-    "erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n    int loyalty_points\n  }\n  ORDER {\n    int id PK\n    string status\n    date placed_at\n  }\n  LINE_ITEM {\n    int qty\n    int product_id FK\n  }\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : in\n",
+    "erDiagram\n  CUSTOMER {\n    string id PK\n    string email UK\n    int loyalty_points\n  }\n  ORDER {\n    int id PK\n    string status\n    date placed_at\n  }\n  LINE_ITEM {\n    int qty\n    int product_id FK\n  }\n  PRODUCT {\n    int id PK\n    string sku UK\n    string name\n  }\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : appears_in\n",
   ],
   [
     "class",
@@ -1620,7 +1620,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "timeline",
-    "timeline\n  title History of Social Media\n  section Early\n    2002 : LinkedIn\n    2004 : Facebook : Google\n  section Growth\n    2005 : YouTube\n    2006 : Twitter\n    2010 : Instagram : Pinterest\n",
+    "timeline\n  title Mermollusc roadmap\n  section Foundations\n    Parser : Flowchart : Sequence\n    Layout : ELK routing\n  section Visuals\n    Renderer : Canvas : SVG export\n    Families : ER : Class : Gantt\n  section Sharing\n    Demo : GitHub Pages\n    Collaboration : Presence\n",
   ],
   [
     "mindmap",
@@ -1628,7 +1628,7 @@ const EXAMPLES = new Map<string, string>([
   ],
   [
     "pie",
-    'pie showData\n  title Favourite pets\n  "Dogs" : 386\n  "Cats" : 247\n  "Rabbits" : 89\n  "Birds" : 52\n',
+    'pie showData\n  title Diagram family coverage\n  "Flow / state" : 34\n  "Structure" : 28\n  "Planning" : 18\n  "Architecture" : 20\n',
   ],
   [
     "gantt",

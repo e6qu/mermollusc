@@ -1,4 +1,4 @@
-import { brand, point, rect } from "@m/std";
+import { brand, coordinate, length, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
@@ -10,8 +10,10 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
   ],
   edges: [
     {
@@ -85,6 +87,21 @@ describe("toSvg", () => {
     expect(svg).toContain("<text"); // labels
   });
 
+  it("exports state pseudo-node commands as SVG primitives", () => {
+    const stateSvg = toSvg(
+      [
+        { kind: "stateStart", cx: coordinate(10), cy: coordinate(10), radius: length(10) },
+        { kind: "stateEnd", cx: coordinate(40), cy: coordinate(10), radius: length(10) },
+        { kind: "stateBar", x: coordinate(60), y: coordinate(6), width: length(48), height: length(8) },
+      ],
+      { width: 120, height: 30, origin: { x: 0, y: 0 }, margin: 0, theme: defaultTheme, icons: new Map() },
+    );
+    expect(stateSvg).toContain('<circle cx="10" cy="10" r="7"');
+    expect(stateSvg).toContain('<circle cx="40" cy="10" r="9"');
+    expect(stateSvg).toContain('<circle cx="40" cy="10" r="4"');
+    expect(stateSvg).toContain('<rect x="60" y="6" width="48" height="8" rx="4"');
+  });
+
   it("escapes label text", () => {
     expect(svg).toContain("A &lt; B");
     expect(svg).not.toContain("A < B");
@@ -93,8 +110,10 @@ describe("toSvg", () => {
   it("emits ER crow's-foot markers and left-aligned attribute rows", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [
         {
@@ -136,6 +155,7 @@ describe("toSvg", () => {
           parent: null,
           icon: null,
           rowDivider: 1, subtitle: null, accent: "none",
+      role: "normal",
           rows: ["+int age", "+move() void"],
         },
         {
@@ -146,6 +166,7 @@ describe("toSvg", () => {
           parent: null,
           icon: null,
           rowDivider: null, subtitle: null, accent: "none",
+      role: "normal",
           rows: null,
         },
       ],
@@ -187,7 +208,8 @@ describe("toSvg", () => {
   it("renders a multi-line label as stacked <tspan>s", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [],
       wedges: [],
@@ -212,7 +234,8 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "p", name: "n" },
-          rowDivider: null, subtitle: null, accent: "none", rows: null,
+          rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null,
         },
       ],
       edges: [],
@@ -307,6 +330,7 @@ describe("toSvg", () => {
           rowDivider: null,
           subtitle: null,
           accent: "none",
+      role: "normal",
           rows: null,
         },
       ],

@@ -139,6 +139,7 @@ export const toScene = (
         rowDivider: null,
         subtitle: null,
         accent: "none",
+        role: "normal",
       });
       continue;
     }
@@ -155,6 +156,7 @@ export const toScene = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
   }
 

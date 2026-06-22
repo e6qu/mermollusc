@@ -49,6 +49,25 @@ export type DrawCmd =
       readonly accent: NodeAccent;
     }
   | {
+      readonly kind: "stateStart";
+      readonly cx: Coordinate;
+      readonly cy: Coordinate;
+      readonly radius: Length;
+    }
+  | {
+      readonly kind: "stateEnd";
+      readonly cx: Coordinate;
+      readonly cy: Coordinate;
+      readonly radius: Length;
+    }
+  | {
+      readonly kind: "stateBar";
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly width: Length;
+      readonly height: Length;
+    }
+  | {
       readonly kind: "diamond";
       readonly cx: Coordinate;
       readonly cy: Coordinate;
@@ -258,6 +277,7 @@ const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
 const ROW_TITLE_H = 30;
 const ROW_H = 20;
 const ROW_INSET = 8;
+const NOTE_FOLD = 14;
 // Extra title-band height for a `SceneNode.subtitle` (a class `«stereotype»`); mirrors the layout's
 // CLASS_SUBTITLE_H so the divider and rows still land on the boundaries the box was sized for.
 const SUBTITLE_H = 16;
@@ -274,6 +294,37 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     align: "center",
     plate: false,
   } satisfies DrawCmd;
+  if (node.role === "stateStart") {
+    return [
+      {
+        kind: "stateStart",
+        cx,
+        cy,
+        radius: length(Math.min(size.width, size.height) / 2),
+      },
+    ];
+  }
+  if (node.role === "stateEnd") {
+    return [
+      {
+        kind: "stateEnd",
+        cx,
+        cy,
+        radius: length(Math.min(size.width, size.height) / 2),
+      },
+    ];
+  }
+  if (node.role === "stateFork" || node.role === "stateJoin") {
+    return [
+      {
+        kind: "stateBar",
+        x: origin.x,
+        y: origin.y,
+        width: size.width,
+        height: size.height,
+      },
+    ];
+  }
   if (node.shape === "diamond") {
     return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
   }
@@ -308,6 +359,25 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     radius: length(cornerRadius(node.shape, size.width, size.height)),
     accent: node.accent,
   } satisfies DrawCmd;
+  if (node.role === "stateNote") {
+    const fold = Math.min(NOTE_FOLD, size.width / 5, size.height / 4);
+    return [
+      box,
+      {
+        kind: "polyline",
+        points: [
+          point(origin.x + size.width - fold, origin.y),
+          point(origin.x + size.width - fold, origin.y + fold),
+          point(origin.x + size.width, origin.y + fold),
+        ],
+        dashed: false,
+        fromMarker: EMPTY_MARKER,
+        toMarker: EMPTY_MARKER,
+        curved: false,
+      },
+      label,
+    ];
+  }
   if (node.rows !== null) {
     // A compartment box (ER entity / UML class): an optional `«stereotype»` subtitle, the title, a
     // divider, then one left-aligned row per member. A class also gets an inner divider at

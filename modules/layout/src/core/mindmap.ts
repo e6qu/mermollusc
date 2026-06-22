@@ -146,6 +146,7 @@ export const layoutMindmap = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
   }
 

@@ -54,6 +54,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     };
   });
 

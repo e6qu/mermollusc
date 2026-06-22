@@ -53,6 +53,8 @@ Open (external review, codex `gpt-5.5`, 2026-06-19):
   fails the parse loudly). The "double-click any … label" claim now holds for requirement too.
 - ~~**Pipeline goldens omit the state family.**~~ Fixed — added flat (`state`) and `state-composite`
   samples to the pipeline goldens, so composite/`[*]` geometry regressions are now caught.
+- ~~**The ER picker example referenced an undefined `PRODUCT` entity.**~~ Fixed — the showcase sample now
+  defines `PRODUCT`, so selecting the example cannot fail layout on an unknown relationship endpoint.
 
 Delete of brace-bodied entities (ER/class/requirement/composite state) is logged under `@m/builder`
 (dispatch lives in `main.ts` `removeNode`, the delete helpers in the builder) — now fully resolved,

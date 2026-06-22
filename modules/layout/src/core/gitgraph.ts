@@ -92,6 +92,7 @@ export const layoutGitGraph = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
     grow(x + headW, y + HEAD_H);
   }
@@ -119,6 +120,7 @@ export const layoutGitGraph = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
     grow(c.x + w / 2, c.y + COMMIT_H / 2);
   }

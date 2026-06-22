@@ -29,7 +29,7 @@
   of the collaborative-editor plan
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
-- **Family-aware controls:** an **Examples** menu drops a known-good starter for each of the fifteen
+- **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
@@ -41,7 +41,7 @@
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) — for visual review / design iteration, not a gate. It includes a phone-width
-  responsive shell flow so mobile layout regressions are visible during review.
+  responsive shell flow plus state/sketch flows so marker and hand-drawn polish is visible during review.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay.

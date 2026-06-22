@@ -114,3 +114,7 @@
   constructor (contracts shell) that validates ISO `YYYY-MM-DD` *and* a real calendar day (rejects a
   rolled-over `2024-02-31`). `GanttStart.date` and `GanttAst.excludeDates` are now `GanttDate`, so an
   invalid date can't reach the AST and the layout resolves it with a total `parseDay`.
+- `SceneNode` gained a required `role: SceneNodeRole` (`normal`, state start/end/fork/join/note) so a
+  family can preserve semantic rendering intent after sharing a generic layout path. State diagrams use
+  it to render real initial/final markers, fork/join bars, and folded-note boxes without adding fake AST
+  fields to unrelated families.

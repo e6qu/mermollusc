@@ -1,4 +1,4 @@
-import { brand, point, rect } from "@m/std";
+import { brand, coordinate, length, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
@@ -64,8 +64,10 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
   ],
   edges: [
     {
@@ -95,7 +97,8 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "arch", name: "server" },
-      rowDivider: null, subtitle: null, accent: "none", rows: null,
+      rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null,
     },
   ],
   edges: [],
@@ -117,8 +120,10 @@ describe("paint", () => {
   it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: ["int id PK"] },
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [
         {
@@ -164,6 +169,7 @@ describe("paint", () => {
           parent: null,
           icon: null,
           rowDivider: 1, subtitle: null, accent: "none",
+      role: "normal",
           rows: ["+int age", "+move() void"],
         },
         {
@@ -174,6 +180,7 @@ describe("paint", () => {
           parent: null,
           icon: null,
           rowDivider: null, subtitle: null, accent: "none",
+      role: "normal",
           rows: null,
         },
       ],
@@ -209,7 +216,8 @@ describe("paint", () => {
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [],
       wedges: [],
@@ -234,7 +242,8 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [],
       wedges: [],
@@ -258,6 +267,7 @@ describe("paint", () => {
           parent: null,
           icon: null,
           rowDivider: null, subtitle: null, accent: "none",
+      role: "normal",
           rows: ["string name PK", "int age"],
         },
       ],
@@ -268,11 +278,12 @@ describe("paint", () => {
     const sketchy = new RecordingCtx();
     paint(sketchy, toDisplayList(comp), new Map(), { ...defaultTheme, sketch: true });
     expect(sketchy.calls.filter((c) => c === "roundRect")).toHaveLength(0);
+    expect(sketchy.calls).toContain(`fillRect:${defaultTheme.nodeFill}`);
     expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(4);
     expect(sketchy.calls).toContain("fillText:string name PK");
   });
 
-  it("sketch theme draws wobbly outlines (no roundRect) instead of crisp shapes", () => {
+  it("sketch theme draws tinted fills plus wobbly outlines instead of crisp shapes", () => {
     const crisp = new RecordingCtx();
     paint(crisp, toDisplayList(scene), new Map(), defaultTheme);
     const sketchy = new RecordingCtx();
@@ -280,11 +291,24 @@ describe("paint", () => {
     // Crisp mode uses roundRect for the box; sketch mode never does (it strokes wobbly lines).
     expect(crisp.calls.filter((c) => c === "roundRect").length).toBeGreaterThanOrEqual(1);
     expect(sketchy.calls.filter((c) => c === "roundRect")).toHaveLength(0);
+    expect(sketchy.calls).toContain(`fillRect:${defaultTheme.nodeFill}`);
     // Sketch mode is stroke-heavy (multi-pass lines), labels still render.
     expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(
       crisp.calls.filter((c) => c === "stroke").length,
     );
     expect(sketchy.calls).toContain("fillText:A");
+  });
+
+  it("paints state pseudo-node commands as marker primitives", () => {
+    const ctx = new RecordingCtx();
+    paint(ctx, [
+      { kind: "stateStart", cx: coordinate(10), cy: coordinate(10), radius: length(10) },
+      { kind: "stateEnd", cx: coordinate(40), cy: coordinate(10), radius: length(10) },
+      { kind: "stateBar", x: coordinate(60), y: coordinate(6), width: length(48), height: length(8) },
+    ]);
+    expect(ctx.calls.filter((c) => c === "arc")).toHaveLength(3);
+    expect(ctx.calls).toContain("roundRect");
+    expect(ctx.calls.filter((c) => c === "fill").length).toBeGreaterThanOrEqual(3);
   });
 
   it("draws a curved 2-point connector as a bezier (not straight line segments)", () => {

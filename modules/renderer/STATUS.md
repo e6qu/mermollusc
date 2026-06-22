@@ -2,7 +2,7 @@
 
 **State:** Canvas2D renderer implemented; `make check` green.
 
-- core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond shapes, node labels, edge
+- core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
   `edgeLabelAnchor` at the midpoint *along the routed polyline* — perpendicular-nudged, so a bent
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
@@ -23,6 +23,9 @@
   divider, and one left-aligned row each (the `label` `DrawCmd` carries a `LabelAlign`); a non-null
   `rowDivider` adds a second divider at that row index — the UML class field/method split; a non-null
   `subtitle` (a class `«stereotype»`) draws a centred line above the title, widening the title band.
+- **State roles:** `SceneNode.role` maps to dedicated display commands for filled initial markers,
+  ringed final markers, fork/join bars, and folded-note boxes; both canvas and SVG exports draw them
+  from the same display list.
 - multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.
@@ -44,9 +47,10 @@
   [label, arrowhead]` with `NodeShape`/`EdgeEnd` mapped to DOT shapes/arrowtypes. The reverse of the
   parser's DOT import; backs the app's "DOT" export.
 - device-pixel-ratio is the app's concern (it sizes the backing store); the renderer draws in CSS px.
-- **Sketch mode** (`theme.sketch`): boxes/diamonds/solid edges — and edge-marker line segments
+- **Sketch mode** (`theme.sketch`): boxes get a subtle fill plus wobbly outlines; diamonds/solid edges
+  and edge-marker line segments
   (crow's-foot prongs, bars, open-arrow V) — become wobbly, double-stroked hand-drawn outlines via a
-  seeded LCG jitter — deterministic, no fill, using only the structural `Canvas2D` (no rough.js dep,
+  seeded LCG jitter — deterministic, using only the structural `Canvas2D` (no rough.js dep,
   so the mock-based tests still hold). Dashed edges and filled marker heads stay crisp/solid.
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection

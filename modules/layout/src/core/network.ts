@@ -44,6 +44,7 @@ export const layoutNetwork = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     };
   });
 

@@ -101,6 +101,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
   }
 

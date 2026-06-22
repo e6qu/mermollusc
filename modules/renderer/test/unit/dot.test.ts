@@ -21,6 +21,7 @@ const node = (
   rowDivider: null,
   subtitle: null,
   accent: "none",
+      role: "normal",
 });
 
 describe("toDot", () => {

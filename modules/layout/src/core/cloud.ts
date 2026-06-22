@@ -128,6 +128,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
   }
 

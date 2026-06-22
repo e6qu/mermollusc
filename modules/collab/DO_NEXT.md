@@ -31,11 +31,6 @@
   (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
 - **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
   (snapshots) + Redis fan-out — same interface. Needs a real DB to verify end to end.
-- **Awareness / presence:** add the Yjs awareness protocol (remote cursors/selections, viewport,
-  user identity/color) — ephemeral, not persisted.
-- **App source binding:** bind CodeMirror ↔ `Y.Text` (e.g. `y-codemirror.next`) so the `?collab` flag
-  drives live two-client text + overlay editing, with remote cursors. Reconcile the Yjs `UndoManager`
-  with CodeMirror's text history.
 - **Decode-failure surfacing:** today a corrupt peer overlay throws inside the Y observer; once a
   `Logger` is threaded through the shell, log loudly + surface to the UI instead of throwing.
 - **Same-key merge for groups:** group objects are stored whole (LWW per group). If concurrent edits to

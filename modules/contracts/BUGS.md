@@ -11,3 +11,5 @@ Checked while adding the StateAst family.
 Checked while adding composite states.
 
 Checked while adding the ErAst family.
+
+Checked while adding `SceneNode.role` for state marker rendering.
