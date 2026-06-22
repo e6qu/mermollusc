@@ -35,8 +35,9 @@
   the origin or dropping the edge. The shell `layoutDiagram` already returns a `Result`, so the
   per-family error threads straight through to the caller.
 - `layoutDiagram(ast)` routes by family: flowchart, **state, ER, class, and requirement** → ELK
-  (async; state via `stateToFlow`, ER via `layoutEr`, class via `layoutClass`, requirement via
-  `layoutRequirement`); the rest (sequence, C4, block, network, cloud, **gitGraph**, **timeline**,
+  (async; state via `stateToFlow` and then restores `SceneNode.role` for initial/final/fork/join/note
+  glyphs, ER via `layoutEr`, class via `layoutClass`, requirement via `layoutRequirement`); the rest
+  (sequence, C4, block, network, cloud, **gitGraph**, **timeline**,
   **mindmap**, **pie**) → pure layouts.
 - **mindmap (`layoutMindmap`):** a deterministic **radial** layout (no ELK) — the root sits at the
   centre and each subtree fans into an angular sector sized by its leaf count, depth → radius; a forest
@@ -64,5 +65,5 @@
 - tests: 29 unit + 13 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
-  endpoints and dangling parents; property-based: block/network grids **and the ELK flowchart path**
+  endpoints and dangling parents; state role restoration; property-based: block/network grids **and the ELK flowchart path**
   preserve ids + fit every box inside the extent).

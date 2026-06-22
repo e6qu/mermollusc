@@ -13,10 +13,13 @@
 
 - `layout(ast: FlowchartAst): Promise<Result<Scene, LayoutError>>` — fail-loud.
 - `toElkGraph` / `toScene` (pure) are exported for testing and reuse.
+- `layoutDiagram(ast, measure)` preserves family-specific Scene semantics such as state node roles
+  while sharing the generic ELK path where appropriate.
 
 ## Notes
 
 - Uses the bundled `elkjs/lib/elk.bundled.js` so layout runs in node and the browser without a
   separate worker file. The app may inject a `workerFactory` later to offload to a Web Worker.
-- Node sizing is a heuristic; once the renderer can measure text, sizes should come from it.
-- The `LayoutOverrides` contract (pinned positions, "relax" seeds) is not consumed yet.
+- Node sizing is a heuristic; callers that need visual fidelity pass the same `MeasureText` they use
+  for the active renderer theme.
+- `LayoutOverrides` seeds are consumed by the flowchart relax path.

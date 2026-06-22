@@ -133,3 +133,7 @@
   stroke; all clear AA (text ≥ 5.25:1 vs the 4.5 floor, strokes ≥ 5.7:1 vs the 3.0 floor, both themes).
   Added a regression test that computes the relative-luminance contrast ratio over `accentFill`/theme
   colours and asserts the thresholds, so a future palette tweak can't silently drop below AA. +2 tests.
+- State-marker polish: `toDisplayList` now maps `SceneNode.role` to dedicated commands for filled start
+  markers, ringed final markers, fork/join bars, and folded state notes. Canvas and SVG both render the
+  commands, and sketch-mode boxes keep a subtle fill under the wobbly outline so large diagrams no
+  longer look hollow. +display/paint/svg tests.

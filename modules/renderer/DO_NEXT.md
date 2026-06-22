@@ -1,6 +1,7 @@
 # @m/renderer — do next
 
-- Sketch mode is in (self-rolled seeded jitter; `theme.sketch`, app toggle). Possible upgrades:
+- Sketch mode is in (self-rolled seeded jitter plus subtle box fills; `theme.sketch`, app toggle).
+  Possible upgrades:
   swap to **rough.js** (MIT) for hachure fills if richer texture is wanted, and bundle a handwriting
   font — **Patrick Hand** (OFL, google/fonts) woff2 + provenance — instead of the system cursive stack.
   Companion: an authored AGPL `sketch` glyph pack (stickman/wobbly) for a fully hand-drawn look.
@@ -13,16 +14,16 @@
 - Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label
   placement.
-- State-diagram `[*]` pseudo-states currently render as plain circles (via the flowchart `circle`
-  shape); small *filled* initial / ringed final markers would read more like real state charts —
-  needs a dedicated marker shape or a start/end-aware draw.
+- *(done)* State-diagram `[*]` pseudo-states render as filled initial / ringed final markers; fork/join
+  roles render as bars and state notes draw a folded corner.
 - *(done)* ER crow's-foot cardinality renders via per-edge-end markers. `SceneEdge` now carries
   `fromEnd`/`toEnd` (`EdgeEnd` union, replacing the single `arrow`); `toDisplayList` precomputes each
   end's geometry as a backend-agnostic `EndMarker` (stroked `lines` for bars/prongs, a filled
   `triangle` for arrowheads, a stroked `circle` for the optional "zero" ring) so `paint` and `toSvg`
   draw identical glyphs. The same mechanism would serve class-diagram UML arrowheads. ER attribute
   rows render as compartment boxes (`SceneNode.rows`: title band + divider + left-aligned rows).
-- State-diagram start/end markers could reuse `EndMarker` (a filled start / ringed final head).
+- State-marker follow-up: tune note placement once the state layout carries note direction
+  (`left/right/over`) into the layout spec instead of using a generic open connector.
 - DOT export: *(done — `toDot(scene, rankdir)` Graphviz backend; carries `rankdir`; `container` nodes
   re-emit as `cluster_*` subgraphs)*.
 - curve primitive: *(done — polyline `curved` flag → cubic bezier in canvas + SVG; powers mindmap

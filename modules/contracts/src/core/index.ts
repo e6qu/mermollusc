@@ -99,6 +99,7 @@ export type {
   SceneEdgeId,
   EdgeStroke,
   NodeAccent,
+  SceneNodeRole,
   Decoration,
   BandFill,
   EdgeEnd,

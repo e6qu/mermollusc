@@ -201,3 +201,6 @@
   its two date-format failure paths (a bad task start date, a bad excluded date) were dead and are
   removed — the date branch and the excludeDates loop no longer return a `Result` error. (The two
   layout-level bad-date tests moved to the parser, where the validation now lives.)
+- State layout now restores semantic `SceneNode.role` values after converting the state AST to the
+  shared flowchart/ELK path: `[*]` start/end, `<<fork>>`/`<<join>>`, and notes survive as renderer-facing
+  roles instead of being indistinguishable generic circles/rects.

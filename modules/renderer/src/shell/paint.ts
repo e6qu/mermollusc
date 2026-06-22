@@ -43,7 +43,7 @@ export interface Theme {
   readonly stroke: string;
   readonly text: string;
   readonly font: string;
-  // When true, shapes are drawn with wobbly, double-stroked "hand-drawn" outlines (no fill).
+  // When true, shapes are drawn with wobbly, double-stroked "hand-drawn" outlines.
   readonly sketch: boolean;
 }
 
@@ -164,6 +164,20 @@ const sketchRect = (ctx: Canvas2D, x: number, y: number, w: number, h: number, s
   sketchLine(ctx, x, y + h, x, y, s + 3);
 };
 
+const sketchFillRect = (
+  ctx: Canvas2D,
+  fill: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void => {
+  ctx.fillStyle = fill;
+  ctx.globalAlpha = 0.62;
+  ctx.fillRect(x, y, w, h);
+  ctx.globalAlpha = 1;
+};
+
 // Render a pre-computed edge-end marker (crow's-foot bars/prongs, arrowheads, UML triangle/diamond
 // heads, an optional ring). Geometry is fixed in the core; the painter only strokes/fills primitives.
 // A `solid` polygon fills with the stroke colour; a `hollow` one fills with the background and is
@@ -218,15 +232,44 @@ export const paint = (
     switch (cmd.kind) {
       case "box": {
         ctx.strokeStyle = theme.stroke;
+        const fill = accentFill(cmd.accent, theme);
         if (theme.sketch) {
+          sketchFillRect(ctx, fill, cmd.x, cmd.y, cmd.width, cmd.height);
           sketchRect(ctx, cmd.x, cmd.y, cmd.width, cmd.height, seedOf(cmd.x, cmd.y, cmd.width));
           break;
         }
-        ctx.fillStyle = accentFill(cmd.accent, theme);
+        ctx.fillStyle = fill;
         ctx.beginPath();
         ctx.roundRect(cmd.x, cmd.y, cmd.width, cmd.height, cmd.radius);
         ctx.fill();
         ctx.stroke();
+        break;
+      }
+      case "stateStart": {
+        ctx.fillStyle = theme.stroke;
+        ctx.beginPath();
+        ctx.arc(cmd.cx, cmd.cy, Math.max(3, cmd.radius - 3), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "stateEnd": {
+        ctx.fillStyle = theme.background;
+        ctx.strokeStyle = theme.stroke;
+        ctx.beginPath();
+        ctx.arc(cmd.cx, cmd.cy, Math.max(5, cmd.radius - 1), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = theme.stroke;
+        ctx.beginPath();
+        ctx.arc(cmd.cx, cmd.cy, Math.max(2.5, cmd.radius - 6), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "stateBar": {
+        ctx.fillStyle = theme.stroke;
+        ctx.beginPath();
+        ctx.roundRect(cmd.x, cmd.y, cmd.width, cmd.height, Math.min(4, cmd.height / 2));
+        ctx.fill();
         break;
       }
       case "diamond": {

@@ -88,6 +88,12 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `box ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)} r${r(c.radius)}`;
       case "diamond":
         return `diamond ${r(c.cx)},${r(c.cy)} ${r(c.width)}x${r(c.height)}`;
+      case "stateStart":
+        return `stateStart ${r(c.cx)},${r(c.cy)} r${r(c.radius)}`;
+      case "stateEnd":
+        return `stateEnd ${r(c.cx)},${r(c.cy)} r${r(c.radius)}`;
+      case "stateBar":
+        return `stateBar ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)}`;
       case "polyline": {
         const m = (mk: (typeof c)["toMarker"]): string =>
           `l${mk.lines.length}p${mk.polygons.length}c${mk.circle === null ? 0 : 1}`;

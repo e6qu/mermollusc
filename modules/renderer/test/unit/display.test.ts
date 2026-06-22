@@ -8,8 +8,10 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
   ],
   edges: [
     {
@@ -47,6 +49,31 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "polyline")).toHaveLength(1);
   });
 
+  it("renders state pseudo-node roles as semantic display commands", () => {
+    const stateScene: Scene = {
+      nodes: [
+        { id: snid("start"), bounds: rect(0, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "stateStart", rows: null },
+        { id: snid("end"), bounds: rect(40, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "stateEnd", rows: null },
+        { id: snid("fork"), bounds: rect(80, 4, 48, 12), label: "", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "stateFork", rows: null },
+        { id: snid("note"), bounds: rect(0, 40, 120, 44), label: "retry", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "stateNote", rows: null },
+      ],
+      edges: [],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 128, 84),
+    };
+    const out = toDisplayList(stateScene);
+    expect(out.filter((c) => c.kind === "stateStart")).toHaveLength(1);
+    expect(out.filter((c) => c.kind === "stateEnd")).toHaveLength(1);
+    expect(out.filter((c) => c.kind === "stateBar")).toHaveLength(1);
+    expect(out.filter((c) => c.kind === "polyline")).toHaveLength(1);
+    expect(out.some((c) => c.kind === "label" && c.text === "retry")).toBe(true);
+  });
+
   it("layers edges under nodes, with edge labels on top", () => {
     const firstPolyline = cmds.findIndex((c) => c.kind === "polyline");
     const firstBox = cmds.findIndex((c) => c.kind === "box");
@@ -77,7 +104,8 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "arch", name: "server" },
-      rowDivider: null, subtitle: null, accent: "none", rows: null,
+      rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null,
         },
       ],
       edges: [],
@@ -101,7 +129,8 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, accent: "none", rows: ["string name PK", "int age"],
+          rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: ["string name PK", "int age"],
         },
       ],
       edges: [],
@@ -137,6 +166,7 @@ describe("toDisplayList", () => {
           rowDivider: null,
           subtitle: "«interface»",
           accent: "none",
+      role: "normal",
           rows: ["+draw() void"],
         },
       ],
@@ -170,8 +200,10 @@ describe("toDisplayList", () => {
     const markerOf = (end: (typeof ends)[number]) => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
         ],
         edges: [
           {
@@ -209,8 +241,10 @@ describe("toDisplayList", () => {
     const markerOf = (end: "triangle" | "diamondFilled" | "diamondHollow" | "arrowOpen") => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
         ],
         edges: [
           {
@@ -245,7 +279,8 @@ describe("toDisplayList", () => {
   it("falls back to a stable marker direction for a degenerate (zero-length) edge", () => {
     const s: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+      role: "normal", rows: null },
       ],
       edges: [
         {
@@ -385,6 +420,7 @@ describe("toDisplayList", () => {
             rowDivider: null,
             subtitle: null,
             accent: "none",
+      role: "normal",
             rows: null,
           },
         ],
@@ -418,6 +454,7 @@ describe("decorations", () => {
           rowDivider: null,
           subtitle: null,
           accent: "none",
+      role: "normal",
         },
       ],
       edges: [],
@@ -455,6 +492,7 @@ describe("decorations", () => {
           rowDivider: null,
           subtitle: null,
           accent: "none",
+      role: "normal",
         },
       ],
       edges: [],

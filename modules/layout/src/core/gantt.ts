@@ -160,6 +160,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       rowDivider: null,
       subtitle: null,
       accent: p.accent,
+      role: "normal",
     };
   });
 

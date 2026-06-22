@@ -10,6 +10,7 @@
 - SceneGraph IR: `SceneNode`/`SceneEdge`/`Scene` over `@m/std` geometry, with node `shape`, containment
   via `parent`, compartment rows via `SceneNode.rows` (`string[] | null`) + a field/method split via
   `rowDivider` (`number | null`) + an above-title `subtitle` (`string | null`, a class stereotype),
+  semantic node rendering roles via `SceneNode.role` (`normal` plus state pseudo-state/note roles),
   and per-end edge decorations via `SceneEdge.fromEnd`/`toEnd` (the
   `EdgeEnd` union: `none`/`arrow`/`arrowOpen`/`triangle`/`diamondFilled`/`diamondHollow` + the four
   crow's-foot cardinalities).

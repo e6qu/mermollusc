@@ -1,4 +1,4 @@
-import { assertNever, brand, decode, err, ok, rect, type Point, type Result } from "@m/std";
+import { assertNever, brand, decode, err, map, ok, rect, type Point, type Result } from "@m/std";
 import { boxCenter, routeWaypoints } from "../core/route.js";
 import type {
   ClassAst,
@@ -15,6 +15,7 @@ import type {
   Scene,
   SceneEdge,
   SceneNode,
+  SceneNodeRole,
   StateAst,
 } from "@m/contracts";
 import ELK from "elkjs/lib/elk.bundled.js";
@@ -262,6 +263,40 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
   })),
 });
 
+const stateRole = (kind: StateKind): SceneNodeRole => {
+  switch (kind) {
+    case "state":
+    case "choice":
+      return "normal";
+    case "start":
+      return "stateStart";
+    case "end":
+      return "stateEnd";
+    case "fork":
+      return "stateFork";
+    case "join":
+      return "stateJoin";
+    default:
+      return assertNever(kind);
+  }
+};
+
+const applyStateRoles = (scene: Scene, ast: StateAst): Scene => {
+  const roles = new Map<string, SceneNodeRole>([
+    ...ast.states.map((s): readonly [string, SceneNodeRole] => [s.id, stateRole(s.kind)]),
+    ...ast.notes.map((n): readonly [string, SceneNodeRole] => [n.id, "stateNote"]),
+  ]);
+  return {
+    ...scene,
+    nodes: scene.nodes.map(
+      (node): SceneNode => ({
+        ...node,
+        role: roles.get(node.id) ?? "normal",
+      }),
+    ),
+  };
+};
+
 // One attribute per row, e.g. `string name PK "the customer's name"`.
 const attributeRow = (a: ErAst["entities"][number]["attributes"][number]): string => {
   const keys = a.keys.length > 0 ? ` ${a.keys.join(",")}` : "";
@@ -360,6 +395,7 @@ const layoutCompartments = async (
         rowDivider: b.rowDivider,
         subtitle: b.subtitle,
         accent: "none",
+        role: "normal",
       });
     }
     const centerById = new Map<string, Point>(
@@ -541,7 +577,9 @@ export const layoutDiagram = async (
     case "cloud":
       return layoutCloud(ast, measure);
     case "state":
-      return layout(stateToFlow(ast), new Map(), measure);
+      return map(await layout(stateToFlow(ast), new Map(), measure), (scene) =>
+        applyStateRoles(scene, ast),
+      );
     case "er":
       return layoutEr(ast, measure);
     case "class":

@@ -70,6 +70,7 @@ export const layoutTimeline = (
       rowDivider: null,
       subtitle: null,
       accent: "none",
+      role: "normal",
     });
     // Spine passes through the period row at a fixed height, so multi-line periods grow downward
     // without tilting the axis.
@@ -88,6 +89,7 @@ export const layoutTimeline = (
         rowDivider: null,
         subtitle: null,
         accent: "none",
+        role: "normal",
       });
       grow(cursor + w, ey + eH);
       ey += eH + ROW_GAP;
@@ -118,6 +120,7 @@ export const layoutTimeline = (
         rowDivider: null,
         subtitle: null,
         accent: "none",
+        role: "normal",
       });
       grow(left + bandW, sectionY + SECTION_H);
     }

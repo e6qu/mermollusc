@@ -60,10 +60,10 @@
   *(done — click a group outline to select the whole group)*; *(done — editable group label/title)*.
 - *(done)* Connect and Delete dispatch across all six families, including C4 boundary blocks and
   sequence actors/messages.
-- State diagrams v1 is flat: composite/nested states, fork/join, choice, and notes are future work
-  (parser-led). The `[*]` pseudo-states render as plain circles — small filled start / ringed final
-  markers would read better (renderer-led). Connect/Delete/relabel work on real states; the merged
-  `[*]` pseudo-states aren't meaningfully editable from the canvas.
+- State diagrams now render composite/nested states, fork/join, choice, notes, and distinct start/end
+  markers. Follow-up: carry note side (`left/right/over`) through layout so note positioning matches
+  the source annotation more closely. Connect/Delete/relabel work on real states; the merged `[*]`
+  pseudo-states aren't meaningfully editable from the canvas.
 - *(done)* ER renders crow's-foot cardinality end markers (per-end `EdgeEnd`) and entity attribute
   compartments (`SceneNode.rows`); the `er` example shows attribute blocks and a `25-er` shots flow
   captures it. Connect/Delete/relabel already work on entities + relationships. The shared `EndMarker`

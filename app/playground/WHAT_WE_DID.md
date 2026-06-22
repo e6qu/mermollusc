@@ -586,3 +586,7 @@
   that places the playground at `/demo/`, and a Pages workflow using the current GitHub Actions
   artifact deploy path. The demo build sets `VITE_BACKEND_FREE_DEMO=1`, so even `?collab` stays
   local-only and reports that collaboration is disabled.
+- Example/showcase polish: upgraded the picker samples so state diagrams exercise start/end/fork/join/
+  choice/notes, ER defines every relationship endpoint, and sequence/timeline/pie tell richer stories.
+  Added state-polish and sketch-state screenshot flows so the visual review pass captures the new
+  marker and hand-drawn behavior.

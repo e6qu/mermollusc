@@ -18,6 +18,8 @@
 - *(done)* The ER/class/requirement compartment layouts share one `layoutCompartments` engine
   (`CompartmentBox`/`CompartmentEdge` specs + per-family metrics) instead of three copies of the ELK
   boilerplate. A future compartment family is now a small AST→spec mapper.
+- *(done)* State diagrams preserve semantic Scene roles after `stateToFlow`, so start/end markers,
+  fork/join bars, and notes can render distinctly while still sharing the ELK flowchart path.
 - gitGraph: *(done — deterministic lane layout, LR/TB/BT; label-sized rounded pills; branch/merge
   connectors are curved beziers)*. Follow-up: orthogonal (elbow) routing as an alternative style.
 - timeline: *(done — column layout with a period spine, stacked events, section bands)*. Follow-up:

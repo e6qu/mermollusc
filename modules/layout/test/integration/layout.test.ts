@@ -158,7 +158,9 @@ describe("layout", () => {
     expect(laid.value.nodes.map((n) => n.id).sort()).toEqual(["Idle", "__state_start"]);
     // The start pseudo-state becomes a circle, the real state a rounded box.
     expect(laid.value.nodes.find((n) => n.id === "Idle")?.shape).toBe("round");
+    expect(laid.value.nodes.find((n) => n.id === "Idle")?.role).toBe("normal");
     expect(laid.value.nodes.find((n) => n.id === "__state_start")?.shape).toBe("circle");
+    expect(laid.value.nodes.find((n) => n.id === "__state_start")?.role).toBe("stateStart");
     expect(laid.value.edges).toHaveLength(1);
   });
 

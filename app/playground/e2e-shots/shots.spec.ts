@@ -359,7 +359,29 @@ const FLOWS: readonly Flow[] = [
     },
   },
   {
-    name: "29-requirement",
+    name: "29-state-polish",
+    about: "state diagram pseudo-states, fork/join bars, choice diamond, and note fold",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
+      );
+    },
+  },
+  {
+    name: "30-sketch-state",
+    about: "sketch mode over the polished state sample with filled hand-drawn boxes",
+    drive: async (page) => {
+      await setSource(
+        page,
+        "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
+      );
+      await page.locator("#sketch").click();
+      await settled(page);
+    },
+  },
+  {
+    name: "31-requirement",
     about: "requirement diagram: «kind» tag + field compartments, verb-labelled relationships",
     drive: async (page) => {
       await setSource(
