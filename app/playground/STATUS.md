@@ -76,6 +76,9 @@
     step; a nudge run is one undo entry; locked groups don't move), and **`S` cycles the selected
     flowchart node(s) through the shapes** (rect→round→stadium→circle→diamond, rewriting the source
     brackets via `reshapeNode`, label preserved).
+  - **screen-reader navigator**: a hidden listbox mirrors both nodes and edges; arrows move the active
+    item, announce node topology or edge endpoints, drive canvas selection, and support Enter relabel,
+    Alt+Arrow node move, two-step `c` connect between nodes, and Delete.
   - **Arrange** (a popover, enabled on 2+ movable units): align left/center/right/top/middle/bottom
     and distribute horizontally/vertically (3+ units). Each *unit* is a loose node or a whole top
     group, aligned by its bounding box so a group keeps its internal layout; locked groups are
@@ -117,7 +120,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 86 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 87 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

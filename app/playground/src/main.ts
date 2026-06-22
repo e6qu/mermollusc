@@ -57,6 +57,7 @@ import type {
   Scene,
   SceneNode,
   SceneNodeId,
+  SceneEdgeId,
   SequenceSource,
   SourceMap,
   StateSource,
@@ -1295,10 +1296,10 @@ minimap.addEventListener("pointerup", (ev) => {
   minimap.releasePointerCapture(ev.pointerId);
 });
 
-// ---- Keyboard node navigator ----
-// A focusable listbox (sr-only, in index.html) mirrors the scene's nodes so the diagram is operable
-// without a mouse. Arrow keys move the active option, which drives the canvas selection (so the node
-// highlights and Delete operates on it) and centres it in view; a live region announces it.
+// ---- Keyboard diagram navigator ----
+// A focusable listbox mirrors the scene's nodes and edges so the diagram is operable without a mouse.
+// Arrow keys move the active option, which drives the canvas selection and centres it in view; a live
+// region announces it.
 const announce = (message: string): void => {
   diagramLive.textContent = message;
 };
@@ -1315,16 +1316,26 @@ const centerOnNode = (id: SceneNodeId): void => {
   );
 };
 
-// The id of the node the listbox's active option points at (its `aria-activedescendant`), or null when
-// nothing is active yet. Distinct from the canvas selection, which it sets.
-let navActiveId: SceneNodeId | null = null;
+// The navigator's options are the scene's nodes then its edges, each a focus target. `HitTarget` is the
+// node/edge shape the selection and relabel paths already speak, so an item feeds them directly.
+let navItems: HitTarget[] = [];
+let navIndex = -1; // the active option's index into `navItems`, or -1 when nothing is active yet
 // The chosen source while a keyboard Connect is in progress (press `c` to pick it, navigate, `c` again
 // to connect to the target). Cleared on connect, cancel, or any re-render.
 let navConnectSource: SceneNodeId | null = null;
+const navActive = (): HitTarget | null => (navIndex >= 0 ? (navItems[navIndex] ?? null) : null);
 
 const navLabel = (id: SceneNodeId): string => {
   const node = scene?.nodes.find((n) => n.id === id);
   return node !== undefined && node.label.length > 0 ? node.label : "node";
+};
+
+// An edge spoken as "Alpha to Beta" plus its own label, if any, readable without the visual arrow.
+const edgeLabel = (id: SceneEdgeId): string => {
+  const edge = scene?.edges.find((e) => e.id === id);
+  if (edge === undefined) return "edge";
+  const ends = `${navLabel(edge.from)} to ${navLabel(edge.to)}`;
+  return edge.label !== null && edge.label.length > 0 ? `${ends}, ${edge.label}` : ends;
 };
 
 // A spoken summary of a node's edges, so a screen-reader user grasps the topology, not just the node
@@ -1341,45 +1352,70 @@ const describeConnections = (id: SceneNodeId): string => {
   return parts.length === 0 ? "no connections" : parts.join("; ");
 };
 
+const centerOnEdge = (id: SceneEdgeId): void => {
+  if (lastRender === null) return;
+  const edge = lastRender.scene.edges.find((e) => e.id === id);
+  if (edge === undefined) return;
+  const anchor = edgeLabelAnchor(edge.waypoints);
+  const origin = lastRender.scene.extent.origin;
+  scrollToLogical(MARGIN - origin.x + anchor.x, MARGIN - origin.y + anchor.y);
+};
+
 const rebuildNav = (): void => {
   diagramNav.replaceChildren();
   diagramNav.removeAttribute("aria-activedescendant");
-  navActiveId = null;
+  navIndex = -1;
   navConnectSource = null;
-  if (scene === null) return;
-  scene.nodes.forEach((node, i) => {
+  if (scene === null) {
+    navItems = [];
+    return;
+  }
+  navItems = [
+    ...scene.nodes.map((n): HitTarget => ({ kind: "node", id: n.id })),
+    ...scene.edges.map((e): HitTarget => ({ kind: "edge", id: e.id })),
+  ];
+  navItems.forEach((item, i) => {
     const option = document.createElement("li");
-    option.id = `diagram-node-${i}`;
+    option.id = `diagram-item-${i}`;
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", "false");
-    option.textContent = node.label.length > 0 ? node.label : `node ${i + 1}`;
+    option.textContent =
+      item.kind === "node" ? navLabel(item.id) || `node ${i + 1}` : `${edgeLabel(item.id)} (edge)`;
     diagramNav.appendChild(option);
   });
 };
 
 const setNavActive = (index: number): void => {
-  if (scene === null || scene.nodes.length === 0) return;
-  const clamped = Math.max(0, Math.min(index, scene.nodes.length - 1));
-  const node = scene.nodes[clamped];
+  if (navItems.length === 0) return;
+  const clamped = Math.max(0, Math.min(index, navItems.length - 1));
+  const item = navItems[clamped];
   const option = diagramNav.children[clamped];
-  if (node === undefined || option === undefined) return;
+  if (item === undefined || option === undefined) return;
   for (const child of Array.from(diagramNav.children)) child.setAttribute("aria-selected", "false");
   option.setAttribute("aria-selected", "true");
   diagramNav.setAttribute("aria-activedescendant", option.id);
-  navActiveId = node.id;
-  // Drive the canvas selection so the node highlights and the existing Delete handler can remove it.
-  selection = { nodes: new Set([node.id]), edges: new Set() };
-  selectionOrder = [node.id];
-  paintScene();
-  centerOnNode(node.id);
-  const name = node.label.length > 0 ? node.label : `node ${clamped + 1}`;
-  announce(`${name}, ${clamped + 1} of ${scene.nodes.length}. ${describeConnections(node.id)}`);
+  navIndex = clamped;
+  const position = `${clamped + 1} of ${navItems.length}`;
+  // Drive the canvas selection so the item highlights and the existing Delete handler can remove it.
+  if (item.kind === "node") {
+    selection = { nodes: new Set([item.id]), edges: new Set() };
+    selectionOrder = [item.id];
+    paintScene();
+    centerOnNode(item.id);
+    announce(`${navLabel(item.id)}, ${position}. ${describeConnections(item.id)}`);
+  } else {
+    selection = { nodes: new Set(), edges: new Set([item.id]) };
+    selectionOrder = [];
+    paintScene();
+    centerOnEdge(item.id);
+    announce(`${edgeLabel(item.id)}, edge, ${position}`);
+  }
 };
 
 diagramNav.addEventListener("focus", () => {
   // Ring the stage so a sighted keyboard user sees focus is in the diagram (the navigator is hidden).
   stageWrap.classList.add("kbd-focus");
-  if (navActiveId === null) setNavActive(0);
+  if (navIndex < 0) setNavActive(0);
 });
 diagramNav.addEventListener("blur", () => {
   stageWrap.classList.remove("kbd-focus");
@@ -1393,39 +1429,38 @@ const ARROW_DELTA: Record<string, readonly [number, number]> = {
 };
 
 diagramNav.addEventListener("keydown", (ev) => {
-  if (scene === null || scene.nodes.length === 0) return;
+  if (scene === null || navItems.length === 0) return;
+  const item = navActive();
   // Alt+Arrow nudges the active node (keyboard parity with drag; Shift = a bigger step); the move drives
-  // the same override path as dragging, so it shares one undo entry per run.
+  // the same override path as dragging, so it shares one undo entry per run. Edges aren't positioned.
   const delta = ARROW_DELTA[ev.key];
-  if (ev.altKey && delta !== undefined && navActiveId !== null && !viewerMode) {
+  if (ev.altKey && delta !== undefined && item?.kind === "node" && !viewerMode) {
     ev.preventDefault();
     const step = ev.shiftKey ? 10 : 1;
     nudgeSelection(delta[0] * step, delta[1] * step);
-    const node = scene.nodes.find((n) => n.id === navActiveId);
-    announce(`moved ${node !== undefined && node.label.length > 0 ? node.label : "node"}`);
+    announce(`moved ${navLabel(item.id)}`);
     return;
   }
-  const current = navActiveId === null ? -1 : scene.nodes.findIndex((n) => n.id === navActiveId);
   if (ev.key === "ArrowDown" || ev.key === "ArrowRight") {
     ev.preventDefault();
-    setNavActive(current + 1);
+    setNavActive(navIndex + 1);
   } else if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") {
     ev.preventDefault();
-    setNavActive(current <= 0 ? 0 : current - 1);
+    setNavActive(navIndex <= 0 ? 0 : navIndex - 1);
   } else if (ev.key === "Home") {
     ev.preventDefault();
     setNavActive(0);
   } else if (ev.key === "End") {
     ev.preventDefault();
-    setNavActive(scene.nodes.length - 1);
-  } else if (ev.key === "Enter" && navActiveId !== null && !viewerMode) {
-    // Open the inline relabel editor on the active node — keyboard parity with a canvas double-click.
+    setNavActive(navItems.length - 1);
+  } else if (ev.key === "Enter" && item !== null && !viewerMode) {
+    // Open the inline relabel editor on the active node or edge — parity with a canvas double-click.
     ev.preventDefault();
     navConnectSource = null;
-    beginRelabel(applyOverrides(scene, doc.overrides()), { kind: "node", id: navActiveId }, null);
+    beginRelabel(applyOverrides(scene, doc.overrides()), item, null);
   } else if (
     (ev.key === "c" || ev.key === "C") &&
-    navActiveId !== null &&
+    item?.kind === "node" &&
     ast !== null &&
     !viewerMode
   ) {
@@ -1433,15 +1468,15 @@ diagramNav.addEventListener("keydown", (ev) => {
     // again draws the edge in the family's own syntax (parity with an Alt-drag between nodes).
     ev.preventDefault();
     if (navConnectSource === null) {
-      navConnectSource = navActiveId;
-      announce(`connecting from ${navLabel(navActiveId)} — move to a target and press c`);
-    } else if (navConnectSource === navActiveId) {
+      navConnectSource = item.id;
+      announce(`connecting from ${navLabel(item.id)} — move to a target and press c`);
+    } else if (navConnectSource === item.id) {
       announce("connect cancelled");
       navConnectSource = null;
     } else {
       const from = navLabel(navConnectSource);
-      const to = navLabel(navActiveId);
-      const text = appendEdge(ast.kind, editor.value(), navConnectSource, navActiveId);
+      const to = navLabel(item.id);
+      const text = appendEdge(ast.kind, editor.value(), navConnectSource, item.id);
       navConnectSource = null;
       if (text === editor.value()) {
         announce("connect isn't available for this diagram");
