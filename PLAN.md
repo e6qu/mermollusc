@@ -81,11 +81,16 @@ and add. Network nodes show built-in glyphs; cloud nodes show **vendored simple-
 | `@m/renderer` | ✅ Scene → canvas (shapes, labels, dashed/arrow polylines, icon glyphs, light/dark + sketch themes) + `toSvg` vector backend; html-in-canvas detect | 13 |
 | `@m/builder` | ✅ hit-test, selection, overrides (move + connector re-anchor + extent growth), two-way relabel/add · connect (all families) + delete (flowchart/block/network/cloud) · sidecar group model (nestable, move-only lock) · overlay codec (persist) (+ property-based) | 41 |
 | `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/app` | ✅ renders + two-way edits all eight families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness + per-family pipeline goldens + PNG/PDF/SVG export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + connect across all families | 7 vitest + 81 Playwright |
+| `@m/app` | ✅ renders + two-way edits all fifteen families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regen/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness with a phone-width shot + per-family pipeline goldens + PNG/PDF/SVG/DOT export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + connect across all families + default-off collab UI + backend-free Pages demo at `/demo/` | 26 vitest + 138 Playwright |
 
 CI: pre-commit pipeline installed (`make hooks`) — pre-commit (gitleaks, fmt, lint, typecheck,
 tests) and pre-push (semgrep SAST, Playwright, API placeholder), all green. `make cov` enforces
 per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
+
+GitHub Pages publishes a generated static artifact from `.github/workflows/pages.yml`: `site/` owns
+the reserved root presentation page, and `make pages-build` emits the backend-free playground under
+`site-dist/demo/` for `https://e6qu.github.io/mermollusc/demo/`. Future docs and Storybook builds are
+reserved for `/docs/` and `/storybook/`.
 
 ## Roadmap — the plan ahead
 

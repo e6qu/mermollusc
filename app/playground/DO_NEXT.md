@@ -35,6 +35,8 @@
   `window.__editor` handle (`e2e/support/source.ts`) since `.fill()`/`toHaveValue()` only work on a
   `<textarea>`.
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
+- *(done)* GitHub Pages demo deployment: root Pages is reserved for presentation content, `/demo/`
+  hosts the backend-free playground build, and `/docs/` + `/storybook/` are reserved for later sites.
 - The production app still builds as one large JS chunk: `make build` reports
   `dist/assets/index-*.js` at about **2.8 MB minified / 845 kB gzip**, past Vite's 500 kB warning.
   Consider code-splitting if startup weight matters; likely targets are the editor surface and/or

@@ -19,6 +19,8 @@ canvas, and hosts the e2e / golden tests.
 - Own end-to-end tests: text → pixels snapshots, and text → edit → text round-trips. The `make
   shots` harness (a separate Playwright project) additionally drives the live UI through named
   flows, including a phone-width responsive shell shot, and writes PNGs for design review.
+- Support the backend-free GitHub Pages demo build at `/demo/`: the app stays single-user/local-only
+  there even if a visitor appends `?collab`.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
 
 ## Public API (stable surface)
