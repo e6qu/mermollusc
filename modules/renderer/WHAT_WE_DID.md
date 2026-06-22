@@ -129,3 +129,7 @@
   coalescing `null → "normal"`, mirroring the arrowhead (consistent null-means-default handling); and
   `WEDGE_PALETTE` is typed as a non-empty tuple so `wedgeColor`'s in-range fallback names the definite
   first slot rather than duplicating a colour literal. +1 dot test (default vs named tail).
+- Accessibility — palette contrast guard: a WCAG audit measured every node-label-on-accent pair and node
+  stroke; all clear AA (text ≥ 5.25:1 vs the 4.5 floor, strokes ≥ 5.7:1 vs the 3.0 floor, both themes).
+  Added a regression test that computes the relative-luminance contrast ratio over `accentFill`/theme
+  colours and asserts the thresholds, so a future palette tweak can't silently drop below AA. +2 tests.

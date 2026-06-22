@@ -377,6 +377,48 @@ describe("bandFill", () => {
   });
 });
 
+// WCAG relative-luminance contrast ratio between two `#rrggbb` colours. Guards the palette so a future
+// tweak can't quietly drop a node label or border below the AA threshold (a contrast audit found every
+// pair compliant; this keeps it that way).
+const relativeLuminance = (hex: string): number => {
+  const channel = (v: number): number => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const n = Number.parseInt(hex.slice(1), 16);
+  return (
+    0.2126 * channel((n >> 16) & 255) +
+    0.7152 * channel((n >> 8) & 255) +
+    0.0722 * channel(n & 255)
+  );
+};
+const contrast = (a: string, b: string): number => {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+};
+
+describe("palette contrast (WCAG AA)", () => {
+  const themes = [defaultTheme, darkTheme];
+  const accents = ["none", "muted", "active", "danger"] as const;
+
+  it("a node label clears 4.5:1 against every accent fill, in both themes (1.4.3)", () => {
+    for (const theme of themes) {
+      for (const accent of accents) {
+        const ratio = contrast(theme.text, accentFill(accent, theme));
+        expect(ratio, `${accent} fill in ${theme.background} theme`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("a node stroke clears 3:1 against its fill and the background (1.4.11 non-text)", () => {
+    for (const theme of themes) {
+      expect(contrast(theme.stroke, theme.nodeFill)).toBeGreaterThanOrEqual(3);
+      expect(contrast(theme.stroke, theme.background)).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
 describe("accentFill", () => {
   it("maps `none` to the theme node fill and each status accent to a distinct, theme-aware colour", () => {
     expect(accentFill("none", defaultTheme)).toBe(defaultTheme.nodeFill);
