@@ -37,6 +37,9 @@
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
 - The CodeMirror bundle pushes the production chunk past Vite's 500 kB warning; consider code-split
   (dynamic import of the editor or the icon packs) if startup weight matters.
+- *(done)* Responsive shell polish: the topbar/workbench/status bar no longer force page-level
+  horizontal scrolling on phone-width viewports; the editor and stage stack vertically, with the
+  diagram sheet still scrolling inside the stage.
 - Deterministic display-list goldens are wired (`test/integration/golden.test.ts`, one per family).
   Could add a *visual* pixel golden off `make shots` later, but the display-list diff already guards
   geometry without font/AA flakiness.

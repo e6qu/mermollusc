@@ -19,6 +19,8 @@ test("the ? help overlay opens (button + key) and closes (✕, Escape, backdrop)
   await expect(overlay).toBeVisible();
   await expect(page.locator("#help-panel")).toContainText("box-select");
   await expect(page.locator("#help-panel")).toContainText("nudge");
+  await expect(page.locator("#help-panel")).toContainText("move between nodes and edges");
+  await expect(page.locator("#help-panel")).toContainText("remove the active item");
 
   // close via ✕
   await page.locator("#help-close").click();

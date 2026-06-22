@@ -567,3 +567,9 @@
   label, centre on the routed label anchor, support Enter relabel through the existing inline editor, and
   Delete removes the edge while leaving endpoint nodes intact. +1 e2e; updated the existing navigator
   coverage from 3 node-only options to 3 nodes + 2 edges.
+- UI/UX polish: fixed the phone-width shell layout. The topbar now stacks before wrapping controls,
+  the workbench switches from desktop editor+stage columns to editor-over-stage rows, the status bar
+  wraps cleanly, and the icon drawer clamps to the viewport width. This removes page-level horizontal
+  overflow at 390px while preserving stage-internal scrolling for the diagram sheet. Also updated the
+  keyboard-help and hidden navigator copy from "node list" to node+edge "diagram items". +1 responsive
+  e2e plus a11y/help copy assertions.

@@ -6,7 +6,8 @@
   (kind badge + grouped tools) · a graph-paper stage where each diagram is a shadowed "sheet" ·
   a status bar. Self-contained type system (serif display / geometric-humanist UI / mono editor —
   no CDN, per the repo's pinned-asset rules); cohesive light + dark, driven by a `data-theme` attr
-  synced to the theme toggle.
+  synced to the theme toggle. Narrow viewports stack the editor above the stage and wrap topbar/status
+  controls so the page itself does not scroll sideways.
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
   silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`. A parse
@@ -120,7 +121,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 87 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 88 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
