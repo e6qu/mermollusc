@@ -1377,7 +1377,13 @@ const setNavActive = (index: number): void => {
 };
 
 diagramNav.addEventListener("focus", () => {
+  // Ring the stage so a sighted keyboard user sees focus is in the diagram (the navigator is hidden).
+  stageWrap.classList.add("kbd-focus");
   if (navActiveId === null) setNavActive(0);
+});
+diagramNav.addEventListener("blur", () => {
+  stageWrap.classList.remove("kbd-focus");
+  navConnectSource = null; // an in-progress Connect doesn't outlive focus leaving the navigator
 });
 const ARROW_DELTA: Record<string, readonly [number, number]> = {
   ArrowLeft: [-1, 0],

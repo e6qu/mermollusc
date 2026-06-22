@@ -74,5 +74,5 @@
   - Keyboard operation parity *(done)*: navigate · Enter relabel · Alt+Arrow move · two-step `c` connect ·
     Delete remove.
   - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
-  - Polish: `prefers-reduced-motion` (skip the nudge animation), a visible focus indicator for the
-    navigator beyond the canvas highlight, and a contrast pass on the accent/band palettes.
+  - Polish: *(done)* `prefers-reduced-motion` collapses all motion; *(done)* a visible navigator focus
+    ring on the stage. Still: a contrast pass / measurement on the accent + band palettes (WCAG 1.4.3/1.4.11).

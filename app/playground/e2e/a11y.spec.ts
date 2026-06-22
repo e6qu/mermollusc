@@ -146,6 +146,34 @@ test("Enter on the active node opens the inline relabel editor (keyboard parity)
   await expect.poll(() => sourceValue(page)).toContain("Renamed");
 });
 
+test("focusing the node navigator rings the stage (visible keyboard focus)", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const stageWrap = page.locator("#stage-wrap");
+  await expect(stageWrap).not.toHaveClass(/kbd-focus/);
+  await page.locator("#diagram-nav").focus();
+  await expect(stageWrap).toHaveClass(/kbd-focus/);
+  // Moving focus away (to a toolbar button) drops the ring.
+  await page.locator("#help-toggle").focus();
+  await expect(stageWrap).not.toHaveClass(/kbd-focus/);
+});
+
+test("honours prefers-reduced-motion by collapsing animations", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  // Force an error so the status bar (which otherwise shakes via the `nudge` keyframes) is shown.
+  await setSource(page, "flowchart TD\n  A --> @@@\n");
+  const status = page.locator("#status");
+  await expect(status).toHaveAttribute("data-level", "error");
+  const animMs = await status.evaluate((el) => {
+    const d = getComputedStyle(el).animationDuration;
+    return d.endsWith("ms") ? Number.parseFloat(d) : Number.parseFloat(d) * 1000;
+  });
+  expect(animMs).toBeLessThan(1); // the shake is collapsed to ~0
+});
+
 test("every visible interactive control has an accessible name", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
