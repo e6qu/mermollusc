@@ -1266,7 +1266,7 @@ window.addEventListener("resize", drawMinimap);
 // logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
 // Centre the stage viewport on a point given in the diagram's logical px (the sheet coordinate space,
 // origin at the sheet's top-left including the margin). Shared by minimap navigation and the keyboard
-// node navigator.
+// diagram navigator.
 const scrollToLogical = (logicalX: number, logicalY: number): void => {
   const canvasRect = canvas.getBoundingClientRect();
   const wrapRect = stageWrap.getBoundingClientRect();
@@ -1667,7 +1667,7 @@ const renderFromText = async (text: string): Promise<void> => {
   );
   ast = diagram;
   scene = laid.value;
-  // Rebuild the keyboard node navigator to mirror the new scene (resets the active node).
+  // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   rebuildNav();
   // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
   // resurrect onto reused ids later. (Overrides are cleared on edit; groups otherwise persist.)
@@ -2804,8 +2804,8 @@ window.addEventListener("keydown", (ev) => {
   // A focused text field (icon-filter, inline rename) keeps its own keys — never hijack a letter/arrow.
   const active = document.activeElement;
   if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-  // The keyboard node navigator owns arrow keys when focused (plain = move between nodes, Alt = nudge),
-  // so don't also run the global nudge — that would move a node on every navigation step.
+  // The keyboard diagram navigator owns arrow keys when focused (plain = move between items, Alt =
+  // nudge nodes), so don't also run the global nudge on every navigation step.
   if (active === diagramNav) return;
   const step = ev.shiftKey ? 10 : 1;
   switch (ev.key) {

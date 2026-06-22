@@ -135,8 +135,8 @@
       button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
       /* The example <select> clears its outline for mouse use; restore a ring for keyboard focus. */
       select#example:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-      /* The node navigator is visually hidden, so when it holds keyboard focus, ring the stage it drives
-         — a sighted keyboard user sees where focus is, beyond the active node's selection highlight. */
+      /* The diagram navigator is visually hidden, so when it holds keyboard focus, ring the stage it
+         drives — a sighted keyboard user sees where focus is, beyond the selection highlight. */
       .stage-wrap.kbd-focus { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 12px; }
       button:disabled { opacity: 0.42; cursor: not-allowed; }
 
@@ -271,7 +271,7 @@
       .arrange-menu[hidden] { display: none; }
       .arrange-menu button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 
-      /* Visually hidden but exposed to assistive tech + focusable (the keyboard node navigator). */
+      /* Visually hidden but exposed to assistive tech + focusable (the keyboard diagram navigator). */
       .sr-only {
         position: absolute;
         width: 1px;
@@ -510,6 +510,39 @@
       }
       .help-cols dd { margin: 0; font-size: 13px; color: var(--ink-soft); }
       @media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
+
+      @media (max-width: 760px) {
+        .app { grid-template-rows: auto minmax(0, 1fr) auto; }
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 12px;
+        }
+        .topbar-actions {
+          width: 100%;
+          justify-content: flex-start;
+          gap: 8px;
+        }
+        .workbench {
+          grid-template-columns: 1fr;
+          grid-template-rows: minmax(300px, 42vh) minmax(320px, 1fr);
+          gap: 12px;
+          padding: 12px;
+          overflow: auto;
+        }
+        .editor,
+        .stage-col {
+          min-width: 0;
+        }
+        .stage-inner { padding: 18px; }
+        .statusbar {
+          flex-wrap: wrap;
+          gap: 6px 12px;
+          padding: 8px 12px;
+        }
+        .hints { margin-left: 0; }
+        #icon-picker { width: min(320px, 100vw); }
+      }
     </style>
   </head>
   <body>
@@ -622,14 +655,14 @@
               <canvas id="stage" width="400" height="300" role="img" aria-label="Diagram"></canvas>
             </div>
           </div>
-          <!-- Keyboard node navigator: a focusable listbox mirroring the scene's nodes (rebuilt each
-               render) so the diagram is operable without a mouse. Arrow keys move the active node;
-               it drives the canvas selection (highlight + Delete). The live region announces it. -->
+          <!-- Keyboard diagram navigator: a focusable listbox mirroring the scene's nodes and edges
+               (rebuilt each render) so the diagram is operable without a mouse. Arrow keys move the
+               active item; it drives the canvas selection. The live region announces it. -->
           <ul
             id="diagram-nav"
             class="sr-only"
             role="listbox"
-            aria-label="Diagram nodes — use arrow keys to navigate"
+            aria-label="Diagram items — use arrow keys to navigate"
             tabindex="0"
           ></ul>
           <div id="diagram-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -708,12 +741,12 @@
             <section>
               <h4>Keyboard (no mouse)</h4>
               <dl>
-                <dt>Tab</dt><dd>focus the node list</dd>
-                <dt>↑ ↓ ← →</dt><dd>move between nodes</dd>
-                <dt>Enter</dt><dd>rename the active node</dd>
+                <dt>Tab</dt><dd>focus the diagram list</dd>
+                <dt>↑ ↓ ← →</dt><dd>move between nodes and edges</dd>
+                <dt>Enter</dt><dd>rename the active item</dd>
                 <dt>⌥ ↑ ↓ ← →</dt><dd>move the active node (⇧ = larger)</dd>
-                <dt>c … c</dt><dd>connect: source, then target</dd>
-                <dt>Del</dt><dd>remove the active node</dd>
+                <dt>c … c</dt><dd>connect nodes: source, then target</dd>
+                <dt>Del</dt><dd>remove the active item</dd>
               </dl>
             </section>
           </div>

@@ -31,7 +31,7 @@ test("the diagram canvas exposes a text alternative for screen readers", async (
   await expect(stage).toHaveAttribute("aria-label", /^Diagram error:/);
 });
 
-test("the diagram is keyboard-navigable: a node listbox drives selection, announcements, and Delete", async ({
+test("the diagram is keyboard-navigable: an item listbox drives selection, announcements, and Delete", async ({
   page,
 }) => {
   await page.goto("/");
@@ -41,6 +41,7 @@ test("the diagram is keyboard-navigable: a node listbox drives selection, announ
 
   const nav = page.locator("#diagram-nav");
   const live = page.locator("#diagram-live");
+  await expect(nav).toHaveAttribute("aria-label", "Diagram items — use arrow keys to navigate");
   // The listbox mirrors all three nodes plus the two edges as options.
   await expect(nav.locator('[role="option"]')).toHaveCount(5);
 
@@ -141,7 +142,7 @@ test("the navigator announces each node's connections (topology, not just labels
   expect(all).toContain("from Alpha"); // Beta's incoming edge
 });
 
-test("two-step `c` connects the active node to a target from the keyboard", async ({ page }) => {
+test("two-step `c` connects the active navigator node to a target from the keyboard", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   // Three bare nodes, no edges yet.
@@ -182,7 +183,7 @@ test("Enter on the active node opens the inline relabel editor (keyboard parity)
   await expect.poll(() => sourceValue(page)).toContain("Renamed");
 });
 
-test("focusing the node navigator rings the stage (visible keyboard focus)", async ({ page }) => {
+test("focusing the diagram navigator rings the stage (visible keyboard focus)", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 

@@ -2,6 +2,10 @@
 
 Resolved (collab-era audit sweep):
 
+- ~~**Phone-width app shell scrolled sideways.**~~ Fixed — below 760px the topbar stacks, the workbench
+  changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
+  clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than
+  the viewport and that editor/stage both stay inside it.
 - ~~**Some "renders X" e2e specs can pass on the lingering default sample.**~~ Fixed — every family
   "renders X" spec now routes its error capture through the shared `watchPipelineErrors` helper
   (`e2e/support/render.ts`), which collects `parse`/`layout`/`relax failed` console errors **and**
