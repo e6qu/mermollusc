@@ -18,7 +18,7 @@ canvas, and hosts the e2e / golden tests.
   implementations — Phase 0 of [`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md).
 - Own end-to-end tests: text → pixels snapshots, and text → edit → text round-trips. The `make
   shots` harness (a separate Playwright project) additionally drives the live UI through named
-  flows and writes PNGs for design review.
+  flows, including a phone-width responsive shell shot, and writes PNGs for design review.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
 
 ## Public API (stable surface)

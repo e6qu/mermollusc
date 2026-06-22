@@ -6,6 +6,14 @@ Resolved (collab-era audit sweep):
   changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
   clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than
   the viewport and that editor/stage both stay inside it.
+- ~~**Modal/drawer keyboard focus could leak back to the page.**~~ Fixed — the shortcuts dialog and icon
+  picker now keep Tab inside while open, close on Escape, and restore focus to the triggering control.
+  Focus regressions are pinned in the help and icon-picker specs.
+- ~~**`make shots` skipped when the generated `shots/` directory existed.**~~ Fixed — the app Makefile
+  now marks `shots` as phony, so the visual review harness always invokes Playwright.
+- ~~**The icon-picker visual shot could time out rasterizing the full registry page.**~~ Fixed — that
+  flow now captures the viewport with the drawer open, while the rest of the harness keeps full-page
+  screenshots.
 - ~~**Some "renders X" e2e specs can pass on the lingering default sample.**~~ Fixed — every family
   "renders X" spec now routes its error capture through the shared `watchPipelineErrors` helper
   (`e2e/support/render.ts`), which collects `parse`/`layout`/`relax failed` console errors **and**

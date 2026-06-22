@@ -35,8 +35,10 @@
   `window.__editor` handle (`e2e/support/source.ts`) since `.fill()`/`toHaveValue()` only work on a
   `<textarea>`.
 - Add HTML-in-Canvas feature detection and renderer-backend selection.
-- The CodeMirror bundle pushes the production chunk past Vite's 500 kB warning; consider code-split
-  (dynamic import of the editor or the icon packs) if startup weight matters.
+- The production app still builds as one large JS chunk: `make build` reports
+  `dist/assets/index-*.js` at about **2.8 MB minified / 845 kB gzip**, past Vite's 500 kB warning.
+  Consider code-splitting if startup weight matters; likely targets are the editor surface and/or
+  bundled icon packs. Do not suppress the warning without a deliberate size budget.
 - *(done)* Responsive shell polish: the topbar/workbench/status bar no longer force page-level
   horizontal scrolling on phone-width viewports; the editor and stage stack vertically, with the
   diagram sheet still scrolling inside the stage.
@@ -77,7 +79,9 @@
     with Enter, and Delete removes the selected edge while leaving endpoint nodes intact.
   - Keyboard operation parity *(done)*: navigate · Enter relabel · Alt+Arrow move · two-step `c` connect ·
     Delete remove.
-  - Announce the outcome of actions (relabel committed, deleted, connected, grouped) via the live region.
+  - *(done)* Announce action outcomes via the live region: relabel, delete, connect, copy/paste,
+    group/ungroup/lock, arrange, export/share, theme/sketch, and layout undo/redo.
   - Polish *(done)*: `prefers-reduced-motion` collapses all motion; a visible navigator focus ring on the
     stage; a contrast audit (every label/stroke pair clears WCAG AA, guarded by a renderer test).
-  - Remaining polish: broader action announcements beyond relabel/delete/connect/group.
+  - *(done)* Help modal and icon drawer keep keyboard focus contained while open and restore focus to
+    their trigger on close.

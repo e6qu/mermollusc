@@ -40,7 +40,8 @@
   shortcut-reference modal grouped by Select / Edit / Layout & groups / View.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
-  (git-ignored) — for visual review / design iteration, not a gate.
+  (git-ignored) — for visual review / design iteration, not a gate. It includes a phone-width
+  responsive shell flow so mobile layout regressions are visible during review.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
@@ -79,7 +80,9 @@
     brackets via `reshapeNode`, label preserved).
   - **screen-reader navigator**: a hidden listbox mirrors both nodes and edges; arrows move the active
     item, announce node topology or edge endpoints, drive canvas selection, and support Enter relabel,
-    Alt+Arrow node move, two-step `c` connect between nodes, and Delete.
+    Alt+Arrow node move, two-step `c` connect between nodes, and Delete. Canvas actions announce their
+    outcomes through the live region, including copy/paste, grouping, arrange, export/share, and
+    layout undo/redo.
   - **Arrange** (a popover, enabled on 2+ movable units): align left/center/right/top/middle/bottom
     and distribute horizontally/vertically (3+ units). Each *unit* is a loose node or a whole top
     group, aligned by its bounding box so a group keeps its internal layout; locked groups are
@@ -121,7 +124,7 @@
   reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
   surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
   the sample.
-- Playwright (`make e2e-ui`): 88 flows — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): 138 specs — adds requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,

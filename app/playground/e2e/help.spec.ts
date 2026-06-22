@@ -15,16 +15,23 @@ test("the ? help overlay opens (button + key) and closes (✕, Escape, backdrop)
   await expect(overlay).toBeHidden();
 
   // open via the toolbar button → the shortcut reference is shown
-  await page.locator("#help-toggle").click();
+  const toggle = page.locator("#help-toggle");
+  await toggle.click();
   await expect(overlay).toBeVisible();
+  await expect(page.locator("#help-close")).toBeFocused();
   await expect(page.locator("#help-panel")).toContainText("box-select");
   await expect(page.locator("#help-panel")).toContainText("nudge");
   await expect(page.locator("#help-panel")).toContainText("move between nodes and edges");
   await expect(page.locator("#help-panel")).toContainText("remove the active item");
 
+  // Tab stays inside the modal, and closing returns focus to the trigger.
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#help-close")).toBeFocused();
+
   // close via ✕
   await page.locator("#help-close").click();
   await expect(overlay).toBeHidden();
+  await expect(toggle).toBeFocused();
 
   // open via the "?" key, close via Escape
   await page.keyboard.press("?");

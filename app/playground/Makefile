@@ -7,6 +7,8 @@ STOP_CMD  := test -f .run/playground.pid && kill $$(cat .run/playground.pid) 2>/
 
 include ../../module.mk
 
+.PHONY: test-e2e-ui shots
+
 test-e2e-ui:
 	pnpm exec playwright test
 
