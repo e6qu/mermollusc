@@ -118,6 +118,8 @@ declare global {
     __collabSetRole?: (role: string) => void;
     // e2e hook: whether a drag-alignment guide is currently active (a node is snapped to another).
     __snapActive?: () => boolean;
+    // e2e hook: the armed canvas tool ("select" | "hand" | "connect" | "place").
+    __activeTool?: () => string;
   }
 }
 
@@ -262,6 +264,21 @@ const MAX_SCALE = 4;
 // True when this client's collaborative role is `viewer` — the editor and canvas become read-only (the
 // server is the real boundary; this is the matching UX). Always false in single-user / non-collab.
 let viewerMode = false;
+// The armed canvas tool (whiteboard-style). `select` is byte-for-byte the historical behavior; the
+// other tools only *bias* the existing gesture branches (modifiers like ⌥-connect / ⇧-marquee /
+// ⌘-wheel stay always-on accelerators in every tool). `spaceHeld` is a transient hand override (hold
+// Space to pan); `lastPointer` lets `setTool` recompute the cursor without waiting for a pointer move.
+type Tool = "select" | "hand" | "connect" | "place";
+let activeTool: Tool = "select";
+let spaceHeld = false;
+let lastPointer: PointerEvent | null = null;
+// The tool actually in effect: a held Space (or a viewer, who can only look/pan) outranks the armed tool.
+const effectiveTool = (): Tool => {
+  if (viewerMode) return spaceHeld ? "hand" : "select";
+  if (spaceHeld) return "hand";
+  return activeTool;
+};
+window.__activeTool = () => activeTool;
 // The last laid-out scene + logical sheet size, cached so the minimap can redraw on scroll without
 // re-running the main paint. The minimap renders a *simplified* view from the scene (node blocks,
 // faint edges) rather than the full display list — shrunk labels/icons would just be noise.
@@ -2035,6 +2052,7 @@ const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
 };
 
 const updateCanvasCursor = (ev: PointerEvent): void => {
+  lastPointer = ev;
   if (scene === null) {
     canvas.style.cursor = "";
     return;
@@ -2042,6 +2060,20 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
+  // Non-select tools own the cursor outright; select keeps the rich hit-aware feedback below.
+  const tool = effectiveTool();
+  if (tool === "hand") {
+    canvas.style.cursor = "grab";
+    return;
+  }
+  if (tool === "place") {
+    canvas.style.cursor = "copy";
+    return;
+  }
+  if (tool === "connect") {
+    canvas.style.cursor = hit !== null && hit.kind === "node" ? "crosshair" : "default";
+    return;
+  }
   const gboxes = groupBoxes(shown);
   if (!viewerMode && resizeAnchorAt(shown, at) !== null) {
     canvas.style.cursor = "nwse-resize";
@@ -2066,6 +2098,64 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   }
 };
 
+const TOOL_LABELS: Record<Tool, string> = {
+  select: "Select",
+  hand: "Hand",
+  connect: "Connect",
+  place: "Place node",
+};
+
+// Recompute the canvas cursor for the current tool without waiting for a pointer move.
+const refreshCursor = (): void => {
+  if (lastPointer !== null) updateCanvasCursor(lastPointer);
+};
+
+// Arm a tool. Connect/place are clamped to the families that support them and rejected *loudly*
+// (announced) rather than silently switching; a viewer may only select/hand. Repaints palette + cursor.
+const setTool = (t: Tool): void => {
+  if (t === "connect" && !(ast !== null && familyAffordances(ast.kind).connect)) {
+    setStatusAndAnnounce(
+      "ok",
+      `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
+    );
+    return;
+  }
+  if (t === "place" && !(ast !== null && ast.kind === "flowchart")) {
+    setStatusAndAnnounce("ok", "the place tool adds flowchart nodes");
+    return;
+  }
+  if (viewerMode && t !== "select" && t !== "hand") return;
+  activeTool = t;
+  stageWrap.setAttribute("data-tool", t);
+  // Announce to the live region only — `setStatus` would overwrite the canvas's diagram aria-label
+  // (the SR text alternative) with the transient tool name. The palette's active state is the visual cue.
+  announce(`${TOOL_LABELS[t]} tool`);
+  refreshCursor();
+};
+
+// Place tool: drop a fresh flowchart node at the clicked point, pin it, select it, return to select.
+// Mirrors `duplicateSelection`'s add-then-pin pattern — node geometry never enters the source text.
+const placeNodeAt = async (at: Point): Promise<void> => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
+  const used = new Set<string>(ast.nodes.map((n) => n.id));
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  const id = `n${n}`;
+  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(id), `node ${n}`, "rect"));
+  await renderFromText(editor.value());
+  if (scene === null) return;
+  const sid = brand<string, "SceneNodeId">(id);
+  doc.record();
+  doc.moveNode(sid, at);
+  doc.persist();
+  selection = { nodes: new Set([sid]), edges: new Set() };
+  selectionOrder = [sid];
+  paintScene();
+  updateGroupButtons();
+  setTool("select");
+  announce(`placed node ${n}`);
+};
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
@@ -2073,13 +2163,32 @@ canvas.addEventListener("pointerdown", (ev) => {
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
+  const tool = effectiveTool();
+  // Place tool: a click drops a new node at the pointer (flowchart only), then snaps back to select.
+  if (tool === "place" && ast !== null && ast.kind === "flowchart" && !viewerMode) {
+    ev.preventDefault();
+    void placeNodeAt(at);
+    return;
+  }
+  // Hand tool: a drag always pans, even when it starts over a node.
+  if (tool === "hand") {
+    pan = {
+      startX: screenCoord(ev.clientX),
+      startY: screenCoord(ev.clientY),
+      scrollLeft: stageWrap.scrollLeft,
+      scrollTop: stageWrap.scrollTop,
+    };
+    canvas.setPointerCapture(ev.pointerId);
+    canvas.style.cursor = "grabbing";
+    return;
+  }
   // Shift or the platform command key adds to the selection — accept Ctrl too, so additive-click works
   // on Windows/Linux (the help panel advertises "Ctrl click" there).
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
-  // ⌥-drag from a node starts a connect (a rubber-band to the cursor; an edge on release over another
-  // node) — before the resize/move paths, since ⌥ is the connect modifier. Viewers can't connect.
-  if (ev.altKey && !viewerMode && hit !== null && hit.kind === "node") {
+  // ⌥-drag from a node (or any drag from a node under the Connect tool) starts a connect — a rubber-band
+  // to the cursor, an edge on release over another node — before the resize/move paths. Viewers can't.
+  if ((ev.altKey || tool === "connect") && !viewerMode && hit !== null && hit.kind === "node") {
     const src = shown.nodes.find((nd) => nd.id === hit.id);
     if (src !== undefined) {
       ev.preventDefault();
@@ -3065,6 +3174,12 @@ const cycleShape = async (): Promise<void> => {
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (ev.key === "Escape") {
+    // Escape first disarms a non-default tool (back to Select); a second Escape clears the selection.
+    if (activeTool !== "select") {
+      ev.preventDefault();
+      setTool("select");
+      return;
+    }
     if (selection.nodes.size === 0 && selection.edges.size === 0) return;
     selection = emptySelection;
     selectionOrder = [];
@@ -3074,12 +3189,29 @@ window.addEventListener("keydown", (ev) => {
     return;
   }
   if (ev.metaKey || ev.ctrlKey) return; // leave ⌘-combos to the other handlers / the browser
-  // A focused text field (icon-filter, inline rename) keeps its own keys — never hijack a letter/arrow.
+  // A focused text field (icon-filter, inline rename, the family <select>) keeps its own keys — never
+  // hijack a letter/arrow/Space.
   const active = document.activeElement;
-  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-  // The keyboard diagram navigator owns arrow keys when focused (plain = move between items, Alt =
-  // nudge nodes), so don't also run the global nudge on every navigation step.
+  if (
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLTextAreaElement ||
+    active instanceof HTMLSelectElement ||
+    (active instanceof HTMLElement && active.isContentEditable)
+  ) {
+    return;
+  }
+  // The keyboard diagram navigator owns arrow keys (and its own two-step `c` connect) when focused, so
+  // don't also run the global nudge / tool switch on every navigation step.
   if (active === diagramNav) return;
+  // Hold Space to temporarily pan (whiteboard-style), released on keyup/blur.
+  if (ev.key === " ") {
+    ev.preventDefault();
+    if (!spaceHeld) {
+      spaceHeld = true;
+      refreshCursor();
+    }
+    return;
+  }
   const step = ev.shiftKey ? 10 : 1;
   switch (ev.key) {
     case "ArrowLeft":
@@ -3098,6 +3230,26 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       nudgeSelection(0, step);
       break;
+    case "v":
+    case "V":
+      ev.preventDefault();
+      setTool("select");
+      break;
+    case "h":
+    case "H":
+      ev.preventDefault();
+      setTool("hand");
+      break;
+    case "c":
+    case "C":
+      ev.preventDefault();
+      setTool("connect");
+      break;
+    case "p":
+    case "P":
+      ev.preventDefault();
+      setTool("place");
+      break;
     case "s":
     case "S":
       if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) {
@@ -3106,6 +3258,20 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       void cycleShape();
       break;
+  }
+});
+
+// Release the transient Space-pan on keyup, and on window blur (so a focus loss mid-hold can't strand it).
+window.addEventListener("keyup", (ev) => {
+  if (ev.key === " " && spaceHeld) {
+    spaceHeld = false;
+    refreshCursor();
+  }
+});
+window.addEventListener("blur", () => {
+  if (spaceHeld) {
+    spaceHeld = false;
+    refreshCursor();
   }
 });
 
