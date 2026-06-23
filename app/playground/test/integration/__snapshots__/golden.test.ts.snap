@@ -15,11 +15,11 @@ exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 [
+  "box 104,0 224x98 r4",
+  "label "Backend" 216,12 center",
   "polyline 40,28 160,54 dashed=false from=l0p0c0 to=l0p1c0",
   "box 0,0 80x56 r8",
   "label "Alice" 40,28 center",
-  "box 104,0 224x98 r4",
-  "label "Backend" 216,12 center",
   "box 120,26 80x56 r0",
   "label "API" 160,54 center",
   "box 224,26 88x56 r0",
@@ -48,9 +48,9 @@ exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 [
-  "polyline 96,54 108,54 108,54 120,54 dashed=false from=l0p0c0 to=l0p0c0",
   "box 0,0 216x98 r4",
   "label "AWS" 108,12 center",
+  "polyline 96,54 108,54 108,54 120,54 dashed=false from=l0p0c0 to=l0p0c0",
   "box 16,26 80x56 r0",
   "icon simpleicons/docker 46,32 20",
   "label "Web" 56,58 center",
@@ -270,27 +270,31 @@ exports[`pipeline goldens > lays out state to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out state-composite to a stable display list 1`] = `
 [
+  "box 12,100 216x218 r4",
+  "label "Active" 120,112 center",
   "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 180,136 180,166 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 160,166 160,146 83,146 83,68 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 59,68 59,78 72,78 72,156 140,156 140,166 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 192,236 192,266 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 172,266 172,246 95,246 95,168 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 71,168 71,178 84,178 84,256 152,256 152,266 dashed=false from=l0p0c0 to=l0p1c0",
   "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0",
   "stateStart 120,36 r24",
   "stateEnd 120,382 r24",
-  "box 12,100 216x218 r4",
-  "label "Active" 120,112 center",
   "stateStart 192,212 r24",
   "box 132,266 80x40 r8",
   "label "Running" 172,286 center",
   "box 47,128 72x40 r8",
   "label "Paused" 83,148 center",
-  "label "pause" 111,112 center",
-  "label "resume" 41,112 center",
+  "label "pause" 123,212 center",
+  "label "resume" 53,212 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out timeline to a stable display list 1`] = `
 [
+  "box 16,16 202x26 r4",
+  "label "Early" 117,28 center",
+  "box 236,16 92x26 r4",
+  "label "Growth" 282,28 center",
   "polyline 62,70 172,70 282,70 dashed=false from=l0p0c0 to=l0p0c0",
   "box 16,52 92x36 r8",
   "label "2002" 62,70 center",
@@ -306,9 +310,5 @@ exports[`pipeline goldens > lays out timeline to a stable display list 1`] = `
   "label "2006" 282,70 center",
   "box 236,100 92x32 r0",
   "label "Twitter" 282,116 center",
-  "box 16,16 202x26 r4",
-  "label "Early" 117,28 center",
-  "box 236,16 92x26 r4",
-  "label "Growth" 282,28 center",
 ]
 `;
