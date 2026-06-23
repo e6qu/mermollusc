@@ -1716,7 +1716,16 @@ const setStatus = (
   editor.setError(range, message);
   // The canvas (role="img") needs a text alternative for screen readers — the status line is the
   // baseline; `renderFromText` enriches it with node labels on a successful render.
-  canvas.setAttribute("aria-label", level === "error" ? `Diagram error: ${message}` : message);
+  // On an error the canvas still shows the last good render (greyed), so say so for screen readers
+  // rather than implying it's blank.
+  canvas.setAttribute(
+    "aria-label",
+    level === "error"
+      ? scene === null
+        ? `Diagram error: ${message}`
+        : `Diagram error: ${message}. Showing last valid render.`
+      : message,
+  );
   updateTask();
 };
 
@@ -1777,10 +1786,14 @@ const renderFromText = async (text: string): Promise<void> => {
     console.error("parse failed:", detail);
     const pos = parsed.error.positions[0];
     if (pos === undefined) {
-      setStatus("error", `parse error — ${detail}`);
+      setStatusAndAnnounce("error", `parse error — ${detail}`);
     } else {
       const { line, col } = lineColOf(text, pos.offset);
-      setStatus("error", `parse error (line ${line}:${col}) — ${detail} · click to locate`, pos);
+      setStatusAndAnnounce(
+        "error",
+        `parse error (line ${line}:${col}) — ${detail} · click to locate`,
+        pos,
+      );
     }
     if (ast !== null) applyKind(ast.kind);
     return;
@@ -1792,7 +1805,7 @@ const renderFromText = async (text: string): Promise<void> => {
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
-    setStatus("error", `layout error — ${laid.error.message}`);
+    setStatusAndAnnounce("error", `layout error — ${laid.error.message}`);
     if (ast !== null) applyKind(ast.kind);
     return;
   }
@@ -2014,7 +2027,9 @@ canvas.addEventListener("pointerdown", (ev) => {
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
-  const additive = ev.shiftKey || ev.metaKey;
+  // Shift or the platform command key adds to the selection — accept Ctrl too, so additive-click works
+  // on Windows/Linux (the help panel advertises "Ctrl click" there).
+  const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
   // ⌥-drag from a node starts a connect (a rubber-band to the cursor; an edge on release over another
   // node) — before the resize/move paths, since ⌥ is the connect modifier. Viewers can't connect.
@@ -3089,12 +3104,14 @@ exampleEl.addEventListener("change", () => {
   exampleEl.value = "";
   if (text === undefined) return;
   // Loading an example replaces the whole source and clears the manual layout/groups (a different
-  // diagram — the old positions no longer apply). Guard the destructive swap when there's real
-  // in-progress work to lose; the source text itself is still recoverable via the editor's own undo.
+  // diagram — the old positions no longer apply). Guard the destructive swap only when there's real
+  // authored work to lose: a pristine sample or another unmodified example is fair game to switch away
+  // from without a prompt. The source text itself stays recoverable via the editor's own undo.
   const current = editor.value();
+  const isPristine =
+    current.trim() === "" || current === SAMPLE || [...EXAMPLES.values()].includes(current);
   if (
-    current.trim() !== "" &&
-    current !== SAMPLE &&
+    !isPristine &&
     current !== text &&
     !window.confirm(
       "Replace your current diagram? Manual layout and groups will be cleared (your text can be restored with Undo in the editor).",
@@ -3314,6 +3331,70 @@ window.addEventListener(
   },
   true,
 );
+
+// Shortcut hints are authored with the Apple modifier glyphs (⌘/⌥/⇧) as the no-JS default; on a
+// non-Apple platform we swap each marked `[data-mod]` chip to the word form (Ctrl/Alt/Shift), since the
+// handlers accept Ctrl too — otherwise Windows/Linux users see glyphs with no native equivalent.
+type ModKey = "mod" | "alt" | "shift";
+const isApplePlatform = (): boolean => {
+  const nav: Navigator & { userAgentData?: { readonly platform?: string } } = navigator;
+  const platform = nav.userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
+  return /mac|iphone|ipad/i.test(platform);
+};
+const applyPlatformModifiers = (): void => {
+  if (isApplePlatform()) return;
+  const words: Record<ModKey, string> = { mod: "Ctrl", alt: "Alt", shift: "Shift" };
+  const isModKey = (v: string): v is ModKey => v === "mod" || v === "alt" || v === "shift";
+  for (const el of document.querySelectorAll<HTMLElement>("[data-mod]")) {
+    const key = el.getAttribute("data-mod") ?? "";
+    if (isModKey(key)) el.textContent = words[key];
+  }
+};
+applyPlatformModifiers();
+
+// In-app syntax reference: one entry per diagram family, exhaustive over the closed `DiagramAst` kind
+// union (a new family won't compile until it's named here) and pointing at the real, test-covered
+// starter in `EXAMPLES` — so the reference can't drift from what actually parses. Rendered into the
+// help overlay as collapsible snippets; the Examples menu remains the one-click loader.
+const SYNTAX_FAMILIES: Record<DiagramAst["kind"], string> = {
+  flowchart: "Flowchart",
+  sequence: "Sequence",
+  c4: "C4 context",
+  block: "Block",
+  network: "Network",
+  cloud: "Cloud",
+  state: "State",
+  er: "Entity–relationship",
+  class: "Class",
+  requirement: "Requirement",
+  gitGraph: "Git graph",
+  timeline: "Timeline",
+  mindmap: "Mind map",
+  pie: "Pie",
+  gantt: "Gantt",
+};
+const buildSyntaxReference = (): void => {
+  const list = document.querySelector<HTMLElement>("#syntax-list");
+  if (list === null) return;
+  const entries: ReadonlyArray<readonly [string, string]> = [
+    ...Object.entries(SYNTAX_FAMILIES),
+    ["dot", "DOT / Graphviz import"],
+  ];
+  for (const [key, label] of entries) {
+    const snippet = EXAMPLES.get(key);
+    if (snippet === undefined) continue;
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = label;
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+    code.textContent = snippet.trimEnd();
+    pre.append(code);
+    details.append(summary, pre);
+    list.append(details);
+  }
+};
+buildSyntaxReference();
 
 // The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
 // drawn), so an export composites onto a background-filled offscreen canvas at device resolution —

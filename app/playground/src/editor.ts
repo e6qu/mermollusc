@@ -194,6 +194,9 @@ export const createEditor = (
         mermaidLanguage,
         lintGutter(),
         appTheme,
+        // Name the editable surface for screen readers — without this the CodeMirror content is an
+        // unlabelled textbox.
+        EditorView.contentAttributes.of({ "aria-label": "Diagram source" }),
         editable.of(EditorView.editable.of(true)),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
