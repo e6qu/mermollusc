@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -25,8 +26,9 @@ test("⌥-drag from one node to another creates an edge", async ({ page }) => {
   await page.mouse.up();
   await page.keyboard.up("Alt");
 
-  // a fifth edge now exists
+  // a fifth edge now exists — and the source gained the flowchart arrow syntax between the real ids
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /5 edge/);
+  await expect.poll(() => sourceValue(page)).toMatch(/\n\s*A --> B\s*\n/);
 
   expect(errors).toEqual([]);
 });

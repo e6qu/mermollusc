@@ -494,6 +494,11 @@ const shownScene = (base: Scene): Scene => {
   return shown;
 };
 
+// True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
+// minimap cache rebuild and to hide the selection context bar mid-gesture.
+const isInteracting = (): boolean =>
+  drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
+
 const paintScene = (): void => {
   if (scene === null) return;
   const shown = shownScene(scene);
@@ -643,9 +648,7 @@ const paintScene = (): void => {
   // each frame doubles the per-frame cost on a large diagram. Skip it while interacting — the minimap
   // goes briefly stale and the release (which repaints with no interaction in flight) refreshes it. A
   // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
-  const interacting =
-    drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
-  if (!interacting) buildMinimapCache();
+  if (!isInteracting()) buildMinimapCache();
   drawMinimap();
 };
 
@@ -936,50 +939,102 @@ const resizeAnchorAt = (
   return null;
 };
 
-// Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
-const updateGroupButtons = (): void => {
-  if (!currentRenderValid || viewerMode) {
-    groupBtn.disabled = true;
-    ungroupBtn.disabled = true;
-    lockBtn.disabled = true;
-    arrangeBtn.disabled = true;
-    connectBtn.disabled = true;
-    connectBtn.title = currentRenderValid ? "viewer mode" : "fix source first";
-    iconsToggle.disabled = true;
-    iconsToggle.title = currentRenderValid ? "viewer mode" : "fix source first";
-    closeArrange();
-    updateTask();
-    return;
+// What the current selection + family can do — computed once and consumed by BOTH the workbench
+// controls (`updateGroupButtons`) and the on-canvas selection context toolbar (`renderContextBar`), so
+// the two surfaces provably can't drift (e.g. Connect offered on one but not the other). `valid` folds
+// the `currentRenderValid && !viewerMode` gate; every flag is false when not valid.
+interface CapabilityState {
+  readonly valid: boolean;
+  readonly canConnect: boolean;
+  readonly connectTitle: string;
+  readonly iconCapable: boolean;
+  readonly iconTitle: string;
+  readonly canGroup: boolean;
+  readonly hasGroup: boolean;
+  readonly isLocked: boolean;
+  readonly canArrange: boolean;
+  readonly canDistribute: boolean;
+  readonly canShape: boolean;
+  readonly canDuplicate: boolean;
+  readonly canRelabel: boolean;
+  readonly canDelete: boolean;
+  readonly isEdgeOnly: boolean;
+}
+
+const computeCapabilities = (): CapabilityState => {
+  const valid = currentRenderValid && !viewerMode;
+  const blockedTitle = currentRenderValid ? "viewer mode" : "fix source first";
+  if (!valid) {
+    return {
+      valid: false,
+      canConnect: false,
+      connectTitle: blockedTitle,
+      iconCapable: false,
+      iconTitle: blockedTitle,
+      canGroup: false,
+      hasGroup: false,
+      isLocked: false,
+      canArrange: false,
+      canDistribute: false,
+      canShape: false,
+      canDuplicate: false,
+      canRelabel: false,
+      canDelete: false,
+      isEdgeOnly: false,
+    };
   }
+  const kindLabel = ast === null ? "this diagram" : ast.kind;
+  const connectable = ast !== null && familyAffordances(ast.kind).connect;
   const iconCapable = ast !== null && familyAffordances(ast.kind).iconOverride;
-  iconsToggle.disabled = !iconCapable;
-  iconsToggle.title = iconCapable
-    ? "Insert an icon override on a node"
-    : `icons aren't available for ${ast === null ? "this diagram" : ast.kind}`;
+  const isFlowchart = ast !== null && ast.kind === "flowchart";
   const units = new Set<string>();
   for (const id of selection.nodes) {
     const top = topGroupOfNode(doc.groups(), id);
     units.add(top === null ? `n:${id}` : `g:${top}`);
   }
-  groupBtn.disabled = units.size < 2;
   const top = selectedTopGroup();
-  ungroupBtn.disabled = top === null;
-  lockBtn.disabled = top === null;
-  lockBtn.textContent = top !== null && doc.groups().get(top)?.locked === true ? "Unlock" : "Lock";
-  // Arrange acts on ≥2 movable units (distribute on ≥3); close the popover if it no longer applies.
   const movable = movableUnitCount();
-  arrangeBtn.disabled = movable < 2;
-  if (distHBtn !== null) distHBtn.disabled = movable < 3;
-  if (distVBtn !== null) distVBtn.disabled = movable < 3;
-  if (movable < 2) closeArrange();
-  const connectable = ast !== null && familyAffordances(ast.kind).connect;
-  const canConnect = connectable && selectionOrder.length >= 2;
-  connectBtn.disabled = !canConnect;
-  connectBtn.title = !connectable
-    ? `connect isn't available for ${ast === null ? "this diagram" : ast.kind}`
-    : selectionOrder.length < 2
-      ? "select two nodes"
-      : "";
+  const totalSelected = selection.nodes.size + selection.edges.size;
+  return {
+    valid: true,
+    canConnect: connectable && selectionOrder.length >= 2,
+    connectTitle: !connectable
+      ? `connect isn't available for ${kindLabel}`
+      : selectionOrder.length < 2
+        ? "select two nodes"
+        : "",
+    iconCapable,
+    iconTitle: iconCapable
+      ? "Insert an icon override on a node"
+      : `icons aren't available for ${kindLabel}`,
+    canGroup: units.size >= 2,
+    hasGroup: top !== null,
+    isLocked: top !== null && doc.groups().get(top)?.locked === true,
+    canArrange: movable >= 2,
+    canDistribute: movable >= 3,
+    canShape: isFlowchart && selectionOrder.length >= 1,
+    canDuplicate: isFlowchart && selectionOrder.length >= 1,
+    canRelabel: totalSelected === 1,
+    canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
+    isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
+  };
+};
+
+// Reflect the current selection in the workbench controls (enabled state + Lock/Unlock label).
+const updateGroupButtons = (): void => {
+  const caps = computeCapabilities();
+  groupBtn.disabled = !caps.canGroup;
+  ungroupBtn.disabled = !caps.hasGroup;
+  lockBtn.disabled = !caps.hasGroup;
+  lockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  arrangeBtn.disabled = !caps.canArrange;
+  if (distHBtn !== null) distHBtn.disabled = !caps.canDistribute;
+  if (distVBtn !== null) distVBtn.disabled = !caps.canDistribute;
+  if (!caps.canArrange) closeArrange();
+  connectBtn.disabled = !caps.canConnect;
+  connectBtn.title = caps.connectTitle;
+  iconsToggle.disabled = !caps.iconCapable;
+  iconsToggle.title = caps.iconTitle;
   updateTask();
 };
 
@@ -2849,19 +2904,11 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
 const ganttLineStart = (id: SceneNodeId): number =>
   ganttSource?.tasks.get(brand<string, "GanttTaskId">(id))?.start ?? -1;
 
-// Delete key removes the selected nodes (and their edges) from the text, in the active family's
-// syntax. Guarded on the editor not being focused so it never hijacks a Backspace while editing.
-window.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Delete" && ev.key !== "Backspace") return;
-  if (editor.hasFocus()) return;
-  // Also bail when a plain text field has focus (the icon-picker filter, the inline rename overlay),
-  // so editing its text never silently deletes selected canvas nodes.
-  const active = document.activeElement;
-  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-  if (viewerMode) return; // a viewer can't delete
-  if (ast === null) return;
+// Remove the selected nodes (and their edges) from the source text in the active family's syntax.
+// Shared by the Delete key and the selection context toolbar's Delete button.
+const deleteSelection = (): void => {
+  if (viewerMode || ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
-  ev.preventDefault();
   const kind = ast.kind;
   let text = editor.value();
   // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
@@ -2887,6 +2934,19 @@ window.addEventListener("keydown", (ev) => {
     "ok",
     `deleted ${removedCount} item${removedCount === 1 ? "" : "s"} — undo in the editor`,
   );
+};
+
+// Delete key removes the selection. Guarded on the editor / a text field not being focused so it never
+// hijacks a Backspace while editing.
+window.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Delete" && ev.key !== "Backspace") return;
+  if (editor.hasFocus()) return;
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+  if (viewerMode || ast === null) return;
+  if (selectionOrder.length === 0 && selection.edges.size === 0) return;
+  ev.preventDefault();
+  deleteSelection();
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
