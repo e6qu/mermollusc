@@ -71,3 +71,22 @@ test("exports and image copy are blocked while the current source is stale", asy
   await expect(page.locator("#status")).toHaveText(/Copy blocked/);
   await expect(page.locator("#stage-wrap")).toHaveAttribute("data-stale", "true");
 });
+
+test("task guidance tracks valid, selected, edge, and stale states", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  const task = page.locator("#task-status-text");
+  await expect(task).toContainText("select a diagram item");
+
+  await page.locator("#diagram-nav").focus();
+  await expect(task).toContainText("drag");
+  await expect(task).toContainText("resize");
+
+  await page.keyboard.press("End");
+  await expect(task).toContainText("relabel this edge");
+  await expect(page.locator("#stage-hud")).toBeVisible();
+
+  await setSource(page, "flowchart TD\n  A[Start --> ??? broken |\n");
+  await expect(task).toContainText("fix the source");
+  await expect(page.locator("#stage-hud")).toBeVisible();
+});

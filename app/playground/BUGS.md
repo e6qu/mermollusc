@@ -34,6 +34,15 @@ Resolved (collab-era audit sweep):
   no prior scene exists, parse/layout failure shows an in-stage recovery state.
 - ~~**The icon picker read as an accidental layout collision.**~~ Fixed — it now opens with a backdrop
   and closes from that backdrop as well as Escape/close.
+- ~~**Selected edges had no visible canvas affordance.**~~ Fixed — edge selection now draws a route
+  halo plus a label-anchor marker, and the task HUD names edge relabel/delete actions.
+- ~~**Selection rings and resize handles scaled with zoom.**~~ Fixed — interaction overlays compensate
+  for `viewScale`, so selection strokes, marquee/connect dashes, and corner handles stay usable when
+  zoomed in or out.
+- ~~**The minimap could stay hidden/stale after resizing the viewport.**~~ Fixed — resize now rebuilds
+  the minimap overflow cache before drawing the viewport overlay.
+- ~~**Phone-width export controls clipped the last command.**~~ Fixed — mobile toolbar groups wrap
+  controls into rows, and responsive e2e checks every topbar command remains inside the viewport.
 - ~~**Phone-width app shell scrolled sideways.**~~ Fixed — below 760px the topbar stacks, the workbench
   changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
   clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than

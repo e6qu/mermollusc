@@ -9,12 +9,16 @@
   system (geometric-humanist UI / mono editor — no CDN, per the repo's pinned-asset rules); cohesive
   light + dark driven by a `data-theme` attr synced to the theme toggle, including native-control
   resets so dark controls stay readable. Narrow viewports stack the editor above the stage and wrap
-  grouped topbar/status controls so the page itself does not scroll sideways.
+  grouped topbar/status controls so the page itself does not scroll sideways. Current polish adds a
+  restrained task-based-game influence as functional chrome only: a small task HUD, pixel-corner
+  control ticks, tactical minimap language, and stronger interaction affordances. The renderer/export
+  output remains professional and is not pixelated.
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
   silently masquerade as matching the text. When there is no prior good render, the stage shows an
   explicit recovery empty state instead of a blank grid. Exports/copy are blocked while the current
-  source is stale. On success it reads `kind · N nodes · M edges`. A parse error names its
+  source is stale. A task strip and in-stage HUD describe the next useful action for valid, selected,
+  edge-selected, and stale states. On success it reads `kind · N nodes · M edges`. A parse error names its
   **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking the status
   selects the offending range, never auto-moving the caret mid-type), and is **mirrored inline in the
   editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.
@@ -82,8 +86,10 @@
     family-agnostic; dragging persists to the overlay and survives reload).
   - **box-select**: shift-drag on the empty canvas draws a marquee and adds every node it touches to
     the selection (plain drag still pans) — fast multi-select for Group / multi-move / Delete.
-  - **resize**: a single selected node shows corner handles; dragging one resizes it (`resizeNode`
-    override, min size, edges re-anchor), one undo step. Locked nodes show no handles.
+  - **resize**: a single selected node shows zoom-stable corner handles; dragging one resizes it
+    (`resizeNode` override, min size, edges re-anchor), one undo step. Locked nodes show no handles.
+    Edge selection now has a visible route halo and label-anchor marker, so edge relabel/delete
+    affordances match node selection.
   - **keyboard affordances** (canvas-focused, so CodeMirror keeps them for the text otherwise):
     `⌘/Ctrl-A` select all nodes, `Escape` deselect, `↑↓←→` nudge the selection (Shift = a bigger
     step; a nudge run is one undo entry; locked groups don't move), and **`S` cycles the selected
@@ -95,7 +101,9 @@
     outcomes through the live region, including copy/paste, grouping, arrange, export/share, and
     layout undo/redo.
   - the **minimap** is focusable when visible and supports keyboard panning with arrow keys, Home, and
-    End; forced-colors mode repaints the canvas/minimap with a high-contrast system-colour theme.
+    End; forced-colors mode repaints the canvas/minimap with a high-contrast system-colour theme. Its
+    overflow cache is rebuilt on viewport resize so mobile rotation and desktop resizing cannot leave
+    the overview hidden or stale.
   - **Arrange** (a popover, enabled on 2+ movable units): align left/center/right/top/middle/bottom
     and distribute horizontally/vertically (3+ units). Each *unit* is a loose node or a whole top
     group, aligned by its bounding box so a group keeps its internal layout; locked groups are

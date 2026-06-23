@@ -103,3 +103,17 @@ test("the minimap can pan the stage from the keyboard", async ({ page }) => {
   expect(await scrollTopOf(page)).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test("the minimap recalculates overflow after viewport resize", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await expect(page.locator("#minimap")).toBeHidden();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#minimap")).toBeVisible();
+  expect(errors).toEqual([]);
+});
