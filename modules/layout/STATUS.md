@@ -26,7 +26,9 @@
   top-level boxes wrap to a new row past a soft width budget so a large architecture stays roughly
   square rather than one wide strip; each service leaf's kind maps to a vendored simple-icons glyph
   (`docker`/`postgresql`/`apachekafka`/`cloudflare`/`googlecloudstorage`); undirected `--` links plus
-  directed `-->` traffic edges (arrowhead at the target).
+  directed `-->` traffic edges, **orthogonally routed** (right-angle Z-bend, exiting/entering the facing
+  sides so the arrowhead sits at the target border and the label anchor lands in the channel rather than
+  on a box).
 - All layouts take a **required** `MeasureText` (label → px) — no default, so each caller states its
   metric explicitly (the app injects a real canvas `measureText`; callers wanting the char-width
   metric pass the exported `heuristicMeasure`). `layout(ast, seed, measure)` likewise takes `seed`

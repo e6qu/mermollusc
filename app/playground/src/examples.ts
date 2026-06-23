@@ -12,8 +12,8 @@ export const SAMPLE = `flowchart TD
 // AWS logos; WAF reuses the built-in firewall glyph.
 const CLOUD_AWS = `cloud
   group "Edge" {
-    cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
     storage assets "S3 static" icon "gilbarbara/aws-s3"
+    cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
     compute waf "AWS WAF" icon "arch/firewall"
   }
   group "Routing" {

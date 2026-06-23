@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, type Point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   CloudAst,
@@ -49,6 +49,27 @@ interface Elem {
 
 const leafWidth = (label: string, measure: MeasureText): number =>
   clampedWidth(label, measure, MIN_LEAF_WIDTH, LABEL_PADDING);
+
+// An orthogonal (right-angle) route between two boxes, exiting/entering the sides that face each other
+// with a Z-bend through the mid-channel — so a cloud link reads like an architecture connector (and its
+// label anchor, the polyline midpoint, lands in the channel rather than on a box). The arrowhead sits at
+// the target's border. Collinear boxes degenerate to a straight segment.
+const orthRoute = (a: Box, b: Box): readonly [Point, Point, Point, Point] => {
+  const acx = a.x + a.w / 2;
+  const acy = a.y + a.h / 2;
+  const bcx = b.x + b.w / 2;
+  const bcy = b.y + b.h / 2;
+  if (Math.abs(bcx - acx) >= Math.abs(bcy - acy)) {
+    const ax = bcx >= acx ? a.x + a.w : a.x; // exit the side facing b
+    const bx = bcx >= acx ? b.x : b.x + b.w;
+    const midX = (ax + bx) / 2;
+    return [point(ax, acy), point(midX, acy), point(midX, bcy), point(bx, bcy)];
+  }
+  const ay = bcy >= acy ? a.y + a.h : a.y;
+  const by = bcy >= acy ? b.y : b.y + b.h;
+  const midY = (ay + by) / 2;
+  return [point(acx, ay), point(acx, midY), point(bcx, midY), point(bcx, by)];
+};
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.
@@ -160,10 +181,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       id: sceneEdgeId(link.id),
       from: sceneNodeId(link.from),
       to: sceneNodeId(link.to),
-      waypoints: [
-        point(from.x + from.w / 2, from.y + from.h / 2),
-        point(to.x + to.w / 2, to.y + to.h / 2),
-      ],
+      waypoints: orthRoute(from, to),
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
