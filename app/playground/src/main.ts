@@ -83,6 +83,7 @@ import type { Theme } from "@m/renderer";
 import {
   assertNever,
   brand,
+  consoleLogger,
   isOk,
   messageOf,
   point,
@@ -93,7 +94,13 @@ import {
   type ScreenPoint,
   size,
 } from "@m/std";
-import { connectWebSocket, createCollabSession, type CollabSession } from "@m/collab";
+import {
+  connectTransport,
+  createCollabSession,
+  reconnectingWebSocketTransport,
+  type CollabSession,
+  type ReconnectStatus,
+} from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
@@ -366,6 +373,7 @@ if (useCollab) {
     initialGroups: new Map(),
     initialSource: "",
     save: saveOverlay,
+    logger: consoleLogger,
   });
   doc = collabSession.overlay;
 } else {
@@ -3734,6 +3742,13 @@ if (collabSession !== null) {
     requestPaint();
     updateGroupButtons();
   });
+  // A remote overlay edit that fails to decode is dropped and surfaced (the session also logs it loudly)
+  // rather than throwing inside the Yjs observer.
+  session.onStatusChange((status) => {
+    if (status === "overlay-rejected") {
+      setStatus("warning", "⚠ a remote change was rejected (incompatible overlay) — ignoring it");
+    }
+  });
   // Label this client for presence — remote cursors show this name/colour. A random pick is fine for
   // the experimental flag; real identity arrives with auth (Phase 2).
   const PRESENCE_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080"];
@@ -3757,9 +3772,22 @@ if (collabSession !== null) {
   // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
   const token = params.get("token");
   const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
-  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`, {
+  // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
+  // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
+  // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
+  const onReconnectStatus = (status: ReconnectStatus): void => {
+    if (status === "reconnecting") {
+      setStatus("warning", "⚠ reconnecting to the collaboration relay…");
+    } else if (status === "reconnected") {
+      setStatus("ok", "reconnected to the collaboration relay");
+    }
+  };
+  const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(room)}${query}`, {
+    onStatus: onReconnectStatus,
+  });
+  connectTransport(session, socket, {
     onControl: applyRole,
-    // Surface a dropped relay loudly rather than silently desyncing — local edits keep working, but
+    // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
     // the user must know they're no longer shared.
     onClose: () => {
       console.error("collab: disconnected from the relay");
