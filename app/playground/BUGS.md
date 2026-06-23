@@ -167,3 +167,10 @@ Checked interactive-control accessible names and canvas labelling (a11y pass).
 
 Checked while adding the ER-diagram family.
 Checked while preserving pinned overrides on Regenerate and adding donut/state-note visual coverage.
+
+Resolved (Miro-like round, 2026-06-23):
+
+- ~~**A tool-change announcement overwrote the canvas's diagram aria-label.**~~ Caught while building
+  the tool model — routing the "Select tool" message through `setStatusAndAnnounce` clobbered the
+  canvas's screen-reader diagram description (the status helper also sets `canvas[aria-label]`). Tool
+  changes now announce via the live region only; the palette's active state is the visual cue.

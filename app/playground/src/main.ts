@@ -196,12 +196,34 @@ const toolSelectBtn = document.querySelector<HTMLButtonElement>("#tool-select");
 const toolHandBtn = document.querySelector<HTMLButtonElement>("#tool-hand");
 const toolConnectBtn = document.querySelector<HTMLButtonElement>("#tool-connect");
 const toolPlaceBtn = document.querySelector<HTMLButtonElement>("#tool-place");
+const stageCol = document.querySelector<HTMLElement>(".stage-col");
+const contextBar = document.querySelector<HTMLElement>("#context-bar");
+const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
+const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
+const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
+const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
+const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
+const ctxUngroupBtn = document.querySelector<HTMLButtonElement>("#ctx-ungroup");
+const ctxLockBtn = document.querySelector<HTMLButtonElement>("#ctx-lock");
+const ctxArrangeBtn = document.querySelector<HTMLButtonElement>("#ctx-arrange");
+const ctxDeleteBtn = document.querySelector<HTMLButtonElement>("#ctx-delete");
 if (
   toolPalette === null ||
   toolSelectBtn === null ||
   toolHandBtn === null ||
   toolConnectBtn === null ||
   toolPlaceBtn === null ||
+  stageCol === null ||
+  contextBar === null ||
+  ctxRelabelBtn === null ||
+  ctxShapeBtn === null ||
+  ctxConnectBtn === null ||
+  ctxDuplicateBtn === null ||
+  ctxGroupBtn === null ||
+  ctxUngroupBtn === null ||
+  ctxLockBtn === null ||
+  ctxArrangeBtn === null ||
+  ctxDeleteBtn === null ||
   groupBtn === null ||
   ungroupBtn === null ||
   lockBtn === null ||
@@ -677,6 +699,7 @@ const paintScene = (): void => {
   // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
   if (!isInteracting()) buildMinimapCache();
   drawMinimap();
+  positionContextBar();
 };
 
 // Coalesces repaints to one per animation frame. Pointer-move events (drag/resize/marquee) can fire
@@ -1019,6 +1042,21 @@ const syncToolPalette = (): void => {
   }
 };
 
+// Which verbs the selection context toolbar offers, driven by the same CapabilityState the workbench
+// controls use (so they can't disagree). Geometry/visibility of the bar itself is `positionContextBar`.
+const renderContextBar = (caps: CapabilityState): void => {
+  ctxRelabelBtn.hidden = !caps.canRelabel;
+  ctxShapeBtn.hidden = !caps.canShape;
+  ctxConnectBtn.hidden = !caps.canConnect;
+  ctxDuplicateBtn.hidden = !caps.canDuplicate;
+  ctxGroupBtn.hidden = !caps.canGroup;
+  ctxUngroupBtn.hidden = !caps.hasGroup;
+  ctxLockBtn.hidden = !caps.hasGroup;
+  ctxLockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  ctxArrangeBtn.hidden = !caps.canArrange;
+  ctxDeleteBtn.hidden = !caps.canDelete;
+};
+
 const computeCapabilities = (): CapabilityState => {
   const valid = currentRenderValid && !viewerMode;
   const blockedTitle = currentRenderValid ? "viewer mode" : "fix source first";
@@ -1094,6 +1132,7 @@ const updateGroupButtons = (): void => {
   iconsToggle.disabled = !caps.iconCapable;
   iconsToggle.title = caps.iconTitle;
   syncToolPalette();
+  renderContextBar(caps);
   updateTask();
 };
 
@@ -1514,7 +1553,10 @@ canvas.addEventListener(
 
 // Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
 // cheap, since it reuses the cached display list rather than re-running the main paint.
-stageWrap.addEventListener("scroll", drawMinimap);
+stageWrap.addEventListener("scroll", () => {
+  drawMinimap();
+  positionContextBar(); // the bar tracks the selection as the sheet scrolls inside the stage
+});
 window.addEventListener("resize", () => {
   buildMinimapCache();
   drawMinimap();
@@ -2091,6 +2133,60 @@ const sceneToScreen = (p: Point): ScreenPoint => {
 const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
   el.style.left = `${at.x}px`;
   el.style.top = `${at.y}px`;
+};
+
+// Show + place the selection context toolbar above the selection's bounding box (flipping below if it
+// would clip the stage top). Hidden when nothing is selected or while a gesture is in flight. Positioned
+// relative to `.stage-col` (the bar's offset parent), so it stays put as the sheet scrolls inside it.
+const CONTEXT_BAR_GAP = 10;
+const positionContextBar = (): void => {
+  if (
+    scene === null ||
+    isInteracting() ||
+    (selection.nodes.size === 0 && selection.edges.size === 0)
+  ) {
+    contextBar.hidden = true;
+    return;
+  }
+  const shown = shownScene(scene);
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const node of shown.nodes) {
+    if (!selection.nodes.has(node.id)) continue;
+    const { origin, size: box } = node.bounds;
+    minX = Math.min(minX, origin.x);
+    minY = Math.min(minY, origin.y);
+    maxX = Math.max(maxX, origin.x + box.width);
+    maxY = Math.max(maxY, origin.y + box.height);
+  }
+  for (const edge of shown.edges) {
+    if (!selection.edges.has(edge.id)) continue;
+    const a = edgeLabelAnchor(edge.waypoints);
+    minX = Math.min(minX, a.x);
+    minY = Math.min(minY, a.y);
+    maxX = Math.max(maxX, a.x);
+    maxY = Math.max(maxY, a.y);
+  }
+  if (minX === Number.POSITIVE_INFINITY) {
+    contextBar.hidden = true;
+    return;
+  }
+  const colRect = stageCol.getBoundingClientRect();
+  contextBar.hidden = false; // unhide before measuring so offsetWidth/Height are real
+  const cx = (minX + maxX) / 2;
+  const above = sceneToScreen(point(cx, minY));
+  const bw = contextBar.offsetWidth;
+  const bh = contextBar.offsetHeight;
+  let top = above.y - colRect.top - bh - CONTEXT_BAR_GAP;
+  if (top < 4) {
+    // Would clip the stage top — flip below the selection.
+    top = sceneToScreen(point(cx, maxY)).y - colRect.top + CONTEXT_BAR_GAP;
+  }
+  const left = Math.max(4, Math.min(above.x - colRect.left - bw / 2, colRect.width - bw - 4));
+  contextBar.style.left = `${left}px`;
+  contextBar.style.top = `${Math.max(4, top)}px`;
 };
 
 const updateCanvasCursor = (ev: PointerEvent): void => {
@@ -3235,6 +3331,29 @@ const cycleShape = async (): Promise<void> => {
   updateGroupButtons();
   canvas.focus({ preventScroll: true });
 };
+
+// The selection context toolbar is a thin view over the existing handlers — each button delegates to
+// the same code path as its keyboard shortcut / workbench control, so there's a single source of truth.
+ctxRelabelBtn.addEventListener("click", () => {
+  if (scene === null) return;
+  const edgeId = [...selection.edges][0];
+  const nodeId = selectionOrder[0];
+  const hit: HitTarget | null =
+    selection.edges.size > 0 && selectionOrder.length === 0 && edgeId !== undefined
+      ? { kind: "edge", id: edgeId }
+      : nodeId !== undefined
+        ? { kind: "node", id: nodeId }
+        : null;
+  if (hit !== null) beginRelabel(shownScene(scene), hit, null);
+});
+ctxShapeBtn.addEventListener("click", () => void cycleShape());
+ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
+ctxConnectBtn.addEventListener("click", () => connectBtn.click());
+ctxGroupBtn.addEventListener("click", () => groupBtn.click());
+ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
+ctxLockBtn.addEventListener("click", () => lockBtn.click());
+ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
+ctxDeleteBtn.addEventListener("click", deleteSelection);
 
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;

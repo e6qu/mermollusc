@@ -568,6 +568,35 @@
         color: var(--accent);
       }
       .tool-palette button:disabled { opacity: 0.38; cursor: not-allowed; }
+      /* Selection context mini-toolbar — floats near the selected item with its applicable verbs
+         (each a thin view over an existing handler). Positioned by JS; hidden when nothing is selected
+         or while a gesture is in flight. */
+      .context-bar {
+        position: absolute;
+        z-index: 6;
+        display: flex;
+        gap: 2px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        box-shadow: var(--shadow);
+        white-space: nowrap;
+      }
+      .context-bar[hidden] { display: none; }
+      .context-bar button {
+        border: 1px solid transparent;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--ink);
+        font-size: 12px;
+        padding: 4px 9px;
+        cursor: pointer;
+      }
+      .context-bar button:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+      .context-bar button[hidden] { display: none; }
+      .context-bar button.danger { color: var(--primary); }
+      .context-bar button.danger:hover { background: color-mix(in srgb, var(--primary) 14%, transparent); }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -1043,6 +1072,17 @@
             <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
             <button id="zoom-fit" type="button" title="Fit the whole diagram in view">Fit</button>
           </div>
+          <div id="context-bar" class="context-bar" role="toolbar" aria-label="Selection actions" hidden>
+            <button id="ctx-relabel" type="button">Rename</button>
+            <button id="ctx-shape" type="button">Shape</button>
+            <button id="ctx-connect" type="button">Connect</button>
+            <button id="ctx-duplicate" type="button">Duplicate</button>
+            <button id="ctx-group" type="button">Group</button>
+            <button id="ctx-ungroup" type="button">Ungroup</button>
+            <button id="ctx-lock" type="button">Lock</button>
+            <button id="ctx-arrange" type="button">Arrange</button>
+            <button id="ctx-delete" type="button" class="danger">Delete</button>
+          </div>
           <canvas
             id="minimap"
             class="minimap"
@@ -1122,6 +1162,17 @@
                 <dt>Group / Ungroup</dt><dd>bundle the selection</dd>
                 <dt>Lock</dt><dd>pin a group in place</dd>
                 <dt>Arrange</dt><dd>align / distribute</dd>
+              </dl>
+            </section>
+            <section>
+              <h4>Tools</h4>
+              <dl>
+                <dt>V</dt><dd>Select (pointer)</dd>
+                <dt>H</dt><dd>Hand — pan the canvas</dd>
+                <dt>Space drag</dt><dd>pan with any tool</dd>
+                <dt>C</dt><dd>Connect — drag node→node</dd>
+                <dt>P</dt><dd>Place a flowchart node</dd>
+                <dt>Esc</dt><dd>back to Select</dd>
               </dl>
             </section>
             <section>

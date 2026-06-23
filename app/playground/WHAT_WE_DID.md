@@ -647,3 +647,15 @@
   broadened the a11y name guard; updated three existing icon/responsive specs that opened the picker on
   a now-correctly-gated flowchart. The render-debounce attempt was reverted after the full e2e suite
   caught a scene/source desync across the existing drop-stale guard (tracked in DO_NEXT).
+
+- **Miro-like round (2026-06-23).** A specialized multi-agent review (whiteboard parity, interaction
+  architecture, two-way coverage, widget design, a11y, architecture) drove a tool model + on-canvas
+  widgets + deeper tests. Landed: a closed-union tool mode (select/hand/connect/place) that biases the
+  existing gesture branches without regressing modifiers (select == today verbatim); V/H/C/P + Space-pan
+  + Esc→select; tool-aware cursors and add-then-pin Place. A stage-pinned floating tool palette
+  (radiogroup, roving tabindex, per-family disable/fallback) and a selection context mini-toolbar (a thin
+  view over existing handlers, driven by the shared `CapabilityState`). Zoom cluster relocated onto the
+  stage. Refactors that unblocked the widgets: module-level `isInteracting()`, extracted
+  `deleteSelection()`, and `computeCapabilities()`→`CapabilityState` consumed by both the workbench and
+  the context bar. New e2e: relabel-reject (fail-loud validation), multi-delete, connect-drag source
+  assertion, tool-modes, tool-palette, context-bar; broadened nothing that regressed (168 specs green).
