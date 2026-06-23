@@ -18,7 +18,7 @@ const selfClass: ClassAst = {
 };
 const selfFlow: FlowchartAst = {
   kind: "flowchart", direction: "TB",
-  nodes: [{ id: brand<string, "NodeId">("A"), label: "A", shape: "rect" }],
+  nodes: [{ id: brand<string, "NodeId">("A"), label: "A", shape: "rect" , icon: null }],
   edges: [{ id: brand<string, "EdgeId">("e0"), from: brand<string, "NodeId">("A"), to: brand<string, "NodeId">("A"), kind: "arrow", label: null }],
   subgraphs: [],
 };

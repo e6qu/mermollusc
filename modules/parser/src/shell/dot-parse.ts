@@ -211,6 +211,7 @@ const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
     id: brand<string, "NodeId">(id),
     label: n.label,
     shape: n.shape,
+    icon: null,
   }));
   const subgraphs: FlowSubgraph[] = clusters.map((c) => ({
     id: brand<string, "NodeId">(c.id),

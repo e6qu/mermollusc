@@ -30,8 +30,8 @@ const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
   direction: "TB",
   nodes: [
-    { id: nid("A"), label: "A", shape: "rect" },
-    { id: nid("B"), label: "B", shape: "rect" },
+    { id: nid("A"), label: "A", shape: "rect" , icon: null },
+    { id: nid("B"), label: "B", shape: "rect" , icon: null },
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
   subgraphs: [],
@@ -46,8 +46,8 @@ describe("layout", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("A"), label: "Start", shape: "rect" },
-        { id: nid("B"), label: "End", shape: "round" },
+        { id: nid("A"), label: "Start", shape: "rect" , icon: null },
+        { id: nid("B"), label: "End", shape: "round" , icon: null },
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
       subgraphs: [],
@@ -72,9 +72,9 @@ describe("layout", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("api"), label: "API", shape: "rect" },
-        { id: nid("db"), label: "DB", shape: "rect" },
-        { id: nid("user"), label: "User", shape: "rect" },
+        { id: nid("api"), label: "API", shape: "rect" , icon: null },
+        { id: nid("db"), label: "DB", shape: "rect" , icon: null },
+        { id: nid("user"), label: "User", shape: "rect" , icon: null },
       ],
       edges: [
         { id: eid("e0"), from: nid("api"), to: nid("db"), kind: "arrow", label: null },
@@ -115,9 +115,9 @@ describe("layout", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("api"), label: "API", shape: "rect" },
-        { id: nid("db"), label: "DB", shape: "rect" },
-        { id: nid("user"), label: "User", shape: "rect" },
+        { id: nid("api"), label: "API", shape: "rect" , icon: null },
+        { id: nid("db"), label: "DB", shape: "rect" , icon: null },
+        { id: nid("user"), label: "User", shape: "rect" , icon: null },
       ],
       edges: [
         { id: eid("e0"), from: nid("api"), to: nid("db"), kind: "arrow", label: "calls" },

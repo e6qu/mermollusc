@@ -11,8 +11,8 @@ const ast: FlowchartAst = {
   kind: "flowchart",
   direction: "LR",
   nodes: [
-    { id: nid("A"), label: "Start", shape: "rect" },
-    { id: nid("B"), label: "B", shape: "rect" },
+    { id: nid("A"), label: "Start", shape: "rect" , icon: null },
+    { id: nid("B"), label: "B", shape: "rect" , icon: null },
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
   subgraphs: [],
@@ -33,8 +33,8 @@ describe("toElkGraph", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("C"), label: "Hub", shape: "circle" },
-        { id: nid("R"), label: "Wide label here", shape: "rect" },
+        { id: nid("C"), label: "Hub", shape: "circle" , icon: null },
+        { id: nid("R"), label: "Wide label here", shape: "rect" , icon: null },
       ],
       edges: [],
       subgraphs: [],

@@ -58,6 +58,11 @@ class FlowchartParser extends CstParser {
   private readonly nodeRef = this.RULE("nodeRef", () => {
     this.CONSUME(Tok.Identifier);
     this.OPTION(() => this.SUBRULE(this.shape));
+    // Optional glyph: `id[label] icon "<pack>/<name>"`.
+    this.OPTION2(() => {
+      this.CONSUME(Tok.Icon);
+      this.CONSUME(Tok.QuotedString);
+    });
   });
 
   private readonly shape = this.RULE("shape", () =>

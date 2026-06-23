@@ -6,6 +6,9 @@ const Graph = createToken({ name: "Graph", pattern: /flowchart|graph/, longer_al
 // `subgraph … end` grouping keywords. `longer_alt: Identifier` so `subgraphs`/`endpoint` stay ids.
 const Subgraph = createToken({ name: "Subgraph", pattern: /subgraph/, longer_alt: Identifier });
 const End = createToken({ name: "End", pattern: /end/, longer_alt: Identifier });
+// `icon "<pack>/<name>"` glyph override after a node's shape (e.g. a BPMN event/gateway/task glyph).
+const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier });
+const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
 const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
@@ -53,6 +56,8 @@ export const lexer = new Lexer({
       Graph,
       Subgraph,
       End,
+      Icon,
+      QuotedString,
       DottedArrow,
       ThickArrow,
       Arrow,
@@ -82,6 +87,8 @@ export const Tok = {
   Semicolon,
   Subgraph,
   End,
+  Icon,
+  QuotedString,
   DottedArrow,
   ThickArrow,
   Arrow,
@@ -114,6 +121,8 @@ export const allTokens: TokenType[] = [
   Graph,
   Subgraph,
   End,
+  Icon,
+  QuotedString,
   DottedArrow,
   ThickArrow,
   Arrow,

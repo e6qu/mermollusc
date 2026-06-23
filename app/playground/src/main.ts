@@ -493,7 +493,9 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
       continue;
     }
     try {
-      iconImages.set(key, await rasterizeIcon(resolved.value));
+      // Bake the active theme foreground into `currentColor` line-art (bpmn/arch/sketch) so glyphs stay
+      // legible in dark mode; the cache is cleared on a theme toggle so they re-rasterise.
+      iconImages.set(key, await rasterizeIcon(resolved.value, activeTheme().text));
     } catch (e) {
       console.error("icon decode failed:", key, messageOf(e));
       failed.push(key);
@@ -891,11 +893,11 @@ interface FamilyAffordances {
 }
 const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   switch (kind) {
+    case "flowchart":
     case "network":
     case "cloud":
     case "block":
       return { connect: true, iconOverride: true };
-    case "flowchart":
     case "state":
     case "c4":
     case "sequence":
@@ -3157,7 +3159,11 @@ const syncThemeLabel = (): void => {
 themeBtn.addEventListener("click", () => {
   themeCtl.toggleTheme();
   syncThemeLabel();
-  paintScene();
+  // Authored line-art glyphs bake in the theme foreground, so drop them and re-rasterise for the new
+  // theme before repainting (re-ensure is a no-op when nothing's cached / the diagram has no icons).
+  iconImages.clear();
+  if (scene !== null) void ensureIcons(scene).then(() => paintScene());
+  else paintScene();
   announce(`${themeCtl.isDark() ? "dark" : "light"} theme`);
 });
 forcedColorsQuery?.addEventListener("change", () => {

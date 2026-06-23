@@ -61,21 +61,21 @@ const CLOUD_AWS = `cloud
 // completes and notifies the customer.
 const BPMN_ORDER = `flowchart TD
   subgraph Customer
-    placed((Order placed))
-    notify([Receive notification])
+    placed((Order placed)) icon "bpmn/start-event"
+    notify([Receive notification]) icon "bpmn/message-event"
   end
   subgraph Fulfilment
-    validate([Validate order])
-    stock{In stock?}
-    backorder([Create backorder])
-    pick([Pick & pack])
-    ship([Ship order])
-    fulfilled((Order fulfilled))
+    validate([Validate order]) icon "bpmn/task"
+    stock{In stock?} icon "bpmn/exclusive-gateway"
+    backorder([Create backorder]) icon "bpmn/task"
+    pick([Pick & pack]) icon "bpmn/task"
+    ship([Ship order]) icon "bpmn/task"
+    fulfilled((Order fulfilled)) icon "bpmn/end-event"
   end
   subgraph Payment
-    charge([Charge card])
-    approved{Payment approved?}
-    cancel([Cancel order])
+    charge([Charge card]) icon "bpmn/task"
+    approved{Payment approved?} icon "bpmn/exclusive-gateway"
+    cancel([Cancel order]) icon "bpmn/task"
   end
   placed --> validate
   validate --> stock
@@ -95,20 +95,20 @@ const BPMN_ORDER = `flowchart TD
 // branch, showing gateways feeding back into earlier tasks.
 const BPMN_INCIDENT = `flowchart TD
   subgraph Detection
-    alert((Alert raised))
-    triage([Triage severity])
-    sev{Severity?}
+    alert((Alert raised)) icon "bpmn/start-event"
+    triage([Triage severity]) icon "bpmn/task"
+    sev{Severity?} icon "bpmn/exclusive-gateway"
   end
   subgraph Response
-    page([Page on-call])
-    ack{Acked in 5m?}
-    mitigate([Mitigate])
-    escalate([Escalate to lead])
-    verify{Resolved?}
+    page([Page on-call]) icon "bpmn/message-event"
+    ack{Acked in 5m?} icon "bpmn/timer-event"
+    mitigate([Mitigate]) icon "bpmn/task"
+    escalate([Escalate to lead]) icon "bpmn/task"
+    verify{Resolved?} icon "bpmn/exclusive-gateway"
   end
   subgraph Closeout
-    postmortem([Write post-mortem])
-    closed((Incident closed))
+    postmortem([Write post-mortem]) icon "bpmn/task"
+    closed((Incident closed)) icon "bpmn/end-event"
   end
   alert --> triage --> sev
   sev -->|sev1| page

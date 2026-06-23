@@ -298,12 +298,14 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
       id: brand<string, "NodeId">(s.id),
       label: s.label,
       shape: stateShape(s.kind),
+      icon: null,
     })),
     // Each note is a plain rect; an arrowless connector to its target makes ELK place it adjacent.
     ...ast.notes.map((n) => ({
       id: brand<string, "NodeId">(n.id),
       label: n.text,
       shape: "rect" as const,
+      icon: null,
     })),
   ],
   edges: [
