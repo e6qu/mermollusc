@@ -5,80 +5,90 @@ export const SAMPLE = `flowchart TD
   C --> D
 `;
 
-// A non-trivial AWS web stack with directed traffic paths (CloudFront → WAF → ALB → API Gateway → ECS
-// services → data tier), labelled with the protocol/route at each hop. Service glyphs are the bundled
-// gilbarbara AWS logos via `icon "gilbarbara/aws-…"`; WAF reuses the built-in firewall glyph.
+// A realistic AWS web architecture with directed traffic paths. CloudFront serves static assets from
+// S3 and forwards dynamic requests through AWS WAF, which splits to the ALB (web app) and API Gateway
+// (the /api/* path); services read the data tier; the orders service fans async work onto SQS for a
+// worker to consume; everything ships logs to CloudWatch. Service glyphs are the bundled gilbarbara
+// AWS logos; WAF reuses the built-in firewall glyph.
 const CLOUD_AWS = `cloud
-  cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
-  storage assets "S3 static" icon "gilbarbara/aws-s3"
-  compute waf "AWS WAF" icon "arch/firewall"
-  group "Public subnet" {
+  group "Edge" {
+    cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
+    storage assets "S3 static" icon "gilbarbara/aws-s3"
+    compute waf "AWS WAF" icon "arch/firewall"
+  }
+  group "Routing" {
     compute alb "App Load Balancer" icon "gilbarbara/aws-elb"
     compute apigw "API Gateway" icon "gilbarbara/aws-api-gateway"
   }
-  group "Private subnet (ECS)" {
+  group "ECS services" {
     compute web "web service" icon "gilbarbara/aws-ecs"
     compute orders "orders service" icon "gilbarbara/aws-fargate"
     compute auth "auth service" icon "gilbarbara/aws-ecs"
+    compute worker "worker" icon "gilbarbara/aws-ecs"
   }
   group "Data tier" {
     database rds "Aurora" icon "gilbarbara/aws-rds"
     database ddb "DynamoDB" icon "gilbarbara/aws-dynamodb"
     queue jobs "SQS jobs" icon "gilbarbara/aws-sqs"
   }
-  compute cognito "Cognito" icon "gilbarbara/aws-cognito"
-  compute cw "CloudWatch" icon "gilbarbara/aws-cloudwatch"
-  cf --> waf : "HTTPS 443"
+  group "Identity & ops" {
+    compute cognito "Cognito" icon "gilbarbara/aws-cognito"
+    compute cw "CloudWatch" icon "gilbarbara/aws-cloudwatch"
+  }
   cf --> assets : "static"
-  waf --> alb : "filtered"
-  alb --> apigw : "/api/*"
-  apigw --> web : "REST"
+  cf --> waf : "dynamic"
+  waf --> alb : "web"
+  waf --> apigw : "/api/*"
+  alb --> web : "HTTP"
   apigw --> orders : "REST"
   apigw --> auth : "REST"
-  auth --> cognito : "OIDC"
+  auth --> cognito : "verify JWT"
   web --> rds : "SQL"
   orders --> rds : "SQL"
-  orders --> ddb : "items"
+  orders --> ddb : "sessions"
   orders --> jobs : "enqueue"
+  jobs --> worker : "consume"
+  worker --> rds : "SQL"
   web --> cw : "logs"
   orders --> cw : "logs"
+  worker --> cw : "logs"
 `;
 
-// A non-trivial BPMN-style order-to-cash workflow drawn as a flowchart: swimlanes via subgraphs,
-// circle events (start/end), diamond gateways (decisions), rounded-rect tasks, and labelled sequence
-// flows including branch merges and a parallel ship/notify fan-out.
+// A BPMN-style order-to-cash workflow drawn as a flowchart: swimlanes via subgraphs, circle events
+// (start/end), diamond gateways (decisions), rounded-rect tasks, and labelled sequence flows. The
+// branches are semantically real: out-of-stock items are backordered before charging; a declined
+// payment cancels the order (you can't refund a charge that never succeeded); a shipped order both
+// completes and notifies the customer.
 const BPMN_ORDER = `flowchart TD
   subgraph Customer
     placed((Order placed))
-    confirm([Receive confirmation])
+    notify([Receive notification])
   end
-  subgraph Sales
+  subgraph Fulfilment
     validate([Validate order])
     stock{In stock?}
     backorder([Create backorder])
-  end
-  subgraph Finance
-    charge([Charge card])
-    approved{Payment approved?}
-    refund([Issue refund])
-  end
-  subgraph Warehouse
     pick([Pick & pack])
     ship([Ship order])
-    fulfilled((Fulfilled))
+    fulfilled((Order fulfilled))
+  end
+  subgraph Payment
+    charge([Charge card])
+    approved{Payment approved?}
+    cancel([Cancel order])
   end
   placed --> validate
   validate --> stock
-  stock -->|yes| charge
-  stock -->|no| backorder
+  stock -->|in stock| charge
+  stock -->|backordered| backorder
   backorder --> charge
   charge --> approved
   approved -->|approved| pick
-  approved -->|declined| refund
-  refund --> confirm
+  approved -->|declined| cancel
   pick --> ship
   ship --> fulfilled
-  ship --> confirm
+  ship --> notify
+  cancel --> notify
 `;
 
 // A second BPMN flow: an incident-response process with an escalation loop and a timer-style timeout
