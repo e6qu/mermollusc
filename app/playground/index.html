@@ -521,6 +521,9 @@
       .minimap:hover { opacity: 1; border-color: var(--primary); }
       .minimap:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; opacity: 1; }
       .minimap[hidden] { display: none; }
+      /* Zoom cluster pinned to the stage (whiteboard-style), paired with the tool palette on the
+         opposite edge. The .toolbar-group class supplies the pill chrome; this only positions it. */
+      .stage-zoom { position: absolute; top: 16px; right: 16px; z-index: 4; box-shadow: var(--shadow); }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -882,12 +885,6 @@
               </select>
             </label>
           </div>
-          <div class="toolbar-group zoom" role="group" aria-label="Zoom">
-            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-            <button id="zoom-reset" type="button" title="Reset zoom to 100%">100%</button>
-            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
-            <button id="zoom-fit" type="button" title="Fit the whole diagram in view">Fit</button>
-          </div>
           <div class="toolbar-group">
             <button id="theme" type="button">Dark</button>
             <button id="sketch" type="button">Sketch</button>
@@ -977,6 +974,12 @@
             tabindex="0"
           ></ul>
           <div id="diagram-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+          <div class="toolbar-group zoom stage-zoom" role="group" aria-label="Zoom">
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <button id="zoom-reset" type="button" title="Reset zoom to 100%">100%</button>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button id="zoom-fit" type="button" title="Fit the whole diagram in view">Fit</button>
+          </div>
           <canvas
             id="minimap"
             class="minimap"
