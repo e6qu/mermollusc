@@ -34,6 +34,48 @@ const ARROW: Record<EdgeKind, string> = {
   thick: "==>",
 };
 
+// The closing delimiter (or delimiters) that would terminate a label token early if it appeared in the
+// label text, keyed by the label's syntactic context. `\n` is forbidden in every context (it ends the
+// statement line). A `LabelContext` names where the label is being spliced:
+//   - `flowchartBracket` — a flowchart node label inside `[ ]` / `( )` / `{ }` (any bracket closer breaks it);
+//   - `pipe` — a `|…|` edge/element label (flowchart/network/cloud/block) terminated by `|`;
+//   - `quoted` — a C4 `"…"` label terminated by `"`;
+//   - `plain` — sequence/state/er/class/requirement/gitGraph/timeline/mindmap/gantt labels run to end of
+//     line, so only `\n` is forbidden.
+export type LabelContext = "flowchartBracket" | "pipe" | "quoted" | "plain";
+
+const FORBIDDEN: Record<LabelContext, readonly string[]> = {
+  flowchartBracket: ["\n", "]", ")", "}"],
+  pipe: ["\n", "|"],
+  quoted: ["\n", '"'],
+  plain: ["\n"],
+};
+
+const renderChar = (ch: string): string => (ch === "\n" ? "\\n" : ch);
+
+const forbiddenChar = (label: string, forbidden: readonly string[]): string | null => {
+  for (const ch of forbidden) if (label.includes(ch)) return ch;
+  return null;
+};
+
+// PURE/TOTAL: reject a label that contains a delimiter which would terminate its token early in the
+// given syntactic context, so the spliced source stays parseable. The app shell calls this before
+// committing an inline edge/element/node-label edit. Returns the unchanged label on success so callers
+// can chain it; on a forbidden char returns a loud `PatchError`.
+export const validateLabel = (label: string, context: LabelContext): Result<string, PatchError> => {
+  const bad = forbiddenChar(label, FORBIDDEN[context]);
+  return bad === null
+    ? ok(label)
+    : err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
+};
+
+// The closing delimiter of a node shape's wrapper (`]` / `)` / `}`), used to reject a relabel/reshape
+// whose text would terminate the bracket early.
+const shapeCloser = (shape: NodeShape): string => NODE_WRAP[shape][1].slice(-1);
+
+const forbiddenForNode = (label: string, closer: string): string | null =>
+  forbiddenChar(label, ["\n", closer]);
+
 const withTrailingNewline = (text: string): string => (text.endsWith("\n") ? text : `${text}\n`);
 
 // The primitive behind every two-way edit: replace a source text span with new content.
@@ -377,6 +419,11 @@ export const relabelNode = (
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
+  // The existing wrapper could be any flowchart shape (the span doesn't record which), so reject every
+  // bracket closer — any one would terminate some shape's bracket early and corrupt the source.
+  const bad = forbiddenChar(label, FORBIDDEN.flowchartBracket);
+  if (bad !== null)
+    return err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
   const replacement = spans.bracketed ? label : `${id}[${label}]`;
   return ok(patchSpan(text, spans.label, replacement));
 };
@@ -413,5 +460,10 @@ export const reshapeNode = (
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
+  // Reject a label that contains the *target* shape's own closer (or a newline), which would terminate
+  // its bracket early and write un-parseable source.
+  const bad = forbiddenForNode(label, shapeCloser(shape));
+  if (bad !== null)
+    return err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
   return ok(patchSpan(text, spans.decl, `${id}${wrapShape(shape, label)}`));
 };

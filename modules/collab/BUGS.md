@@ -2,18 +2,34 @@
 
 Known issues surfaced by the audit sweep and deliberately deferred (not yet fixed):
 
-- **RBAC default for tokens without a roles claim is now an explicit knob** (was a silent fail-open).
-  `createClaimsRoleResolver({ defaultRole })` controls the role granted to an authenticated user whose
-  token carries no per-room roles claim; it still defaults to `editor` (dev-friendly), but a production
-  deployment with a real membership source should pass `defaultRole: null` to **fail closed**. Choosing
-  that posture (and wiring the membership source) is the remaining decision.
-
 - **Two genuinely-simultaneous fresh clients can both seed a room.** `seedSourceIfEmpty` is atomic
   within a client, but if two clients open the same empty room and seed within the sync window, the
   `Y.Text` merges both inserts. Robust fix needs server-side first-write coordination (the relay owns
   the seed), a later phase.
 
-Resolved (polish & harden):
+Resolved (hardening sweep):
+
+- ~~**RBAC fails open on tokens without a roles claim.**~~ Fixed — `createClaimsRoleResolver` now
+  defaults `defaultRole: null` (**fail closed**: a verified token with no per-room role is denied). The
+  relay's run-block computes `authEnabled = Boolean(domain && audience)` and passes
+  `defaultRole: authEnabled ? null : "editor"`, so an auth-on deployment denies role-less tokens while
+  auth-off dev/e2e keep the editor default. (+ fail-closed-by-default + dev-posture RBAC tests.)
+
+- ~~**Group-id collision between collaborators.**~~ Fixed — `groupNodes` minted `g${seq}` from a
+  per-client counter starting at 0, so two collaborators grouping concurrently overwrote each other in
+  the shared map. Now mints `g${awareness.clientID}-${seq}` (collision-proof; the decoder accepts any
+  `z.string()` and no consumer parses the id numerically). (+ two-client concurrent-grouping survival
+  test.)
+
+- ~~**A malformed CRDT update crashed the whole relay.**~~ Fixed — `applyUpdate` is wrapped in
+  try/catch (logged + dropped before re-broadcast), and `socket`/`wss` `error` handlers keep transport
+  faults off `uncaughtException`. (+ relay crash-guard integration test.)
+
+- ~~**A corrupt remote overlay threw inside the Yjs observer.**~~ Fixed — `materialize` returns the
+  decode `Result`; the observer logs `overlay-decode-rejected` via a `Logger<CollabEvent>`, surfaces a
+  `CollabStatus`, and keeps last-good state. (+ corrupt-remote-overlay unit test.)
+
+Resolved (earlier polish & harden):
 
 - ~~**Overlay encoders are hand-written field lists.**~~ Fixed — `session.ts` no longer carries its own
   `encodeOverride`/`encodeGroup`; it encodes Y.Map entries through `@m/builder`'s `encodeOverrideEntry`

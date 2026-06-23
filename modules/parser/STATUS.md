@@ -28,9 +28,17 @@
   per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
   ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
-  lines) and routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class,
-  requirement, gitGraph, timeline, mindmap, or pie parser — or to **DOT import** (`digraph`/`strict`,
-  and `graph` only when its header line has `{`, so Mermaid's `graph TD` isn't stolen).
+  lines, via a forward line-scan that stops at the first meaningful line — no whole-document split) and
+  routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement,
+  gitGraph, timeline, mindmap, gantt, or pie parser — or to **DOT import** (`digraph`/`strict`, and
+  `graph` only when its header line has `{`, so Mermaid's `graph TD` isn't stolen).
+- `parseDiagramWithSource(text)` → `Result<ParsedWithSource, ParseError>`: the same header sniff, but
+  routes to each family's `*WithSource` parser so **one pass** yields both the AST and the editable
+  source spans (the app no longer parses each family twice). `ParsedWithSource` is a discriminated
+  union tagged by a **dedicated `family`** field — not `ast.kind`, because both the flowchart parser
+  and the DOT importer yield `ast.kind === "flowchart"`, so only `family` (`"flowchart"` vs `"dot"`)
+  tells them apart; every other family's `family` equals its `ast.kind`. DOT has no source-span parser,
+  so it carries an empty `SourceMap`.
 - `parseDot(text)` → `Result<FlowchartAst, ParseError>`: Graphviz DOT import — a `[strict]
   (graph|digraph) { … }` subset (node/edge statements, `a -> b -> c` chains, default-attr statements,
   `rankdir`/`label`/`shape`/`style`, and nested `subgraph` blocks — `cluster*` ones become
@@ -72,6 +80,16 @@
   before `(`; `subgraph`/`end` are keywords with `longer_alt: Identifier`. Offset tracking is on so
   the builder claims a node for the subgraph it's declared in, then emits a canonical node order
   that the printer mirrors for round-trip.)
-- tests: 54 passing (printer incl. subgraph blocks; flowchart parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip; sequence parse + spans; C4 parse with nesting
-  + label spans; block parse + label/edge spans; network parse + label spans + icon override; cloud
-  parse + nested groups + label spans; routing; plus a **property-based** print→parse round-trip).
+- Shell CST access is centralised in `src/shell/cst.ts` (the single commented adapter exporting
+  `Children`, `childTokens`, `childNodes`, `imageOf`, `spanOf`) — the ~16 sibling parse files import
+  these by name instead of each re-declaring the local `Children` dict + the `as IToken[]`/`as
+  CstNode[]` casts. The sanctioned `as` casts now live in one place; semantics are byte-identical (the
+  `?? []` idiom is preserved — an absent optional child is `[]`, not a `Result`).
+- tests: 159 passing (33 unit + 126 integration) — printer incl. subgraph blocks; flowchart
+  parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip + a depth-first
+  nested-subgraph ordering golden; sequence parse + spans; C4 parse with nesting + label spans; block
+  parse + label/edge spans; network parse + label spans + icon override; cloud parse + nested groups +
+  label spans; routing; **CST-helper parity** (the centralised helpers vs the old inline casts, fast-
+  check); **header-sniff parity** (`firstMeaningfulLine` vs the old `split/map/find`, fast-check);
+  `parseDiagramWithSource` per-family (tag + one-pass AST parity + DOT/flowchart discrimination); plus a
+  **property-based** print→parse round-trip.

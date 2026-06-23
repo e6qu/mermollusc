@@ -4,6 +4,7 @@ import {
   decode,
   err,
   map,
+  messageOf,
   ok,
   point,
   rect,
@@ -210,7 +211,7 @@ export const layout = async (
     }
     return toScene(toPositioned(decoded.value), ast);
   } catch (e) {
-    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
+    return err({ kind: "layout", message: messageOf(e) });
   }
 };
 
@@ -540,7 +541,7 @@ const layoutCompartments = async (
       extent: rect(0, 0, positioned.width, positioned.height),
     });
   } catch (e) {
-    return err({ kind: "layout", message: e instanceof Error ? e.message : String(e) });
+    return err({ kind: "layout", message: messageOf(e) });
   }
 };
 

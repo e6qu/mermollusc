@@ -1,7 +1,8 @@
-import { brand, point, size } from "@m/std";
+import { brand, point, size, type LogRecord } from "@m/std";
 import type { GroupMember, Groups, LayoutOverrides, SceneNodeId } from "@m/contracts";
+import { Doc, encodeStateAsUpdate } from "yjs";
 import { describe, expect, it, vi } from "vitest";
-import { createCollabSession } from "../../src/index.js";
+import { type CollabEvent, type CollabStatus, createCollabSession } from "../../src/index.js";
 
 const n = (s: string): SceneNodeId => brand<string, "SceneNodeId">(s);
 const node = (s: string): GroupMember => ({ kind: "node", id: n(s) });
@@ -88,6 +89,19 @@ describe("collab session — overlay (single client)", () => {
     expect(s.overlay.pruneGroupsTo(new Set([n("a"), n("b")]))).toBe(false); // both live → unchanged
     expect(s.overlay.pruneGroupsTo(new Set([n("z")]))).toBe(true); // none live → group dropped
     expect(s.overlay.groups().size).toBe(0);
+    s.destroy();
+  });
+
+  it("replaceOverrides swaps the override map wholesale, leaving groups intact", () => {
+    const s = newSession({});
+    s.overlay.groupNodes([node("a"), node("b")]);
+    s.overlay.moveNode(n("a"), point(1, 1));
+    s.overlay.replaceOverrides(
+      new Map([[n("x"), { position: point(9, 9), size: null, pinned: true }]]),
+    );
+    expect(s.overlay.overrides().has(n("a"))).toBe(false);
+    expect(s.overlay.overrides().get(n("x"))?.position).toEqual(point(9, 9));
+    expect(s.overlay.groups().size).toBe(1); // groups untouched by an override replacement
     s.destroy();
   });
 
@@ -180,6 +194,42 @@ describe("collab session — source channel", () => {
     expect(s.source()).toBe("flowchart TD\n  A --> B\n");
     expect(s.seedSourceIfEmpty("something else")).toBe(false); // already non-empty
     expect(s.source()).toBe("flowchart TD\n  A --> B\n");
+    s.destroy();
+  });
+});
+
+// A remote update carrying a malformed overrides entry — `position` is missing its `y`, so the shared
+// decoder rejects it. Built on a raw Y.Doc with the same map shape, then encoded as a state update the
+// session would receive from a peer/relay.
+const corruptRemoteUpdate = (): Uint8Array => {
+  const d = new Doc();
+  d.getMap("overrides").set("bad", { position: { x: 1 }, size: null, pinned: true });
+  return encodeStateAsUpdate(d);
+};
+
+describe("collab session — corrupt remote overlay (decode-as-Result)", () => {
+  it("logs overlay-decode-rejected, surfaces a status, and keeps last-good state (no throw)", () => {
+    const records: LogRecord<CollabEvent>[] = [];
+    const s = createCollabSession({
+      initialOverrides: new Map([[n("a"), { position: point(10, 20), size: null, pinned: true }]]),
+      initialGroups: new Map(),
+      initialSource: "",
+      save: () => {},
+      logger: { log: (r) => records.push(r) },
+    });
+    const seen: CollabStatus[] = [];
+    s.onStatusChange((st) => seen.push(st));
+
+    // Applying the corrupt peer update must NOT throw out of the Yjs observer.
+    expect(() => s.applyUpdate(corruptRemoteUpdate())).not.toThrow();
+
+    // It logs loudly via the closed event union and surfaces the rejected status…
+    expect(records.map((r) => r.event)).toContain("overlay-decode-rejected");
+    expect(records.some((r) => r.level === "error")).toBe(true);
+    expect(seen).toContain("overlay-rejected");
+    // …and keeps the last-good materialised overlay (the corrupt entry is ignored, not adopted).
+    expect(s.overlay.overrides().get(n("a"))?.position).toEqual(point(10, 20));
+    expect(s.overlay.overrides().has(n("bad"))).toBe(false);
     s.destroy();
   });
 });

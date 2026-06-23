@@ -33,7 +33,21 @@
   (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
 - **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
   (snapshots) + Redis fan-out — same interface. Needs a real DB to verify end to end.
-- **Decode-failure surfacing:** today a corrupt peer overlay throws inside the Y observer; once a
-  `Logger` is threaded through the shell, log loudly + surface to the UI instead of throwing.
+- *(done)* **Decode-failure surfacing:** a corrupt peer overlay no longer throws inside the Y observer —
+  `materialize` returns the decode `Result`; the observer logs `overlay-decode-rejected` via a
+  `Logger<CollabEvent>` (threaded through `createCollabSession({ logger })`), surfaces a `CollabStatus`
+  via `onStatusChange`, and keeps last-good state.
+- *(done)* **Relay + transport hardening:** crash guard around `applyUpdate` + `socket`/`wss` error
+  handlers; per-socket frames/sec + bytes/sec token-bucket rate limit (injectable); frame-tag allow-list
+  (DOC/AWARE only); room-name validation at the boundary; throttled viewer-drop log; graceful flush on
+  SIGINT/SIGTERM; RBAC fail-closed default. `reconnectingWebSocketTransport` self-heals a dropped socket
+  (backoff + jitter + cap, re-exchange on reopen, `ReconnectStatus`). Collision-proof group ids.
+- **App wiring (next):** swap the app's `connectWebSocket` for `reconnectingWebSocketTransport` +
+  `connectTransport`, surface `ReconnectStatus` (reconnecting/reconnected/disconnected) and the session's
+  `onStatusChange` (`overlay-rejected`) as status-bar messages, and pass `consoleLogger` as the session
+  `logger`. (The module exports are ready; this is purely app-side.)
+- **Membership source (next):** with the fail-closed RBAC default, an auth-on deployment needs a real
+  per-room roles claim (or a server-side membership store behind `authorizeRoom`) so authenticated users
+  aren't all denied. Wire it alongside the browser Auth0 login.
 - **Same-key merge for groups:** group objects are stored whole (LWW per group). If concurrent edits to
   one group's membership need finer merge, model members as a nested `Y.Array`/`Y.Map`.

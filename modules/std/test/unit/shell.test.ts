@@ -2,8 +2,9 @@ import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LogRecord } from "../../src/core/log.js";
 import { isErr, isOk } from "../../src/core/result.js";
-import { brand, coordinate, length, point, positive, positiveInt, rect, screenCoord, screenPoint, size, twoOrMore } from "../../src/shell/brand.js";
+import { brand, coordinate, length, oneOrMore, point, positive, positiveInt, rect, screenCoord, screenPoint, size, twoOrMore } from "../../src/shell/brand.js";
 import { decode } from "../../src/shell/decode.js";
+import { messageOf } from "../../src/shell/error.js";
 import { consoleLogger, stamp } from "../../src/shell/logger.js";
 
 const record = (level: LogRecord["level"]): LogRecord => ({
@@ -113,8 +114,32 @@ describe("branded geometry constructors", () => {
     expect(t[0] + t[1]).toBe(30);
   });
 
+  it("oneOrMore builds a >=1 tuple from first (+ rest), keeping order with [0] total", () => {
+    expect(oneOrMore("a")).toEqual(["a"]);
+    expect(oneOrMore(1, 2, 3)).toEqual([1, 2, 3]);
+    const t = oneOrMore(10, 20);
+    expect(t[0]).toBe(10);
+  });
+
   it("screenCoord/screenPoint build viewport-px values (negatives allowed, distinct brand)", () => {
     expect(screenCoord(-5)).toBe(-5);
     expect(screenPoint(12, 34)).toEqual({ x: 12, y: 34 });
+  });
+});
+
+describe("messageOf", () => {
+  it("returns an Error's message", () => {
+    expect(messageOf(new Error("boom"))).toBe("boom");
+    expect(messageOf(new TypeError("bad type"))).toBe("bad type");
+  });
+
+  it("stringifies a thrown string", () => {
+    expect(messageOf("plain string")).toBe("plain string");
+  });
+
+  it("stringifies a non-error object", () => {
+    expect(messageOf({ code: 42 })).toBe("[object Object]");
+    expect(messageOf(null)).toBe("null");
+    expect(messageOf(7)).toBe("7");
   });
 });

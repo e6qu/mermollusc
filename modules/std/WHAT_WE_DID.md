@@ -46,3 +46,8 @@
 - Added `OneOrMore<T>` (`readonly [T, ...T[]]`) next to `TwoOrMore`, with an `oneOrMore(first, ...rest)`
   shell constructor — a non-empty list whose first slot is total, so a consumer folds it without an
   empty-list guard. Backs a Gantt task's `after a b c` predecessors. +exports through both barrels.
+- Added `messageOf(e: unknown): string` (`shell/error.ts`) — narrows a caught value to a readable
+  message (`Error.message`, else `String()`). Shell-only (the core forbids `unknown` and never catches);
+  it surfaces, not swallows. Replaces the hand-rolled `e instanceof Error ? e.message : String(e)` at
+  the layout ELK catch sites. +test (Error/string/non-error). Also backfilled the missing `oneOrMore`
+  shell test, restoring the 100% coverage ratchet (38 unit tests).

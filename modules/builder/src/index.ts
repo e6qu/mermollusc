@@ -15,7 +15,9 @@ export {
   topGroups,
   pruneGroups,
 } from "./core/index.js";
+export { snapAxis, snapCandidates, SNAP_T } from "./core/index.js";
 export {
+  validateLabel,
   relabelNode,
   reshapeNode,
   patchSpan,
@@ -42,7 +44,7 @@ export {
   deleteRequirementEntity,
   deleteStateEntity,
 } from "./core/index.js";
-export type { PatchError } from "./core/index.js";
+export type { PatchError, LabelContext } from "./core/index.js";
 export {
   serializeOverlay,
   decodeOverlay,

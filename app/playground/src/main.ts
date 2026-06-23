@@ -31,10 +31,14 @@ import {
   relabelNode,
   reshapeNode,
   selectOnly,
+  serializeOverlay,
+  snapAxis,
+  snapCandidates,
   toggle,
   topGroupOfNode,
+  validateLabel,
 } from "@m/builder";
-import type { HitTarget, Selection } from "@m/builder";
+import type { HitTarget, LabelContext, Selection } from "@m/builder";
 import type {
   BlockSource,
   C4Source,
@@ -56,7 +60,6 @@ import type {
   NodeShape,
   OverlayDoc,
   Scene,
-  SceneNode,
   SceneNodeId,
   SceneEdgeId,
   SequenceSource,
@@ -66,23 +69,7 @@ import type {
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
-import {
-  parseBlockWithSource,
-  parseC4WithSource,
-  parseClassWithSource,
-  parseCloudWithSource,
-  parseErWithSource,
-  parseGitGraphWithSource,
-  parseRequirementWithSource,
-  parseDiagram,
-  parseNetworkWithSource,
-  parseSequenceWithSource,
-  parseStateWithSource,
-  parseTimelineWithSource,
-  parseMindmapWithSource,
-  parseGanttWithSource,
-  parseWithSource,
-} from "@m/parser";
+import { parseDiagramWithSource } from "@m/parser";
 import {
   darkTheme,
   defaultTheme,
@@ -96,21 +83,31 @@ import type { Theme } from "@m/renderer";
 import {
   assertNever,
   brand,
+  consoleLogger,
   isOk,
-  match,
+  messageOf,
   point,
   type Point,
-  type Result,
   type ScreenCoord,
   screenCoord,
   screenPoint,
   type ScreenPoint,
   size,
 } from "@m/std";
-import { connectWebSocket, createCollabSession, type CollabSession } from "@m/collab";
+import {
+  connectTransport,
+  createCollabSession,
+  reconnectingWebSocketTransport,
+  type CollabSession,
+  type ReconnectStatus,
+} from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
+import { buildImagePdf, bytesOf } from "./pdf.js";
+import { applyPlatformModifiers } from "./platform.js";
+import { rasterizeIcon, svgDataUrl } from "./raster.js";
+import { buildSyntaxReference } from "./syntax-reference.js";
 
 declare global {
   interface Window {
@@ -300,43 +297,8 @@ let snapTargets: {
   readonly h: number;
 } | null = null;
 let snapGuides: { vx: number | null; hy: number | null } = { vx: null, hy: null };
-const SNAP_T = 6;
-// The smallest shift (within `SNAP_T`) that lands one of the dragged box's `edges` on a candidate
-// line, and the line it snapped to (null = no snap). Picks the closest candidate across all edges.
-const snapAxis = (
-  edges: readonly number[],
-  targets: readonly number[],
-): { readonly delta: number; readonly line: number | null } => {
-  let delta = 0;
-  let line: number | null = null;
-  let dist = SNAP_T + 1;
-  for (const e of edges) {
-    for (const t of targets) {
-      const d = Math.abs(t - e);
-      if (d <= SNAP_T && d < dist) {
-        dist = d;
-        delta = t - e;
-        line = t;
-      }
-    }
-  }
-  return { delta, line };
-};
-// Every *other* node's left/centre/right xs and top/middle/bottom ys — the lines a drag or resize snaps to.
-const snapCandidates = (
-  nodes: readonly SceneNode[],
-  exceptId: SceneNodeId,
-): { readonly xs: number[]; readonly ys: number[] } => {
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (const nd of nodes) {
-    if (nd.id === exceptId) continue;
-    const { origin: o, size: s } = nd.bounds;
-    xs.push(o.x, o.x + s.width / 2, o.x + s.width);
-    ys.push(o.y, o.y + s.height / 2, o.y + s.height);
-  }
-  return { xs, ys };
-};
+// `snapAxis` / `snapCandidates` / `SNAP_T` are the pure alignment geometry, homed in `@m/builder`'s
+// core (tested there); the stateful guide tracking below stays in the shell.
 window.__snapActive = () => snapGuides.vx !== null || snapGuides.hy !== null;
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
@@ -415,6 +377,7 @@ if (useCollab) {
     initialGroups: new Map(),
     initialSource: "",
     save: saveOverlay,
+    logger: consoleLogger,
   });
   doc = collabSession.overlay;
 } else {
@@ -438,13 +401,13 @@ const applyRestored = (): void => {
 const undoOverlay = (): void => {
   if (doc.undo()) {
     applyRestored();
-    announce("layout undone");
+    setStatusAndAnnounce("ok", "layout undone");
   }
 };
 const redoOverlay = (): void => {
   if (doc.redo()) {
     applyRestored();
-    announce("layout redone");
+    setStatusAndAnnounce("ok", "layout redone");
   }
 };
 
@@ -485,27 +448,6 @@ const measureLabel = (label: string): number => {
   return measureCtx.measureText(label).width;
 };
 
-// An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
-// only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
-// attribute would make decoding fail.
-const svgDataUrl = (svg: string): string => {
-  let markup = svg;
-  if (!markup.includes("xmlns=")) {
-    markup = markup.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-  }
-  if (!/<svg[^>]*\swidth=/.test(markup)) {
-    markup = markup.replace("<svg ", '<svg width="24" height="24" ');
-  }
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
-};
-
-const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
-  const img = new Image();
-  img.src = svgDataUrl(svg);
-  await img.decode();
-  return img;
-};
-
 // Resolve every icon referenced by the scene to a drawable image before painting, so the painter
 // never has to deal with a half-loaded glyph. A resolve failure, or a decode failure (a pack whose
 // markup is invalid SVG — `img.decode()` rejects), is logged loudly and the icon is skipped: the
@@ -526,16 +468,35 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
     try {
       iconImages.set(key, await rasterizeIcon(resolved.value));
     } catch (e) {
-      console.error("icon decode failed:", key, e instanceof Error ? e.message : String(e));
+      console.error("icon decode failed:", key, messageOf(e));
       failed.push(key);
     }
   }
   return failed;
 };
 
+// Memoise `applyOverrides` across a frame: a repaint that didn't change the overlay (a theme toggle,
+// a selection change, a marquee) reuses the last result instead of rebuilding the whole scene. Any
+// overlay mutation returns a fresh overrides map (a new reference), so the cache invalidates on its
+// own — a drag, which legitimately changes the overlay each frame, still recomputes.
+let shownCacheScene: Scene | null = null;
+let shownCacheOverrides: LayoutOverrides | null = null;
+let shownCacheResult: Scene | null = null;
+const shownScene = (base: Scene): Scene => {
+  const ov = doc.overrides();
+  if (shownCacheResult !== null && shownCacheScene === base && shownCacheOverrides === ov) {
+    return shownCacheResult;
+  }
+  const shown = applyOverrides(base, ov);
+  shownCacheScene = base;
+  shownCacheOverrides = ov;
+  shownCacheResult = shown;
+  return shown;
+};
+
 const paintScene = (): void => {
   if (scene === null) return;
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   // Logical sheet size in scene px (+ margin); the on-screen box is this scaled by the zoom.
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
@@ -714,6 +675,7 @@ interface GroupBox {
 }
 
 const groupBoxes = (shown: Scene): readonly GroupBox[] => {
+  if (doc.groups().size === 0) return [];
   const boundsById = new Map(shown.nodes.map((node) => [node.id, node.bounds]));
   const boxes: GroupBox[] = [];
   for (const g of doc.groups().values()) {
@@ -741,8 +703,10 @@ const groupBoxes = (shown: Scene): readonly GroupBox[] => {
   return boxes;
 };
 
-const groupOutlineAt = (shown: Scene, at: Point): GroupId | null => {
-  const boxes = groupBoxes(shown);
+// The three group hit-tests take a precomputed `boxes` (one `groupBoxes` build the caller shares across
+// all three) rather than each rebuilding the group bounds — a pointer-move over a grouped diagram ran
+// the bounds map three times per event.
+const groupOutlineAt = (boxes: readonly GroupBox[], at: Point): GroupId | null => {
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i];
     if (box === undefined) continue;
@@ -755,8 +719,7 @@ const groupOutlineAt = (shown: Scene, at: Point): GroupId | null => {
   return null;
 };
 
-const groupTitleAt = (shown: Scene, at: Point): GroupId | null => {
-  const boxes = groupBoxes(shown);
+const groupTitleAt = (boxes: readonly GroupBox[], at: Point): GroupId | null => {
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i];
     if (box === undefined) continue;
@@ -767,8 +730,7 @@ const groupTitleAt = (shown: Scene, at: Point): GroupId | null => {
   return null;
 };
 
-const groupAt = (shown: Scene, at: Point): GroupId | null => {
-  const boxes = groupBoxes(shown);
+const groupAt = (boxes: readonly GroupBox[], at: Point): GroupId | null => {
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i];
     if (box === undefined) continue;
@@ -776,6 +738,12 @@ const groupAt = (shown: Scene, at: Point): GroupId | null => {
     if (inside) return box.id;
   }
   return null;
+};
+
+// The group under a point — title bar, outline edge, then interior — with the group bounds built once.
+const groupHitAt = (shown: Scene, at: Point): GroupId | null => {
+  const boxes = groupBoxes(shown);
+  return groupTitleAt(boxes, at) ?? groupOutlineAt(boxes, at) ?? groupAt(boxes, at);
 };
 
 const selectGroup = (id: GroupId): void => {
@@ -881,6 +849,40 @@ const setTask = (message: string, tone: TaskTone): void => {
   stageHud.hidden = tone === "quiet";
 };
 
+// What cross-family canvas affordances each diagram family's *grammar* can actually accept. Connect
+// and the icon override inject family-specific syntax into the source; offering them on a family
+// whose grammar would reject the result silently corrupts the text (a grey, un-parseable diagram).
+// Exhaustive over the closed `DiagramAst["kind"]` union — a new family must declare its affordances
+// here or this won't compile.
+interface FamilyAffordances {
+  readonly connect: boolean;
+  readonly iconOverride: boolean;
+}
+const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
+  switch (kind) {
+    case "network":
+    case "cloud":
+    case "block":
+      return { connect: true, iconOverride: true };
+    case "flowchart":
+    case "state":
+    case "c4":
+    case "sequence":
+    case "er":
+    case "class":
+    case "requirement":
+      return { connect: true, iconOverride: false };
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
+    case "gantt":
+      return { connect: false, iconOverride: false };
+    default:
+      return assertNever(kind);
+  }
+};
+
 const updateTask = (): void => {
   if (!currentRenderValid) {
     setTask("fix the source before editing or exporting", "blocked");
@@ -898,7 +900,8 @@ const updateTask = (): void => {
     setTask("drag, rename, or resize with corner handles", "action");
     return;
   }
-  const canConnect = ast !== null && ast.kind !== "gantt" && selectionOrder.length >= 2;
+  const canConnect =
+    ast !== null && familyAffordances(ast.kind).connect && selectionOrder.length >= 2;
   setTask(
     canConnect ? "connect, group, arrange, or drag selection" : "group, arrange, or drag selection",
     "action",
@@ -942,10 +945,17 @@ const updateGroupButtons = (): void => {
     arrangeBtn.disabled = true;
     connectBtn.disabled = true;
     connectBtn.title = currentRenderValid ? "viewer mode" : "fix source first";
+    iconsToggle.disabled = true;
+    iconsToggle.title = currentRenderValid ? "viewer mode" : "fix source first";
     closeArrange();
     updateTask();
     return;
   }
+  const iconCapable = ast !== null && familyAffordances(ast.kind).iconOverride;
+  iconsToggle.disabled = !iconCapable;
+  iconsToggle.title = iconCapable
+    ? "Insert an icon override on a node"
+    : `icons aren't available for ${ast === null ? "this diagram" : ast.kind}`;
   const units = new Set<string>();
   for (const id of selection.nodes) {
     const top = topGroupOfNode(doc.groups(), id);
@@ -962,14 +972,14 @@ const updateGroupButtons = (): void => {
   if (distHBtn !== null) distHBtn.disabled = movable < 3;
   if (distVBtn !== null) distVBtn.disabled = movable < 3;
   if (movable < 2) closeArrange();
-  const canConnect = ast !== null && ast.kind !== "gantt" && selectionOrder.length >= 2;
+  const connectable = ast !== null && familyAffordances(ast.kind).connect;
+  const canConnect = connectable && selectionOrder.length >= 2;
   connectBtn.disabled = !canConnect;
-  connectBtn.title =
-    ast !== null && ast.kind === "gantt"
-      ? "not available for gantt"
-      : selectionOrder.length < 2
-        ? "select two nodes"
-        : "";
+  connectBtn.title = !connectable
+    ? `connect isn't available for ${ast === null ? "this diagram" : ast.kind}`
+    : selectionOrder.length < 2
+      ? "select two nodes"
+      : "";
   updateTask();
 };
 
@@ -1096,7 +1106,7 @@ const arrangeDeltas = (
 
 const applyArrange = (kind: AlignKind): void => {
   if (scene === null || viewerMode) return;
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const units = selectedUnitBoxes(shown);
   const need = kind === "distH" || kind === "distV" ? 3 : 2;
   if (units.length < need) return;
@@ -1349,7 +1359,7 @@ const setScale = (s: number): void => {
 // Fit the whole sheet inside the visible stage, never upscaling past 100%.
 const fitView = (): void => {
   if (scene === null) return;
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
   const pad = 24;
@@ -1618,7 +1628,7 @@ diagramNav.addEventListener("keydown", (ev) => {
     // Open the inline relabel editor on the active node or edge — parity with a canvas double-click.
     ev.preventDefault();
     navConnectSource = null;
-    beginRelabel(applyOverrides(scene, doc.overrides()), item, null);
+    beginRelabel(shownScene(scene), item, null);
   } else if (
     (ev.key === "c" || ev.key === "C") &&
     item?.kind === "node" &&
@@ -1697,7 +1707,16 @@ const setStatus = (
   editor.setError(range, message);
   // The canvas (role="img") needs a text alternative for screen readers — the status line is the
   // baseline; `renderFromText` enriches it with node labels on a successful render.
-  canvas.setAttribute("aria-label", level === "error" ? `Diagram error: ${message}` : message);
+  // On an error the canvas still shows the last good render (greyed), so say so for screen readers
+  // rather than implying it's blank.
+  canvas.setAttribute(
+    "aria-label",
+    level === "error"
+      ? scene === null
+        ? `Diagram error: ${message}`
+        : `Diagram error: ${message}. Showing last valid render.`
+      : message,
+  );
   updateTask();
 };
 
@@ -1749,27 +1768,35 @@ const renderFromText = async (text: string): Promise<void> => {
   currentRenderValid = false;
   updateGroupButtons();
   localStorage.setItem(SOURCE_KEY, text);
-  const parsed = parseDiagram(text);
+  // One parse yields both the AST (to lay out) and the family's source map (the spans the inline editor
+  // patches) — previously every family was parsed twice per render. `parsed.value.family` is the closed
+  // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
+  const parsed = parseDiagramWithSource(text);
   if (!isOk(parsed)) {
     const detail = parsed.error.errors.join("; ");
     console.error("parse failed:", detail);
     const pos = parsed.error.positions[0];
     if (pos === undefined) {
-      setStatus("error", `parse error — ${detail}`);
+      setStatusAndAnnounce("error", `parse error — ${detail}`);
     } else {
       const { line, col } = lineColOf(text, pos.offset);
-      setStatus("error", `parse error (line ${line}:${col}) — ${detail} · click to locate`, pos);
+      setStatusAndAnnounce(
+        "error",
+        `parse error (line ${line}:${col}) — ${detail} · click to locate`,
+        pos,
+      );
     }
     if (ast !== null) applyKind(ast.kind);
     return;
   }
-  const diagram = parsed.value;
+  const result = parsed.value;
+  const diagram = result.ast;
   lastDirection = "direction" in diagram ? diagram.direction : null;
   const laid = await layoutDiagram(diagram, measureLabel);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
-    setStatus("error", `layout error — ${laid.error.message}`);
+    setStatusAndAnnounce("error", `layout error — ${laid.error.message}`);
     if (ast !== null) applyKind(ast.kind);
     return;
   }
@@ -1796,11 +1823,24 @@ const renderFromText = async (text: string): Promise<void> => {
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   rebuildNav();
-  // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
-  // resurrect onto reused ids later. (Overrides are cleared on edit; groups otherwise persist.)
-  if (doc.pruneGroupsTo(new Set(laid.value.nodes.map((n) => n.id)))) {
+  // Drop sidecar groups and overrides whose nodes the edited text removed, so they can't outlive their
+  // diagram and resurrect onto reused ids later. We prune *after* a successful layout (keeping the
+  // manual positions of nodes that still exist) rather than wiping the whole overlay on every keystroke —
+  // editing one node's label no longer discards the layout of every other node, and the prune is
+  // undoable. In collab mode the shared room owns the overlay (stale overrides are inert and a peer may
+  // still hold the node), so we leave it untouched there.
+  const liveIds = new Set(laid.value.nodes.map((n) => n.id));
+  if (doc.pruneGroupsTo(liveIds)) {
     doc.persist();
     updateGroupButtons();
+  }
+  if (!useCollab) {
+    const kept = new Map([...doc.overrides()].filter(([id]) => liveIds.has(id)));
+    if (kept.size !== doc.overrides().size) {
+      doc.record();
+      doc.replaceOverrides(kept);
+      doc.persist();
+    }
   }
   // Capture source spans for canvas→text edits — one family is live at a time.
   source = null;
@@ -1816,97 +1856,59 @@ const renderFromText = async (text: string): Promise<void> => {
   gitSource = null;
   timelineSource = null;
   mindmapSource = null;
-  // The text already parsed above; re-parse for the per-family source map (the spans the inline editor
-  // patches). A disagreement is unexpected — disable the source-driven features *loudly* (a logged
-  // null), never a silent drop. Exhaustive: a new family must add its arm or this won't compile.
-  const captureSource = <S>(
-    r: Result<{ readonly source: S }, unknown>,
-    set: (source: S | null) => void,
-  ): void =>
-    match(
-      r,
-      (v) => set(v.source),
-      () => {
-        console.error(`source map unavailable: ${diagram.kind} re-parse disagreed`);
-        set(null);
-      },
-    );
-  switch (diagram.kind) {
+  // Adopt the source map produced by the single parse above (the spans the inline editor patches).
+  // Exhaustive over the closed `family` union — a new family must add its arm or this won't compile.
+  ganttSource = null;
+  switch (result.family) {
+    // DOT import has no span parser (an empty source map), so it simply has no editable spans.
     case "flowchart":
-      captureSource(parseWithSource(text), (s) => {
-        source = s;
-      });
+    case "dot":
+      source = result.source;
       break;
     case "sequence":
-      captureSource(parseSequenceWithSource(text), (s) => {
-        seqSource = s;
-      });
+      seqSource = result.source;
       break;
     case "c4":
-      captureSource(parseC4WithSource(text), (s) => {
-        c4Source = s;
-      });
+      c4Source = result.source;
       break;
     case "block":
-      captureSource(parseBlockWithSource(text), (s) => {
-        blockSource = s;
-      });
+      blockSource = result.source;
       break;
     case "network":
-      captureSource(parseNetworkWithSource(text), (s) => {
-        netSource = s;
-      });
+      netSource = result.source;
       break;
     case "cloud":
-      captureSource(parseCloudWithSource(text), (s) => {
-        cloudSource = s;
-      });
+      cloudSource = result.source;
       break;
     case "state":
-      captureSource(parseStateWithSource(text), (s) => {
-        stateSource = s;
-      });
+      stateSource = result.source;
       break;
     case "er":
-      captureSource(parseErWithSource(text), (s) => {
-        erSource = s;
-      });
+      erSource = result.source;
       break;
     case "class":
-      captureSource(parseClassWithSource(text), (s) => {
-        classSource = s;
-      });
+      classSource = result.source;
       break;
     case "requirement":
-      captureSource(parseRequirementWithSource(text), (s) => {
-        reqSource = s;
-      });
+      reqSource = result.source;
       break;
     case "gitGraph":
-      captureSource(parseGitGraphWithSource(text), (s) => {
-        gitSource = s;
-      });
+      gitSource = result.source;
       break;
     case "timeline":
-      captureSource(parseTimelineWithSource(text), (s) => {
-        timelineSource = s;
-      });
+      timelineSource = result.source;
       break;
     case "mindmap":
-      captureSource(parseMindmapWithSource(text), (s) => {
-        mindmapSource = s;
-      });
+      mindmapSource = result.source;
       break;
     case "pie":
       // pie has no editable source map (no node/edge text spans to patch).
       break;
     case "gantt":
-      captureSource(parseGanttWithSource(text), (s) => {
-        ganttSource = s;
-      });
+      ganttSource = result.source;
       break;
     default:
-      assertNever(diagram);
+      assertNever(result);
   }
   const failedIcons = await ensureIcons(scene);
   if (failedIcons.length > 0) {
@@ -1925,7 +1927,7 @@ const renderFromText = async (text: string): Promise<void> => {
 // Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
 const relax = async (): Promise<void> => {
   if (ast === null || ast.kind !== "flowchart" || scene === null) return;
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
@@ -1982,9 +1984,10 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
     canvas.style.cursor = "";
     return;
   }
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
+  const gboxes = groupBoxes(shown);
   if (!viewerMode && resizeAnchorAt(shown, at) !== null) {
     canvas.style.cursor = "nwse-resize";
   } else if (ev.altKey && !viewerMode && hit !== null && hit.kind === "node") {
@@ -1998,9 +2001,9 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
     canvas.style.cursor = "grab";
   } else if (
     hit !== null ||
-    groupTitleAt(shown, at) !== null ||
-    groupOutlineAt(shown, at) !== null ||
-    groupAt(shown, at) !== null
+    groupTitleAt(gboxes, at) !== null ||
+    groupOutlineAt(gboxes, at) !== null ||
+    groupAt(gboxes, at) !== null
   ) {
     canvas.style.cursor = "pointer";
   } else {
@@ -2011,14 +2014,13 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
-  const groupHit =
-    hit === null
-      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
-      : null;
-  const additive = ev.shiftKey || ev.metaKey;
+  const groupHit = hit === null ? groupHitAt(shown, at) : null;
+  // Shift or the platform command key adds to the selection — accept Ctrl too, so additive-click works
+  // on Windows/Linux (the help panel advertises "Ctrl click" there).
+  const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
   // ⌥-drag from a node starts a connect (a rubber-band to the cursor; an edge on release over another
   // node) — before the resize/move paths, since ⌥ is the connect modifier. Viewers can't connect.
@@ -2236,8 +2238,7 @@ canvas.addEventListener("pointerup", (ev) => {
     canvas.releasePointerCapture(ev.pointerId);
     const cd = connectDrag;
     connectDrag = null;
-    const target =
-      scene === null ? null : hitTest(applyOverrides(scene, doc.overrides()), scenePoint(ev));
+    const target = scene === null ? null : hitTest(shownScene(scene), scenePoint(ev));
     if (ast !== null && target !== null && target.kind === "node" && target.id !== cd.from) {
       editor.setValue(appendEdge(ast.kind, editor.value(), cd.from, target.id));
       void renderFromText(editor.value());
@@ -2260,7 +2261,7 @@ canvas.addEventListener("pointerup", (ev) => {
     const box = marquee;
     marquee = null;
     if (scene !== null) {
-      const shown = applyOverrides(scene, doc.overrides());
+      const shown = shownScene(scene);
       const minX = Math.min(box.x0, box.x1);
       const maxX = Math.max(box.x0, box.x1);
       const minY = Math.min(box.y0, box.y1);
@@ -2381,11 +2382,28 @@ const anchorFor = (
 const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | null): boolean => {
   if (ast === null) return false;
   // Most families edit a `TextSpan` via `patchSpan`; flowchart nodes relabel through the source map.
+  // The character immediately before the label span is its opening delimiter — it tells us which
+  // closer the new text must not contain, so a label with a stray `|`/`"`/`]` can't terminate the
+  // token early and write un-parseable source. We validate loudly and reject rather than corrupt.
+  const contextFor = (text: string, span: TextSpan): LabelContext => {
+    const opener = span.start > 0 ? text[span.start - 1] : "";
+    if (opener === "|") return "pipe";
+    if (opener === '"') return "quoted";
+    if (opener === "[" || opener === "(" || opener === "{") return "flowchartBracket";
+    return "plain";
+  };
   const patchAt = (
     span: TextSpan,
   ): { readonly text: string; readonly commit: (n: string) => void } => ({
     text: editor.value().slice(span.start, span.end),
     commit: (next) => {
+      if (next === editor.value().slice(span.start, span.end)) return;
+      const checked = validateLabel(next, contextFor(editor.value(), span));
+      if (!isOk(checked)) {
+        console.error("relabel rejected:", checked.error.message);
+        setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
+        return;
+      }
       editor.setValue(patchSpan(editor.value(), span, next));
       void renderFromText(editor.value());
     },
@@ -2423,6 +2441,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
           const patched = relabelNode(editor.value(), src, nodeId, next);
           if (!isOk(patched)) {
             console.error("relabel failed:", patched.error.message);
+            setStatusAndAnnounce("error", `can't rename — ${patched.error.message}`);
             return;
           }
           editor.setValue(patched.value);
@@ -2527,13 +2546,10 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
 
 canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
-  const groupHit =
-    hit === null
-      ? (groupTitleAt(shown, at) ?? groupOutlineAt(shown, at) ?? groupAt(shown, at))
-      : null;
+  const groupHit = hit === null ? groupHitAt(shown, at) : null;
   beginRelabel(shown, hit, groupHit);
 });
 
@@ -2571,9 +2587,7 @@ const duplicateSelection = async (): Promise<void> => {
   editor.setValue(text);
   await renderFromText(text);
   if (scene === null) return;
-  const posById = new Map(
-    applyOverrides(scene, doc.overrides()).nodes.map((nd) => [nd.id, nd.bounds.origin]),
-  );
+  const posById = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd.bounds.origin]));
   doc.record();
   for (const { from, to } of pairs) {
     const p = posById.get(from);
@@ -2602,7 +2616,7 @@ let pasteSeq = 0;
 
 const copySelection = (): void => {
   if (viewerMode || ast === null || ast.kind !== "flowchart" || scene === null) return;
-  const byId = new Map(applyOverrides(scene, doc.overrides()).nodes.map((nd) => [nd.id, nd]));
+  const byId = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd]));
   const picked = selectionOrder.flatMap((id) => {
     const nd = byId.get(id);
     return nd === undefined ? [] : [nd];
@@ -2723,21 +2737,23 @@ const appendEdge = (
         brand<string, "ReqEntityId">(first),
         brand<string, "ReqEntityId">(second),
       );
-    // The flowchart `A --> B` arrow syntax (best-effort for the families whose node ids it can name).
+    // The flowchart `A --> B` arrow syntax — valid in the families whose node ids it can name.
     case "flowchart":
     case "block":
     case "state":
-    case "gitGraph":
-    case "timeline":
-    case "mindmap":
-    case "pie":
       return connect(
         text,
         brand<string, "NodeId">(first),
         brand<string, "NodeId">(second),
         "arrow",
       );
-    // gantt has no drawn-edge concept (`after` is positional), so Connect is a no-op.
+    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline/mindmap grammars would
+    // reject the flowchart `A --> B` arrow (it would grey the diagram). Connect is a no-op for all of
+    // them — `familyAffordances` also disables the button so this branch is defence-in-depth.
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
     case "gantt":
       return text;
     default:
@@ -2867,7 +2883,10 @@ window.addEventListener("keydown", (ev) => {
   editor.setValue(text);
   void renderFromText(text);
   // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
-  setStatusAndAnnounce("ok", `deleted ${removedCount} item${removedCount === 1 ? "" : "s"}`);
+  setStatusAndAnnounce(
+    "ok",
+    `deleted ${removedCount} item${removedCount === 1 ? "" : "s"} — undo in the editor`,
+  );
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
@@ -2933,7 +2952,7 @@ const nudgeSelection = (dx: number, dy: number): void => {
   if (scene === null || viewerMode) return;
   const ids = movableSelectionLeaves();
   if (ids.length === 0) return;
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
   if (!nudging) {
     doc.record();
@@ -3075,12 +3094,28 @@ exampleEl.addEventListener("change", () => {
   const text = EXAMPLES.get(exampleEl.value);
   exampleEl.value = "";
   if (text === undefined) return;
+  // Loading an example replaces the whole source and clears the manual layout/groups (a different
+  // diagram — the old positions no longer apply). Guard the destructive swap only when there's real
+  // authored work to lose: a pristine sample or another unmodified example is fair game to switch away
+  // from without a prompt. The source text itself stays recoverable via the editor's own undo.
+  const current = editor.value();
+  const isPristine =
+    current.trim() === "" || current === SAMPLE || [...EXAMPLES.values()].includes(current);
+  if (
+    !isPristine &&
+    current !== text &&
+    !window.confirm(
+      "Replace your current diagram? Manual layout and groups will be cleared (your text can be restored with Undo in the editor).",
+    )
+  ) {
+    return;
+  }
   doc.clearOverrides();
   doc.clearHistory(); // a different diagram — the old positions/history no longer apply
   doc.persist();
   editor.setValue(text);
   void renderFromText(text);
-  announce("loaded example");
+  announce("loaded example — undo in the editor to restore your text");
 });
 
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
@@ -3101,7 +3136,7 @@ const loadPack = async (file: File): Promise<void> => {
   try {
     json = JSON.parse(text);
   } catch (e) {
-    const detail = e instanceof Error ? e.message : String(e);
+    const detail = messageOf(e);
     console.error("pack parse failed:", detail);
     setStatusAndAnnounce("error", `icon pack is not valid JSON — ${detail}`);
     return;
@@ -3129,7 +3164,7 @@ loadPackEl.addEventListener("change", () => {
 // `icon "<pack>/<name>"` override at the editor caret. Built fresh on each open so it reflects any
 // packs added via "Load icons". The glyph previews reuse the SVG→data-URL path (no innerHTML).
 const insertIconRef = (packId: string, name: string): void => {
-  if (viewerMode) return;
+  if (viewerMode || ast === null || !familyAffordances(ast.kind).iconOverride) return;
   editor.insertAtCursor(` icon "${packId}/${name}"`);
   doc.clearOverrides();
   doc.persist();
@@ -3288,6 +3323,11 @@ window.addEventListener(
   true,
 );
 
+// Swap the modifier-key hints to the platform's native names, and populate the in-app syntax
+// reference (both self-contained startup DOM passes).
+applyPlatformModifiers();
+buildSyntaxReference();
+
 // The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
 // drawn), so an export composites onto a background-filled offscreen canvas at device resolution —
 // otherwise the output would have a transparent ground.
@@ -3297,7 +3337,7 @@ const compositeCanvas = (): HTMLCanvasElement | null => {
   // always full-resolution — previously it copied the live canvas, so exporting at 10%/400% zoom
   // produced a tiny/huge image. Editor chrome (selection, handles, marquee) is omitted, matching the
   // SVG export. Mirrors the SVG path's zoom-independence.
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
   const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
   const dpr = window.devicePixelRatio || 1;
@@ -3376,71 +3416,12 @@ copyBtn.addEventListener("click", () => {
     void clip.write([new ItemCtor({ "image/png": blob })]).then(
       () => setStatusAndAnnounce("ok", "diagram image copied to clipboard"),
       (e: unknown) => {
-        console.error("copy to clipboard failed:", e instanceof Error ? e.message : String(e));
+        console.error("copy to clipboard failed:", messageOf(e));
         setStatusAndAnnounce("warning", "clipboard was blocked — use PNG to download instead");
       },
     );
   }, "image/png");
 });
-
-// PDF export, dependency-free: wrap the composited canvas (as a JPEG) in a minimal one-page PDF —
-// a DCTDecode image XObject placed to fill a MediaBox sized in CSS px (so the embedded device-res
-// JPEG renders at high DPI). Byte offsets are tracked as the body is assembled, for the xref table.
-const bytesOf = (binary: string): Uint8Array => {
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-};
-
-const buildImagePdf = (
-  jpeg: Uint8Array,
-  pxWidth: number,
-  pxHeight: number,
-  ptWidth: number,
-  ptHeight: number,
-): Blob => {
-  const enc = new TextEncoder();
-  const parts: Uint8Array[] = [];
-  const offsets: number[] = [];
-  let len = 0;
-  const pushBytes = (bytes: Uint8Array): void => {
-    parts.push(bytes);
-    len += bytes.length;
-  };
-  const pushText = (text: string): void => pushBytes(enc.encode(text));
-  const startObject = (header: string): void => {
-    offsets.push(len);
-    pushText(header);
-  };
-
-  pushText("%PDF-1.4\n");
-  startObject("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-  startObject("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-  startObject(
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ptWidth} ${ptHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
-  );
-  startObject(
-    `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pxWidth} /Height ${pxHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
-  );
-  pushBytes(jpeg);
-  pushText("\nendstream\nendobj\n");
-  const content = `q ${ptWidth} 0 0 ${ptHeight} 0 0 cm /Im0 Do Q`;
-  startObject(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
-
-  const xrefAt = len;
-  let xref = `xref\n0 6\n0000000000 65535 f \n`;
-  for (const off of offsets) xref += `${String(off).padStart(10, "0")} 00000 n \n`;
-  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
-  pushText(xref);
-
-  const pdf = new Uint8Array(len);
-  let at = 0;
-  for (const part of parts) {
-    pdf.set(part, at);
-    at += part.length;
-  }
-  return new Blob([pdf], { type: "application/pdf" });
-};
 
 exportPdfBtn.addEventListener("click", () => {
   if (blockStaleExport("PDF export")) return;
@@ -3473,7 +3454,7 @@ exportSvgBtn.addEventListener("click", () => {
     setStatusAndAnnounce("error", "nothing to export yet");
     return;
   }
-  const shown = applyOverrides(scene, doc.overrides());
+  const shown = shownScene(scene);
   const icons = new Map<string, string>();
   for (const node of shown.nodes) {
     if (node.icon === null) continue;
@@ -3503,7 +3484,7 @@ exportDotBtn.addEventListener("click", () => {
     setStatusAndAnnounce("error", "nothing to export yet");
     return;
   }
-  const dot = toDot(applyOverrides(scene, doc.overrides()), lastDirection);
+  const dot = toDot(shownScene(scene), lastDirection);
   downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
   setStatusAndAnnounce("ok", "exported mermollusc.dot");
 });
@@ -3511,8 +3492,18 @@ exportDotBtn.addEventListener("click", () => {
 // Share: encode the current source in the URL hash (so the link reproduces the diagram) and copy it
 // to the clipboard. The hash is reflected in the address bar either way; clipboard is best-effort
 // (it can be denied) and its outcome is surfaced to the status bar, never silently dropped.
-const shareUrl = (): string =>
-  `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}`;
+// The link carries the source and — when the author has arranged the canvas — the manual overlay
+// (positions, resizes, groups), so the recipient sees the same diagram rather than a fresh auto-layout
+// (exports already honour the overlay; Share now matches them). In collab mode the shared room owns the
+// overlay, so the link stays source-only there.
+const shareUrl = (): string => {
+  const base = `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}`;
+  if (useCollab) return base;
+  const overrides = doc.overrides();
+  const groups = doc.groups();
+  if (overrides.size === 0 && groups.size === 0) return base;
+  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups))}`;
+};
 
 shareBtn.addEventListener("click", () => {
   const url = shareUrl();
@@ -3528,49 +3519,56 @@ shareBtn.addEventListener("click", () => {
   );
 });
 
-// A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
-const hashSource = (): string | null => {
-  const prefix = "#src=";
-  if (!location.hash.startsWith(prefix)) return null;
-  try {
-    return decodeURIComponent(location.hash.slice(prefix.length));
-  } catch (e) {
-    console.error("ignoring malformed #src in URL:", e instanceof Error ? e.message : String(e));
-    return null;
-  }
-};
-
-const fromHash = hashSource();
-const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
-// Restore the persisted overlay only for the persisted source — a share-link source is a different
-// diagram whose node ids wouldn't match, and in collab mode the shared room owns the overlay. A
-// corrupt/invalid overlay is logged loudly and ignored.
-if (fromHash === null && !useCollab) {
-  const rawOverlay = localStorage.getItem(OVERLAY_KEY);
-  if (rawOverlay !== null) {
+// One decoded value from the `#…` hash (a shared link). `encodeURIComponent` (not `+`-for-space form)
+// produced each value, so we decode with `decodeURIComponent` per key rather than `URLSearchParams`
+// (which would turn a literal `+` in the source into a space).
+const hashValue = (key: string): string | null => {
+  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
+  for (const part of hash.split("&")) {
+    const eq = part.indexOf("=");
+    if (eq < 0 || part.slice(0, eq) !== key) continue;
     try {
-      const decoded = decodeOverlay(JSON.parse(rawOverlay));
-      if (isOk(decoded)) {
-        doc.replace(decoded.value.overrides, decoded.value.groups);
-      } else {
-        console.error("ignoring invalid overlay:", decoded.error.issues.join("; "));
-      }
+      return decodeURIComponent(part.slice(eq + 1));
     } catch (e) {
-      console.error("ignoring corrupt overlay:", e instanceof Error ? e.message : String(e));
+      console.error("ignoring malformed URL hash for key", key, messageOf(e));
+      return null;
     }
   }
-}
-// Editing the text re-renders. In single-user mode a hand edit also drops the manual layout (positions
-// belong to the old node ids) and persists; in collab mode the overlay is shared and the room owns it,
-// so a text edit (local or a peer's) must NOT clear it — stale overrides for renamed ids are inert
-// (they only apply to matching scene nodes). The editor is created last because this closes over
-// `renderFromText`; in collab mode it starts empty and the `Y.Text` binding fills it (seeded below).
-const onTextChange = (text: string): void => {
-  if (!useCollab) {
-    doc.clearOverrides();
-    doc.clearHistory();
-    doc.persist();
+  return null;
+};
+
+// A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
+const fromHash = hashValue("src");
+const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+// Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
+// author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
+// source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
+// overlay is logged loudly and ignored — never a silent default.
+const applyOverlayJson = (raw: string, whence: string): void => {
+  try {
+    const decoded = decodeOverlay(JSON.parse(raw));
+    if (isOk(decoded)) doc.replace(decoded.value.overrides, decoded.value.groups);
+    else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
+  } catch (e) {
+    console.error("ignoring corrupt overlay from", whence, messageOf(e));
   }
+};
+if (!useCollab) {
+  const linkOverlay = fromHash === null ? null : hashValue("overlay");
+  if (linkOverlay !== null) {
+    applyOverlayJson(linkOverlay, "share link");
+  } else if (fromHash === null) {
+    const rawOverlay = localStorage.getItem(OVERLAY_KEY);
+    if (rawOverlay !== null) applyOverlayJson(rawOverlay, "localStorage");
+  }
+}
+// Editing the text re-renders. A hand edit no longer wipes the manual layout — `renderFromText` prunes
+// only the overrides/groups whose node ids the edit actually removed (after layout), so editing one
+// node's label keeps every other node's manual position, and the prune is undoable. `renderSeq` drops a
+// stale async layout so a fast typist never sees an out-of-order frame. The editor is created last
+// because this closes over `renderFromText`; in collab mode it starts empty and the `Y.Text` binding
+// fills it (seeded below).
+const onTextChange = (text: string): void => {
   void renderFromText(text);
 };
 editor =
@@ -3601,6 +3599,13 @@ if (collabSession !== null) {
     requestPaint();
     updateGroupButtons();
   });
+  // A remote overlay edit that fails to decode is dropped and surfaced (the session also logs it loudly)
+  // rather than throwing inside the Yjs observer.
+  session.onStatusChange((status) => {
+    if (status === "overlay-rejected") {
+      setStatus("warning", "⚠ a remote change was rejected (incompatible overlay) — ignoring it");
+    }
+  });
   // Label this client for presence — remote cursors show this name/colour. A random pick is fine for
   // the experimental flag; real identity arrives with auth (Phase 2).
   const PRESENCE_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080"];
@@ -3624,9 +3629,22 @@ if (collabSession !== null) {
   // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
   const token = params.get("token");
   const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
-  connectWebSocket(session, `${wsBase}/${encodeURIComponent(room)}${query}`, {
+  // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
+  // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
+  // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
+  const onReconnectStatus = (status: ReconnectStatus): void => {
+    if (status === "reconnecting") {
+      setStatus("warning", "⚠ reconnecting to the collaboration relay…");
+    } else if (status === "reconnected") {
+      setStatus("ok", "reconnected to the collaboration relay");
+    }
+  };
+  const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(room)}${query}`, {
+    onStatus: onReconnectStatus,
+  });
+  connectTransport(session, socket, {
     onControl: applyRole,
-    // Surface a dropped relay loudly rather than silently desyncing — local edits keep working, but
+    // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
     // the user must know they're no longer shared.
     onClose: () => {
       console.error("collab: disconnected from the relay");

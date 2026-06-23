@@ -100,6 +100,32 @@ describe("collab convergence — overlay", () => {
     b.destroy();
   });
 
+  it("two clients each grouping concurrently both survive (collision-proof ids)", () => {
+    const a = blank();
+    const b = blank();
+    b.applyUpdate(a.state());
+    // Each client mints a group while apart. With a shared `g0` counter both would overwrite the same
+    // key; the clientID-namespaced id keeps them distinct, so both groups survive the merge.
+    a.overlay.groupNodes([
+      { kind: "node", id: n("A") },
+      { kind: "node", id: n("B") },
+    ]);
+    b.overlay.groupNodes([
+      { kind: "node", id: n("C") },
+      { kind: "node", id: n("D") },
+    ]);
+    exchange(a, b);
+    exchange(a, b);
+    for (const s of [a, b]) {
+      expect(s.overlay.groups().size).toBe(2); // neither client's group was overwritten
+    }
+    // The two minted ids differ (the clientID prefix), and the member sets are preserved per group.
+    const ids = [...a.overlay.groups().keys()];
+    expect(new Set(ids).size).toBe(2);
+    a.destroy();
+    b.destroy();
+  });
+
   it("a concurrent group on one side merges with a move on the other", () => {
     const a = blank();
     const b = blank();

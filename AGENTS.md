@@ -115,6 +115,12 @@ never performs IO, never logs, never throws. The shell does everything impure: c
 filesystem, the ELK worker, decoding, and logging. Tests target the core directly (cheap,
 property-based) and the shell via integration tests.
 
+The one sanctioned core throw is `assertNever` (in `@m/std`): a compile-time exhaustiveness guard
+for closed unions. When every variant is handled its argument narrows to `never` and the call
+type-checks; a new, unhandled variant becomes a compile error. Its runtime `throw` fires only if a
+type-violating value reaches it despite the types (e.g. unchecked external input) — a loud failure,
+consistent with fail-loud, not a fallback.
+
 ## 6. Uniform make targets (defined in `module.mk`, identical everywhere)
 
 ```

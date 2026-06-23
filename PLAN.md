@@ -25,7 +25,7 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- 
 | module | owns |
 |--------|------|
 | `@m/std` | branded-type kit, `Result`, generic `Logger` contract, `Coordinate`/`Length` geometry, `brand()`/`decode()` |
-| `@m/contracts` | AST (flowchart, sequence, C4, block, network) + SceneGraph IR + overrides + sidecar groups + source-map types |
+| `@m/contracts` | AST (15 diagram families — see `DiagramAst`) + SceneGraph IR + overrides + sidecar groups + source-map types |
 | `@m/parser` | text → AST (+ source spans), AST → text (printer) |
 | `@m/layout` | AST → positioned Scene (ELK), relax via semi-interactive seeds |
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
@@ -73,17 +73,20 @@ diagram). Every node/edge family has drag/resize/align, connect where meaningful
 also has relax/regenerate and add. Network nodes show built-in glyphs; cloud nodes show **vendored
 simple-icons brand marks** (CC0, pinned). Icons-in-nodes is wired end-to-end.
 
-| module | state | tests |
-|--------|-------|-------|
-| `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, `Coordinate`/`Length` geometry (validated), Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) | 34 |
-| `@m/contracts` | ✅ all active family ASTs, Scene IR (nodes/edges/wedges/decorations), overrides, groups, source maps, and `OverlayDoc` | (types) |
-| `@m/parser` | ✅ all active family parsers + source spans where editable; flowchart printer/property round-trip; DOT import; located `ParseError.positions` | 135 |
-| `@m/layout` | ✅ all active family layouts; ELK graph families, pure grid/nested/radial/timeline/Gantt engines, relax, state-note side placement, property tests | 88 |
-| `@m/renderer` | ✅ Scene -> display list -> canvas/SVG/DOT (markers, compartments, decorations, pies/donuts, light/dark/sketch themes); html-in-canvas detect | 65 |
-| `@m/builder` | ✅ hit-test, selection, overlays, grouping, source patching, connect/delete/relabel/reshape helpers, overlay codec (+ property-based) | 68 |
-| `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon(61)/gilbarbara/k8s · CNCF (LFS) | 15 |
-| `@m/collab` | ✅ Yjs overlay/source CRDT, presence, WebSocket transport, optional relay with persistence/auth/RBAC, role-aware client hooks | 58 |
-| `@m/app` | ✅ renders + two-way edits all fifteen families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regenerate/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness with phone-width/family-polish shots + per-family pipeline goldens + PNG/PDF/SVG/DOT export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + default-off collab UI + backend-free Pages demo at `/demo/` | 26 vitest + 140 Playwright |
+Per-module test counts are intentionally omitted here — they rot. Run `make test` (or `make cov`) at
+the root or in any module for the live numbers; `make cov` also enforces the per-module thresholds.
+
+| module | state |
+|--------|-------|
+| `@m/std` | ✅ Result + monad combinators (map/flatMap/mapErr/match/all/tap), Brand, `Coordinate`/`Length` geometry (validated), Logger + `stamp()`, `brand()`/`decode()` (+ property laws, shell tests; 100% cov) |
+| `@m/contracts` | ✅ all active family ASTs, Scene IR (nodes/edges/wedges/decorations), overrides, groups, source maps, and `OverlayDoc` (types only — no tests) |
+| `@m/parser` | ✅ all active family parsers + source spans where editable; flowchart printer/property round-trip; DOT import; located `ParseError.positions` |
+| `@m/layout` | ✅ all active family layouts; ELK graph families, pure grid/nested/radial/timeline/Gantt engines, relax, state-note side placement, property tests |
+| `@m/renderer` | ✅ Scene -> display list -> canvas/SVG/DOT (markers, compartments, decorations, pies/donuts, light/dark/sketch themes); html-in-canvas detect |
+| `@m/builder` | ✅ hit-test, selection, overlays, grouping, source patching, connect/delete/relabel/reshape helpers, overlay codec (+ property-based) |
+| `@m/icons` | ✅ registry/resolver · per-icon categories (incl. `brands`) · built-in arch+BPMN+sketch · in-node rendering · user-loaded packs · vendored simple-icons/devicon/gilbarbara/k8s · CNCF (LFS) |
+| `@m/collab` | ✅ Yjs overlay/source CRDT, presence, WebSocket transport, optional relay with persistence/auth/RBAC, role-aware client hooks |
+| `@m/app` | ✅ renders + two-way edits all fifteen families (incl. flowchart edge labels) via an inline editor overlay; in-node icons (+override) + load-pack + icon-picker drawer; HiDPI; persisted dark/light + sketch; flowchart drag/relax/regenerate/add/connect/delete-node+edge. **Designed shell** (drafting-table chrome, inline error/status surface incl. parse line:col + click-to-locate, examples menu, family-aware controls) + persisted source + `make shots` UI harness with phone-width/family-polish shots + per-family pipeline goldens + PNG/PDF/SVG/DOT export + shareable links + canvas zoom/fit/pan + overview minimap + multi-node drag (move-together, connectors re-anchor) + element grouping (group/ungroup/lock, move-whole-group, outlines) + persisted overlay (positions + groups) + default-off collab UI + backend-free Pages demo at `/demo/` (Playwright e2e, not vitest) |
 
 User stories and the UX/API test coverage contract live in
 [`docs/user_stories.md`](docs/user_stories.md). New user-facing behavior should update that file and

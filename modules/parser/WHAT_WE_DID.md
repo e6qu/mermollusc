@@ -224,3 +224,31 @@
   the grammar.
 - Pie headers now accept a local `donut` modifier alongside `showData` (`pie donut`, `pie showData
   donut`, or the reverse order), and `PieAst.donut` carries that through the pipeline. +integration test.
+- Centralised the CST-access boundary: new `src/shell/cst.ts` is the single commented shell adapter
+  exporting `Children`, `childTokens`, `childNodes`, `imageOf`, `spanOf`. The ~16 sibling parse files
+  each used to re-declare a local `Children` dict type plus the `as IToken[]`/`as CstNode[]` casts
+  (~31 casts, 16 copies); they now import the helpers by name. Pure DRY — the `?? []` idiom is kept
+  (an absent optional child is `[]`, the correct value, not a `Result`), and CST access stays out of
+  `decode()` (the CST is chevrotain's own typed union, not external `unknown`). The two sanctioned `as`
+  casts now live in one place. +`cst.test.ts` (fast-check parity: the centralised helpers vs the old
+  inline casts on arbitrary children dicts + real lexer tokens).
+- `parseDiagram` header sniff: replaced the whole-document `split/map/find` with a forward line-scan
+  (`firstMeaningfulLine`) that stops at the first trimmed non-empty, non-`%%` line — no longer trims
+  the entire document on every parse. `trim()`'s `\r`-stripping behaviour is preserved exactly.
+  +fast-check parity test (vs the old logic on arbitrary inputs) + hand-picked CRLF/comment/no-trailing-
+  newline cases.
+- Subgraph ordering O(S²)→O(S): the canonical-order walk used to rescan every subgraph at each
+  recursion level. Now a single pass buckets the subgraphs into `Map<NodeId|null, FlowSubgraph[]>` by
+  `parent` (insertion order preserved within each bucket), and `walk` reads its bucket directly. Output
+  is byte-identical (kept the `for…push`, no spread). +a depth-first nested/sibling-subgraph ordering
+  golden (+ print→parse fixed-point assertion).
+- New `parseDiagramWithSource(text): Result<ParsedWithSource, ParseError>` (+ exported `ParsedWithSource`
+  type): the same header sniff, but routes to each family's `*WithSource` parser so one pass yields both
+  the AST and the editable source spans — the app previously parsed every family twice (ast-only to
+  detect the family, then again for the source map). `ParsedWithSource` is a clean discriminated union
+  tagged by a **dedicated `family`** field (a closed union), because both `parse` and `parseDot` yield
+  `ast.kind === "flowchart"` — only `family` (`"flowchart"` vs `"dot"`) distinguishes them; every other
+  family's `family` equals its `ast.kind`. DOT has no source-span parser, so its variant carries an
+  empty `SourceMap`. All existing exports keep working. +`diagram-source.test.ts` (per-family tag +
+  one-pass AST parity with `parseDiagram` + DOT/flowchart discrimination + a flowchart-span check + a
+  fail-loud case).

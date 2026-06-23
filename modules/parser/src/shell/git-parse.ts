@@ -1,4 +1,6 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
+import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   GitBranch,
@@ -19,11 +21,6 @@ export interface ParsedGitGraph {
   readonly ast: GitGraphAst;
   readonly source: GitGraphSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 const unquote = (s: string): string => s.slice(1, -1);
 // Inner span of a `"…"` token (between the quotes), derived from image length.

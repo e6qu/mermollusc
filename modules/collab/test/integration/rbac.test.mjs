@@ -11,16 +11,25 @@ describe("RBAC — role resolution", () => {
     expect(authorizeRoom({ user: null, room: "playground" })).toBe("editor");
   });
 
-  it("defaults an authenticated user with no roles claim to editor", () => {
+  it("fails closed by default: an authenticated user with no roles claim is denied", () => {
     const user = { sub: "u", tenant: null, roles: null };
-    expect(authorizeRoom({ user, room: "anything" })).toBe("editor");
+    expect(authorizeRoom({ user, room: "anything" })).toBeNull();
   });
 
-  it("can fail closed: defaultRole null denies a no-roles-claim user", () => {
+  it("dev posture: defaultRole editor grants a no-roles-claim user editor (auth off)", () => {
+    const devResolver = createClaimsRoleResolver({ defaultRole: "editor" });
+    const user = { sub: "u", tenant: null, roles: null };
+    expect(devResolver({ user, room: "anything" })).toBe("editor");
+    // an explicit per-room grant still works under the dev default
+    expect(devResolver({ user: { sub: "u", tenant: null, roles: { x: "owner" } }, room: "x" })).toBe(
+      "owner",
+    );
+  });
+
+  it("can fail closed: defaultRole null denies a no-roles-claim user, but honours explicit grants", () => {
     const denyByDefault = createClaimsRoleResolver({ defaultRole: null });
     const user = { sub: "u", tenant: null, roles: null };
     expect(denyByDefault({ user, room: "anything" })).toBeNull();
-    // an explicit per-room grant still works under the fail-closed default
     expect(denyByDefault({ user: { sub: "u", tenant: null, roles: { x: "editor" } }, room: "x" })).toBe(
       "editor",
     );

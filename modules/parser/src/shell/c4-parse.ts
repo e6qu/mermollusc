@@ -1,4 +1,6 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens, imageOf } from "./cst.js";
+import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   C4Ast,
@@ -20,12 +22,6 @@ export interface ParsedC4 {
   readonly source: C4Source;
 }
 
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
-const imageOf = (c: Children, name: string): string | null =>
-  childTokens(c, name)[0]?.image ?? null;
 const unquote = (s: string): string => s.slice(1, -1);
 
 // Inner span of a `"…"` token (offsets of the text between the quotes), so a relabel patch

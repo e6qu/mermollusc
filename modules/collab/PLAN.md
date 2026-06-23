@@ -30,13 +30,22 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 - `overlay.replaceOverrides(overrides)` applies whole-map override replacement through the same
   decoded Y.Map storage as point edits, so local and collaborative documents match the app's regenerate
   semantics.
+- Session also exposes `onStatusChange(listener)` (a closed-union `CollabStatus`: `synced` /
+  `overlay-rejected`) and accepts an optional `logger: Logger<CollabEvent>` (`"overlay-decode-rejected"`)
+  so a corrupt remote overlay is logged + surfaced instead of throwing.
 - Transport: `connectTransport(session, socket, hooks?)` / `webSocketTransport(url)` /
   `connectWebSocket(session, url, hooks?)` — frames document, presence, and server→client control
-  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket.
-- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom })`),
-  `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability seam), `auth.mjs`
-  (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and `rbac.mjs`
-  (`createClaimsRoleResolver` / `canWrite` — per-document roles + tenant isolation).
+  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket. Plus
+  `reconnectingWebSocketTransport(url, deps)` — a self-healing `CollabSocket` (mints a fresh inner
+  socket on drop, backoff + jitter + cap, re-exchanges state on reopen, fires the consumer `onClose`
+  only when the budget is exhausted) surfacing a closed-union `ReconnectStatus`
+  (`reconnecting`/`reconnected`/`disconnected`); `ReconnectDeps` injects `schedule`/`random`/`mkSocket`.
+- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom, rateLimit,
+  now })` — crash-guarded, rate-limited, tag-allow-listed, room-name-validated, flushes on
+  SIGINT/SIGTERM), `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability
+  seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and
+  `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default / `canWrite` —
+  per-document roles + tenant isolation).
 
 ## Design notes
 

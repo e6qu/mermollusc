@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
 import { brand, err, ok, type Result } from "@m/std";
 import type {
   EdgeKind,
@@ -13,10 +14,6 @@ import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { dotParser } from "./dot-grammar.js";
 import { dotLexer } from "./dot-tokens.js";
-
-type Children = Record<string, CstElement[] | undefined>;
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 // A DOT id is a bare identifier, a quoted string (unescaped), or a numeral.
 const idText = (node: CstNode): string => {

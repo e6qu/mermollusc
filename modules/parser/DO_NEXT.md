@@ -17,6 +17,11 @@
   (`tickInterval 2weeks`/`3days` → axis gridline/caption spacing; `GanttAst.tickIntervalDays`, a required
   `PositiveInt` the parser defaults to 7). Gantt is now at full editing parity (relabel + delete) with the
   other families.
+- **App can drop the double parse.** `parseDiagramWithSource` now returns each family's `{ family, ast,
+  source }` in one pass. `app/playground/src/main.ts` still parses twice per render (`parseDiagram` to
+  detect the family, then a per-family `parse*WithSource` for the source map); it can switch to one
+  `parseDiagramWithSource` call and `switch (parsed.family)` for the source arms. (App-side change —
+  out of this module's scope.)
 - `ParseError.positions` now carries `{ offset, length }` per error (lexer + recognition); could add
   a coarse expected-token hint for recognition errors to make messages friendlier.
 - Grow the subset: quoted labels, more link styles. *(stadium `([…])` + circle `((…))` shapes and

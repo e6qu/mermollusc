@@ -2,6 +2,7 @@ import { ok, point, rect, twoOrMore, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type { Scene, SceneEdge, SceneNode, TimelineAst, TimelinePeriod } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { widestLine } from "./measure.js";
 
 const PAD = 14;
 const MIN_COL_W = 92;
@@ -17,8 +18,6 @@ const MARGIN = 16;
 // `<br>` becomes a newline in labels (the parser already converted it), so a cell's width is the
 // widest line and its height grows per extra line.
 const lineCount = (text: string): number => text.split("\n").length;
-const widestLine = (text: string, measure: MeasureText): number =>
-  Math.max(0, ...text.split("\n").map((l) => measure(l)));
 const boxHeight = (text: string, base: number): number => base + (lineCount(text) - 1) * LINE_H;
 
 const colWidth = (period: TimelinePeriod, measure: MeasureText): number =>

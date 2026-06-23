@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, positive, type Result } from "@m/std";
 import type { PieAst, PieSlice, PieSliceId, PieSource, TextSpan } from "@m/contracts";
 import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
@@ -10,10 +11,6 @@ export interface ParsedPie {
   readonly ast: PieAst;
   readonly source: PieSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 const unquote = (s: string): string => s.slice(1, -1);
 const innerSpan = (t: IToken): TextSpan => ({

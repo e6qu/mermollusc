@@ -27,7 +27,16 @@ import {
   ungroup,
 } from "@m/builder";
 import type { Groups, LayoutOverrides, OverlayDoc } from "@m/contracts";
-import { brand, isOk, type Point, type Size } from "@m/std";
+import {
+  brand,
+  type DecodeError,
+  isErr,
+  type Logger,
+  type Point,
+  type Result,
+  type Size,
+  stamp,
+} from "@m/std";
 
 // A collaborative document: the diagram **source text** (a `Y.Text`) and the sidecar **overlay**
 // (overrides + groups, in two `Y.Map`s) share one `Y.Doc`, so concurrent edits merge as a CRDT. The
@@ -37,6 +46,15 @@ import { brand, isOk, type Point, type Size } from "@m/std";
 // `overlay` satisfies the same `OverlayDoc` port as the local single-user document, so the app swaps
 // one for the other without touching call sites. Transport is left to the caller: `state`/`applyUpdate`
 // /`onUpdate` are the binary-sync seam a WebSocket server (or an in-memory test) wires together.
+// Closed event union for this module's structured logging (the @m/std `Logger` contract). The core
+// never logs; the session shell logs loudly at the boundary where peer data is decoded.
+export type CollabEvent = "overlay-decode-rejected";
+
+// A surfaced session-health status the app can show. `synced` is the healthy steady state; a corrupt
+// remote overlay that fails to decode drops us to `overlay-rejected` (last-good state is retained, the
+// bad update is ignored) so the UI can warn instead of the session silently diverging.
+export type CollabStatus = "synced" | "overlay-rejected";
+
 export interface CollabSession {
   readonly overlay: OverlayDoc;
 
@@ -58,6 +76,9 @@ export interface CollabSession {
   onSourceChange(listener: (text: string) => void): () => void;
   // Fires on *remote* / undo-driven overlay changes (local mutations update synchronously in place).
   onOverlayChange(listener: () => void): () => void;
+  // Fires when the session health status changes (e.g. a remote overlay failed to decode and was
+  // dropped, keeping last-good state). The app surfaces this to the user. Returns an unsubscribe fn.
+  onStatusChange(listener: (status: CollabStatus) => void): () => void;
 
   // Presence (awareness). `setLocalUser` labels this client (the colour/name remote cursors show).
   // The local text cursor is tracked into awareness automatically by the source binding.
@@ -93,6 +114,9 @@ export const createCollabSession = (opts: {
   readonly initialGroups: Groups;
   readonly initialSource: string;
   readonly save: (serialized: string) => void;
+  // Loud-logging sink for boundary failures (a corrupt remote overlay). Omitted in tests that don't
+  // assert on logs; the app passes the @m/std `consoleLogger`.
+  readonly logger?: Logger<CollabEvent>;
 }): CollabSession => {
   const doc = new Doc();
   const yText: YText = doc.getText("source");
@@ -113,7 +137,10 @@ export const createCollabSession = (opts: {
   // Mints fresh group ids; monotonic for the document's lifetime.
   let groupSeq = 0;
 
-  const materialize = (): { overrides: LayoutOverrides; groups: Groups } => {
+  // Materialise the branded view from the Y.Maps through the shared Zod decoder. Pure: it RETURNS the
+  // decode Result (never throws), so the caller — a Yjs observer running on a remote update — can keep
+  // last-good state and surface the failure rather than the throw escaping the observer and crashing.
+  const materialize = (): Result<{ overrides: LayoutOverrides; groups: Groups }, DecodeError> => {
     const overrides: Array<[string, unknown]> = [];
     yOverrides.forEach((v, k) => {
       overrides.push([k, v]);
@@ -122,11 +149,7 @@ export const createCollabSession = (opts: {
     yGroups.forEach((v, k) => {
       groups.push([k, v]);
     });
-    const decoded = decodeOverlay({ overrides, groups });
-    if (!isOk(decoded)) {
-      throw new Error(`collab: overlay decode failed — ${decoded.error.issues.join("; ")}`);
-    }
-    return { overrides: decoded.value.overrides, groups: decoded.value.groups };
+    return decodeOverlay({ overrides, groups });
   };
 
   const writeOverrides = (next: LayoutOverrides): void => {
@@ -163,16 +186,33 @@ export const createCollabSession = (opts: {
   const overlayListeners = new Set<() => void>();
   const sourceListeners = new Set<(text: string) => void>();
   const updateListeners = new Set<(update: Uint8Array) => void>();
+  const statusListeners = new Set<(status: CollabStatus) => void>();
+  let status: CollabStatus = "synced";
 
   const notifyOverlay = (): void => {
     for (const l of overlayListeners) l();
   };
+  const setStatus = (next: CollabStatus): void => {
+    if (status === next) return;
+    status = next;
+    for (const l of statusListeners) l(next);
+  };
 
   // Remote or undo/redo edits (origin ≠ LOCAL) rebuild the cache from the Y.Maps; local edits already
-  // set `cache` in place, so re-materialising them would be wasted work.
+  // set `cache` in place, so re-materialising them would be wasted work. The rebuild can fail if a peer
+  // sent a corrupt overlay (decode rejects); rather than throw out of this Yjs observer (which would
+  // crash the session), we log loudly, surface a status, and KEEP last-good `cache` — so a malicious or
+  // buggy peer degrades to a warning, not a desync.
   const onMapChange = (origin: unknown): void => {
     if (origin === LOCAL) return;
-    cache = materialize();
+    const decoded = materialize();
+    if (isErr(decoded)) {
+      opts.logger?.log(stamp("error", "collab", "overlay-decode-rejected"));
+      setStatus("overlay-rejected");
+      return;
+    }
+    cache = decoded.value;
+    setStatus("synced");
     notifyOverlay();
   };
   // Named so `destroy()` can detach them — `Y.Doc.destroy()` does not remove type observers, so leaving
@@ -218,7 +258,15 @@ export const createCollabSession = (opts: {
       cache = { overrides, groups: cache.groups };
     },
     groupNodes: (units) => {
-      const next = group(cache.groups, brand<string, "GroupId">(`g${groupSeq++}`), units);
+      // Namespace the minted id with this client's awareness clientID so two collaborators grouping at
+      // the same moment can't both mint `g0` and overwrite each other in the shared map. The decoder
+      // accepts any `z.string()`, and no consumer parses the suffix numerically, so the richer id is a
+      // drop-in.
+      const next = group(
+        cache.groups,
+        brand<string, "GroupId">(`g${awareness.clientID}-${groupSeq++}`),
+        units,
+      );
       writeGroups(next);
       cache = { overrides: cache.overrides, groups: next };
     },
@@ -298,6 +346,10 @@ export const createCollabSession = (opts: {
       overlayListeners.add(listener);
       return () => overlayListeners.delete(listener);
     },
+    onStatusChange: (listener) => {
+      statusListeners.add(listener);
+      return () => statusListeners.delete(listener);
+    },
     setLocalUser: (user) =>
       awareness.setLocalStateField("user", { name: user.name, color: user.color }),
     state: () => encodeStateAsUpdate(doc),
@@ -328,6 +380,7 @@ export const createCollabSession = (opts: {
       overlayListeners.clear();
       sourceListeners.clear();
       updateListeners.clear();
+      statusListeners.clear();
       awareness.destroy();
       undoManager.destroy();
       doc.destroy();

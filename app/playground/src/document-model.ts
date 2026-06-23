@@ -24,6 +24,18 @@ interface OverlaySnapshot {
 
 const HISTORY_LIMIT = 100;
 
+// Group ids are minted `g<n>`. Seed the counter past any id already in the map, so a reload (or a
+// `replace` from a persisted/shared overlay) can never re-mint an id that's already taken and silently
+// overwrite an existing group.
+const nextGroupSeqFrom = (groups: Groups): number => {
+  let max = -1;
+  for (const id of groups.keys()) {
+    const digits = /^g(\d+)$/.exec(id)?.[1];
+    if (digits !== undefined) max = Math.max(max, Number(digits));
+  }
+  return max + 1;
+};
+
 // The local, single-user overlay document. State lives in closure variables (the previous module-level
 // `overrides`/`groups`/`groupSeq`/`undoStack`/`redoStack`), and `save` is injected so this module never
 // touches `localStorage` directly — the app wires the storage write, and a collab backend would wire a
@@ -35,8 +47,8 @@ export const createLocalDocument = (opts: {
 }): OverlayDoc => {
   let overrides: LayoutOverrides = opts.initialOverrides;
   let groups: Groups = opts.initialGroups;
-  // Mints fresh group ids; monotonic for the document's lifetime.
-  let groupSeq = 0;
+  // Mints fresh group ids; monotonic for the document's lifetime, seeded past any pre-existing ids.
+  let groupSeq = nextGroupSeqFrom(opts.initialGroups);
   let undoStack: OverlaySnapshot[] = [];
   let redoStack: OverlaySnapshot[] = [];
 
@@ -81,6 +93,7 @@ export const createLocalDocument = (opts: {
     replace: (nextOverrides, nextGroups) => {
       overrides = nextOverrides;
       groups = nextGroups;
+      groupSeq = Math.max(groupSeq, nextGroupSeqFrom(nextGroups));
     },
     record: () => {
       undoStack.push(snapshot());

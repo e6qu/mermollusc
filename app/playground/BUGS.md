@@ -1,5 +1,29 @@
 # @m/app (playground) — bugs
 
+Resolved (multi-dimension audit omnibus, 2026-06-23):
+
+- ~~**Any keystroke wiped all manual canvas layout (unrecoverable).**~~ Fixed — single-user text edits
+  ran `clearOverrides()` + `clearHistory()` every render, so editing one node's label discarded every
+  dragged/resized position and the overlay undo stack. `renderFromText` now prunes only the
+  overrides/groups whose node ids the edit actually removed (after a successful layout) and records the
+  prune for undo; collab is unchanged (the room owns the overlay). Covered by `audit-omnibus.spec`.
+- ~~**Generic toolbar affordances corrupted families that couldn't parse them.**~~ Fixed — Connect
+  injected the flowchart `-->` arrow into gitGraph/timeline/mindmap/pie and the icon picker inserted
+  `icon "…"` on flowchart/C4, greying the working diagram. A per-family capability record
+  (`familyAffordances`) now disables Connect/Icons with a per-family reason where the grammar rejects
+  them, and `appendEdge`/`insertIconRef` no-op there as defence-in-depth.
+- ~~**A relabel/edge-label containing a closing delimiter wrote un-parseable source.**~~ Fixed — commits
+  validate via `@m/builder`'s `validateLabel`/`relabelNode` against the span's opening delimiter
+  (`]`/`)`/`}`/`|`/`"`/newline) and reject loudly (status + announce) instead of corrupting.
+- ~~**Share links dropped the entire manual overlay.**~~ Fixed — `#share-link` now encodes
+  `&overlay=<serializeOverlay>` (single-user) so a recipient sees the same arrangement the image
+  exports already reproduce; the hash is parsed per-`&`-segment so a literal `+` in the source survives.
+- ~~**The CodeMirror editor was an unnamed textbox to screen readers.**~~ Fixed — it carries
+  `aria-label="Diagram source"`; the control-accessible-name e2e guard now also scans the editor and
+  form inputs (naming by label/title, never a field's own value).
+- ~~**Shortcut hints showed Mac-only glyphs to every platform, and additive-click was Mac-only.**~~
+  Fixed — `[data-mod]` chips swap `⌘/⌥/⇧` to Ctrl/Alt/Shift off Apple, and additive-click accepts Ctrl.
+
 Resolved (collab-era audit sweep):
 
 - ~~**The sequence Examples menu entry failed to parse.**~~ Fixed — the sample used

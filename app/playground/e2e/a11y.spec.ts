@@ -236,9 +236,26 @@ test("every visible interactive control has an accessible name", async ({ page }
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const unnamed = await page.evaluate(() => {
-    const name = (el: Element): string =>
-      (el.getAttribute("aria-label") || el.getAttribute("title") || el.textContent || "").trim();
-    return Array.from(document.querySelectorAll("button, select, a[href]"))
+    const labelFor = (el: Element): string => {
+      const id = el.getAttribute("id");
+      const wrapping = el.closest("label")?.textContent ?? "";
+      const associated = id === null ? "" : (document.querySelector(`label[for="${id}"]`)?.textContent ?? "");
+      return `${wrapping} ${associated}`.trim();
+    };
+    const name = (el: Element): string => {
+      const labelled = (
+        el.getAttribute("aria-label") ||
+        el.getAttribute("title") ||
+        labelFor(el)
+      ).trim();
+      // A text field's own content is its *value*, never its name — name it by aria-label/title/<label>.
+      const isField =
+        el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.getAttribute("role") === "textbox";
+      return (isField ? labelled : labelled || (el.textContent ?? "")).trim();
+    };
+    return Array.from(
+      document.querySelectorAll('button, select, a[href], input, textarea, [role="textbox"]'),
+    )
       .filter((el) => (el as HTMLElement).offsetParent !== null && name(el) === "")
       .map((el) => `${el.tagName.toLowerCase()}#${el.id || "(no id)"}`);
   });

@@ -8,9 +8,13 @@ test("the icon picker filters and inserts an icon override at the caret", async 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  // A network node line; place the caret at its end so the inserted override lands on that line.
+  // A network node line (icon overrides apply to network/cloud/block); place the caret at the end of
+  // the document so the inserted override lands on that node line and the source stays valid.
   await setSource(page, 'network\n  server web "Web"');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ArrowRight");
 
   await page.locator("#icons-toggle").click();
   await expect(page.locator("#icon-filter")).toBeFocused();
@@ -35,6 +39,10 @@ test("the icon picker filters and inserts an icon override at the caret", async 
 test("the icon filter reports when nothing matches", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  // The icon picker is only offered on families that accept an icon override (network/cloud/block).
+  await setSource(page, 'network\n  server web "Web"');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.locator("#icons-toggle").click();
   await page.locator("#icon-filter").fill("zzz-no-such-icon");

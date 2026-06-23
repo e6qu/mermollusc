@@ -55,5 +55,5 @@
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
   only, the default `paint` path is always used.
-- tests: 14 passing (display-list unit incl. icon/edge-label anchor; paint mock — drawImage/theme/sketch; html-in-canvas
-  detect; `toSvg` — shapes/escaping/icon `<image>`).
+- tests (see `make test`): display-list unit incl. icon/edge-label anchor; paint mock —
+  drawImage/theme/sketch; html-in-canvas detect; `toSvg` — shapes/escaping/icon `<image>`.

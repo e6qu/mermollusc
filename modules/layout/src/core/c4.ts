@@ -11,6 +11,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { clampedWidth } from "./measure.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
@@ -31,11 +32,8 @@ interface Box {
 const sceneLabel = (el: C4Element): string =>
   el.description === null ? el.label : `${el.label}\n${el.description}`;
 
-const widestLine = (text: string, measure: MeasureText): number =>
-  text.split("\n").reduce((w, line) => Math.max(w, measure(line)), 0);
-
 const leafWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_LEAF_WIDTH, widestLine(label, measure) + LABEL_PADDING);
+  clampedWidth(label, measure, MIN_LEAF_WIDTH, LABEL_PADDING);
 
 const shapeOf = (kind: C4ElementKind): NodeShape =>
   kind === "boundary" ? "container" : kind === "person" ? "round" : "rect";

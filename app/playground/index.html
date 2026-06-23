@@ -629,7 +629,7 @@
       .drawer-backdrop[hidden] { display: none; }
       .picker-head { display: flex; align-items: center; justify-content: space-between; }
       .picker-head strong { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
-      #icons-close { padding: 2px 9px; }
+      #icons-close { width: 28px; height: 28px; padding: 0; }
       #icon-filter {
         font-family: var(--font-mono);
         font-size: 13px;
@@ -735,6 +735,36 @@
       }
       .help-cols dd { margin: 0; font-size: 13px; color: var(--ink-soft); }
       @media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
+      .help-syntax { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+      .help-syntax h4 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--primary-strong);
+      }
+      .help-syntax-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-soft); }
+      #syntax-list { display: grid; gap: 6px; }
+      #syntax-list details { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+      #syntax-list summary {
+        cursor: pointer;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      #syntax-list pre {
+        margin: 0;
+        padding: 8px 12px;
+        overflow: auto;
+        border-top: 1px solid var(--line);
+      }
+      #syntax-list code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        white-space: pre;
+        color: var(--ink);
+      }
 
       @media (max-width: 760px) {
         .app { grid-template-rows: auto minmax(0, 1fr) auto; }
@@ -950,7 +980,7 @@
           <canvas
             id="minimap"
             class="minimap"
-            role="button"
+            role="application"
             aria-label="Diagram overview. Use arrow keys to pan the stage."
             tabindex="0"
             title="Overview — click or drag to navigate"
@@ -966,17 +996,26 @@
           <span id="task-status-text">choose an example or edit the source</span>
         </span>
         <span class="hints">
-          <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>↑↓←→</kbd> nudge · <kbd>⇧-drag</kbd> box-select · <kbd>⌘A</kbd> all · <kbd>Del</kbd> remove · <kbd>⌘Z</kbd> undo layout
+          <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>↑↓←→</kbd> nudge ·
+          <kbd data-mod="shift">⇧</kbd>-drag box-select · <kbd data-mod="mod">⌘</kbd><kbd>A</kbd> all ·
+          <kbd>Del</kbd> remove · <kbd data-mod="mod">⌘</kbd><kbd>Z</kbd> undo (text in editor · layout
+          on canvas)
         </span>
       </footer>
-      <input id="inline-edit" type="text" spellcheck="false" hidden />
+      <input id="inline-edit" type="text" spellcheck="false" aria-label="Rename label" hidden />
       <div id="icon-backdrop" class="drawer-backdrop" hidden></div>
       <aside id="icon-picker" role="dialog" aria-modal="true" aria-label="Icon picker" hidden>
         <div class="picker-head">
           <strong>Insert icon</strong>
           <button id="icons-close" type="button" aria-label="Close icon picker">✕</button>
         </div>
-        <input id="icon-filter" type="text" spellcheck="false" placeholder="Filter by name…" />
+        <input
+          id="icon-filter"
+          type="text"
+          spellcheck="false"
+          aria-label="Filter icons by name"
+          placeholder="Filter by name…"
+        />
         <div id="icon-grid"></div>
       </aside>
       <div id="help-overlay" class="help-overlay" hidden>
@@ -990,9 +1029,9 @@
               <h4>Select</h4>
               <dl>
                 <dt>click</dt><dd>select node / edge</dd>
-                <dt>⇧ / ⌘ click</dt><dd>add to selection</dd>
-                <dt>⇧ drag</dt><dd>box-select</dd>
-                <dt>⌘A</dt><dd>select all</dd>
+                <dt><span data-mod="shift">⇧</span> / <span data-mod="mod">⌘</span> click</dt><dd>add to selection</dd>
+                <dt><span data-mod="shift">⇧</span> drag</dt><dd>box-select</dd>
+                <dt><span data-mod="mod">⌘</span> A</dt><dd>select all</dd>
                 <dt>Esc</dt><dd>clear selection</dd>
               </dl>
             </section>
@@ -1000,12 +1039,12 @@
               <h4>Edit</h4>
               <dl>
                 <dt>drag</dt><dd>move node(s) — snaps to alignment</dd>
-                <dt>⌥ drag</dt><dd>connect to another node</dd>
+                <dt><span data-mod="alt">⌥</span> drag</dt><dd>connect to another node</dd>
                 <dt>corner drag</dt><dd>resize</dd>
                 <dt>double-click</dt><dd>rename label</dd>
-                <dt>↑ ↓ ← →</dt><dd>nudge (⇧ = larger)</dd>
-                <dt>⌘D</dt><dd>duplicate node(s)</dd>
-                <dt>⌘C / ⌘V</dt><dd>copy / paste node(s)</dd>
+                <dt>↑ ↓ ← →</dt><dd>nudge (<span data-mod="shift">⇧</span> = larger)</dd>
+                <dt><span data-mod="mod">⌘</span> D</dt><dd>duplicate node(s)</dd>
+                <dt><span data-mod="mod">⌘</span> C / <span data-mod="mod">⌘</span> V</dt><dd>copy / paste node(s)</dd>
                 <dt>S</dt><dd>cycle node shape</dd>
                 <dt>Del</dt><dd>remove node / edge</dd>
               </dl>
@@ -1013,7 +1052,7 @@
             <section>
               <h4>Layout &amp; groups</h4>
               <dl>
-                <dt>⌘Z / ⌘⇧Z</dt><dd>undo / redo layout</dd>
+                <dt><span data-mod="mod">⌘</span> Z / <span data-mod="mod">⌘</span> <span data-mod="shift">⇧</span> Z</dt><dd>undo / redo layout</dd>
                 <dt>Group / Ungroup</dt><dd>bundle the selection</dd>
                 <dt>Lock</dt><dd>pin a group in place</dd>
                 <dt>Arrange</dt><dd>align / distribute</dd>
@@ -1022,7 +1061,7 @@
             <section>
               <h4>View</h4>
               <dl>
-                <dt>⌘ wheel</dt><dd>zoom (at the cursor)</dd>
+                <dt><span data-mod="mod">⌘</span> wheel</dt><dd>zoom (at the cursor)</dd>
                 <dt>drag canvas</dt><dd>pan</dd>
                 <dt>Fit</dt><dd>fit diagram to the stage</dd>
               </dl>
@@ -1033,12 +1072,20 @@
                 <dt>Tab</dt><dd>focus the diagram list</dd>
                 <dt>↑ ↓ ← →</dt><dd>move between nodes and edges</dd>
                 <dt>Enter</dt><dd>rename the active item</dd>
-                <dt>⌥ ↑ ↓ ← →</dt><dd>move the active node (⇧ = larger)</dd>
+                <dt><span data-mod="alt">⌥</span> ↑ ↓ ← →</dt><dd>move the active node (<span data-mod="shift">⇧</span> = larger)</dd>
                 <dt>c … c</dt><dd>connect nodes: source, then target</dd>
                 <dt>Del</dt><dd>remove the active item</dd>
               </dl>
             </section>
           </div>
+          <section class="help-syntax">
+            <h4>Syntax by family</h4>
+            <p class="help-syntax-hint">
+              Each family's starter syntax — the same diagrams the Examples menu loads. Expand one to
+              see how it's written.
+            </p>
+            <div id="syntax-list"></div>
+          </section>
         </div>
       </div>
     </div>

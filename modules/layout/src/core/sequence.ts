@@ -11,6 +11,7 @@ import type {
   SequenceAst,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { clampedWidth } from "./measure.js";
 
 const ACTOR_HEIGHT = 40;
 const ACTOR_GAP = 60;
@@ -21,7 +22,7 @@ const MESSAGE_GAP = 40;
 const BOTTOM_PADDING = 30;
 
 const actorWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_ACTOR_WIDTH, measure(label) + LABEL_PADDING);
+  clampedWidth(label, measure, MIN_ACTOR_WIDTH, LABEL_PADDING);
 
 const MESSAGE_STYLE: Record<MessageKind, { readonly stroke: EdgeStroke; readonly toEnd: EdgeEnd }> =
   {

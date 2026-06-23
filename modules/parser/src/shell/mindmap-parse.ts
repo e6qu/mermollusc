@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode } from "chevrotain";
+import { childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   MindmapAst,
@@ -17,9 +18,6 @@ export interface ParsedMindmap {
   readonly ast: MindmapAst;
   readonly source: MindmapSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
 
 // `id` (ignored — mindmap nodes aren't cross-referenced) optionally precedes a shape delimiter; the
 // inner text is the label. The circle `((…))` alternative must precede the rounded `(…)` one.

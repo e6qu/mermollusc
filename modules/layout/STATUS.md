@@ -63,8 +63,16 @@
     `ClassArrow` ends; dashed for the `..` operators.
   - **Requirement (`layoutRequirement`):** a `«kind»` tag (own compartment) + `key: value` rows;
     open-arrow edges, solid for `contains` / dashed for the rest.
-- tests: 29 unit + 13 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- **Shared core helpers:** `core/measure.ts` (`widestLine` = widest measured line via `reduce`, total
+  on a pathological many-line label; `clampedWidth(text, measure, min, pad)` = `max(min, widestLine+pad)`)
+  and `core/grid.ts` (`gridGeometry(items, columns, cellWidth, cellHeight, gap)` → each item paired with
+  its row-major cell corner + the overall extent). The grid skeleton (block/network) and the per-family
+  `*Width`/`widestLine` idioms (block/network/cloud/c4/transform/sequence/mindmap/timeline) now route
+  through these, each keeping its own `MIN_*`/`PAD` constants. The shell error idiom in `elk.ts` uses
+  `messageOf` from `@m/std`.
+- tests: 82 unit + 15 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
-  endpoints and dangling parents; state role restoration; property-based: block/network grids **and the ELK flowchart path**
-  preserve ids + fit every box inside the extent).
+  endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`
+  (bounds + totality), `gridGeometry` (order/placement/containment), block/network grids **and the ELK
+  flowchart path** preserve ids + fit every box inside the extent).
