@@ -69,8 +69,7 @@ import type {
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
-import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
-import type { Theme } from "@m/renderer";
+import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
   assertNever,
   brand,
@@ -103,11 +102,10 @@ import {
   hashValue,
   loadOverlay,
   loadSource,
-  loadThemeChoice,
   saveOverlay,
   saveSource,
-  saveThemeChoice,
 } from "./persistence.js";
+import { createThemeController } from "./theme.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
@@ -458,30 +456,13 @@ const redoOverlay = (): void => {
   }
 };
 
-// Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
-const prefersDark = (): boolean =>
-  window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+// Light/dark + sketch state and the active-theme resolution live in `./theme.ts`. Forced-colors stays
+// here (the minimap and painter read it too). `activeTheme` is aliased so its many call sites are
+// unchanged.
 const forcedColorsQuery = window.matchMedia?.("(forced-colors: active)") ?? null;
 const forcedColors = (): boolean => forcedColorsQuery?.matches ?? false;
-const storedTheme = loadThemeChoice();
-let theme: Theme =
-  storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
-// Sketch mode is orthogonal to light/dark — composed onto the active theme at paint time.
-let sketch = false;
-const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
-const forcedTheme = (font: string): Theme => ({
-  background: "Canvas",
-  nodeFill: "Canvas",
-  stroke: "CanvasText",
-  text: "CanvasText",
-  font,
-  sketch: false,
-});
-const activeTheme = (): Theme => {
-  const font = sketch ? SKETCH_FONT : theme.font;
-  if (forcedColors()) return forcedTheme(font);
-  return sketch ? { ...theme, sketch: true, font } : theme;
-};
+const themeCtl = createThemeController({ forcedColors });
+const activeTheme = themeCtl.activeTheme;
 
 // Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
 // rather than a char-width guess. Measures with the *active* theme font — the sketch font is wider
@@ -823,7 +804,7 @@ const toggleGroupSelection = (id: GroupId): void => {
 // Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
 const drawGroupOutlines = (shown: Scene): void => {
   if (doc.groups().size === 0) return;
-  const dark = theme === darkTheme;
+  const dark = themeCtl.isDark();
   for (const box of groupBoxes(shown)) {
     const g = doc.groups().get(box.id);
     if (g === undefined) continue;
@@ -1447,7 +1428,7 @@ const minimapView = createMinimap({
   getRender: () => lastRender,
   getViewScale: () => viewScale,
   activeTheme,
-  isDark: () => theme === darkTheme,
+  isDark: themeCtl.isDark,
   forcedColors,
   scrollToLogical,
 });
@@ -3117,15 +3098,14 @@ regenBtn.addEventListener("click", () => {
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
 // `data-theme` attribute drives the page chrome so it stays cohesive with the canvas surface.
 const syncThemeLabel = (): void => {
-  themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
-  document.documentElement.setAttribute("data-theme", theme === darkTheme ? "dark" : "light");
+  themeBtn.textContent = themeCtl.toggleLabel();
+  document.documentElement.setAttribute("data-theme", themeCtl.isDark() ? "dark" : "light");
 };
 themeBtn.addEventListener("click", () => {
-  theme = theme === defaultTheme ? darkTheme : defaultTheme;
-  saveThemeChoice(theme === darkTheme ? "dark" : "light");
+  themeCtl.toggleTheme();
   syncThemeLabel();
   paintScene();
-  announce(`${theme === darkTheme ? "dark" : "light"} theme`);
+  announce(`${themeCtl.isDark() ? "dark" : "light"} theme`);
 });
 forcedColorsQuery?.addEventListener("change", () => {
   void renderFromText(editor.value());
@@ -3169,10 +3149,10 @@ exampleEl.addEventListener("change", () => {
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
 // handwriting font is wider than the base — nodes must resize to keep labels inside their boxes.
 sketchBtn.addEventListener("click", () => {
-  sketch = !sketch;
-  sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
+  themeCtl.toggleSketch();
+  sketchBtn.textContent = themeCtl.isSketch() ? "Crisp" : "Sketch";
   void renderFromText(editor.value());
-  announce(sketch ? "sketch mode" : "crisp mode");
+  announce(themeCtl.isSketch() ? "sketch mode" : "crisp mode");
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
