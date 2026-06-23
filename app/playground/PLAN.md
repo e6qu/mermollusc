@@ -8,7 +8,8 @@ canvas, and hosts the e2e / golden tests.
 - Mount the builder onto a canvas; provide the text editor and the diagram surface, with a cohesive
   computational-workbench shell (command groups, source/input panel, output stage, status/error
   surface, family-aware controls) that remains usable on narrow viewports by stacking the editor and
-  stage instead of page-level scrolling sideways.
+  stage instead of page-level scrolling sideways. Task-based game inspiration belongs in functional
+  guidance and interaction affordances only; exported diagram styling stays professional and clean.
 - Wire family-specific structural edits from canvas selection back into the source text.
 - Keep inline canvas editors aligned with the renderer's displayed geometry.
 - Treat group outlines as first-class selection affordances over the sidecar group model.

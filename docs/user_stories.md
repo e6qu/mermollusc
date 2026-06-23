@@ -38,6 +38,8 @@ Coverage labels:
 - Controls are family-aware: unavailable actions are disabled instead of pretending to work.
 - Accessibility and keyboard parity are product behavior, not optional polish.
 - Backend-free demo mode must never require or contact a collaboration relay.
+- The shell may use restrained task-based/game-like guidance for clarity, but diagram output and
+  exports stay professional and unthemed by that chrome.
 
 ## Source, Parse, And Render
 
@@ -75,6 +77,7 @@ Coverage labels:
 | id | story | acceptance criteria | coverage |
 |----|-------|---------------------|----------|
 | CAN-01 | As a visual editor, I can select nodes and edges directly on canvas. | Click selects the intended item; nodes win over nearby edges; group outlines are selectable. | Covered: hit tests, `groups.spec.ts`, navigator specs. |
+| CAN-01a | As a visual editor, selected edges are visibly actionable. | Edge selection draws a route highlight and label-anchor marker; task guidance names edge relabel/delete actions. | Covered: `audit-fixes.spec.ts`, shot `02-edge-selected`. |
 | CAN-02 | As a visual editor, I can drag one or more nodes without changing source structure. | Overlay positions update; connectors re-anchor; extent grows in all directions as needed. | Covered: `drag.spec.ts`, `undo.spec.ts`, builder override tests. |
 | CAN-03 | As a visual editor, I can resize a node. | Corner handles resize selected nodes, respect min size, re-anchor edges, and undo as one action. | Covered: `resize.spec.ts`, `snap.spec.ts`. |
 | CAN-04 | As a visual editor, I can box-select, group, lock, move, label, and ungroup nodes. | Groups persist, lock blocks movement, labels edit, stale groups prune when source changes. | Covered: `marquee.spec.ts`, `groups.spec.ts`, `persist-overlay.spec.ts`. |
@@ -90,10 +93,13 @@ Coverage labels:
 |----|-------|---------------------|----------|
 | VIEW-01 | As a reviewer, I can zoom, fit, reset, and pan the diagram. | Zoom level is reported; Fit contains tall diagrams; cursor-anchored zoom and empty-stage pan work. | Covered: `zoom.spec.ts`, responsive stage tests. |
 | VIEW-02 | As a reviewer, I get a minimap when the sheet overflows. | Minimap hides when unnecessary, shows viewport, clicks and drags pan the stage. | Covered: `minimap.spec.ts`. |
+| VIEW-02a | As a reviewer, the minimap tracks viewport changes. | Resizing or rotating the viewport recalculates overflow so the minimap appears or hides from the current layout. | Covered: `minimap.spec.ts`. |
 | VIEW-03 | As a reviewer, I can switch light/dark themes. | Theme changes canvas background and persists across reloads; shell controls remain readable in both modes. | Covered: `theme.spec.ts`, `theme-persist.spec.ts`, screenshot review. |
 | VIEW-04 | As a reviewer, I can switch Sketch/Crisp mode. | Sketch mode remeasures with the active font and redraws hand-drawn shapes without clipping labels. | Covered: `sketch.spec.ts`, renderer sketch tests, shots `04`, `28`, `30`. |
 | VIEW-05 | As a mobile user, I can use the shell on phone-width screens. | Grouped topbar/status controls wrap compactly, editor and stage stack, no page-level horizontal overflow, pan/zoom remain reachable, and the first viewport reaches the output panel. | Covered: `responsive.spec.ts`, shot `01-mobile`, screenshot review. |
+| VIEW-05a | As a mobile user, all topbar commands remain reachable without clipping. | Command groups wrap into usable rows at phone width; no topbar button or file command extends beyond the viewport. | Covered: `responsive.spec.ts`. |
 | VIEW-06 | As a maintainer, visual regressions are reviewable. | `make shots` clears stale PNGs, then captures representative UI states, help/modal flows, and family polish flows. | Covered: `app/playground/e2e-shots/shots.spec.ts`. |
+| VIEW-07 | As a visual editor, I get concise task guidance without losing workspace focus. | The status/task strip and stage HUD describe the next useful action for empty, node-selected, edge-selected, multi-selected, and stale states. | Covered: `audit-fixes.spec.ts`, shots `01-launch`, `02-node-selected`, `02-edge-selected`, `10-parse-error`. |
 
 ## Accessibility And Keyboard
 

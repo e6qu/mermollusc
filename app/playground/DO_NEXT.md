@@ -57,6 +57,10 @@
 - *(done)* Follow-up UX review pass with scoped agents: fixed stale selection/export states, minimap
   keyboard access, icon-drawer modality, mobile overflow, forced-colors rendering, and first-load
   parse-error recovery. Added focused e2e for each regression.
+- *(done)* Task-based UX polish pass: reviewed generated screenshots plus scoped agent findings, then
+  added a professional task HUD and restrained pixel/tactical chrome while keeping diagram output
+  clean. Fixed edge-selection visibility, zoom-stable interaction overlays, minimap resize refresh,
+  canvas cursors, and phone-width command clipping.
 - *(done — already worked)* Drag-to-move spans every family: the sidecar overrides + `applyOverrides`
   are family-agnostic, so dragging any family's nodes persists and survives reload (verified + e2e).
 - *(done)* Undo/redo for canvas actions (`⌘Z` / `⌘⇧Z`): an overlay-history stack covers drag,

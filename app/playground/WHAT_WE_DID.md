@@ -622,3 +622,12 @@
   possibly stale process. Focused e2e now covers stale selection, stale export/copy blocking,
   malformed shared-source recovery, keyboard minimap panning, forced-colors rendering, and the drawer
   backdrop.
+- Task-based UX polish pass: reviewed fresh screenshots and scoped agent feedback before editing.
+  Kept the product as a professional text-to-diagram workbench while borrowing only functional
+  game-like affordances: a compact task HUD, pixel-corner control ticks, clearer action/blocked task
+  states, and a tactical overview feel for the minimap. Fixed mobile toolbar clipping by wrapping
+  command groups, made selected edges visibly highlight with a route halo and label-anchor marker,
+  made selection/resize/marquee/connect overlays zoom-stable, added canvas hover cursors for move,
+  resize, connect, and selectable targets, and rebuilt the minimap cache on viewport resize. Added
+  e2e coverage for mobile clipped controls, task guidance states, edge-selection guidance, minimap
+  resize recalculation, plus a new edge-selected visual shot.

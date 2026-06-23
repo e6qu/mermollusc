@@ -73,6 +73,16 @@ const FLOWS: readonly Flow[] = [
     },
   },
   {
+    name: "02-edge-selected",
+    about: "an edge selected through keyboard navigation → route halo and task guidance",
+    drive: async (page) => {
+      await settled(page);
+      await page.locator("#diagram-nav").focus();
+      await page.keyboard.press("End");
+      await expect(page.locator("#stage-hud")).toBeVisible();
+    },
+  },
+  {
     name: "03-dark",
     about: "dark theme via the toggle",
     drive: async (page) => {

@@ -26,6 +26,12 @@ test("phone-width layout stacks editor and stage without page-level horizontal o
       stageLeft: stageBox.left,
       stageRight: stageBox.right,
       stageTop: stageBox.top,
+      clippedControls: Array.from(
+        document.querySelectorAll<HTMLElement>(".topbar-actions button, .topbar-actions .filebtn"),
+      ).filter((el) => {
+        const box = el.getBoundingClientRect();
+        return box.left < -1 || box.right > document.documentElement.clientWidth + 1;
+      }).length,
     };
   });
 
@@ -35,6 +41,7 @@ test("phone-width layout stacks editor and stage without page-level horizontal o
   expect(metrics.stageLeft).toBeGreaterThanOrEqual(0);
   expect(metrics.editorRight).toBeLessThanOrEqual(metrics.clientWidth + 1);
   expect(metrics.stageRight).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(metrics.clippedControls).toBe(0);
 });
 
 test("phone-width workflows keep editor, relabel, help, and icon drawer usable", async ({

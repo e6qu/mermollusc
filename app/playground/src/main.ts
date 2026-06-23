@@ -129,8 +129,19 @@ const MARGIN = 24;
 const editorMount = document.querySelector<HTMLDivElement>("#editor");
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
 const stageEmpty = document.querySelector<HTMLElement>("#stage-empty");
-if (editorMount === null || canvas === null || stageEmpty === null)
-  throw new Error("playground: missing #editor, #stage, or #stage-empty");
+const stageHud = document.querySelector<HTMLElement>("#stage-hud");
+const taskHudText = document.querySelector<HTMLElement>("#task-hud-text");
+const taskStatusText = document.querySelector<HTMLElement>("#task-status-text");
+if (
+  editorMount === null ||
+  canvas === null ||
+  stageEmpty === null ||
+  stageHud === null ||
+  taskHudText === null ||
+  taskStatusText === null
+) {
+  throw new Error("playground: missing editor, stage, or task feedback elements");
+}
 
 // Assigned once in the init block below (its change callback needs `renderFromText`, defined later);
 // every handler that touches the source goes through this instead of a raw element. The definite-
@@ -557,12 +568,45 @@ const paintScene = (): void => {
   ctx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
   drawGroupOutlines(shown);
   paint(ctx, cmds, iconImages, active);
-  ctx.strokeStyle = "#2563eb";
-  ctx.lineWidth = 2;
+  const overlayLine = Math.max(1, 2 / viewScale);
+  const overlayHalo = Math.max(3, 8 / viewScale);
+  const overlayDash = Math.max(2, 5 / viewScale);
+  const handleSize = Math.max(3, 4 / viewScale);
+  const selectedStroke = forcedColors() ? "Highlight" : activeTheme().text;
+  const selectedFill = forcedColors() ? "Highlight" : "#2563eb";
+  for (const edge of shown.edges) {
+    if (!selection.edges.has(edge.id)) continue;
+    const [head, ...tail] = edge.waypoints;
+    if (head === undefined) continue;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = forcedColors() ? "Highlight" : "rgba(37,99,235,0.28)";
+    ctx.lineWidth = overlayHalo;
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+    for (const p of tail) ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.strokeStyle = selectedStroke;
+    ctx.lineWidth = overlayLine;
+    ctx.setLineDash([overlayDash, overlayDash]);
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+    for (const p of tail) ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const anchor = edgeLabelAnchor(edge.waypoints);
+    ctx.fillStyle = selectedFill;
+    ctx.fillRect(anchor.x - handleSize, anchor.y - handleSize, handleSize * 2, handleSize * 2);
+    ctx.restore();
+  }
+  ctx.strokeStyle = selectedFill;
+  ctx.lineWidth = overlayLine;
   for (const node of shown.nodes) {
     if (selection.nodes.has(node.id)) {
       const { origin, size } = node.bounds;
-      ctx.strokeRect(origin.x - 3, origin.y - 3, size.width + 6, size.height + 6);
+      const pad = Math.max(3, 3 / viewScale);
+      ctx.strokeRect(origin.x - pad, origin.y - pad, size.width + pad * 2, size.height + pad * 2);
     }
   }
   if (marquee !== null) {
@@ -572,33 +616,33 @@ const paintScene = (): void => {
     const h = Math.abs(marquee.y1 - marquee.y0);
     ctx.fillStyle = "rgba(37,99,235,0.08)";
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = "#2563eb";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = selectedFill;
+    ctx.lineWidth = Math.max(1, 1 / viewScale);
+    ctx.setLineDash([overlayDash, overlayDash]);
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
   }
   if (connectDrag !== null) {
     // The in-progress ⌥-connect: a dashed rubber-band from the source node centre to the cursor.
-    ctx.strokeStyle = "#2563eb";
-    ctx.fillStyle = "#2563eb";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = selectedFill;
+    ctx.fillStyle = selectedFill;
+    ctx.lineWidth = overlayLine;
+    ctx.setLineDash([overlayDash, overlayDash]);
     ctx.beginPath();
     ctx.moveTo(connectDrag.fromX, connectDrag.fromY);
     ctx.lineTo(connectDrag.x, connectDrag.y);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(connectDrag.x, connectDrag.y, 4, 0, Math.PI * 2);
+    ctx.arc(connectDrag.x, connectDrag.y, handleSize, 0, Math.PI * 2);
     ctx.fill();
   }
   if (snapGuides.vx !== null || snapGuides.hy !== null) {
     // Alignment guides: amber dashed lines on the axes the dragged node snapped to, spanning content.
     const ex = shown.extent;
     ctx.strokeStyle = "#f5a623";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = Math.max(1, 1 / viewScale);
+    ctx.setLineDash([overlayDash, overlayDash]);
     if (snapGuides.vx !== null) {
       ctx.beginPath();
       ctx.moveTo(snapGuides.vx, ex.origin.y);
@@ -619,8 +663,7 @@ const paintScene = (): void => {
     const node = shown.nodes.find((n) => n.id === resizableId);
     if (node !== undefined) {
       const { origin, size: box } = node.bounds;
-      const hs = 4;
-      ctx.fillStyle = "#2563eb";
+      ctx.fillStyle = selectedFill;
       const corners: ReadonlyArray<readonly [number, number]> = [
         [origin.x, origin.y],
         [origin.x + box.width, origin.y],
@@ -628,7 +671,7 @@ const paintScene = (): void => {
         [origin.x + box.width, origin.y + box.height],
       ];
       for (const [hx, hy] of corners) {
-        ctx.fillRect(hx - hs, hy - hs, hs * 2, hs * 2);
+        ctx.fillRect(hx - handleSize, hy - handleSize, handleSize * 2, handleSize * 2);
       }
     }
   }
@@ -829,6 +872,39 @@ const singleResizableNodeId = (): SceneNodeId | null => {
   return only;
 };
 
+type TaskTone = "quiet" | "action" | "blocked";
+
+const setTask = (message: string, tone: TaskTone): void => {
+  taskStatusText.textContent = message;
+  taskStatusText.parentElement?.setAttribute("data-tone", tone);
+  taskHudText.textContent = message;
+  stageHud.hidden = tone === "quiet";
+};
+
+const updateTask = (): void => {
+  if (!currentRenderValid) {
+    setTask("fix the source before editing or exporting", "blocked");
+    return;
+  }
+  if (selection.nodes.size + selection.edges.size === 0) {
+    setTask("select a diagram item, edit the source, or export when ready", "quiet");
+    return;
+  }
+  if (selection.edges.size > 0 && selection.nodes.size === 0) {
+    setTask("relabel this edge or delete it", "action");
+    return;
+  }
+  if (selection.nodes.size === 1) {
+    setTask("drag, rename, or resize with corner handles", "action");
+    return;
+  }
+  const canConnect = ast !== null && ast.kind !== "gantt" && selectionOrder.length >= 2;
+  setTask(
+    canConnect ? "connect, group, arrange, or drag selection" : "group, arrange, or drag selection",
+    "action",
+  );
+};
+
 // If `at` is on a corner handle of the resizable node, the fixed opposite corner the box grows from.
 const resizeAnchorAt = (
   shown: Scene,
@@ -867,6 +943,7 @@ const updateGroupButtons = (): void => {
     connectBtn.disabled = true;
     connectBtn.title = currentRenderValid ? "viewer mode" : "fix source first";
     closeArrange();
+    updateTask();
     return;
   }
   const units = new Set<string>();
@@ -893,6 +970,7 @@ const updateGroupButtons = (): void => {
       : selectionOrder.length < 2
         ? "select two nodes"
         : "";
+  updateTask();
 };
 
 type AlignKind = "left" | "right" | "top" | "bottom" | "centerX" | "centerY" | "distH" | "distV";
@@ -1313,7 +1391,10 @@ canvas.addEventListener(
 // Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
 // cheap, since it reuses the cached display list rather than re-running the main paint.
 stageWrap.addEventListener("scroll", drawMinimap);
-window.addEventListener("resize", drawMinimap);
+window.addEventListener("resize", () => {
+  buildMinimapCache();
+  drawMinimap();
+});
 
 // Click or drag in the minimap to centre the stage viewport on that point. Maps minimap px →
 // logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
@@ -1479,12 +1560,14 @@ const setNavActive = (index: number): void => {
     selection = { nodes: new Set([item.id]), edges: new Set() };
     selectionOrder = [item.id];
     paintScene();
+    updateGroupButtons();
     centerOnNode(item.id);
     announce(`${navLabel(item.id)}, ${position}. ${describeConnections(item.id)}`);
   } else {
     selection = { nodes: new Set(), edges: new Set([item.id]) };
     selectionOrder = [];
     paintScene();
+    updateGroupButtons();
     centerOnEdge(item.id);
     announce(`${edgeLabel(item.id)}, edge, ${position}`);
   }
@@ -1615,6 +1698,7 @@ const setStatus = (
   // The canvas (role="img") needs a text alternative for screen readers — the status line is the
   // baseline; `renderFromText` enriches it with node labels on a successful render.
   canvas.setAttribute("aria-label", level === "error" ? `Diagram error: ${message}` : message);
+  updateTask();
 };
 
 const setStatusAndAnnounce = (
@@ -1893,6 +1977,37 @@ const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
   el.style.top = `${at.y}px`;
 };
 
+const updateCanvasCursor = (ev: PointerEvent): void => {
+  if (scene === null) {
+    canvas.style.cursor = "";
+    return;
+  }
+  const shown = applyOverrides(scene, doc.overrides());
+  const at = scenePoint(ev);
+  const hit = hitTest(shown, at);
+  if (!viewerMode && resizeAnchorAt(shown, at) !== null) {
+    canvas.style.cursor = "nwse-resize";
+  } else if (ev.altKey && !viewerMode && hit !== null && hit.kind === "node") {
+    canvas.style.cursor = "crosshair";
+  } else if (
+    hit !== null &&
+    hit.kind === "node" &&
+    !viewerMode &&
+    !pathLocked(doc.groups(), hit.id)
+  ) {
+    canvas.style.cursor = "grab";
+  } else if (
+    hit !== null ||
+    groupTitleAt(shown, at) !== null ||
+    groupOutlineAt(shown, at) !== null ||
+    groupAt(shown, at) !== null
+  ) {
+    canvas.style.cursor = "pointer";
+  } else {
+    canvas.style.cursor = "grab";
+  }
+};
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
@@ -2072,7 +2187,10 @@ canvas.addEventListener("pointermove", (ev) => {
     stageWrap.scrollTop = pan.scrollTop - (ev.clientY - pan.startY);
     return;
   }
-  if (drag === null) return;
+  if (drag === null) {
+    updateCanvasCursor(ev);
+    return;
+  }
   const at = scenePoint(ev);
   let dx = at.x - drag.pointerX;
   let dy = at.y - drag.pointerY;
@@ -2099,6 +2217,18 @@ canvas.addEventListener("pointermove", (ev) => {
     if (o !== undefined) doc.moveNode(id, point(o.x + dx, o.y + dy));
   }
   requestPaint();
+});
+
+canvas.addEventListener("pointerleave", () => {
+  if (
+    drag === null &&
+    resize === null &&
+    pan === null &&
+    marquee === null &&
+    connectDrag === null
+  ) {
+    canvas.style.cursor = "";
+  }
 });
 
 canvas.addEventListener("pointerup", (ev) => {

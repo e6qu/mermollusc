@@ -26,6 +26,9 @@
         --primary-strong: #9f2819;
         --accent: #0d7182;
         --accent-soft: #f7e5df;
+        --focus: #2563eb;
+        --hud: #fff7ee;
+        --hud-line: #e8b45f;
         --grid: rgba(50, 62, 72, 0.055);
         --grid-strong: rgba(13, 113, 130, 0.13);
         --ok: #0d7182;
@@ -55,6 +58,9 @@
         --primary-strong: #ff8a72;
         --accent: #55c6da;
         --accent-soft: #3a211d;
+        --focus: #7aa7ff;
+        --hud: #251f18;
+        --hud-line: #f0b35f;
         --grid: rgba(238, 241, 244, 0.045);
         --grid-strong: rgba(85, 198, 218, 0.13);
         --ok: #55c6da;
@@ -184,6 +190,29 @@
         cursor: pointer;
         transition: transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
       }
+      button:not(:disabled)::after,
+      .select-field::after,
+      .filebtn::after,
+      .picker-icon::after {
+        content: "";
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        right: 3px;
+        bottom: 3px;
+        border-right: 1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+        border-bottom: 1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+        opacity: 0;
+        pointer-events: none;
+      }
+      button,
+      .select-field,
+      .filebtn,
+      .picker-icon { position: relative; }
+      button:hover:not(:disabled)::after,
+      .select-field:hover::after,
+      .filebtn:hover::after,
+      .picker-icon:hover::after { opacity: 1; }
       button:hover:not(:disabled) { color: var(--primary-strong); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
       button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
       button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -191,7 +220,7 @@
       select#example:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
       /* The diagram navigator is visually hidden, so when it holds keyboard focus, ring the stage it
          drives — a sighted keyboard user sees where focus is, beyond the selection highlight. */
-      .stage-wrap.kbd-focus { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 12px; }
+      .stage-wrap.kbd-focus { outline: 1px solid var(--focus); outline-offset: -2px; border-radius: 12px; }
       button:disabled { opacity: 0.42; cursor: not-allowed; }
 
       /* Decorative glyphs via CSS only — never touch textContent (e2e asserts button text). */
@@ -434,6 +463,46 @@
         color: var(--ink-soft);
       }
       .stage-empty[hidden] { display: none; }
+      .stage-hud {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        z-index: 4;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: min(420px, calc(100% - 220px));
+        padding: 7px 10px;
+        color: var(--ink);
+        background: color-mix(in srgb, var(--hud) 88%, var(--surface) 12%);
+        border: 1px solid var(--hud-line);
+        border-radius: 6px;
+        box-shadow: var(--shadow);
+        font-size: 12px;
+      }
+      .stage-hud[hidden] { display: none; }
+      .stage-hud::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        background:
+          linear-gradient(var(--primary), var(--primary)) 0 0 / 4px 4px no-repeat,
+          linear-gradient(var(--accent), var(--accent)) 4px 4px / 4px 4px no-repeat;
+        image-rendering: pixelated;
+        flex: none;
+      }
+      .stage-hud strong {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--primary-strong);
+      }
+      .stage-hud span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--ink-soft);
+      }
 
       /* Overview minimap, pinned bottom-right of the stage column; shown only when the sheet
          overflows the stage. Sized in JS to the diagram's aspect. */
@@ -465,6 +534,30 @@
       }
       .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ok); }
       .status::before { content: "●"; font-size: 9px; }
+      .task-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        flex: 1 1 280px;
+        max-width: none;
+        color: var(--ink-soft);
+        font-size: 11.5px;
+      }
+      .task-status strong {
+        color: var(--primary-strong);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .task-status span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .task-status[data-tone="action"] strong { color: var(--accent); }
+      .task-status[data-tone="blocked"] strong { color: var(--err); }
+      .task-status[data-tone="blocked"] span { color: var(--err); }
       .status[data-level="warning"] {
         color: var(--warn);
         background: var(--warn-soft);
@@ -662,18 +755,20 @@
         }
         .toolbar-group {
           align-self: stretch;
+          width: 100%;
           max-width: 100%;
-          overflow-x: auto;
-          scrollbar-width: thin;
+          flex-wrap: wrap;
+          overflow: hidden;
         }
         .toolbar-group > button,
         .toolbar-group > .filebtn,
         .toolbar-group > .select-field {
-          flex: 0 0 auto;
+          flex: 1 1 auto;
           min-height: 34px;
           padding: 5px 9px;
           font-size: 11.5px;
         }
+        .toolbar-group > .select-field { flex-basis: 100%; }
         .select-field { gap: 6px; }
         .select-field span { font-size: 9.5px; }
         .workbench {
@@ -694,6 +789,22 @@
           padding: 7px 12px;
         }
         .hints { margin-left: 0; }
+        .task-status {
+          order: 3;
+          flex-basis: 100%;
+          max-width: 100%;
+        }
+        .stage-hud {
+          left: 12px;
+          bottom: 12px;
+          max-width: calc(100% - 140px);
+          padding: 6px 8px;
+        }
+        .minimap {
+          right: 12px;
+          bottom: 12px;
+          max-width: 120px;
+        }
         #icon-picker {
           width: 100vw;
           max-width: none;
@@ -819,6 +930,10 @@
                 <strong>No diagram rendered</strong>
                 <span>Fix the source error or load an example to start from a valid diagram.</span>
               </div>
+              <div id="stage-hud" class="stage-hud" aria-live="polite" hidden>
+                <strong>Task</strong>
+                <span id="task-hud-text"></span>
+              </div>
             </div>
           </div>
           <!-- Keyboard diagram navigator: a focusable listbox mirroring the scene's nodes and edges
@@ -846,6 +961,10 @@
 
       <footer class="statusbar">
         <span id="status" class="status">ready</span>
+        <span class="task-status" id="task-status" aria-live="polite">
+          <strong>Next</strong>
+          <span id="task-status-text">choose an example or edit the source</span>
+        </span>
         <span class="hints">
           <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>↑↓←→</kbd> nudge · <kbd>⇧-drag</kbd> box-select · <kbd>⌘A</kbd> all · <kbd>Del</kbd> remove · <kbd>⌘Z</kbd> undo layout
         </span>
