@@ -61,7 +61,6 @@ import type {
   OverlayDoc,
   Scene,
   SceneNodeId,
-  SceneEdgeId,
   SequenceSource,
   SourceMap,
   StateSource,
@@ -70,8 +69,7 @@ import type {
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
-import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
-import type { Theme } from "@m/renderer";
+import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
   assertNever,
   brand,
@@ -97,6 +95,17 @@ import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
 import { installImageExport } from "./image-export.js";
+import { createMinimap } from "./minimap.js";
+import { createNavigator } from "./navigator.js";
+import {
+  clearPersisted,
+  hashValue,
+  loadOverlay,
+  loadSource,
+  saveOverlay,
+  saveSource,
+} from "./persistence.js";
+import { createThemeController } from "./theme.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
@@ -390,12 +399,6 @@ let registry = defaultRegistry;
 // The source text is persisted so a reload keeps the diagram you were working on (even mid-edit /
 // not-yet-parsing) rather than resetting to the sample. Written through `renderFromText`, which
 // every text change funnels through.
-const SOURCE_KEY = "mermollusc-source";
-
-// The sidecar overlay (manual node positions + element groups) persists alongside the source, keyed
-// by scene-node id — a reload re-parses the same source to the same ids, so the overlay re-applies.
-const OVERLAY_KEY = "mermollusc-overlay";
-
 // The overlay document owns overrides + groups + their undo/redo history. It starts empty; the
 // persisted overlay (when the source isn't a share-link) is decoded and loaded via `doc.replace`
 // below, before the first render. `save` is the only IO it touches — a localStorage write today,
@@ -408,7 +411,6 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // remote-repaint at the end of this file) and the persisted localStorage overlay is *not* restored
 // (it would clobber the room). Default off, and disabled entirely in the backend-free Pages demo, so
 // the public demo never attempts to open a relay socket.
-const saveOverlay = (serialized: string): void => localStorage.setItem(OVERLAY_KEY, serialized);
 const collabRequested = new URLSearchParams(location.search).has("collab");
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
 const useCollab = collabRequested && !backendFreeDemo;
@@ -454,31 +456,13 @@ const redoOverlay = (): void => {
   }
 };
 
-// Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
-const THEME_KEY = "mermollusc-theme";
-const prefersDark = (): boolean =>
-  window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+// Light/dark + sketch state and the active-theme resolution live in `./theme.ts`. Forced-colors stays
+// here (the minimap and painter read it too). `activeTheme` is aliased so its many call sites are
+// unchanged.
 const forcedColorsQuery = window.matchMedia?.("(forced-colors: active)") ?? null;
 const forcedColors = (): boolean => forcedColorsQuery?.matches ?? false;
-const storedTheme = localStorage.getItem(THEME_KEY);
-let theme: Theme =
-  storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
-// Sketch mode is orthogonal to light/dark — composed onto the active theme at paint time.
-let sketch = false;
-const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
-const forcedTheme = (font: string): Theme => ({
-  background: "Canvas",
-  nodeFill: "Canvas",
-  stroke: "CanvasText",
-  text: "CanvasText",
-  font,
-  sketch: false,
-});
-const activeTheme = (): Theme => {
-  const font = sketch ? SKETCH_FONT : theme.font;
-  if (forcedColors()) return forcedTheme(font);
-  return sketch ? { ...theme, sketch: true, font } : theme;
-};
+const themeCtl = createThemeController({ forcedColors });
+const activeTheme = themeCtl.activeTheme;
 
 // Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
 // rather than a char-width guess. Measures with the *active* theme font — the sketch font is wider
@@ -691,8 +675,8 @@ const paintScene = (): void => {
   // each frame doubles the per-frame cost on a large diagram. Skip it while interacting — the minimap
   // goes briefly stale and the release (which repaints with no interaction in flight) refreshes it. A
   // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
-  if (!isInteracting()) buildMinimapCache();
-  drawMinimap();
+  if (!isInteracting()) minimapView.rebuildCache();
+  minimapView.draw();
   positionContextBar();
 };
 
@@ -820,7 +804,7 @@ const toggleGroupSelection = (id: GroupId): void => {
 // Nested groups nest visually; a locked group is solid + accent with a padlock, unlocked is dashed.
 const drawGroupOutlines = (shown: Scene): void => {
   if (doc.groups().size === 0) return;
-  const dark = theme === darkTheme;
+  const dark = themeCtl.isDark();
   for (const box of groupBoxes(shown)) {
     const g = doc.groups().get(box.id);
     if (g === undefined) continue;
@@ -1361,138 +1345,6 @@ ungroupBtn.addEventListener("click", ungroupSelection);
 lockBtn.addEventListener("click", toggleLockSelection);
 updateGroupButtons();
 
-// A purpose-built small-scale view (not a shrunk copy of the canvas): nodes become solid blocks and
-// edges thin guides, so the *structure* reads at ~180px where labels/icons would be noise. The
-// visible region is left bright while everything outside it is dimmed by a scrim — a clear
-// "you are here" — and framed in the drafting-table accent. Shown only when the sheet overflows.
-const MINIMAP_ACCENT_LIGHT = "#d2602c";
-const MINIMAP_ACCENT_DARK = "#f0894e";
-
-// The minimap's static content (background + faint edges + node blocks) is cached to an offscreen
-// canvas, rebuilt only when the scene/theme changes. A scroll then just blits the cache and redraws the
-// (cheap) viewport scrim — so panning a large diagram is O(1), not O(node count) per scroll event.
-const miniCache = document.createElement("canvas");
-const miniCacheCtx = miniCache.getContext("2d");
-// Null when the diagram fits (minimap hidden); else the layout the cache was built at.
-let miniLayout: {
-  readonly scale: number;
-  readonly w: number;
-  readonly h: number;
-  readonly dpr: number;
-} | null = null;
-
-const buildMinimapCache = (): void => {
-  miniLayout = null;
-  if (lastRender === null || miniCacheCtx === null) return;
-  const { scene, logicalWidth, logicalHeight } = lastRender;
-  const overflowing =
-    logicalWidth * viewScale > stageWrap.clientWidth + 1 ||
-    logicalHeight * viewScale > stageWrap.clientHeight + 1;
-  if (!overflowing) return;
-
-  const scale = Math.min(MINIMAP_MAX / logicalWidth, MINIMAP_MAX / logicalHeight);
-  const dpr = window.devicePixelRatio || 1;
-  miniCache.width = Math.round(logicalWidth * scale * dpr);
-  miniCache.height = Math.round(logicalHeight * scale * dpr);
-
-  const active = activeTheme();
-  // Work in logical coordinates (origin at the sheet's content, matching the canvas's MARGIN inset).
-  miniCacheCtx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-  miniCacheCtx.clearRect(0, 0, logicalWidth, logicalHeight);
-  miniCacheCtx.fillStyle = active.background;
-  miniCacheCtx.fillRect(0, 0, logicalWidth, logicalHeight);
-  miniCacheCtx.save();
-  miniCacheCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
-  // Faint edges first, then node blocks on top.
-  miniCacheCtx.strokeStyle = active.stroke;
-  miniCacheCtx.globalAlpha = 0.35;
-  miniCacheCtx.lineWidth = 1 / scale;
-  for (const edge of scene.edges) {
-    const [head, ...tail] = edge.waypoints;
-    if (head === undefined) continue;
-    miniCacheCtx.beginPath();
-    miniCacheCtx.moveTo(head.x, head.y);
-    for (const p of tail) miniCacheCtx.lineTo(p.x, p.y);
-    miniCacheCtx.stroke();
-  }
-  miniCacheCtx.globalAlpha = 1;
-  miniCacheCtx.fillStyle = active.nodeFill;
-  miniCacheCtx.strokeStyle = active.stroke;
-  miniCacheCtx.lineWidth = 1 / scale;
-  for (const node of scene.nodes) {
-    const { origin, size } = node.bounds;
-    miniCacheCtx.fillRect(origin.x, origin.y, size.width, size.height);
-    miniCacheCtx.strokeRect(origin.x, origin.y, size.width, size.height);
-  }
-  miniCacheCtx.restore();
-  miniLayout = { scale, w: logicalWidth * scale, h: logicalHeight * scale, dpr };
-};
-
-const drawMinimap = (): void => {
-  if (miniLayout === null || lastRender === null) {
-    minimap.hidden = true;
-    return;
-  }
-  minimap.hidden = false;
-  const { logicalWidth, logicalHeight } = lastRender;
-  const { scale: miniScale, w: miniW, h: miniH, dpr } = miniLayout;
-  const W = Math.round(miniW * dpr);
-  const H = Math.round(miniH * dpr);
-  if (minimap.width !== W || minimap.height !== H) {
-    minimap.width = W;
-    minimap.height = H;
-    minimap.style.width = `${miniW}px`;
-    minimap.style.height = `${miniH}px`;
-  }
-
-  // Blit the cached static content 1:1, then draw the viewport overlay in logical coordinates.
-  miniCtx.setTransform(1, 0, 0, 1, 0, 0);
-  miniCtx.clearRect(0, 0, W, H);
-  miniCtx.drawImage(miniCache, 0, 0);
-  miniCtx.setTransform(dpr * miniScale, 0, 0, dpr * miniScale, 0, 0);
-
-  // The visible logical region, derived from the live canvas/stage rects so the centred/padded
-  // scroll container needs no special-casing. Coordinates are logical px from the canvas origin.
-  const canvasRect = canvas.getBoundingClientRect();
-  const wrapRect = stageWrap.getBoundingClientRect();
-  const left = Math.max(0, (wrapRect.left - canvasRect.left) / viewScale);
-  const top = Math.max(0, (wrapRect.top - canvasRect.top) / viewScale);
-  const right = Math.min(logicalWidth, left + stageWrap.clientWidth / viewScale);
-  const bottom = Math.min(logicalHeight, top + stageWrap.clientHeight / viewScale);
-
-  // Dim everything *outside* the viewport with a scrim (four bands), leaving the visible region
-  // bright — the strongest "you are here" cue at this size.
-  const highContrast = forcedColors();
-  const dark = theme === darkTheme;
-  miniCtx.fillStyle = highContrast ? "Canvas" : dark ? "rgba(7,16,15,0.5)" : "rgba(24,37,41,0.34)";
-  miniCtx.fillRect(0, 0, logicalWidth, top);
-  miniCtx.fillRect(0, bottom, logicalWidth, logicalHeight - bottom);
-  miniCtx.fillRect(0, top, left, bottom - top);
-  miniCtx.fillRect(right, top, logicalWidth - right, bottom - top);
-
-  // A faint accent tint inside the viewport so the "here" region reads as a lit lens, not just an
-  // un-dimmed gap — the scrim outside and the tint inside push the contrast from both sides.
-  const accent = highContrast ? "Highlight" : dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
-  miniCtx.fillStyle = highContrast
-    ? "transparent"
-    : dark
-      ? "rgba(240,137,78,0.12)"
-      : "rgba(210,96,44,0.10)";
-  miniCtx.fillRect(left, top, right - left, bottom - top);
-
-  // Inset the stroke by half its width and clamp it inside the sheet, so the rectangle is never
-  // half-clipped by the minimap edge when the viewport butts against the sheet boundary.
-  const lineW = 2 / miniScale;
-  const half = lineW / 2;
-  const rx = Math.min(Math.max(left, half), logicalWidth - half);
-  const ry = Math.min(Math.max(top, half), logicalHeight - half);
-  const rr = Math.min(Math.max(right, half), logicalWidth - half);
-  const rb = Math.min(Math.max(bottom, half), logicalHeight - half);
-  miniCtx.strokeStyle = accent;
-  miniCtx.lineWidth = lineW;
-  miniCtx.strokeRect(rx, ry, rr - rx, rb - ry);
-};
-
 const updateZoomLabel = (): void => {
   zoomResetBtn.textContent = `${Math.round(viewScale * 100)}%`;
 };
@@ -1548,16 +1400,10 @@ canvas.addEventListener(
 // Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
 // cheap, since it reuses the cached display list rather than re-running the main paint.
 stageWrap.addEventListener("scroll", () => {
-  drawMinimap();
+  minimapView.draw();
   positionContextBar(); // the bar tracks the selection as the sheet scrolls inside the stage
 });
-window.addEventListener("resize", () => {
-  buildMinimapCache();
-  drawMinimap();
-});
 
-// Click or drag in the minimap to centre the stage viewport on that point. Maps minimap px →
-// logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
 // Centre the stage viewport on a point given in the diagram's logical px (the sheet coordinate space,
 // origin at the sheet's top-left including the margin). Shared by minimap navigation and the keyboard
 // diagram navigator.
@@ -1570,249 +1416,28 @@ const scrollToLogical = (logicalX: number, logicalY: number): void => {
   stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
 };
 
-let minimapDragging = false;
-const minimapNavigate = (ev: PointerEvent): void => {
-  if (lastRender === null || minimap.hidden) return;
-  const rect = minimap.getBoundingClientRect();
-  const miniScale = rect.width / lastRender.logicalWidth;
-  scrollToLogical((ev.clientX - rect.left) / miniScale, (ev.clientY - rect.top) / miniScale);
-};
-minimap.addEventListener("pointerdown", (ev) => {
-  minimapDragging = true;
-  minimap.setPointerCapture(ev.pointerId);
-  minimapNavigate(ev);
-});
-minimap.addEventListener("pointermove", (ev) => {
-  if (minimapDragging) minimapNavigate(ev);
-});
-minimap.addEventListener("pointerup", (ev) => {
-  minimapDragging = false;
-  minimap.releasePointerCapture(ev.pointerId);
-});
-minimap.addEventListener("keydown", (ev) => {
-  if (lastRender === null || minimap.hidden) return;
-  const step = ev.shiftKey ? 120 : 40;
-  if (ev.key === "ArrowLeft") {
-    ev.preventDefault();
-    stageWrap.scrollLeft -= step;
-  } else if (ev.key === "ArrowRight") {
-    ev.preventDefault();
-    stageWrap.scrollLeft += step;
-  } else if (ev.key === "ArrowUp") {
-    ev.preventDefault();
-    stageWrap.scrollTop -= step;
-  } else if (ev.key === "ArrowDown") {
-    ev.preventDefault();
-    stageWrap.scrollTop += step;
-  } else if (ev.key === "Home") {
-    ev.preventDefault();
-    stageWrap.scrollLeft = 0;
-    stageWrap.scrollTop = 0;
-  } else if (ev.key === "End") {
-    ev.preventDefault();
-    stageWrap.scrollLeft = stageWrap.scrollWidth;
-    stageWrap.scrollTop = stageWrap.scrollHeight;
-  }
+// The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
+// it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
+const minimapView = createMinimap({
+  minimap,
+  miniCtx,
+  stageWrap,
+  canvas,
+  margin: MARGIN,
+  maxSize: MINIMAP_MAX,
+  getRender: () => lastRender,
+  getViewScale: () => viewScale,
+  activeTheme,
+  isDark: themeCtl.isDark,
+  forcedColors,
+  scrollToLogical,
 });
 
-// ---- Keyboard diagram navigator ----
-// A focusable listbox mirrors the scene's nodes and edges so the diagram is operable without a mouse.
-// Arrow keys move the active option, which drives the canvas selection and centres it in view; a live
-// region announces it.
+// Push a message to the diagram's live region (screen-reader announcement). Shared by the keyboard
+// navigator, the status bar (`setStatusAndAnnounce`), and the on-canvas group/lock commands.
 const announce = (message: string): void => {
   diagramLive.textContent = message;
 };
-
-const centerOnNode = (id: SceneNodeId): void => {
-  if (lastRender === null) return;
-  const node = lastRender.scene.nodes.find((n) => n.id === id);
-  if (node === undefined) return;
-  const cx = node.bounds.origin.x + node.bounds.size.width / 2;
-  const cy = node.bounds.origin.y + node.bounds.size.height / 2;
-  scrollToLogical(
-    MARGIN - lastRender.scene.extent.origin.x + cx,
-    MARGIN - lastRender.scene.extent.origin.y + cy,
-  );
-};
-
-// The navigator's options are the scene's nodes then its edges, each a focus target. `HitTarget` is the
-// node/edge shape the selection and relabel paths already speak, so an item feeds them directly.
-let navItems: HitTarget[] = [];
-let navIndex = -1; // the active option's index into `navItems`, or -1 when nothing is active yet
-// The chosen source while a keyboard Connect is in progress (press `c` to pick it, navigate, `c` again
-// to connect to the target). Cleared on connect, cancel, or any re-render.
-let navConnectSource: SceneNodeId | null = null;
-const navActive = (): HitTarget | null => (navIndex >= 0 ? (navItems[navIndex] ?? null) : null);
-
-const navLabel = (id: SceneNodeId): string => {
-  const node = scene?.nodes.find((n) => n.id === id);
-  return node !== undefined && node.label.length > 0 ? node.label : "node";
-};
-
-// An edge spoken as "Alpha to Beta" plus its own label, if any, readable without the visual arrow.
-const edgeLabel = (id: SceneEdgeId): string => {
-  const edge = scene?.edges.find((e) => e.id === id);
-  if (edge === undefined) return "edge";
-  const ends = `${navLabel(edge.from)} to ${navLabel(edge.to)}`;
-  return edge.label !== null && edge.label.length > 0 ? `${ends}, ${edge.label}` : ends;
-};
-
-// A spoken summary of a node's edges, so a screen-reader user grasps the topology, not just the node
-// list: "to Gamma; from Alpha" (capped so a hub node stays concise), or "no connections".
-const describeConnections = (id: SceneNodeId): string => {
-  if (scene === null) return "";
-  const outgoing = scene.edges.filter((e) => e.from === id).map((e) => navLabel(e.to));
-  const incoming = scene.edges.filter((e) => e.to === id).map((e) => navLabel(e.from));
-  const list = (xs: readonly string[]): string =>
-    xs.length <= 3 ? xs.join(", ") : `${xs.slice(0, 3).join(", ")} and ${xs.length - 3} more`;
-  const parts: string[] = [];
-  if (outgoing.length > 0) parts.push(`to ${list(outgoing)}`);
-  if (incoming.length > 0) parts.push(`from ${list(incoming)}`);
-  return parts.length === 0 ? "no connections" : parts.join("; ");
-};
-
-const centerOnEdge = (id: SceneEdgeId): void => {
-  if (lastRender === null) return;
-  const edge = lastRender.scene.edges.find((e) => e.id === id);
-  if (edge === undefined) return;
-  const anchor = edgeLabelAnchor(edge.waypoints);
-  const origin = lastRender.scene.extent.origin;
-  scrollToLogical(MARGIN - origin.x + anchor.x, MARGIN - origin.y + anchor.y);
-};
-
-const rebuildNav = (): void => {
-  diagramNav.replaceChildren();
-  diagramNav.removeAttribute("aria-activedescendant");
-  navIndex = -1;
-  navConnectSource = null;
-  if (scene === null) {
-    navItems = [];
-    return;
-  }
-  navItems = [
-    ...scene.nodes.map((n): HitTarget => ({ kind: "node", id: n.id })),
-    ...scene.edges.map((e): HitTarget => ({ kind: "edge", id: e.id })),
-  ];
-  navItems.forEach((item, i) => {
-    const option = document.createElement("li");
-    option.id = `diagram-item-${i}`;
-    option.setAttribute("role", "option");
-    option.setAttribute("aria-selected", "false");
-    option.textContent =
-      item.kind === "node" ? navLabel(item.id) || `node ${i + 1}` : `${edgeLabel(item.id)} (edge)`;
-    diagramNav.appendChild(option);
-  });
-};
-
-const setNavActive = (index: number): void => {
-  if (navItems.length === 0) return;
-  const clamped = Math.max(0, Math.min(index, navItems.length - 1));
-  const item = navItems[clamped];
-  const option = diagramNav.children[clamped];
-  if (item === undefined || option === undefined) return;
-  for (const child of Array.from(diagramNav.children)) child.setAttribute("aria-selected", "false");
-  option.setAttribute("aria-selected", "true");
-  diagramNav.setAttribute("aria-activedescendant", option.id);
-  navIndex = clamped;
-  const position = `${clamped + 1} of ${navItems.length}`;
-  // Drive the canvas selection so the item highlights and the existing Delete handler can remove it.
-  if (item.kind === "node") {
-    selection = { nodes: new Set([item.id]), edges: new Set() };
-    selectionOrder = [item.id];
-    paintScene();
-    updateGroupButtons();
-    centerOnNode(item.id);
-    announce(`${navLabel(item.id)}, ${position}. ${describeConnections(item.id)}`);
-  } else {
-    selection = { nodes: new Set(), edges: new Set([item.id]) };
-    selectionOrder = [];
-    paintScene();
-    updateGroupButtons();
-    centerOnEdge(item.id);
-    announce(`${edgeLabel(item.id)}, edge, ${position}`);
-  }
-};
-
-diagramNav.addEventListener("focus", () => {
-  // Ring the stage so a sighted keyboard user sees focus is in the diagram (the navigator is hidden).
-  stageWrap.classList.add("kbd-focus");
-  if (navIndex < 0) setNavActive(0);
-});
-diagramNav.addEventListener("blur", () => {
-  stageWrap.classList.remove("kbd-focus");
-  navConnectSource = null; // an in-progress Connect doesn't outlive focus leaving the navigator
-});
-const ARROW_DELTA: Record<string, readonly [number, number]> = {
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-  ArrowUp: [0, -1],
-  ArrowDown: [0, 1],
-};
-
-diagramNav.addEventListener("keydown", (ev) => {
-  if (scene === null || navItems.length === 0) return;
-  const item = navActive();
-  // Alt+Arrow nudges the active node (keyboard parity with drag; Shift = a bigger step); the move drives
-  // the same override path as dragging, so it shares one undo entry per run. Edges aren't positioned.
-  const delta = ARROW_DELTA[ev.key];
-  if (ev.altKey && delta !== undefined && item?.kind === "node" && !viewerMode) {
-    ev.preventDefault();
-    const step = ev.shiftKey ? 10 : 1;
-    nudgeSelection(delta[0] * step, delta[1] * step);
-    announce(`moved ${navLabel(item.id)}`);
-    return;
-  }
-  if (ev.key === "ArrowDown" || ev.key === "ArrowRight") {
-    ev.preventDefault();
-    setNavActive(navIndex + 1);
-  } else if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") {
-    ev.preventDefault();
-    setNavActive(navIndex <= 0 ? 0 : navIndex - 1);
-  } else if (ev.key === "Home") {
-    ev.preventDefault();
-    setNavActive(0);
-  } else if (ev.key === "End") {
-    ev.preventDefault();
-    setNavActive(navItems.length - 1);
-  } else if (ev.key === "Enter" && item !== null && !viewerMode) {
-    // Open the inline relabel editor on the active node or edge — parity with a canvas double-click.
-    ev.preventDefault();
-    navConnectSource = null;
-    beginRelabel(shownScene(scene), item, null);
-  } else if (
-    (ev.key === "c" || ev.key === "C") &&
-    item?.kind === "node" &&
-    ast !== null &&
-    !viewerMode
-  ) {
-    // Two-step keyboard Connect: `c` picks the active node as the source, navigate to a target, `c`
-    // again draws the edge in the family's own syntax (parity with an Alt-drag between nodes).
-    ev.preventDefault();
-    if (navConnectSource === null) {
-      navConnectSource = item.id;
-      announce(`connecting from ${navLabel(item.id)} — move to a target and press c`);
-    } else if (navConnectSource === item.id) {
-      announce("connect cancelled");
-      navConnectSource = null;
-    } else {
-      const from = navLabel(navConnectSource);
-      const to = navLabel(item.id);
-      const text = appendEdge(ast.kind, editor.value(), navConnectSource, item.id);
-      navConnectSource = null;
-      if (text === editor.value()) {
-        announce("connect isn't available for this diagram");
-      } else {
-        editor.setValue(text);
-        void renderFromText(text);
-        announce(`connected ${from} to ${to}`);
-      }
-    }
-  } else if (ev.key === "Escape" && navConnectSource !== null) {
-    ev.preventDefault();
-    navConnectSource = null;
-    announce("connect cancelled");
-  }
-});
 
 // Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
 // current text failed to parse (it would just keep showing the last good render). On error we also
@@ -1910,14 +1535,36 @@ const reconcileSelection = (rendered: Scene): void => {
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
 // later render can overtake an earlier one. `renderSeq` tags each render; a stale result (one whose
-// tag is no longer current) is dropped instead of painting over a newer diagram.
+// tag is no longer current) is dropped instead of painting over a newer diagram — checked after *each*
+// await (the worker layout and the icon raster), so a render overtaken at either point never assigns
+// state or paints.
 let renderSeq = 0;
+
+// Typing coalesces: the *first* edit in a burst renders immediately (so a single discrete edit — and the
+// e2e harness — stays responsive), then a quiet "cooldown" window opens. Edits during the cooldown are
+// queued, not rendered; when it ends, one trailing render lays out the *latest* editor text. So a fast
+// typist triggers at most one render per cooldown (~`RENDER_DEBOUNCE_MS`), not one per keystroke, yet the
+// canvas never lags more than that behind the text. `renderFromText` (including programmatic canvas
+// edits) opens the cooldown itself, so every render rate-limits the next.
+const RENDER_DEBOUNCE_MS = 90;
+let renderCooldown: number | null = null; // non-null during the quiet window after a typed render
+let renderQueued = false; // a coalesced edit is waiting for the cooldown to end
+const armRenderCooldown = (): void => {
+  renderCooldown = window.setTimeout(() => {
+    renderCooldown = null;
+    if (renderQueued) {
+      renderQueued = false;
+      void renderFromText(editor.value()); // trailing: lay out the latest text
+      armRenderCooldown(); // keep rate-limiting through a continuous burst
+    }
+  }, RENDER_DEBOUNCE_MS);
+};
 
 const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
   currentRenderValid = false;
   updateGroupButtons();
-  localStorage.setItem(SOURCE_KEY, text);
+  saveSource(text);
   // One parse yields both the AST (to lay out) and the family's source map (the spans the inline editor
   // patches) — previously every family was parsed twice per render. `parsed.value.family` is the closed
   // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
@@ -1972,7 +1619,7 @@ const renderFromText = async (text: string): Promise<void> => {
   scene = laid.value;
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
-  rebuildNav();
+  navController.rebuild();
   // Drop sidecar groups and overrides whose nodes the edited text removed, so they can't outlive their
   // diagram and resurrect onto reused ids later. We prune *after* a successful layout (keeping the
   // manual positions of nodes that still exist) rather than wiping the whole overlay on every keystroke —
@@ -2061,6 +1708,9 @@ const renderFromText = async (text: string): Promise<void> => {
       assertNever(result);
   }
   const failedIcons = await ensureIcons(scene);
+  // Second drop-stale check: a newer render may have started while we awaited the icon raster. Bail
+  // before painting so a stale frame never lands on top of a newer diagram.
+  if (mySeq !== renderSeq) return;
   if (failedIcons.length > 0) {
     // The diagram rendered fine (just glyph-less), so keep the `ok` level — surfacing the missing
     // glyph as a warning appended to the node/edge counts, rather than an `error` that would grey out
@@ -3473,15 +3123,14 @@ regenBtn.addEventListener("click", () => {
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
 // `data-theme` attribute drives the page chrome so it stays cohesive with the canvas surface.
 const syncThemeLabel = (): void => {
-  themeBtn.textContent = theme === defaultTheme ? "Dark" : "Light";
-  document.documentElement.setAttribute("data-theme", theme === darkTheme ? "dark" : "light");
+  themeBtn.textContent = themeCtl.toggleLabel();
+  document.documentElement.setAttribute("data-theme", themeCtl.isDark() ? "dark" : "light");
 };
 themeBtn.addEventListener("click", () => {
-  theme = theme === defaultTheme ? darkTheme : defaultTheme;
-  localStorage.setItem(THEME_KEY, theme === darkTheme ? "dark" : "light");
+  themeCtl.toggleTheme();
   syncThemeLabel();
   paintScene();
-  announce(`${theme === darkTheme ? "dark" : "light"} theme`);
+  announce(`${themeCtl.isDark() ? "dark" : "light"} theme`);
 });
 forcedColorsQuery?.addEventListener("change", () => {
   void renderFromText(editor.value());
@@ -3525,10 +3174,10 @@ exampleEl.addEventListener("change", () => {
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
 // handwriting font is wider than the base — nodes must resize to keep labels inside their boxes.
 sketchBtn.addEventListener("click", () => {
-  sketch = !sketch;
-  sketchBtn.textContent = sketch ? "Crisp" : "Sketch";
+  themeCtl.toggleSketch();
+  sketchBtn.textContent = themeCtl.isSketch() ? "Crisp" : "Sketch";
   void renderFromText(editor.value());
-  announce(sketch ? "sketch mode" : "crisp mode");
+  announce(themeCtl.isSketch() ? "sketch mode" : "crisp mode");
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
@@ -3794,36 +3443,13 @@ resetCacheBtn.addEventListener("click", () => {
   ) {
     return;
   }
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k !== null && k.startsWith("mermollusc-")) keys.push(k);
-  }
-  for (const k of keys) localStorage.removeItem(k);
+  clearPersisted();
   location.replace(location.pathname);
 });
 
-// One decoded value from the `#…` hash (a shared link). `encodeURIComponent` (not `+`-for-space form)
-// produced each value, so we decode with `decodeURIComponent` per key rather than `URLSearchParams`
-// (which would turn a literal `+` in the source into a space).
-const hashValue = (key: string): string | null => {
-  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
-  for (const part of hash.split("&")) {
-    const eq = part.indexOf("=");
-    if (eq < 0 || part.slice(0, eq) !== key) continue;
-    try {
-      return decodeURIComponent(part.slice(eq + 1));
-    } catch (e) {
-      console.error("ignoring malformed URL hash for key", key, messageOf(e));
-      return null;
-    }
-  }
-  return null;
-};
-
 // A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
 const fromHash = hashValue("src");
-const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+const initialSource = fromHash ?? loadSource() ?? SAMPLE;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
 // source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
@@ -3842,7 +3468,7 @@ if (!useCollab) {
   if (linkOverlay !== null) {
     applyOverlayJson(linkOverlay, "share link");
   } else if (fromHash === null) {
-    const rawOverlay = localStorage.getItem(OVERLAY_KEY);
+    const rawOverlay = loadOverlay();
     if (rawOverlay !== null) applyOverlayJson(rawOverlay, "localStorage");
   }
 }
@@ -3853,7 +3479,15 @@ if (!useCollab) {
 // because this closes over `renderFromText`; in collab mode it starts empty and the `Y.Text` binding
 // fills it (seeded below).
 const onTextChange = (text: string): void => {
-  void renderFromText(text);
+  // Persist immediately so a reload (or a crash) right after the last keystroke never loses it. Then
+  // either render now (leading edge of a burst) or queue a trailing render for when the cooldown ends.
+  saveSource(text);
+  if (renderCooldown === null) {
+    void renderFromText(text); // leading edge of a burst: render now
+    armRenderCooldown();
+  } else {
+    renderQueued = true; // within the cooldown: coalesce into the trailing render
+  }
 };
 editor =
   collabSession !== null
@@ -3862,6 +3496,36 @@ editor =
         textHistory: false,
       })
     : createEditor(editorMount, initialSource, onTextChange);
+
+// The keyboard diagram navigator (a focusable listbox over the scene's nodes/edges) lives in
+// `./navigator.ts`; it drives the canvas selection and the relabel/connect/nudge commands through this
+// port. Created here — after the editor and every command it calls exist — and its `rebuild` runs from
+// the render path.
+const setSelection = (sel: Selection, order: readonly SceneNodeId[]): void => {
+  selection = sel;
+  selectionOrder = [...order];
+};
+const navController = createNavigator({
+  diagramNav,
+  stageWrap,
+  margin: MARGIN,
+  getScene: () => scene,
+  getRenderedScene: () => lastRender?.scene ?? null,
+  getAst: () => ast,
+  isViewerMode: () => viewerMode,
+  editor,
+  scrollToLogical,
+  announce,
+  paintScene,
+  updateGroupButtons,
+  setSelection,
+  nudgeSelection,
+  beginRelabel,
+  shownScene,
+  appendEdge,
+  renderFromText,
+});
+
 // Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
 // itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
 // authoritative shared text (identical when this client seeds; the room's text when it joins one).
