@@ -70,15 +70,7 @@ import type {
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import { layout, layoutDiagram } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
-import {
-  darkTheme,
-  defaultTheme,
-  edgeLabelAnchor,
-  paint,
-  toDisplayList,
-  toDot,
-  toSvg,
-} from "@m/renderer";
+import { darkTheme, defaultTheme, edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import type { Theme } from "@m/renderer";
 import {
   assertNever,
@@ -104,7 +96,7 @@ import {
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
-import { buildImagePdf, bytesOf } from "./pdf.js";
+import { installImageExport } from "./image-export.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
@@ -3740,165 +3732,25 @@ window.addEventListener(
 applyPlatformModifiers();
 buildSyntaxReference();
 
-// The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
-// drawn), so an export composites onto a background-filled offscreen canvas at device resolution —
-// otherwise the output would have a transparent ground.
-const compositeCanvas = (): HTMLCanvasElement | null => {
-  if (scene === null) return null;
-  // Re-paint at a fixed device scale (independent of the on-screen zoom) so the exported image is
-  // always full-resolution — previously it copied the live canvas, so exporting at 10%/400% zoom
-  // produced a tiny/huge image. Editor chrome (selection, handles, marquee) is omitted, matching the
-  // SVG export. Mirrors the SVG path's zoom-independence.
-  const shown = shownScene(scene);
-  const logicalWidth = Math.ceil(shown.extent.size.width) + MARGIN * 2;
-  const logicalHeight = Math.ceil(shown.extent.size.height) + MARGIN * 2;
-  const dpr = window.devicePixelRatio || 1;
-  const out = document.createElement("canvas");
-  out.width = Math.round(logicalWidth * dpr);
-  out.height = Math.round(logicalHeight * dpr);
-  const octx = out.getContext("2d");
-  if (octx === null) return null;
-  const active = activeTheme();
-  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  octx.fillStyle = active.background;
-  octx.fillRect(0, 0, logicalWidth, logicalHeight);
-  octx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
-  paint(octx, toDisplayList(shown), iconImages, active);
-  return out;
-};
-
-const blockStaleExport = (action: string): boolean => {
-  if (currentRenderValid && scene !== null) return false;
-  setStatusAndAnnounce("error", `${action} blocked — fix the current source first`);
-  return true;
-};
-
-const downloadBlob = (blob: Blob, filename: string): void => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-exportBtn.addEventListener("click", () => {
-  if (blockStaleExport("PNG export")) return;
-  const out = compositeCanvas();
-  if (out === null) {
-    console.error("export failed: 2d context unavailable");
-    setStatusAndAnnounce("error", "PNG export failed — no 2D context");
-    return;
-  }
-  out.toBlob((blob) => {
-    if (blob === null) {
-      console.error("export failed: toBlob returned null");
-      setStatusAndAnnounce("error", "PNG export failed");
-      return;
-    }
-    downloadBlob(blob, "mermollusc.png");
-    setStatusAndAnnounce("ok", "exported mermollusc.png");
-  }, "image/png");
-});
-
-// Copy the rendered diagram to the clipboard as a PNG (the same zoom-independent composite the PNG
-// export uses), so it can be pasted straight into a doc / chat / issue without a download. The
-// clipboard write is best-effort — it needs a secure context + the `clipboard-write` permission — and
-// its outcome is always surfaced to the status bar, never silently dropped.
-copyBtn.addEventListener("click", () => {
-  if (blockStaleExport("Copy")) return;
-  const clip = navigator.clipboard;
-  const ItemCtor = window.ClipboardItem;
-  if (clip === undefined || typeof clip.write !== "function" || ItemCtor === undefined) {
-    setStatusAndAnnounce("warning", "copying images isn't supported here — use PNG to download");
-    return;
-  }
-  const out = compositeCanvas();
-  if (out === null) {
-    console.error("copy failed: 2d context unavailable");
-    setStatusAndAnnounce("error", "copy failed — no 2D context");
-    return;
-  }
-  out.toBlob((blob) => {
-    if (blob === null) {
-      console.error("copy failed: toBlob returned null");
-      setStatusAndAnnounce("error", "copy failed");
-      return;
-    }
-    void clip.write([new ItemCtor({ "image/png": blob })]).then(
-      () => setStatusAndAnnounce("ok", "diagram image copied to clipboard"),
-      (e: unknown) => {
-        console.error("copy to clipboard failed:", messageOf(e));
-        setStatusAndAnnounce("warning", "clipboard was blocked — use PNG to download instead");
-      },
-    );
-  }, "image/png");
-});
-
-exportPdfBtn.addEventListener("click", () => {
-  if (blockStaleExport("PDF export")) return;
-  const out = compositeCanvas();
-  if (out === null) {
-    console.error("export failed: 2d context unavailable");
-    setStatusAndAnnounce("error", "PDF export failed — no 2D context");
-    return;
-  }
-  const dataUrl = out.toDataURL("image/jpeg", 0.92);
-  const jpeg = bytesOf(atob(dataUrl.slice(dataUrl.indexOf(",") + 1)));
-  const dpr = window.devicePixelRatio || 1;
-  const pdf = buildImagePdf(
-    jpeg,
-    out.width,
-    out.height,
-    Math.round(out.width / dpr),
-    Math.round(out.height / dpr),
-  );
-  downloadBlob(pdf, "mermollusc.pdf");
-  setStatusAndAnnounce("ok", "exported mermollusc.pdf");
-});
-
-// SVG export, true vector: serialise the same display list the canvas paints, via the renderer's
-// `toSvg` backend. Icon glyphs are embedded as `<image>` hrefs (the icon SVG as a data URL),
-// resolved here because the renderer can't depend on `@m/icons`.
-exportSvgBtn.addEventListener("click", () => {
-  if (blockStaleExport("SVG export")) return;
-  if (scene === null) {
-    setStatusAndAnnounce("error", "nothing to export yet");
-    return;
-  }
-  const shown = shownScene(scene);
-  const icons = new Map<string, string>();
-  for (const node of shown.nodes) {
-    if (node.icon === null) continue;
-    const key = `${node.icon.pack}/${node.icon.name}`;
-    if (icons.has(key)) continue;
-    const resolved = findIcon(registry, node.icon.pack, node.icon.name);
-    if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value));
-    else console.error("icon resolve failed:", resolved.error.message);
-  }
-  const svg = toSvg(toDisplayList(shown), {
-    width: Math.ceil(shown.extent.size.width) + MARGIN * 2,
-    height: Math.ceil(shown.extent.size.height) + MARGIN * 2,
-    origin: shown.extent.origin,
-    margin: MARGIN,
-    theme: activeTheme(),
-    icons,
-  });
-  downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "mermollusc.svg");
-  setStatusAndAnnounce("ok", "exported mermollusc.svg");
-});
-
-// DOT export: the Scene is the universal graph IR, so any node/edge family exports to Graphviz DOT
-// (a pie chart, having no nodes, exports as an empty graph). The reverse of the DOT import path.
-exportDotBtn.addEventListener("click", () => {
-  if (blockStaleExport("DOT export")) return;
-  if (scene === null) {
-    setStatusAndAnnounce("error", "nothing to export yet");
-    return;
-  }
-  const dot = toDot(shownScene(scene), lastDirection);
-  downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
-  setStatusAndAnnounce("ok", "exported mermollusc.dot");
+// The image/file exporters (PNG / Copy / PDF / SVG / DOT) live in `./image-export.ts`; they only read
+// the current diagram, so they take getters for the live scene/theme/registry and a status sink.
+installImageExport({
+  buttons: {
+    png: exportBtn,
+    copy: copyBtn,
+    pdf: exportPdfBtn,
+    svg: exportSvgBtn,
+    dot: exportDotBtn,
+  },
+  margin: MARGIN,
+  getScene: () => scene,
+  shownScene,
+  isRenderValid: () => currentRenderValid,
+  activeTheme,
+  getDirection: () => lastDirection,
+  iconImages,
+  getRegistry: () => registry,
+  setStatus: setStatusAndAnnounce,
 });
 
 // Share: encode the current source in the URL hash (so the link reproduces the diagram) and copy it
