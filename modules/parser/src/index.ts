@@ -15,8 +15,9 @@ export { parseMindmap, parseMindmapWithSource } from "./shell/index.js";
 export { parsePie, parsePieWithSource } from "./shell/index.js";
 export { parseGantt, parseGanttWithSource } from "./shell/index.js";
 export { parseDot } from "./shell/index.js";
-export { parseDiagram } from "./shell/index.js";
+export { parseDiagram, parseDiagramWithSource } from "./shell/index.js";
 export type {
+  ParsedWithSource,
   ParseError,
   ErrorPosition,
   ParsedSource,
