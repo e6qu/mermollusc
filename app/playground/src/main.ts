@@ -3530,7 +3530,7 @@ const hashValue = (key: string): string | null => {
     try {
       return decodeURIComponent(part.slice(eq + 1));
     } catch (e) {
-      console.error(`ignoring malformed #${key} in URL:`, messageOf(e));
+      console.error("ignoring malformed URL hash for key", key, messageOf(e));
       return null;
     }
   }
@@ -3548,9 +3548,9 @@ const applyOverlayJson = (raw: string, whence: string): void => {
   try {
     const decoded = decodeOverlay(JSON.parse(raw));
     if (isOk(decoded)) doc.replace(decoded.value.overrides, decoded.value.groups);
-    else console.error(`ignoring invalid overlay (${whence}):`, decoded.error.issues.join("; "));
+    else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
   } catch (e) {
-    console.error(`ignoring corrupt overlay (${whence}):`, messageOf(e));
+    console.error("ignoring corrupt overlay from", whence, messageOf(e));
   }
 };
 if (!useCollab) {
