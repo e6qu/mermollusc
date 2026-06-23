@@ -62,6 +62,7 @@ test("phone-width workflows keep editor, relabel, help, and icon drawer usable",
   await page.locator("#icons-toggle").click();
   const picker = page.locator("#icon-picker");
   await expect(picker).toBeVisible();
+  await expect(page.locator("#icon-backdrop")).toBeVisible();
   const width = await picker.evaluate((el) => el.getBoundingClientRect().width);
   expect(width).toBeLessThanOrEqual(390);
   await page.keyboard.press("Escape");

@@ -83,3 +83,23 @@ test("dragging within the minimap pans the stage", async ({ page }) => {
   expect(await scrollTopOf(page)).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });
+
+test("the minimap can pan the stage from the keyboard", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await setSource(page, DIAMOND);
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await zoomIn(page, 4);
+  const minimap = page.locator("#minimap");
+  await expect(minimap).toBeVisible();
+  await minimap.focus();
+  await expect(minimap).toBeFocused();
+
+  await page.keyboard.press("ArrowDown");
+  expect(await scrollTopOf(page)).toBeGreaterThan(0);
+  await page.keyboard.press("Home");
+  expect(await scrollTopOf(page)).toBe(0);
+  expect(errors).toEqual([]);
+});

@@ -18,6 +18,22 @@ Resolved (collab-era audit sweep):
   initial phone-width review shot.
 - ~~**Shortcut help wrapped awkwardly in the keyboard-only section.**~~ Fixed — the desktop help panel
   is wider with more grid spacing, and `make shots` now includes the help-modal journey.
+- ~~**`make shots` could attach to an unrelated local preview server.**~~ Fixed — the shot project now
+  owns a dedicated strict port instead of reusing an existing server, so mid-suite server exits fail
+  deterministically instead of producing partial artifacts.
+- ~~**Live selection survived source replacement.**~~ Fixed — successful renders reconcile selected
+  nodes/edges and click order against the new scene before commands run, so Group/Connect/Arrange
+  cannot act on dead ids.
+- ~~**Export/copy could publish the previous good diagram after the current source failed.**~~ Fixed —
+  PNG/PDF/SVG/DOT export and image copy are blocked while the current source is stale and keep the
+  status in an error state.
+- ~~**Arrange pinned already-aligned nodes.**~~ Fixed — zero-delta arrange actions no longer record
+  undo history or write overrides.
+- ~~**The minimap was pointer-only.**~~ Fixed — it is focusable, named, and supports keyboard panning.
+- ~~**Malformed shared/persisted source could show only a blank stage on first load.**~~ Fixed — when
+  no prior scene exists, parse/layout failure shows an in-stage recovery state.
+- ~~**The icon picker read as an accidental layout collision.**~~ Fixed — it now opens with a backdrop
+  and closes from that backdrop as well as Escape/close.
 - ~~**Phone-width app shell scrolled sideways.**~~ Fixed — below 760px the topbar stacks, the workbench
   changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
   clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than

@@ -16,6 +16,7 @@ test("the icon picker filters and inserts an icon override at the caret", async 
   await expect(page.locator("#icon-filter")).toBeFocused();
   const picker = page.locator("#icon-picker");
   await expect(picker).toBeVisible();
+  await expect(page.locator("#icon-backdrop")).toBeVisible();
 
   await page.locator("#icon-filter").fill("docker");
   const first = page.locator("#icon-grid .picker-icon").first();
@@ -27,6 +28,7 @@ test("the icon picker filters and inserts an icon override at the caret", async 
 
   await page.locator("#icons-close").click();
   await expect(picker).toBeHidden();
+  await expect(page.locator("#icon-backdrop")).toBeHidden();
   await expect(page.locator("#icons-toggle")).toBeFocused();
 });
 
@@ -37,6 +39,9 @@ test("the icon filter reports when nothing matches", async ({ page }) => {
   await page.locator("#icons-toggle").click();
   await page.locator("#icon-filter").fill("zzz-no-such-icon");
   await expect(page.locator("#icon-grid .picker-empty")).toBeVisible();
+  await page.locator("#icon-backdrop").click({ position: { x: 8, y: 8 } });
+  await expect(page.locator("#icon-picker")).toBeHidden();
+  await page.locator("#icons-toggle").click();
   await page.keyboard.press("Escape");
   await expect(page.locator("#icon-picker")).toBeHidden();
 });
