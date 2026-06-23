@@ -659,3 +659,11 @@
   `deleteSelection()`, and `computeCapabilities()`→`CapabilityState` consumed by both the workbench and
   the context bar. New e2e: relabel-reject (fail-loud validation), multi-delete, connect-drag source
   assertion, tool-modes, tool-palette, context-bar; broadened nothing that regressed (168 specs green).
+
+- **Demo + examples pass (2026-06-23).** Added a topbar Reset control (clears `mermollusc-*`
+  localStorage + reloads the clean URL). Gave the cloud family directed `-->` traffic edges (contracts
+  `CloudLink.directed`, parser, layout arrowhead) and made the cloud example a realistic tiered AWS web
+  architecture with authentic AWS icons and labelled traffic paths; the cloud layout now wraps wide
+  rows so a large architecture stays compact. Added two BPMN-style swimlane workflows. Per review
+  feedback, made every new demo semantically correct (declined-payment cancels rather than refunds;
+  CloudFront/WAF/ALB/API-Gateway in the right order). Verified the new on-canvas widgets in dark mode.
