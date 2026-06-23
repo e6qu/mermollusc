@@ -11,10 +11,12 @@ for graph layout.
 
 ## What it does
 
-- **Ten diagram families** render in the browser: flowchart, sequence, C4 context, block, network,
-  cloud, state, **ER** (crow's-foot cardinality + attribute compartments), **class** (UML
-  inheritance/composition/aggregation heads, field/method compartments, `«stereotype»`s), and
-  **requirement** (SysML requirement/element boxes + the seven relationship verbs).
+- **Fifteen diagram families** render in the browser, **plus DOT/Graphviz import**: flowchart,
+  sequence, C4 context, block, network, cloud, state, **ER** (crow's-foot cardinality + attribute
+  compartments), **class** (UML inheritance/composition/aggregation heads, field/method compartments,
+  `«stereotype»`s), **requirement** (SysML requirement/element boxes + the seven relationship verbs),
+  **gitGraph**, **timeline**, **mindmap**, **pie**, and **Gantt**. A Graphviz `digraph`/`graph` can be
+  pasted in and imports as a flowchart.
 - **Two-way editing.** Double-click any node, edge, or label on the canvas to rename it in place;
   the edit is patched back into the source text (formatting and comments preserved). **Connect** and
   **Delete** work across every family; drag-to-move, box-select, group/lock, align/distribute, resize,
@@ -167,6 +169,86 @@ requirementDiagram
     type: simulation
   }
   login_form - satisfies -> user_req
+```
+
+**gitGraph** — `commit`/`branch`/`checkout`/`merge` with `id:`/`tag:` annotations; a deterministic
+lane layout (commits march along the axis, each branch owns a lane).
+
+```
+gitGraph
+  commit id: "init"
+  branch develop
+  commit id: "feature-a"
+  checkout main
+  commit id: "hotfix"
+  merge develop tag: "v1.0"
+```
+
+**Timeline** — `title`, `section` groupings, and `period : event : event` lines.
+
+```
+timeline
+  title Mermollusc roadmap
+  section Foundations
+    Parser : Flowchart : Sequence
+    Layout : ELK routing
+  section Visuals
+    Renderer : Canvas : SVG export
+```
+
+**Mindmap** — indentation defines the hierarchy; shapes `((circle))` · `(rounded)` · `[square]` ·
+`{{hexagon}}` · plain.
+
+```
+mindmap
+  root((mermollusc))
+    Origins
+      Mermaid
+      PlantUML
+    Families
+      Flowchart
+      Sequence
+```
+
+**Pie** — `pie [showData] [donut]`, optional `title`, and `"label" : value` rows.
+
+```
+pie showData donut
+  title Diagram family coverage
+  "Flow / state" : 34
+  "Structure" : 28
+  "Planning" : 18
+```
+
+**Gantt** — `dateFormat`, `excludes`/`tickInterval` directives, `section`s, and
+`Task :status, id, start, duration` rows (`start` is a date or `after <id…>`).
+
+```
+gantt
+  title Project Plan
+  dateFormat YYYY-MM-DD
+  excludes weekends
+  section Planning
+    Research :done, res, 2024-01-01, 5d
+    Design :active, des, after res, 1w
+  section Build
+    Implement :impl, after des, 2w
+    Launch :milestone, ml, after impl, 0d
+```
+
+**DOT import** — paste a Graphviz `digraph`/`graph { … }` (node/edge statements, `a -> b -> c`
+chains, `rankdir`, `cluster*` subgraphs, `label`/`shape`/`style` attrs); it imports as a flowchart.
+
+```
+digraph G {
+  rankdir=LR
+  start [shape=box]
+  start -> parse
+  subgraph cluster_core {
+    label="core"
+    parse -> layout -> render
+  }
+}
 ```
 
 ## Architecture

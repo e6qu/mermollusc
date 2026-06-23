@@ -4,6 +4,12 @@
   `deleteEdge` heuristic. Note: deleting a node mid-chain (`A --> B --> C`) is a semantic choice, not
   just a span removal — the line-based version removes the whole chain line; decide the intended
   behaviour before reworking.
+- Wire the app shell to call `validateLabel(label, context)` before committing every inline
+  edge/element label edit (the `patchAt`/`commit` path in `beginRelabel`): flowchart/network/cloud/block
+  pipe labels → `pipe`; C4 element/relation labels → `quoted`; the remaining families → `plain`. Surface
+  the `PatchError` (the relabel/reshape node paths already validate internally).
+- Wire `app/main.ts` to import `snapAxis` / `snapCandidates` / `SNAP_T` from `@m/builder` and delete the
+  in-file copies (the core is now the single source).
 - *(done)* Sidecar group labels (`setGroupLabel`) persist through the overlay codec.
 - *(done)* Property coverage for `relabelNode` (span-accurate relabel, others untouched) and
   `connect` (appends exactly one edge, nodes preserved).

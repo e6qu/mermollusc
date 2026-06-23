@@ -1,4 +1,6 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
+import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   EdgeId,
@@ -21,11 +23,6 @@ export interface ParsedNetwork {
   readonly ast: NetworkAst;
   readonly source: NetworkSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 // The kind subrule consumes exactly one keyword token; its name is the node kind.
 const KIND_TOKENS: readonly NetworkNodeKind[] = [

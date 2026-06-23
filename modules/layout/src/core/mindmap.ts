@@ -10,6 +10,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { clampedWidth } from "./measure.js";
 
 const RING = 150; // radial distance between successive depth levels
 const NODE_H = 34;
@@ -105,7 +106,7 @@ export const layoutMindmap = (
   }
 
   const sizeOf = (node: MindmapNode): { readonly w: number; readonly h: number } => ({
-    w: Math.max(MIN_W, measure(node.label) + PAD),
+    w: clampedWidth(node.label, measure, MIN_W, PAD),
     h: NODE_H,
   });
 

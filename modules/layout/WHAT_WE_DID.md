@@ -209,3 +209,22 @@
   is recalculated. +integration test.
 - Pie layout now maps `PieAst.donut` to a non-zero `SceneWedge.innerRadius` for slices while keeping
   legend swatches as full discs. +unit test.
+- DRY sweep (shared core helpers). Extracted two pure helpers used across the layout cores:
+  - `core/measure.ts`: `widestLine(text, measure)` (widest measured line via `reduce`, not
+    `Math.max(...spread)` — total on a pathological many-line label) and `clampedWidth(text, measure,
+    min, pad)` = `Math.max(min, widestLine + pad)`. The duplicated `labelWidth`/`leafWidth`/`actorWidth`/
+    `nodeWidth`/`widestLine` bodies across block/network/cloud/c4/transform/sequence/mindmap/timeline
+    now call these, each keeping its own `MIN_*`/`PAD` constants. Replaced timeline's spread-form
+    `widestLine` (a totality hazard) and removed c4's local `widestLine`. Semantics-preserving — every
+    single-line site still measures `measure(label)` (the `reduce` seeds at 0, ≥ any non-negative width).
+  - `core/grid.ts`: `gridGeometry(items, columns, cellWidth, cellHeight, gap)` → each item paired with
+    its row-major cell corner (`{ item, x, y }`) plus the overall extent (used-columns/rows floored at 1).
+    `layoutBlock`/`layoutNetwork` now derive node corners and extent from it (only the byte-identical
+    geometry — each keeps its own constants, SceneNode construction, and edge styling; no callback engine).
+    Pairing items with cells (rather than returning a bare `count` of positions) keeps the read total
+    under `noUncheckedIndexedAccess` — no fallback index.
+  - `elk.ts` (shell) replaced its two `e instanceof Error ? e.message : String(e)` catch idioms with
+    `messageOf` from `@m/std`.
+  - +fast-check tests: `measure.test.ts` (`widestLine`/`clampedWidth` bounds + many-line totality) and
+    `grid.test.ts` (`gridGeometry` order, placement formula, extent containment, empty/multi-row cases).
+    Existing block/network grid property tests stay green (geometry unchanged).

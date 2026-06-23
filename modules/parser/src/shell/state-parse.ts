@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   StateAst,
@@ -35,10 +36,6 @@ export interface ParsedState {
   readonly source: StateSource;
 }
 
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 const unquote = (s: string): string => s.slice(1, -1);
 
 // Span of a label token's trimmed text (the text after `:` carries a leading space).

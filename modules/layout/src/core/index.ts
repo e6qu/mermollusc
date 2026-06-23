@@ -10,6 +10,9 @@ export { layoutPie } from "./pie.js";
 export { layoutGantt } from "./gantt.js";
 export { layoutMindmap } from "./mindmap.js";
 export { heuristicMeasure } from "./graph.js";
+export { widestLine, clampedWidth } from "./measure.js";
+export { gridGeometry } from "./grid.js";
+export type { GridCell, GridExtent, GridGeometry } from "./grid.js";
 export type {
   LayoutConfig,
   LayoutGraph,

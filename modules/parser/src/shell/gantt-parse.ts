@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, oneOrMore, positiveInt, type Result } from "@m/std";
 import { ganttDate } from "@m/contracts";
 import type {
@@ -20,10 +21,6 @@ export interface ParsedGantt {
   readonly ast: GanttAst;
   readonly source: GanttSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 const trimmedSpan = (t: IToken): TextSpan => {
   const lead = t.image.length - t.image.trimStart().length;

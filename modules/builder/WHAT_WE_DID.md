@@ -103,3 +103,23 @@
 - Added `deleteGanttTask(text, span)` — removes the whole source line containing a label span. Keyed by
   span (not id) because a Gantt task may be auto-numbered (`t0`…) and carry no id in the text, which the
   id-matching `deleteNode` can't find. +2 integration tests (auto-id task; exact line removal).
+- Closed a closing-delimiter corruption in the inline relabel/reshape path: a label containing the
+  target shape's own closer (`]`/`)`/`}`) — or a newline — used to splice straight into the bracket and
+  write un-parseable source. `relabelNode`/`reshapeNode` now validate first (reshape against the target
+  shape's closer; relabel against every bracket closer, since the span doesn't record the existing
+  shape) and return a loud `PatchError` instead of corrupting the text. +property test (`relabelNode`
+  on hostile labels either round-trips through parse or returns err — never silently corrupts).
+- Added `validateLabel(label, context)` — a pure/total core guard the app shell calls before committing
+  an inline edge/element label edit (which previously spliced raw text between delimiters with no
+  check). `context` is a closed union — `flowchartBracket` (`]`/`)`/`}`), `pipe` (`|`, for
+  flowchart/network/cloud/block edge labels), `quoted` (`"`, for C4), `plain` (only `\n`) — each
+  rejecting the delimiter that would terminate the token early, plus `\n` everywhere. `patchSpan` stays
+  pure (validation is a separate gate). +property tests (per-context terminator rejection; safe labels
+  pass in every context).
+- Moved the alignment-snap geometry out of `app/main.ts` into `src/core/snap.ts` (verbatim, semantics
+  preserving): `snapAxis(edges, targets)` → the closest candidate shift within `SNAP_T` (first-seen
+  wins on a tie) and `snapCandidates(nodes, exceptId)` → the other nodes' left/centre/right xs +
+  top/middle/bottom ys; `SNAP_T` re-exported. Pure core, re-exported through the builder barrel. +prop
+  tests (snap never exceeds `SNAP_T` and lands the edge exactly on the line; globally-closest
+  first-seen-wins tie-break; no candidate ⇒ `{ delta: 0, line: null }`; `snapCandidates` excludes the
+  dragged node and emits three lines per other axis).

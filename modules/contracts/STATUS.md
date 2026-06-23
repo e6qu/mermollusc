@@ -2,12 +2,16 @@
 
 **State:** AST + SceneGraph IR defined (types only); `make check` green.
 
-- AST: flowchart + sequence + C4 + state + ER + class + requirement variants (`FlowchartAst` incl.
+- AST: all fifteen family variants — flowchart + sequence + C4 + block + network + cloud + state + ER
+  + class + requirement + gitGraph + timeline + mindmap + pie + Gantt (`FlowchartAst` incl.
   `FlowSubgraph` grouping, `SequenceAst`, `C4Ast` with nesting + optional `C4Element.description`,
-  `ErAst` with `attributes: ErAttribute[]`, `ClassAst` with `members: ClassMember[]` + `ClassArrow`
-  ends, `RequirementAst` whose entities carry a `ReqKind` + `ReqField[]` and relationships a
-  `ReqRelKind` verb, `PieAst` with `showData` + `donut`); `DiagramAst` discriminated union; branded
-  ids, closed unions.
+  `BlockAst`/`NetworkAst`/`CloudAst` whose nodes carry an optional `icon: IconRef | null` override
+  (cloud also nests via `CloudGroup`), `StateAst` with composites + notes, `ErAst` with
+  `attributes: ErAttribute[]`, `ClassAst` with `members: ClassMember[]` + `ClassArrow` ends,
+  `RequirementAst` whose entities carry a `ReqKind` + `ReqField[]` and relationships a `ReqRelKind`
+  verb, `GitGraphAst` (commits/branches), `TimelineAst` (periods/events), `MindmapAst` (hierarchy),
+  `PieAst` with `showData` + `donut`, `GanttAst` with sections/tasks + resolved working-day
+  directives); `DiagramAst` discriminated union; branded ids, closed unions.
 - SceneGraph IR: `SceneNode`/`SceneEdge`/`Scene` over `@m/std` geometry, with node `shape`, containment
   via `parent`, compartment rows via `SceneNode.rows` (`string[] | null`) + a field/method split via
   `rowDivider` (`number | null`) + an above-title `subtitle` (`string | null`, a class stereotype),

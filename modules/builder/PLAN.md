@@ -24,7 +24,10 @@ Hit-testing, selection, drag, and text↔diagram two-way sync.
 
 ## Public API (stable surface)
 
-- `patchSpan`, `relabelNode`, `addNode`, `connect`, `connectUndirected`, `connectC4`,
+- `patchSpan`, `relabelNode`, `reshapeNode`, `addNode`, `connect`, `connectUndirected`, `connectC4`,
   `connectMessage`.
+- `validateLabel(label, context)` — the pure label-safety guard the shell calls before committing an
+  inline edge/element/node-label edit (`context` ∈ `flowchartBracket` | `pipe` | `quoted` | `plain`).
 - `deleteNode`, `deleteEdge`, `deleteC4`, `deleteC4Rel`, `deleteActor`, `deleteMessage`.
+- `snapAxis`, `snapCandidates`, `SNAP_T` — alignment-snap geometry for drag/resize (pure, in core).
 - `group`, `ungroup`, `setLocked`, `setGroupLabel`, and group queries over the sidecar group model.

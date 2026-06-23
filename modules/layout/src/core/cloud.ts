@@ -11,6 +11,7 @@ import type {
 } from "@m/contracts";
 import { SIMPLE_ICONS_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { clampedWidth } from "./measure.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
@@ -44,7 +45,7 @@ interface Elem {
 }
 
 const leafWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_LEAF_WIDTH, measure(label) + LABEL_PADDING);
+  clampedWidth(label, measure, MIN_LEAF_WIDTH, LABEL_PADDING);
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.

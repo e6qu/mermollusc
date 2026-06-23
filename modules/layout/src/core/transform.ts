@@ -1,6 +1,7 @@
 import { err, ok, rect, type Point, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { boxCenter, routeWaypoints } from "./route.js";
+import { clampedWidth } from "./measure.js";
 import type {
   EdgeEnd,
   EdgeId,
@@ -46,7 +47,7 @@ const MIN_NODE_WIDTH = 48;
 const NODE_SPACING = 40;
 
 const nodeWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_NODE_WIDTH, measure(label) + LABEL_PADDING);
+  clampedWidth(label, measure, MIN_NODE_WIDTH, LABEL_PADDING);
 
 // A non-empty `seed` (node → current position) switches ELK into semi-interactive layered layout:
 // it relaxes the graph around the given coordinates instead of laying out from scratch (an empty

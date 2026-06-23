@@ -36,7 +36,8 @@
   wanted. Kept out of the bundle so it can't affect app/test performance.
 - tests: 15 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
   valid/invalid + default/explicit categories, BPMN + sketch packs, vendored-pack provenance).
-- The **cloud** family renders these marks (kind→slug map); the **network** family accepts a
-  per-node `icon "<pack>/<name>"` override that resolves against any registered pack.
-- Not yet: more OSS packs (devicon MIT, Kubernetes-community Apache-2.0); the per-node override on
-  the remaining families (block/flowchart/C4).
+- The **cloud** family renders these marks (kind→slug map); the **network**, **cloud**, and **block**
+  families each accept a per-node `icon "<pack>/<name>"` override (`icon: IconRef | null` on their AST
+  nodes) that resolves against any registered pack.
+- Not yet: the per-node override on the remaining families (flowchart/C4 — deferred, their grammars
+  make a node-level icon slot awkward).

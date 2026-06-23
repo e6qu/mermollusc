@@ -1,4 +1,5 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   ClassArrow,
@@ -21,11 +22,6 @@ export interface ParsedClass {
   readonly ast: ClassAst;
   readonly source: ClassSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 const tokenSpan = (t: IToken): TextSpan => ({
   start: t.startOffset,

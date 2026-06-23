@@ -15,7 +15,9 @@ export {
   topGroups,
   pruneGroups,
 } from "./groups.js";
+export { snapAxis, snapCandidates, SNAP_T } from "./snap.js";
 export {
+  validateLabel,
   relabelNode,
   reshapeNode,
   patchSpan,
@@ -42,4 +44,4 @@ export {
   deleteRequirementEntity,
   deleteStateEntity,
 } from "./patch.js";
-export type { PatchError } from "./patch.js";
+export type { PatchError, LabelContext } from "./patch.js";

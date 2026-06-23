@@ -11,6 +11,8 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { gridGeometry } from "./grid.js";
+import { clampedWidth } from "./measure.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
@@ -24,24 +26,18 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly toEnd
   thick: { stroke: "solid", toEnd: "arrow" },
 };
 
-const labelWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_CELL_WIDTH, measure(label) + LABEL_PADDING);
-
 // Pure grid layout: blocks fill a `columns`-wide grid row-major in a uniform cell (sized to the
 // widest label so the grid stays aligned); edges are straight centre-to-centre lines.
 export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, LayoutError> => {
   const cellWidth = ast.blocks.reduce(
-    (w, b) => Math.max(w, labelWidth(b.label, measure)),
+    (w, b) => Math.max(w, clampedWidth(b.label, measure, MIN_CELL_WIDTH, LABEL_PADDING)),
     MIN_CELL_WIDTH,
   );
   const columns = ast.columns; // `PositiveInt` — guaranteed ≥ 1 by the parser, no clamp needed
+  const grid = gridGeometry(ast.blocks, columns, cellWidth, NODE_HEIGHT, GAP);
 
   const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
-  const nodes: SceneNode[] = ast.blocks.map((b, i) => {
-    const col = i % columns;
-    const row = Math.floor(i / columns);
-    const x = col * (cellWidth + GAP);
-    const y = row * (NODE_HEIGHT + GAP);
+  const nodes: SceneNode[] = grid.positions.map(({ item: b, x, y }) => {
     centers.set(b.id, { x: x + cellWidth / 2, y: y + NODE_HEIGHT / 2 });
     return {
       id: sceneNodeId(b.id),
@@ -79,9 +75,6 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     });
   }
 
-  const rows = Math.ceil(ast.blocks.length / columns);
-  const usedColumns = Math.min(columns, Math.max(1, ast.blocks.length));
-  const width = usedColumns * cellWidth + (usedColumns - 1) * GAP;
-  const height = Math.max(1, rows) * NODE_HEIGHT + Math.max(0, rows - 1) * GAP;
+  const { width, height } = grid.extent;
   return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
 };

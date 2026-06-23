@@ -49,6 +49,7 @@ export {
   size,
   rect,
   decode,
+  messageOf,
   consoleLogger,
   stamp,
 } from "./shell/index.js";

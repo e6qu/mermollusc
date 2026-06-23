@@ -7,6 +7,10 @@
   re-lays out when the Sketch toggle flips, so labels stay inside their boxes in both modes.
 - Extend property tests: no node-box overlap, edges terminate near nodes (ids-preserved + boxes-
   within-extent are covered for block/network grids and the ELK flowchart path).
+- *(done)* DRY sweep: the duplicated label-width / `widestLine` idioms and the block/network grid
+  geometry are now shared `core/measure.ts` (`widestLine`/`clampedWidth`) and `core/grid.ts`
+  (`gridGeometry`); the `elk.ts` catch idiom uses `@m/std`'s `messageOf`. (Geometry-only — no
+  callback layout engine, since the per-family node/edge construction diverges too much.)
 - *(done)* Flowchart `subgraph` nesting lays out via ELK hierarchy (compound nodes + absolute-coord
   flattening). C4/cloud use their own pure nested-box layout.
 - *(done)* All five pure layouts (`sequence`/`c4`/`cloud`/`block`/`network`) now return

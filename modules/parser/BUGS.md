@@ -43,3 +43,6 @@ Checked while adding the ER-diagram parser.
 
 Checked while adding state-note side parsing and the pie donut header modifier.
 Checked while adding the cross-family malformed-input robustness suite (no crashes found).
+
+Checked while centralising the CST adapter (`cst.ts`), the forward header-sniff scan, the O(S) subgraph
+ordering walk, and `parseDiagramWithSource` — all behaviour-preserving; existing + new parity tests pass.

@@ -77,4 +77,44 @@ describe("parse", () => {
   it("fails loudly on an invalid direction", () => {
     expect(isErr(parse("flowchart ZZ\n  A --> B\n"))).toBe(true);
   });
+
+  it("orders nodes depth-first across sibling and nested subgraphs (O(S) walk golden)", () => {
+    // Two top-level subgraphs (each with a nested child) plus a trailing top-level node. The canonical
+    // order is top-level-first, then each subgraph depth-first in declaration order — the bucketed walk
+    // must reproduce it byte-for-byte.
+    const text = [
+      "flowchart TD",
+      "  top1 --> top2",
+      "  subgraph A",
+      "    a1[A1]",
+      "    subgraph A2",
+      "      a2a[A2a]",
+      "    end",
+      "  end",
+      "  subgraph B",
+      "    b1[B1]",
+      "    subgraph B2",
+      "      b2a[B2a]",
+      "    end",
+      "  end",
+      "  tail[Tail]",
+      "",
+    ].join("\n");
+    const r = parse(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.nodes.map((n) => n.id)).toEqual([
+      "top1",
+      "top2",
+      "tail",
+      "a1",
+      "a2a",
+      "b1",
+      "b2a",
+    ]);
+    // And the order is a print→parse fixed point.
+    const again = parse(print(r.value));
+    expect(isOk(again)).toBe(true);
+    if (isOk(again)) expect(again.value).toEqual(r.value);
+  });
 });

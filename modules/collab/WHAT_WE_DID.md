@@ -106,3 +106,26 @@
 - Implemented `OverlayDoc.replaceOverrides` for the Yjs-backed overlay by clearing and repopulating the
   override map in one local transaction. This keeps collab mode aligned with the app's pinned-regenerate
   behavior.
+- Hardening sweep (relay + transport + session). Relay (`server/relay.mjs`): wrapped `applyUpdate` in a
+  try/catch (a malformed CRDT frame is logged + dropped before re-broadcast, not an `uncaughtException`
+  that crashes every room); registered `socket.on("error")` + `wss.on("error")` so transport faults
+  can't reach `uncaughtException`; added a per-socket token-bucket rate limit on frames/sec AND bytes/sec
+  (injectable `rateLimit` knob, `now` injectable) closing 1008 on breach across all post-auth frames;
+  added a frame-tag allow-list (`DOC`/`AWARE` only — unknown + inbound `CONTROL` dropped, one throttled
+  warn); validate the URL-derived room name once at the boundary (`<tenant>/<id>` grammar; empty/`.`/`..`
+  />2-segment → 1008, no normalisation); throttled the viewer-edit-dropped warn; the run-block flushes
+  every dirty room on SIGINT/SIGTERM (`wss.flushAll()`). RBAC (`server/rbac.mjs`): `createClaimsRoleResolver`
+  now defaults `defaultRole: null` (fail closed); the relay's run-block passes
+  `defaultRole: authEnabled ? null : "editor"` (auth on → deny role-less tokens; auth off → dev editor).
+  Transport (`src/shell/transport.ts`): added `reconnectingWebSocketTransport(url, deps)` — a self-healing
+  `CollabSocket` that mints a fresh inner WebSocket on drop, re-binds all listeners, backs off
+  (exponential + jitter + cap, injected `schedule`/`random`), re-fires `onOpen` on reopen so the state
+  exchange re-runs, fires the consumer `onClose` only when the budget is exhausted, and surfaces a
+  closed-union `ReconnectStatus`. Session (`src/shell/session.ts`): `materialize` returns the decode
+  `Result` (no throw in the observer); the observer logs via a new `Logger<CollabEvent>`
+  (`"overlay-decode-rejected"`, threaded through `createCollabSession({ logger })`), surfaces a
+  `CollabStatus` (`onStatusChange`), and keeps last-good on the rejected branch; `groupNodes` mints
+  `g${clientID}-${seq}` (collision-proof across collaborators). Tests (+42, 74 total green): backoff
+  schedule, reconnect re-mint + re-exchange + budget-exhaust + user-close, corrupt-remote-overlay path,
+  two-client concurrent grouping survival, `replaceOverrides`, and relay crash-guard / room-name /
+  tag-allow-list / rate-limit integration. RBAC tests updated for the fail-closed default.

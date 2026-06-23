@@ -6,8 +6,11 @@ import {
   connectWebSocket,
   createCollabSession,
   type CollabSocket,
+  type ReconnectStatus,
+  reconnectingWebSocketTransport,
   webSocketTransport,
 } from "../../src/index.js";
+import { backoffDelay } from "../../src/shell/transport.js";
 
 const n = (s: string): SceneNodeId => brand<string, "SceneNodeId">(s);
 
@@ -306,5 +309,188 @@ describe("collab transport — webSocketTransport (platform socket)", () => {
     ws.close(); // …then close — the listener must fire exactly once
     expect(drops).toBe(1);
     session.destroy();
+  });
+});
+
+// A controllable in-memory `CollabSocket` so the reconnecting transport's lifecycle (open → drop →
+// re-mint → reopen) is driven deterministically, no platform WebSocket involved. Each instance starts
+// closed; `flipOpen()` fires its `onOpen`, `drop()` its `onClose`.
+class ControlSocket {
+  static minted: ControlSocket[] = [];
+  open = false;
+  readonly sent: Uint8Array[] = [];
+  private readonly openCbs: Array<() => void> = [];
+  private readonly msgCbs: Array<(d: Uint8Array) => void> = [];
+  private readonly closeCbs: Array<() => void> = [];
+  constructor(readonly url: string) {
+    ControlSocket.minted.push(this);
+  }
+  isOpen(): boolean {
+    return this.open;
+  }
+  send(data: Uint8Array): void {
+    this.sent.push(data);
+  }
+  onOpen(l: () => void): void {
+    this.openCbs.push(l);
+  }
+  onMessage(l: (d: Uint8Array) => void): void {
+    this.msgCbs.push(l);
+  }
+  onClose(l: () => void): void {
+    this.closeCbs.push(l);
+  }
+  close(): void {
+    this.open = false;
+  }
+  flipOpen(): void {
+    this.open = true;
+    for (const l of this.openCbs) l();
+  }
+  drop(): void {
+    this.open = false;
+    for (const l of this.closeCbs) l();
+  }
+  deliver(d: Uint8Array): void {
+    for (const l of this.msgCbs) l(d);
+  }
+}
+
+describe("collab transport — backoff schedule", () => {
+  it("is exponential up to the cap, with deterministic jitter from the injected random", () => {
+    // random() = 0 → no jitter, so the bare exponential shows through, capped.
+    const zero = () => 0;
+    expect(backoffDelay(0, 500, 30_000, 0.5, zero)).toBe(500);
+    expect(backoffDelay(1, 500, 30_000, 0.5, zero)).toBe(1000);
+    expect(backoffDelay(2, 500, 30_000, 0.5, zero)).toBe(2000);
+    expect(backoffDelay(10, 500, 30_000, 0.5, zero)).toBe(30_000); // 500·2^10 = 512000 → capped
+
+    // random() = 1 → full jitter: each delay grows by jitter× its exponential.
+    const one = () => 1;
+    expect(backoffDelay(0, 500, 30_000, 0.5, one)).toBe(750); // 500 + 500·0.5·1
+    expect(backoffDelay(1, 500, 30_000, 0.5, one)).toBe(1500); // 1000 + 1000·0.5
+    expect(backoffDelay(10, 500, 30_000, 0.5, one)).toBe(45_000); // 30000 + 30000·0.5
+  });
+});
+
+describe("collab transport — reconnectingWebSocketTransport", () => {
+  afterEach(() => {
+    ControlSocket.minted = [];
+  });
+
+  it("re-mints a fresh socket on drop and re-fires onOpen so state re-exchanges", () => {
+    const scheduled: Array<{ run: () => void; delay: number }> = [];
+    const statuses: ReconnectStatus[] = [];
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run, delay) => scheduled.push({ run, delay }),
+      random: () => 0,
+      onStatus: (s) => statuses.push(s),
+    });
+
+    // The consumer (a stand-in for connectTransport) registers its listeners once and counts opens.
+    let opens = 0;
+    socket.onOpen(() => {
+      opens += 1;
+    });
+    const received: number[] = [];
+    socket.onMessage((d) => received.push(d[0] ?? -1));
+
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+    expect(opens).toBe(1); // initial open re-runs the consumer's state exchange
+
+    // The relay drops the socket. The transport must NOT call the consumer onClose yet; it schedules a
+    // reconnect and reports "reconnecting".
+    let closedToConsumer = 0;
+    socket.onClose(() => {
+      closedToConsumer += 1;
+    });
+    first.drop();
+    expect(statuses).toContain("reconnecting");
+    expect(closedToConsumer).toBe(0);
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]?.delay).toBe(500); // first backoff
+
+    // Run the scheduled reconnect → a FRESH socket is minted; the dead first socket's listeners are
+    // gone. The new socket opening re-fires the consumer onOpen (state re-exchange) and reports
+    // "reconnected".
+    scheduled[0]?.run();
+    const second = ControlSocket.minted[1];
+    if (second === undefined) throw new Error("no reconnect socket minted");
+    expect(second).not.toBe(first);
+    second.flipOpen();
+    expect(opens).toBe(2); // the re-open re-runs the consumer's state exchange (Yjs merges idempotently)
+    expect(statuses).toContain("reconnected");
+
+    // Messages now flow through the fresh socket to the same consumer listener.
+    second.deliver(new Uint8Array([7, 1, 2]));
+    expect(received).toContain(7);
+
+    socket.close();
+  });
+
+  it("fires the consumer onClose only after the retry budget is exhausted", () => {
+    const scheduled: Array<() => void> = [];
+    const statuses: ReconnectStatus[] = [];
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run) => scheduled.push(run),
+      random: () => 0,
+      maxRetries: 2,
+      onStatus: (s) => statuses.push(s),
+    });
+    let closedToConsumer = 0;
+    socket.onClose(() => {
+      closedToConsumer += 1;
+    });
+
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+
+    // Drop, retry, drop again, retry again, drop a third time → budget (2) exhausted → disconnected.
+    first.drop(); // attempt 0 scheduled
+    expect(closedToConsumer).toBe(0);
+    scheduled[0]?.();
+    ControlSocket.minted[1]?.drop(); // attempt 1 scheduled
+    expect(closedToConsumer).toBe(0);
+    scheduled[1]?.();
+    ControlSocket.minted[2]?.drop(); // budget exhausted
+    expect(statuses).toContain("disconnected");
+    expect(closedToConsumer).toBe(1);
+
+    socket.close();
+  });
+
+  it("a user-initiated close stops reconnecting", () => {
+    const scheduled: Array<() => void> = [];
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run) => scheduled.push(run),
+      random: () => 0,
+    });
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+    socket.close();
+    first.drop(); // a close after the user left must not schedule a reconnect
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it("proxies isOpen/send to the inner socket and defaults its deps to the platform socket", () => {
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    // No deps injected → mkSocket defaults to webSocketTransport, schedule to setTimeout, random to
+    // Math.random. The FakeWebSocket starts OPEN, so isOpen proxies true and send reaches it.
+    const socket = reconnectingWebSocketTransport("wss://relay.example/room-r");
+    const ws = FakeWebSocket.instances[0];
+    if (ws === undefined) throw new Error("no socket created");
+    expect(socket.isOpen()).toBe(true);
+    socket.send(new Uint8Array([4, 5, 6]));
+    expect(ws.sent).toHaveLength(1);
+    expect([...new Uint8Array(ws.sent[0] ?? new ArrayBuffer(0))]).toEqual([4, 5, 6]);
+    socket.close();
+    expect(ws.readyState).toBe(3);
   });
 });

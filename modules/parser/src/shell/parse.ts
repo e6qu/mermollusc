@@ -1,4 +1,4 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   EdgeId,
@@ -14,6 +14,8 @@ import type {
   SourceMap,
   TextSpan,
 } from "@m/contracts";
+import { childNodes, childTokens, imageOf, spanOf } from "./cst.js";
+import type { Children } from "./cst.js";
 import { flowchartParser } from "./grammar.js";
 import { lexingError, parseError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
@@ -25,17 +27,6 @@ export interface ParsedSource {
   readonly ast: FlowchartAst;
   readonly source: SourceMap;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
-const imageOf = (c: Children, name: string): string | null =>
-  childTokens(c, name)[0]?.image ?? null;
-const spanOf = (t: IToken): TextSpan => ({
-  start: t.startOffset,
-  end: (t.endOffset ?? t.startOffset) + 1,
-});
 
 // Span of a token's trimmed text — `|label|` pipe text may carry padding spaces around the label.
 const trimmedSpan = (t: IToken): TextSpan => {
@@ -307,15 +298,21 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
 
   // Canonical node order = top-level nodes, then each subgraph's nodes depth-first — exactly how the
   // printer emits them, so print→parse is a fixed point regardless of the original source order.
+  // Bucket the subgraphs by parent in one pass (preserving insertion order within each bucket), so the
+  // depth-first walk reads its children directly instead of rescanning every subgraph at each level.
+  const byParent = new Map<NodeId | null, FlowSubgraph[]>();
+  for (const s of subgraphs) {
+    const bucket = byParent.get(s.parent);
+    if (bucket === undefined) byParent.set(s.parent, [s]);
+    else bucket.push(s);
+  }
   const orderedIds: NodeId[] = [...topLevel];
   const walk = (parentId: NodeId | null): void => {
-    for (const s of subgraphs) {
-      if (s.parent === parentId) {
-        // A loop, not `push(...)`: a spread of a very large subgraph's nodes would exceed the
-        // argument-count limit and throw.
-        for (const n of s.nodes) orderedIds.push(n);
-        walk(s.id);
-      }
+    for (const s of byParent.get(parentId) ?? []) {
+      // A loop, not `push(...)`: a spread of a very large subgraph's nodes would exceed the
+      // argument-count limit and throw.
+      for (const n of s.nodes) orderedIds.push(n);
+      walk(s.id);
     }
   };
   walk(null);

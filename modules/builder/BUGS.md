@@ -16,6 +16,17 @@ Resolved (external review, codex `gpt-5.5`, 2026-06-19):
   (0,0) — unchanged — unless something is dragged negative). Covered by a builder extent unit test + a
   `toSvg` offset test; a full off-canvas-drag e2e is impractical (pointer leaves the canvas element).
 
+- ~~**Inline relabel/reshape could write un-parseable source.**~~ Fixed — a label containing the target
+  shape's closing delimiter (`]`/`)`/`}`) or a newline was spliced straight into the bracket, corrupting
+  the source. `relabelNode`/`reshapeNode` now validate the label first (reshape against the target
+  shape's closer; relabel against all bracket closers, since the span doesn't carry the existing shape)
+  and return a loud `PatchError`. The edge/element label path (which the app shell spliced raw) is now
+  guarded by the new pure `validateLabel(label, context)`, keyed on a closed context union
+  (`flowchartBracket`/`pipe`/`quoted`/`plain`). (+property test: relabel on hostile labels round-trips
+  or errs, never corrupts; +per-context `validateLabel` rejection tests.) **App wiring note:** the shell
+  must call `validateLabel` before committing an inline edge/element label edit (flowchart/network/cloud/
+  block pipe labels → `pipe`; C4 quoted labels → `quoted`; the rest → `plain`) and surface the error.
+
 Checked while adding family-specific C4 and sequence delete patchers.
 
 Checked while adding sidecar group labels.

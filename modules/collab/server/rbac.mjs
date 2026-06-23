@@ -9,10 +9,10 @@
 const ROLES = new Set(["owner", "editor", "viewer"]);
 
 // `defaultRole` is the role granted to an authenticated user whose token carries no per-room roles
-// claim. It defaults to `"editor"` (dev-friendly: any authenticated org member can edit), but is an
-// EXPLICIT knob — a production deployment with a real membership source should pass `null` to
-// fail *closed* (no claim → no access) instead of fail-open. See BUGS.md.
-export const createClaimsRoleResolver = ({ defaultRole = "editor" } = {}) => ({ user, room }) => {
+// claim. It defaults to `null` — FAIL CLOSED: a verified token lacking a per-room role is denied. The
+// relay's run-block passes `"editor"` only when auth is OFF (no domain/audience), so dev/e2e stay
+// zero-friction while a real (auth-on) deployment denies role-less tokens. An EXPLICIT knob either way.
+export const createClaimsRoleResolver = ({ defaultRole = null } = {}) => ({ user, room }) => {
   // No authenticated user (auth disabled / local dev) → full access. RBAC only bites when auth is on.
   if (user === null || user === undefined) return "editor";
 

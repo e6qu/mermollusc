@@ -1,4 +1,6 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens } from "./cst.js";
+import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   TimelineAst,
@@ -18,11 +20,6 @@ export interface ParsedTimeline {
   readonly ast: TimelineAst;
   readonly source: TimelineSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
 
 // The span of a token's text with surrounding whitespace stripped, so a relabel patches just the
 // visible text (not the leading space after a `:` or the indent before a period).

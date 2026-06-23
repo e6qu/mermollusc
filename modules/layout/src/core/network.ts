@@ -3,14 +3,13 @@ import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type { NetworkAst, NodeId, Scene, SceneEdge, SceneNode } from "@m/contracts";
 import { ARCH_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { gridGeometry } from "./grid.js";
+import { clampedWidth } from "./measure.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 48;
 const MIN_CELL_WIDTH = 64;
 const GAP = 40;
-
-const labelWidth = (label: string, measure: MeasureText): number =>
-  Math.max(MIN_CELL_WIDTH, measure(label) + LABEL_PADDING);
 
 // Pure squarish-grid layout: nodes fill a `ceil(sqrt n)`-wide grid in a uniform cell; links are
 // straight, undirected centre-to-centre lines (no arrowheads).
@@ -19,17 +18,14 @@ export const layoutNetwork = (
   measure: MeasureText,
 ): Result<Scene, LayoutError> => {
   const cellWidth = ast.nodes.reduce(
-    (w, n) => Math.max(w, labelWidth(n.label, measure)),
+    (w, n) => Math.max(w, clampedWidth(n.label, measure, MIN_CELL_WIDTH, LABEL_PADDING)),
     MIN_CELL_WIDTH,
   );
   const columns = Math.max(1, Math.ceil(Math.sqrt(ast.nodes.length)));
+  const grid = gridGeometry(ast.nodes, columns, cellWidth, NODE_HEIGHT, GAP);
 
   const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
-  const nodes: SceneNode[] = ast.nodes.map((n, i) => {
-    const col = i % columns;
-    const row = Math.floor(i / columns);
-    const x = col * (cellWidth + GAP);
-    const y = row * (NODE_HEIGHT + GAP);
+  const nodes: SceneNode[] = grid.positions.map(({ item: n, x, y }) => {
     centers.set(n.id, { x: x + cellWidth / 2, y: y + NODE_HEIGHT / 2 });
     return {
       id: sceneNodeId(n.id),
@@ -73,9 +69,6 @@ export const layoutNetwork = (
     });
   }
 
-  const rows = Math.ceil(ast.nodes.length / columns);
-  const usedColumns = Math.min(columns, Math.max(1, ast.nodes.length));
-  const width = usedColumns * cellWidth + (usedColumns - 1) * GAP;
-  const height = Math.max(1, rows) * NODE_HEIGHT + Math.max(0, rows - 1) * GAP;
+  const { width, height } = grid.extent;
   return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
 };

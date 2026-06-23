@@ -24,6 +24,8 @@ const docUpdate = (text) => {
   return encodeStateAsUpdate(d);
 };
 
+const AWARE = 1;
+
 const servers = [];
 const sockets = [];
 const start = (opts) => {
@@ -31,13 +33,18 @@ const start = (opts) => {
   servers.push(wss);
   return new Promise((res) => wss.on("listening", () => res(wss.address().port)));
 };
-const open = (port) =>
+// Open a socket to a given path (defaults to a valid room). Resolves on open; if the relay rejects
+// before open (e.g. an invalid room name closes 1008 immediately), resolves on close so the test can
+// inspect the close code.
+const openPath = (port, path = "/board") =>
   new Promise((res) => {
-    const ws = new WebSocket(`${WS}://localhost:${port}/board`);
+    const ws = new WebSocket(`${WS}://localhost:${port}${path}`);
     ws.binaryType = "arraybuffer";
     sockets.push(ws);
     ws.addEventListener("open", () => res(ws));
+    ws.addEventListener("close", () => res(ws));
   });
+const open = (port) => openPath(port);
 
 afterEach(() => {
   for (const s of sockets.splice(0)) s.close();
@@ -105,6 +112,113 @@ describe("relay — RBAC enforcement over a real socket", () => {
     ws.addEventListener("close", (e) => {
       code = e.code;
     });
+    await sleep(200);
+    expect(code).toBe(1008);
+  });
+});
+
+describe("relay — hardening", () => {
+  it("survives a malformed CRDT update instead of crashing (crash guard)", async () => {
+    const port = await start({ authorizeRoom: () => "editor" });
+    const a = await open(port);
+    const b = await open(port);
+    await sleep(120);
+    // Garbage bytes behind a DOC tag are not a valid Yjs update — applyUpdate throws; the guard must
+    // contain it. The relay stays up: a subsequent valid edit still propagates to the peer.
+    a.send(frame(DOC, new Uint8Array([255, 254, 253, 1, 2, 3])));
+    await sleep(80);
+    let bDocs = 0;
+    b.addEventListener("message", (e) => {
+      const by = new Uint8Array(e.data);
+      if (by[0] === DOC && by.byteLength > 1) bDocs += 1;
+    });
+    a.send(frame(DOC, docUpdate("still alive")));
+    await sleep(150);
+    expect(bDocs).toBeGreaterThanOrEqual(1); // relay survived and kept relaying
+  });
+
+  it("rejects a room name with a `..` segment with 1008 (no normalisation)", async () => {
+    const port = await start({ authorizeRoom: () => "editor" });
+    // Percent-encode the slashes so the URL parser doesn't collapse `..` before the relay validates the
+    // decoded name — the relay must reject the `..` traversal segment itself.
+    const ws = await openPath(port, "/a%2F..%2Fb");
+    let code = null;
+    ws.addEventListener("close", (e) => {
+      code = e.code;
+    });
+    await sleep(200);
+    expect(code).toBe(1008);
+  });
+
+  it("rejects a room name with an empty segment with 1008", async () => {
+    const port = await start({ authorizeRoom: () => "editor" });
+    const ws = await openPath(port, "/a//b");
+    let code = null;
+    ws.addEventListener("close", (e) => {
+      code = e.code;
+    });
+    await sleep(200);
+    expect(code).toBe(1008);
+  });
+
+  it("rejects a three-segment room name with 1008", async () => {
+    const port = await start({ authorizeRoom: () => "editor" });
+    const ws = await openPath(port, "/tenant/board/extra");
+    let code = null;
+    ws.addEventListener("close", (e) => {
+      code = e.code;
+    });
+    await sleep(200);
+    expect(code).toBe(1008);
+  });
+
+  it("drops unknown/CONTROL tags but still relays presence (tag allow-list)", async () => {
+    const port = await start({ authorizeRoom: () => "editor" });
+    const a = await open(port);
+    const b = await open(port);
+    const tagsAtB = [];
+    b.addEventListener("message", (e) => {
+      const by = new Uint8Array(e.data);
+      if (by.byteLength > 0) tagsAtB.push(by[0]);
+    });
+    await sleep(120);
+    a.send(frame(99, new Uint8Array([1, 2, 3]))); // unknown tag → dropped
+    a.send(frame(2, new Uint8Array([1]))); // CONTROL inbound → dropped (never relayed)
+    a.send(frame(AWARE, new Uint8Array([9, 9]))); // presence → relayed
+    await sleep(150);
+    expect(tagsAtB).toContain(AWARE);
+    expect(tagsAtB).not.toContain(99);
+  });
+
+  it("enforces a per-socket rate limit, closing 1008 on breach", async () => {
+    // A tiny budget: one frame/sec, plenty of bytes. The second frame in the window breaches.
+    const port = await start({
+      authorizeRoom: () => "editor",
+      rateLimit: { framesPerSec: 1, bytesPerSec: 10 * 1024 * 1024 },
+    });
+    const ws = await open(port);
+    let code = null;
+    ws.addEventListener("close", (e) => {
+      code = e.code;
+    });
+    await sleep(120);
+    for (let i = 0; i < 5; i += 1) ws.send(frame(AWARE, new Uint8Array([i])));
+    await sleep(200);
+    expect(code).toBe(1008);
+  });
+
+  it("enforces a per-socket byte rate limit, closing 1008 on breach", async () => {
+    const port = await start({
+      authorizeRoom: () => "editor",
+      rateLimit: { framesPerSec: 1000, bytesPerSec: 16 }, // generous frames, tiny byte budget
+    });
+    const ws = await open(port);
+    let code = null;
+    ws.addEventListener("close", (e) => {
+      code = e.code;
+    });
+    await sleep(120);
+    ws.send(frame(AWARE, new Uint8Array(64))); // 65 bytes > 16-byte budget → breach
     await sleep(200);
     expect(code).toBe(1008);
   });

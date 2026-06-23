@@ -1,4 +1,6 @@
-import type { CstElement, CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens, imageOf } from "./cst.js";
+import type { Children } from "./cst.js";
 import { brand, err, map, ok, positiveInt, type Result } from "@m/std";
 import type {
   BlockAst,
@@ -22,13 +24,6 @@ export interface ParsedBlock {
   readonly ast: BlockAst;
   readonly source: BlockSource;
 }
-
-type Children = Record<string, CstElement[] | undefined>;
-
-const childTokens = (c: Children, name: string): IToken[] => (c[name] ?? []) as IToken[];
-const childNodes = (c: Children, name: string): CstNode[] => (c[name] ?? []) as CstNode[];
-const imageOf = (c: Children, name: string): string | null =>
-  childTokens(c, name)[0]?.image ?? null;
 
 // Block labels are conventionally quoted (`id["text"]`); accept and drop a surrounding pair.
 const cleanLabel = (raw: string): string => {

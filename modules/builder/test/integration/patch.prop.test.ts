@@ -4,6 +4,7 @@ import type { EdgeKind } from "@m/contracts";
 import { parseWithSource } from "@m/parser";
 import { describe, expect, it } from "vitest";
 import { connect, relabelNode } from "../../src/core/patch.js";
+import { validateLabel } from "../../src/core/patch.js";
 
 const nid = (s: string) => brand<string, "NodeId">(s);
 
@@ -53,6 +54,75 @@ describe("relabelNode — span-accurate label edit (property-based)", () => {
           });
         },
       ),
+    );
+  });
+});
+
+// Labels that may carry a closing/terminator delimiter — the chars that would corrupt the source if
+// spliced in raw. `relabelNode` must reject these, not write un-parseable text.
+const hostileLabel = fc
+  .array(fc.constantFrom(..."abc01 ])}|\"\n"), { minLength: 1, maxLength: 8 })
+  .map((cs) => cs.join("").trim())
+  .filter((s) => s.length > 0);
+
+describe("relabelNode — never silently corrupts the source (property-based)", () => {
+  it("either round-trips the new label through parse or returns an err", () => {
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(ident, { minLength: 1, maxLength: 4 }),
+        fc.nat(),
+        hostileLabel,
+        (ids, idx, next) => {
+          const text = flowchartOf(ids, ids);
+          const victim = ids[idx % ids.length] ?? "";
+          const r = relabelNode(text, parsed(text).source, nid(victim), next);
+          if (!isOk(r)) {
+            // A rejection must mean the label actually carried a forbidden char (no false negatives).
+            expect(validateLabel(next, "flowchartBracket")).toMatchObject({ ok: false });
+            return;
+          }
+          // On success the patched text must parse and the victim's label must round-trip exactly.
+          const after = parsed(r.value).ast;
+          expect(after.nodes.find((n) => n.id === victim)?.label).toBe(next);
+        },
+      ),
+    );
+  });
+});
+
+describe("validateLabel — rejects each context's terminator (property-based)", () => {
+  const cases: ReadonlyArray<readonly [Parameters<typeof validateLabel>[1], string]> = [
+    ["flowchartBracket", "]"],
+    ["flowchartBracket", ")"],
+    ["flowchartBracket", "}"],
+    ["flowchartBracket", "\n"],
+    ["pipe", "|"],
+    ["pipe", "\n"],
+    ["quoted", '"'],
+    ["quoted", "\n"],
+    ["plain", "\n"],
+  ];
+  for (const [context, ch] of cases) {
+    it(`rejects ${JSON.stringify(ch)} in ${context}`, () => {
+      fc.assert(
+        fc.property(safeLabel, safeLabel, (a, b) => {
+          expect(validateLabel(`${a}${ch}${b}`, context)).toMatchObject({ ok: false });
+        }),
+      );
+    });
+  }
+
+  it("accepts safe labels in every context", () => {
+    const contexts: ReadonlyArray<Parameters<typeof validateLabel>[1]> = [
+      "flowchartBracket",
+      "pipe",
+      "quoted",
+      "plain",
+    ];
+    fc.assert(
+      fc.property(safeLabel, (label) => {
+        for (const c of contexts) expect(validateLabel(label, c)).toMatchObject({ ok: true });
+      }),
     );
   });
 });
