@@ -44,8 +44,79 @@ const CLOUD_AWS = `cloud
   orders --> cw : "logs"
 `;
 
+// A non-trivial BPMN-style order-to-cash workflow drawn as a flowchart: swimlanes via subgraphs,
+// circle events (start/end), diamond gateways (decisions), rounded-rect tasks, and labelled sequence
+// flows including branch merges and a parallel ship/notify fan-out.
+const BPMN_ORDER = `flowchart TD
+  subgraph Customer
+    placed((Order placed))
+    confirm([Receive confirmation])
+  end
+  subgraph Sales
+    validate([Validate order])
+    stock{In stock?}
+    backorder([Create backorder])
+  end
+  subgraph Finance
+    charge([Charge card])
+    approved{Payment approved?}
+    refund([Issue refund])
+  end
+  subgraph Warehouse
+    pick([Pick & pack])
+    ship([Ship order])
+    fulfilled((Fulfilled))
+  end
+  placed --> validate
+  validate --> stock
+  stock -->|yes| charge
+  stock -->|no| backorder
+  backorder --> charge
+  charge --> approved
+  approved -->|approved| pick
+  approved -->|declined| refund
+  refund --> confirm
+  pick --> ship
+  ship --> fulfilled
+  ship --> confirm
+`;
+
+// A second BPMN flow: an incident-response process with an escalation loop and a timer-style timeout
+// branch, showing gateways feeding back into earlier tasks.
+const BPMN_INCIDENT = `flowchart TD
+  subgraph Detection
+    alert((Alert raised))
+    triage([Triage severity])
+    sev{Severity?}
+  end
+  subgraph Response
+    page([Page on-call])
+    ack{Acked in 5m?}
+    mitigate([Mitigate])
+    escalate([Escalate to lead])
+    verify{Resolved?}
+  end
+  subgraph Closeout
+    postmortem([Write post-mortem])
+    closed((Incident closed))
+  end
+  alert --> triage --> sev
+  sev -->|sev1| page
+  sev -->|sev2/3| mitigate
+  page --> ack
+  ack -->|yes| mitigate
+  ack -->|no| escalate
+  escalate --> mitigate
+  mitigate --> verify
+  verify -->|no| escalate
+  verify -->|yes| postmortem
+  postmortem --> closed
+`;
+
 export const EXAMPLES = new Map<string, string>([
   ["flowchart", SAMPLE],
+  ["bpmn", BPMN_ORDER],
+  ["bpmn-incident", BPMN_INCIDENT],
   [
     "sequence",
     "sequenceDiagram\n  participant U as User\n  participant W as WebApp\n  participant A as API\n  participant D as Database\n  U->>W: submit order\n  W->>A: POST /orders\n  A->>D: insert order\n  D-->>A: id\n  A-->>W: created\n  W-->>U: confirmation\n",
