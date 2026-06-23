@@ -37,6 +37,11 @@
   of the collaborative-editor plan
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
+- **Examples are real, not gibberish:** the catalog includes a realistic tiered AWS architecture
+  (cloud, with directed traffic paths CloudFront→WAF→ALB/API-Gateway→ECS→data and authentic gilbarbara
+  AWS icons) and two BPMN-style swimlane workflows (order-to-cash, incident response) whose branches
+  are semantically coherent (a declined payment cancels — it doesn't refund a charge that never
+  happened). A **Reset** control (topbar) clears the persisted state and reloads a fresh demo.
 - **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the catalog lives in
   `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses; the kind badge shows the

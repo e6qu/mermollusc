@@ -16,6 +16,9 @@ const Queue = createToken({ name: "CloudQueue", pattern: /queue/, longer_alt: Id
 const Cdn = createToken({ name: "Cdn", pattern: /cdn/, longer_alt: Identifier });
 const Icon = createToken({ name: "CloudIcon", pattern: /icon/, longer_alt: Identifier });
 
+// `-->` (directed traffic edge) precedes `--` in the token order so the lexer doesn't match the `--`
+// prefix first.
+const Arrow = createToken({ name: "CloudArrow", pattern: /-->/ });
 const Dash = createToken({ name: "CloudDash", pattern: /--/ });
 const Colon = createToken({ name: "CloudColon", pattern: /:/ });
 const LBrace = createToken({ name: "CloudLBrace", pattern: /\{/ });
@@ -43,6 +46,7 @@ const order: TokenType[] = [
   Queue,
   Cdn,
   Icon,
+  Arrow,
   Dash,
   Colon,
   LBrace,
@@ -63,6 +67,7 @@ export const CloudTok = {
   Queue,
   Cdn,
   Icon,
+  Arrow,
   Dash,
   Colon,
   LBrace,

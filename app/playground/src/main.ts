@@ -175,6 +175,7 @@ const exportSvgBtn = document.querySelector<HTMLButtonElement>("#export-svg");
 const exportDotBtn = document.querySelector<HTMLButtonElement>("#export-dot");
 const shareBtn = document.querySelector<HTMLButtonElement>("#share-link");
 const helpToggle = document.querySelector<HTMLButtonElement>("#help-toggle");
+const resetCacheBtn = document.querySelector<HTMLButtonElement>("#reset-cache");
 const helpClose = document.querySelector<HTMLButtonElement>("#help-close");
 const helpOverlay = document.querySelector<HTMLElement>("#help-overlay");
 const zoomInBtn = document.querySelector<HTMLButtonElement>("#zoom-in");
@@ -261,6 +262,7 @@ if (
   exportDotBtn === null ||
   shareBtn === null ||
   helpToggle === null ||
+  resetCacheBtn === null ||
   helpClose === null ||
   helpOverlay === null
 ) {
@@ -3927,6 +3929,26 @@ shareBtn.addEventListener("click", () => {
     () => setStatusAndAnnounce("ok", "shareable link copied to clipboard"),
     () => setStatusAndAnnounce("ok", "shareable link is in the address bar"),
   );
+});
+
+// Reset the demo: drop everything the app persists (source, overlay, theme — every "mermollusc-"
+// localStorage key) and reload to the clean URL, dropping any share-link hash, so the demo comes back
+// fresh on the sample diagram.
+resetCacheBtn.addEventListener("click", () => {
+  if (
+    !window.confirm(
+      "Clear the saved diagram, layout, and preferences, and reload a fresh demo? This can't be undone.",
+    )
+  ) {
+    return;
+  }
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k !== null && k.startsWith("mermollusc-")) keys.push(k);
+  }
+  for (const k of keys) localStorage.removeItem(k);
+  location.replace(location.pathname);
 });
 
 // One decoded value from the `#…` hash (a shared link). `encodeURIComponent` (not `+`-for-space form)

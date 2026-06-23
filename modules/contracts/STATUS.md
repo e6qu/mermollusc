@@ -6,7 +6,8 @@
   + class + requirement + gitGraph + timeline + mindmap + pie + Gantt (`FlowchartAst` incl.
   `FlowSubgraph` grouping, `SequenceAst`, `C4Ast` with nesting + optional `C4Element.description`,
   `BlockAst`/`NetworkAst`/`CloudAst` whose nodes carry an optional `icon: IconRef | null` override
-  (cloud also nests via `CloudGroup`), `StateAst` with composites + notes, `ErAst` with
+  (cloud also nests via `CloudGroup`, and `CloudLink.directed` marks `-->` traffic edges),
+  `StateAst` with composites + notes, `ErAst` with
   `attributes: ErAttribute[]`, `ClassAst` with `members: ClassMember[]` + `ClassArrow` ends,
   `RequirementAst` whose entities carry a `ReqKind` + `ReqField[]` and relationships a `ReqRelKind`
   verb, `GitGraphAst` (commits/branches), `TimelineAst` (periods/events), `MindmapAst` (hierarchy),

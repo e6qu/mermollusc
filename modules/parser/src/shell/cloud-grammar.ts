@@ -65,7 +65,10 @@ class CloudParser extends CstParser {
 
   private readonly link = this.RULE("link", () => {
     this.CONSUME(CloudTok.Identifier);
-    this.CONSUME(CloudTok.Dash);
+    this.OR([
+      { ALT: () => this.CONSUME(CloudTok.Arrow) },
+      { ALT: () => this.CONSUME(CloudTok.Dash) },
+    ]);
     this.CONSUME2(CloudTok.Identifier);
     this.OPTION(() => {
       this.CONSUME(CloudTok.Colon);

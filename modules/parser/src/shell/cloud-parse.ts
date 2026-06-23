@@ -106,12 +106,14 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
     if (link === undefined) continue;
     const ids = childTokens(link.children, "CloudIdentifier");
     const label = childTokens(link.children, "CloudQuoted")[0];
+    const directed = childTokens(link.children, "CloudArrow").length > 0;
     const linkId = brand<string, "EdgeId">(`l${acc.links.length}`);
     acc.links.push({
       id: linkId,
       from: brand<string, "NodeId">(ids[0]?.image ?? ""),
       to: brand<string, "NodeId">(ids[1]?.image ?? ""),
       label: label === undefined ? null : unquote(label.image),
+      directed,
     });
     if (label !== undefined) acc.linkSpans.set(linkId, innerSpan(label));
   }

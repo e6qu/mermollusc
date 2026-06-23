@@ -172,10 +172,14 @@ export interface CloudLink {
   readonly from: NodeId;
   readonly to: NodeId;
   readonly label: string | null;
+  // `true` for a directed `-->` traffic edge (drawn with an arrowhead at `to`); `false` for an
+  // undirected `--` link.
+  readonly directed: boolean;
 }
 
-// A cloud-architecture diagram: kind-typed service nodes nested inside provider/region groups,
-// joined by undirected links. Groups carry synthetic ids (`g0`…) since the syntax names only labels.
+// A cloud-architecture diagram: kind-typed service nodes nested inside provider/region groups, joined
+// by undirected `--` links or directed `-->` traffic edges. Groups carry synthetic ids (`g0`…) since
+// the syntax names only labels.
 export interface CloudAst {
   readonly kind: "cloud";
   readonly groups: readonly CloudGroup[];
