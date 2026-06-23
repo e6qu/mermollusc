@@ -1535,8 +1535,30 @@ const reconcileSelection = (rendered: Scene): void => {
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
 // later render can overtake an earlier one. `renderSeq` tags each render; a stale result (one whose
-// tag is no longer current) is dropped instead of painting over a newer diagram.
+// tag is no longer current) is dropped instead of painting over a newer diagram — checked after *each*
+// await (the worker layout and the icon raster), so a render overtaken at either point never assigns
+// state or paints.
 let renderSeq = 0;
+
+// Typing coalesces: the *first* edit in a burst renders immediately (so a single discrete edit — and the
+// e2e harness — stays responsive), then a quiet "cooldown" window opens. Edits during the cooldown are
+// queued, not rendered; when it ends, one trailing render lays out the *latest* editor text. So a fast
+// typist triggers at most one render per cooldown (~`RENDER_DEBOUNCE_MS`), not one per keystroke, yet the
+// canvas never lags more than that behind the text. `renderFromText` (including programmatic canvas
+// edits) opens the cooldown itself, so every render rate-limits the next.
+const RENDER_DEBOUNCE_MS = 90;
+let renderCooldown: number | null = null; // non-null during the quiet window after a typed render
+let renderQueued = false; // a coalesced edit is waiting for the cooldown to end
+const armRenderCooldown = (): void => {
+  renderCooldown = window.setTimeout(() => {
+    renderCooldown = null;
+    if (renderQueued) {
+      renderQueued = false;
+      void renderFromText(editor.value()); // trailing: lay out the latest text
+      armRenderCooldown(); // keep rate-limiting through a continuous burst
+    }
+  }, RENDER_DEBOUNCE_MS);
+};
 
 const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
@@ -1686,6 +1708,9 @@ const renderFromText = async (text: string): Promise<void> => {
       assertNever(result);
   }
   const failedIcons = await ensureIcons(scene);
+  // Second drop-stale check: a newer render may have started while we awaited the icon raster. Bail
+  // before painting so a stale frame never lands on top of a newer diagram.
+  if (mySeq !== renderSeq) return;
   if (failedIcons.length > 0) {
     // The diagram rendered fine (just glyph-less), so keep the `ok` level — surfacing the missing
     // glyph as a warning appended to the node/edge counts, rather than an `error` that would grey out
@@ -3454,7 +3479,15 @@ if (!useCollab) {
 // because this closes over `renderFromText`; in collab mode it starts empty and the `Y.Text` binding
 // fills it (seeded below).
 const onTextChange = (text: string): void => {
-  void renderFromText(text);
+  // Persist immediately so a reload (or a crash) right after the last keystroke never loses it. Then
+  // either render now (leading edge of a burst) or queue a trailing render for when the cooldown ends.
+  saveSource(text);
+  if (renderCooldown === null) {
+    void renderFromText(text); // leading edge of a burst: render now
+    armRenderCooldown();
+  } else {
+    renderQueued = true; // within the cooldown: coalesce into the trailing render
+  }
 };
 editor =
   collabSession !== null

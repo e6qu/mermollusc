@@ -19,17 +19,14 @@
   in-app syntax reference, self-healing collab transport, single-pass parse + frame memos, and a first
   decomposition of `main.ts` into `pdf.ts`/`raster.ts`/`platform.ts`/`syntax-reference.ts`). Remaining,
   deliberately deferred:
-  - **Finish the `main.ts` split.** Continue the established `installX(deps)` pattern — **image/file
-    export is now out** (`image-export.ts`, behind a read-only deps port; `main.ts` 4099 → 3946). The
-    remaining cohesive concerns (the minimap cache/draw + its pointer/keyboard nav, the keyboard diagram
-    navigator, theme/sketch, and persistence/hash) are each one more small, e2e-verified step — kept out
-    of the ELK-edge-label PR so a layout-engine change and a UI-state refactor don't destabilise each
-    other. No big-bang rewrite.
-  - **Render debounce, done right.** A naive trailing debounce desynced `scene`/`source` from the
-    editor across the existing single `renderSeq` drop-stale check (the layout + icon-raster awaits
-    leave windows where a stale render still assigns state). Reintroduce only with a second seq guard
-    before the scene/source assignment *and* the paint, plus immediate (non-debounced) source
-    persistence — and re-run the full e2e suite, which is what caught the regression.
+  - *(done)* **`main.ts` split.** The `installX(deps)`/`createX(deps)` pattern lifted the cohesive
+    concerns into focused files: `image-export.ts`, `minimap.ts`, `navigator.ts`, `persistence.ts`,
+    `theme.ts` (`main.ts` 4099 → ~3.5k). Each landed as its own e2e-verified step.
+  - *(done)* **Render debounce.** Leading-edge: the first edit in a burst renders immediately (so a
+    single edit + the e2e harness stay responsive), then a cooldown coalesces the rest into one trailing
+    render of the *live* editor text (never a stale captured snapshot — the original desync). Source
+    persists immediately (non-debounced), and a second `renderSeq` guard after the icon-raster await
+    blocks a stale paint. Full e2e re-run green.
   - **Incremental edge-marker rebuild (perf).** Keep display-list commands for unchanged edges and
     recompute only edges whose endpoints are in the override delta — but home the incremental helper in
     the renderer core and justify it with a real perf trace first, not structural evidence.
