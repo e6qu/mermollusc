@@ -36,3 +36,38 @@ test("a missing icon does not grey out the (correctly rendered) canvas", async (
   await expect(page.locator("#status")).toContainText("icon(s) failed");
   await expect(page.locator("#status")).toContainText("node");
 });
+
+test("source replacement clears stale selection before commands run", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart TD\n  A[Alpha] --> B[Beta]\n");
+  await page.locator("#stage").click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await expect(page.locator("#connect")).toBeEnabled();
+
+  await setSource(page, "flowchart TD\n  X[Fresh] --> Y[Next]\n");
+  await expect(page.locator("#connect")).toBeDisabled();
+  await expect(page.locator("#group")).toBeDisabled();
+});
+
+test("exports and image copy are blocked while the current source is stale", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart TD\n  A[Start] --> B[Done]\n");
+  await setSource(page, "flowchart TD\n  A[Start --> ??? broken |\n");
+  await expect(page.locator("#status")).toHaveAttribute("data-level", "error");
+
+  for (const id of ["#export-png", "#export-pdf", "#export-svg", "#export-dot"]) {
+    const download = page.waitForEvent("download", { timeout: 300 }).then(
+      () => "download",
+      () => "none",
+    );
+    await page.locator(id).click();
+    await expect(page.locator("#status")).toHaveAttribute("data-level", "error");
+    expect(await download).toBe("none");
+  }
+
+  await page.locator("#copy-png").click();
+  await expect(page.locator("#status")).toHaveText(/Copy blocked/);
+  await expect(page.locator("#stage-wrap")).toHaveAttribute("data-stale", "true");
+});

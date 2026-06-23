@@ -128,8 +128,9 @@ const MARGIN = 24;
 
 const editorMount = document.querySelector<HTMLDivElement>("#editor");
 const canvas = document.querySelector<HTMLCanvasElement>("#stage");
-if (editorMount === null || canvas === null)
-  throw new Error("playground: missing #editor or #stage");
+const stageEmpty = document.querySelector<HTMLElement>("#stage-empty");
+if (editorMount === null || canvas === null || stageEmpty === null)
+  throw new Error("playground: missing #editor, #stage, or #stage-empty");
 
 // Assigned once in the init block below (its change callback needs `renderFromText`, defined later);
 // every handler that touches the source goes through this instead of a raw element. The definite-
@@ -153,6 +154,7 @@ const diagramLive = document.querySelector<HTMLElement>("#diagram-live");
 const inlineEl = document.querySelector<HTMLInputElement>("#inline-edit");
 const iconsToggle = document.querySelector<HTMLButtonElement>("#icons-toggle");
 const iconsClose = document.querySelector<HTMLButtonElement>("#icons-close");
+const iconBackdrop = document.querySelector<HTMLElement>("#icon-backdrop");
 const iconPicker = document.querySelector<HTMLElement>("#icon-picker");
 const iconFilter = document.querySelector<HTMLInputElement>("#icon-filter");
 const iconGrid = document.querySelector<HTMLElement>("#icon-grid");
@@ -206,6 +208,7 @@ if (
   inlineEl === null ||
   iconsToggle === null ||
   iconsClose === null ||
+  iconBackdrop === null ||
   iconPicker === null ||
   iconFilter === null ||
   iconGrid === null ||
@@ -226,6 +229,7 @@ if (miniCtx === null) throw new Error("playground: minimap 2d context unavailabl
 
 let ast: DiagramAst | null = null;
 let scene: Scene | null = null;
+let currentRenderValid = false;
 let source: SourceMap | null = null;
 let seqSource: SequenceSource | null = null;
 let c4Source: C4Source | null = null;
@@ -381,7 +385,7 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // below, before the first render. `save` is the only IO it touches — a localStorage write today,
 // the seam where a collaborative backend would broadcast instead.
 //
-// `?collab` (experimental, Phase 1) swaps the local document for the Yjs-backed `OverlayDoc` from
+// `?collab` swaps the local document for the Yjs-backed `OverlayDoc` from
 // `@m/collab` — same interface, so every call site is unchanged. When the URL also reaches a relay
 // (the dev WebSocket server), two tabs on the same `?collab&room=…` edit the overlay live. In collab
 // mode the shared Y.Doc is the source of truth, so the session is kept (to wire the transport +
@@ -437,13 +441,27 @@ const redoOverlay = (): void => {
 const THEME_KEY = "mermollusc-theme";
 const prefersDark = (): boolean =>
   window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+const forcedColorsQuery = window.matchMedia?.("(forced-colors: active)") ?? null;
+const forcedColors = (): boolean => forcedColorsQuery?.matches ?? false;
 const storedTheme = localStorage.getItem(THEME_KEY);
 let theme: Theme =
   storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
 // Sketch mode is orthogonal to light/dark — composed onto the active theme at paint time.
 let sketch = false;
 const SKETCH_FONT = '15px "Comic Sans MS", "Patrick Hand", cursive';
-const activeTheme = (): Theme => (sketch ? { ...theme, sketch: true, font: SKETCH_FONT } : theme);
+const forcedTheme = (font: string): Theme => ({
+  background: "Canvas",
+  nodeFill: "Canvas",
+  stroke: "CanvasText",
+  text: "CanvasText",
+  font,
+  sketch: false,
+});
+const activeTheme = (): Theme => {
+  const font = sketch ? SKETCH_FONT : theme.font;
+  if (forcedColors()) return forcedTheme(font);
+  return sketch ? { ...theme, sketch: true, font } : theme;
+};
 
 // Real label measurement (offscreen canvas) so layout sizes nodes to the actual rendered text
 // rather than a char-width guess. Measures with the *active* theme font — the sketch font is wider
@@ -841,6 +859,16 @@ const resizeAnchorAt = (
 
 // Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
 const updateGroupButtons = (): void => {
+  if (!currentRenderValid || viewerMode) {
+    groupBtn.disabled = true;
+    ungroupBtn.disabled = true;
+    lockBtn.disabled = true;
+    arrangeBtn.disabled = true;
+    connectBtn.disabled = true;
+    connectBtn.title = currentRenderValid ? "viewer mode" : "fix source first";
+    closeArrange();
+    return;
+  }
   const units = new Set<string>();
   for (const id of selection.nodes) {
     const top = topGroupOfNode(doc.groups(), id);
@@ -857,6 +885,14 @@ const updateGroupButtons = (): void => {
   if (distHBtn !== null) distHBtn.disabled = movable < 3;
   if (distVBtn !== null) distVBtn.disabled = movable < 3;
   if (movable < 2) closeArrange();
+  const canConnect = ast !== null && ast.kind !== "gantt" && selectionOrder.length >= 2;
+  connectBtn.disabled = !canConnect;
+  connectBtn.title =
+    ast !== null && ast.kind === "gantt"
+      ? "not available for gantt"
+      : selectionOrder.length < 2
+        ? "select two nodes"
+        : "";
 };
 
 type AlignKind = "left" | "right" | "top" | "bottom" | "centerX" | "centerY" | "distH" | "distV";
@@ -987,10 +1023,14 @@ const applyArrange = (kind: AlignKind): void => {
   const need = kind === "distH" || kind === "distV" ? 3 : 2;
   if (units.length < need) return;
   const deltas = arrangeDeltas(kind, units);
-  if (deltas.size === 0) return;
+  const moved = new Map([...deltas].filter(([, d]) => d.dx !== 0 || d.dy !== 0));
+  if (moved.size === 0) {
+    announce("selection is already arranged");
+    return;
+  }
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
   doc.record();
-  for (const [id, d] of deltas) {
+  for (const [id, d] of moved) {
     const at = origin.get(id);
     if (at !== undefined) doc.moveNode(id, point(at.x + d.dx, at.y + d.dy));
   }
@@ -1187,8 +1227,9 @@ const drawMinimap = (): void => {
 
   // Dim everything *outside* the viewport with a scrim (four bands), leaving the visible region
   // bright — the strongest "you are here" cue at this size.
+  const highContrast = forcedColors();
   const dark = theme === darkTheme;
-  miniCtx.fillStyle = dark ? "rgba(7,16,15,0.5)" : "rgba(24,37,41,0.34)";
+  miniCtx.fillStyle = highContrast ? "Canvas" : dark ? "rgba(7,16,15,0.5)" : "rgba(24,37,41,0.34)";
   miniCtx.fillRect(0, 0, logicalWidth, top);
   miniCtx.fillRect(0, bottom, logicalWidth, logicalHeight - bottom);
   miniCtx.fillRect(0, top, left, bottom - top);
@@ -1196,8 +1237,12 @@ const drawMinimap = (): void => {
 
   // A faint accent tint inside the viewport so the "here" region reads as a lit lens, not just an
   // un-dimmed gap — the scrim outside and the tint inside push the contrast from both sides.
-  const accent = dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
-  miniCtx.fillStyle = dark ? "rgba(240,137,78,0.12)" : "rgba(210,96,44,0.10)";
+  const accent = highContrast ? "Highlight" : dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
+  miniCtx.fillStyle = highContrast
+    ? "transparent"
+    : dark
+      ? "rgba(240,137,78,0.12)"
+      : "rgba(210,96,44,0.10)";
   miniCtx.fillRect(left, top, right - left, bottom - top);
 
   // Inset the stroke by half its width and clamp it inside the sheet, so the rectangle is never
@@ -1302,6 +1347,31 @@ minimap.addEventListener("pointermove", (ev) => {
 minimap.addEventListener("pointerup", (ev) => {
   minimapDragging = false;
   minimap.releasePointerCapture(ev.pointerId);
+});
+minimap.addEventListener("keydown", (ev) => {
+  if (lastRender === null || minimap.hidden) return;
+  const step = ev.shiftKey ? 120 : 40;
+  if (ev.key === "ArrowLeft") {
+    ev.preventDefault();
+    stageWrap.scrollLeft -= step;
+  } else if (ev.key === "ArrowRight") {
+    ev.preventDefault();
+    stageWrap.scrollLeft += step;
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    stageWrap.scrollTop -= step;
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    stageWrap.scrollTop += step;
+  } else if (ev.key === "Home") {
+    ev.preventDefault();
+    stageWrap.scrollLeft = 0;
+    stageWrap.scrollTop = 0;
+  } else if (ev.key === "End") {
+    ev.preventDefault();
+    stageWrap.scrollLeft = stageWrap.scrollWidth;
+    stageWrap.scrollTop = stageWrap.scrollHeight;
+  }
 });
 
 // ---- Keyboard diagram navigator ----
@@ -1529,7 +1599,7 @@ const lineColOf = (
 };
 
 const setStatus = (
-  level: "ok" | "error",
+  level: "ok" | "warning" | "error",
   message: string,
   range: { readonly offset: number; readonly length: number } | null = null,
 ): void => {
@@ -1537,6 +1607,7 @@ const setStatus = (
   statusEl.setAttribute("data-level", level);
   statusEl.setAttribute("data-locatable", range === null ? "false" : "true");
   stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
+  stageEmpty.hidden = !(level === "error" && scene === null);
   errorRange = range;
   // Mirror the located error into the editor as an inline diagnostic (red squiggle + gutter marker +
   // hover message); clears it on any non-error status.
@@ -1547,7 +1618,7 @@ const setStatus = (
 };
 
 const setStatusAndAnnounce = (
-  level: "ok" | "error",
+  level: "ok" | "warning" | "error",
   message: string,
   range: { readonly offset: number; readonly length: number } | null = null,
 ): void => {
@@ -1567,11 +1638,21 @@ statusEl.addEventListener("click", () => {
 const flowchartOnly = [addBtn, relaxBtn];
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
-  const isFlowchart = kind === "flowchart";
+  const isFlowchart = currentRenderValid && kind === "flowchart";
   for (const btn of flowchartOnly) {
     btn.disabled = !isFlowchart;
-    btn.title = isFlowchart ? "" : "flowchart only";
+    btn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
   }
+};
+
+const reconcileSelection = (rendered: Scene): void => {
+  const liveNodes = new Set(rendered.nodes.map((node) => node.id));
+  const liveEdges = new Set(rendered.edges.map((edge) => edge.id));
+  const nodes = new Set([...selection.nodes].filter((id) => liveNodes.has(id)));
+  const edges = new Set([...selection.edges].filter((id) => liveEdges.has(id)));
+  selectionOrder = selectionOrder.filter((id) => nodes.has(id));
+  selection = { nodes, edges };
+  nudging = false;
 };
 
 // Layout runs in a Web Worker (off the main thread), so its result arrives asynchronously and a
@@ -1581,6 +1662,8 @@ let renderSeq = 0;
 
 const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
+  currentRenderValid = false;
+  updateGroupButtons();
   localStorage.setItem(SOURCE_KEY, text);
   const parsed = parseDiagram(text);
   if (!isOk(parsed)) {
@@ -1593,6 +1676,7 @@ const renderFromText = async (text: string): Promise<void> => {
       const { line, col } = lineColOf(text, pos.offset);
       setStatus("error", `parse error (line ${line}:${col}) — ${detail} · click to locate`, pos);
     }
+    if (ast !== null) applyKind(ast.kind);
     return;
   }
   const diagram = parsed.value;
@@ -1602,8 +1686,10 @@ const renderFromText = async (text: string): Promise<void> => {
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
     setStatus("error", `layout error — ${laid.error.message}`);
+    if (ast !== null) applyKind(ast.kind);
     return;
   }
+  currentRenderValid = true;
   applyKind(diagram.kind);
   const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
   const statusMsg = `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`;
@@ -1623,6 +1709,7 @@ const renderFromText = async (text: string): Promise<void> => {
   );
   ast = diagram;
   scene = laid.value;
+  reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   rebuildNav();
   // Drop sidecar groups whose nodes the edited text removed, so a group can't outlive its diagram and
@@ -1748,6 +1835,7 @@ const renderFromText = async (text: string): Promise<void> => {
     );
   }
   paintScene();
+  updateGroupButtons();
 };
 
 // Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
@@ -2842,6 +2930,9 @@ themeBtn.addEventListener("click", () => {
   paintScene();
   announce(`${theme === darkTheme ? "dark" : "light"} theme`);
 });
+forcedColorsQuery?.addEventListener("change", () => {
+  void renderFromText(editor.value());
+});
 syncThemeLabel();
 
 // Examples menu: drop in a known-good starter for any family so the syntax is discoverable, then
@@ -2995,6 +3086,7 @@ let pickerReturnFocus: HTMLElement | null = null;
 const setPickerOpen = (open: boolean): void => {
   if (pickerOpen === open) return;
   pickerOpen = open;
+  iconBackdrop.hidden = !open;
   iconPicker.hidden = !open;
   iconsToggle.setAttribute("aria-expanded", open ? "true" : "false");
   if (open) {
@@ -3010,6 +3102,7 @@ const setPickerOpen = (open: boolean): void => {
 
 iconsToggle.addEventListener("click", () => setPickerOpen(!pickerOpen));
 iconsClose.addEventListener("click", () => setPickerOpen(false));
+iconBackdrop.addEventListener("click", () => setPickerOpen(false));
 iconFilter.addEventListener("input", () => buildIconGrid(iconFilter.value));
 iconPicker.addEventListener("keydown", (ev) => {
   trapTab(iconPicker, ev);
@@ -3092,6 +3185,12 @@ const compositeCanvas = (): HTMLCanvasElement | null => {
   return out;
 };
 
+const blockStaleExport = (action: string): boolean => {
+  if (currentRenderValid && scene !== null) return false;
+  setStatusAndAnnounce("error", `${action} blocked — fix the current source first`);
+  return true;
+};
+
 const downloadBlob = (blob: Blob, filename: string): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -3102,6 +3201,7 @@ const downloadBlob = (blob: Blob, filename: string): void => {
 };
 
 exportBtn.addEventListener("click", () => {
+  if (blockStaleExport("PNG export")) return;
   const out = compositeCanvas();
   if (out === null) {
     console.error("export failed: 2d context unavailable");
@@ -3124,10 +3224,11 @@ exportBtn.addEventListener("click", () => {
 // clipboard write is best-effort — it needs a secure context + the `clipboard-write` permission — and
 // its outcome is always surfaced to the status bar, never silently dropped.
 copyBtn.addEventListener("click", () => {
+  if (blockStaleExport("Copy")) return;
   const clip = navigator.clipboard;
   const ItemCtor = window.ClipboardItem;
   if (clip === undefined || typeof clip.write !== "function" || ItemCtor === undefined) {
-    setStatusAndAnnounce("ok", "copying images isn't supported here — use PNG to download");
+    setStatusAndAnnounce("warning", "copying images isn't supported here — use PNG to download");
     return;
   }
   const out = compositeCanvas();
@@ -3146,7 +3247,7 @@ copyBtn.addEventListener("click", () => {
       () => setStatusAndAnnounce("ok", "diagram image copied to clipboard"),
       (e: unknown) => {
         console.error("copy to clipboard failed:", e instanceof Error ? e.message : String(e));
-        setStatusAndAnnounce("ok", "clipboard was blocked — use PNG to download instead");
+        setStatusAndAnnounce("warning", "clipboard was blocked — use PNG to download instead");
       },
     );
   }, "image/png");
@@ -3212,6 +3313,7 @@ const buildImagePdf = (
 };
 
 exportPdfBtn.addEventListener("click", () => {
+  if (blockStaleExport("PDF export")) return;
   const out = compositeCanvas();
   if (out === null) {
     console.error("export failed: 2d context unavailable");
@@ -3236,6 +3338,7 @@ exportPdfBtn.addEventListener("click", () => {
 // `toSvg` backend. Icon glyphs are embedded as `<image>` hrefs (the icon SVG as a data URL),
 // resolved here because the renderer can't depend on `@m/icons`.
 exportSvgBtn.addEventListener("click", () => {
+  if (blockStaleExport("SVG export")) return;
   if (scene === null) {
     setStatusAndAnnounce("error", "nothing to export yet");
     return;
@@ -3265,6 +3368,7 @@ exportSvgBtn.addEventListener("click", () => {
 // DOT export: the Scene is the universal graph IR, so any node/edge family exports to Graphviz DOT
 // (a pie chart, having no nodes, exports as an empty graph). The reverse of the DOT import path.
 exportDotBtn.addEventListener("click", () => {
+  if (blockStaleExport("DOT export")) return;
   if (scene === null) {
     setStatusAndAnnounce("error", "nothing to export yet");
     return;

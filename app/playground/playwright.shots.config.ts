@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 // A separate Playwright project from the gating e2e suite (`playwright.config.ts`): it drives the
 // real UI through named flows and writes PNGs to `shots/`, for visual review and design iteration.
 // Kept out of `make e2e-ui` so the gate never depends on image artifacts; run via `make shots`.
-const PORT = 4173;
+const PORT = 4174;
 
 export default defineConfig({
   testDir: "./e2e-shots",
@@ -17,7 +17,7 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });

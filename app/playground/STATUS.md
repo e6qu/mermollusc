@@ -12,10 +12,12 @@
   grouped topbar/status controls so the page itself does not scroll sideways.
 - **Flow feedback:** the status bar names parse/layout/icon-pack errors instead of failing only to
   the console, and a failed parse **dims the stale canvas to grayscale** so a render can never
-  silently masquerade as matching the text. On success it reads `kind · N nodes · M edges`. A parse
-  error names its **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking
-  the status selects the offending range, never auto-moving the caret mid-type), and is **mirrored
-  inline in the editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.
+  silently masquerade as matching the text. When there is no prior good render, the stage shows an
+  explicit recovery empty state instead of a blank grid. Exports/copy are blocked while the current
+  source is stale. On success it reads `kind · N nodes · M edges`. A parse error names its
+  **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking the status
+  selects the offending range, never auto-moving the caret mid-type), and is **mirrored inline in the
+  editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.
 - **Source editor is CodeMirror 6** (`src/editor.ts`): family-aware syntax highlighting (a stream
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
@@ -43,7 +45,8 @@
   shortcut-reference modal grouped by Select / Edit / Layout & groups / View.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
-  (git-ignored) after clearing stale PNGs — for visual review / design iteration, not a gate. It
+  (git-ignored) after clearing stale PNGs, and owns its preview server on a dedicated port so it
+  cannot attach to a stale local process — for visual review / design iteration, not a gate. It
   includes phone-width responsive shell, shortcut-help modal, state/sketch/donut, minimap, grouping,
   and family-polish flows so task journeys and visual modes are reviewable from a clean artifact set.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
@@ -91,6 +94,8 @@
     Alt+Arrow node move, two-step `c` connect between nodes, and Delete. Canvas actions announce their
     outcomes through the live region, including copy/paste, grouping, arrange, export/share, and
     layout undo/redo.
+  - the **minimap** is focusable when visible and supports keyboard panning with arrow keys, Home, and
+    End; forced-colors mode repaints the canvas/minimap with a high-contrast system-colour theme.
   - **Arrange** (a popover, enabled on 2+ movable units): align left/center/right/top/middle/bottom
     and distribute horizontally/vertically (3+ units). Each *unit* is a loose node or a whole top
     group, aligned by its bounding box so a group keeps its internal layout; locked groups are
@@ -110,7 +115,8 @@
 - **Icon picker** (`#icons-toggle`): a right-side drawer that browses the active registry (pack →
   category → glyph, with a name filter) and inserts an `icon "<pack>/<name>"` override at the editor
   caret. Previews reuse the SVG→data-URL path (no `innerHTML`); rebuilt on each open so loaded packs
-  appear.
+  appear. The drawer has a backdrop, traps focus while open, closes on Escape/backdrop/close button,
+  and restores focus to the toolbar trigger.
 - Theme toggle: a Dark/Light button swaps the renderer `Theme` (and the canvas surface colour) and
   repaints; the choice persists in `localStorage` and falls back to the OS `prefers-color-scheme`.
 - Sketch toggle: a Sketch/Crisp button composes `theme.sketch` + a handwriting font for the

@@ -613,3 +613,12 @@
   capture, added a shortcut-help modal shot, compacted the phone-width header/toolbars so the rendered
   output appears in the first viewport, and widened the help modal so keyboard-only guidance no longer
   wraps awkwardly on desktop.
+- UX follow-up review with scoped flow agents: fixed stale live selection after source replacement,
+  blocked PNG/PDF/SVG/DOT/copy while the current source is stale, filtered no-op Arrange moves so
+  already-aligned nodes are not pinned into overrides, and disabled Connect until 2+ live nodes are
+  selected. Added an in-stage empty state for malformed first-load/shared sources, made the minimap
+  keyboard operable, added a high-contrast canvas/minimap theme for forced-colors mode, gave the icon
+  picker a modal backdrop, and made the screenshot harness own its preview server instead of reusing a
+  possibly stale process. Focused e2e now covers stale selection, stale export/copy blocking,
+  malformed shared-source recovery, keyboard minimap panning, forced-colors rendering, and the drawer
+  backdrop.

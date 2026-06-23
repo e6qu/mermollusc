@@ -211,6 +211,27 @@ test("honours prefers-reduced-motion by collapsing animations", async ({ page })
   expect(animMs).toBeLessThan(1); // the shake is collapsed to ~0
 });
 
+test("forced-colors mode keeps the canvas render usable", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const painted = await page.locator("#stage").evaluate((canvas) => {
+    const c = canvas as HTMLCanvasElement;
+    const ctx = c.getContext("2d");
+    if (ctx === null) throw new Error("missing 2d context");
+    const pixels = ctx.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < pixels.length; i += 4) {
+      if ((pixels[i] ?? 0) > 0) return true;
+    }
+    return false;
+  });
+  expect(painted).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("every visible interactive control has an accessible name", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

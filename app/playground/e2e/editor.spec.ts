@@ -43,3 +43,18 @@ test("syntax-highlights the source (keyword tokens get their own spans)", async 
   // The tokenizer wraps highlighted tokens in styled spans; a plain <textarea> never would.
   await expect(page.locator(".cm-content span").first()).toBeVisible();
 });
+
+test("a malformed shared source shows an in-stage recovery state", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto(`/#src=${encodeURIComponent("flowchart TD\n  A[Start --> ??? broken |\n")}`);
+  await expect(page.locator("#status")).toHaveAttribute("data-level", "error");
+  await expect(page.locator("#stage-empty")).toBeVisible();
+  await expect(page.locator("#stage-empty")).toContainText("No diagram rendered");
+
+  await setSource(page, "flowchart TD\n  A[Start] --> B[Done]\n");
+  await expect(page.locator("#stage-empty")).toBeHidden();
+  await expect(page.locator("#status")).toHaveAttribute("data-level", "ok");
+  expect(errors).toEqual([]);
+});

@@ -3,7 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
-// The x of every persisted position override (rounded), so we can check they share an edge.
+// The x of every persisted position override (rounded). Already-aligned nodes do not get no-op
+// overrides, so the list contains only nodes Arrange actually moved.
 const overrideXs = (page: Page) =>
   page.evaluate(() => {
     const raw = localStorage.getItem("mermollusc-overlay");
@@ -39,10 +40,10 @@ test("Arrange → Align Left snaps the selected nodes to a common left edge", as
   await expect(page.locator("#align-left")).toBeVisible();
   await page.locator("#align-left").click();
 
-  // Every moved node now shares one left edge, and the popover closed.
+  // Only moved nodes are persisted; they share the target left edge, and the popover closed.
   await expect(page.locator("#align-left")).toBeHidden();
   const xs = await overrideXs(page);
-  expect(xs.length).toBeGreaterThanOrEqual(3);
+  expect(xs.length).toBeGreaterThanOrEqual(2);
   expect(new Set(xs).size).toBe(1);
 
   expect(errors).toEqual([]);
@@ -62,7 +63,7 @@ test("Arrange undoes as one step", async ({ page }) => {
   await page.keyboard.up("Shift");
   await page.locator("#arrange").click();
   await page.locator("#align-left").click();
-  expect((await overrideXs(page)).length).toBeGreaterThanOrEqual(3);
+  expect((await overrideXs(page)).length).toBeGreaterThanOrEqual(2);
 
   await page.keyboard.press("Control+z");
   await expect.poll(() => overrideXs(page)).toEqual([]); // one undo reverts the whole align
