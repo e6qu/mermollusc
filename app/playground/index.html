@@ -113,6 +113,9 @@
         }
         .stage-empty { border-left-color: Mark; }
         .minimap { border-color: CanvasText; }
+        .tool-palette,
+        .context-bar { border-color: CanvasText; }
+        .tool-palette button[aria-checked="true"] { border-color: Highlight; color: Highlight; }
         button:focus-visible,
         select#example:focus-visible,
         .minimap:focus-visible,
@@ -524,6 +527,47 @@
       /* Zoom cluster pinned to the stage (whiteboard-style), paired with the tool palette on the
          opposite edge. The .toolbar-group class supplies the pill chrome; this only positions it. */
       .stage-zoom { position: absolute; top: 16px; right: 16px; z-index: 4; box-shadow: var(--shadow); }
+      /* Floating tool palette (select/hand/connect/place), pinned to the stage top-left. A radiogroup
+         with roving tabindex; the active tool reads in teal accent (plus an inset bar for forced-colors). */
+      .tool-palette {
+        position: absolute;
+        top: 52px;
+        left: 16px;
+        z-index: 4;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+      .tool-palette button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--ink-soft);
+        cursor: pointer;
+        transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+      }
+      .tool-palette button svg { width: 17px; height: 17px; display: block; }
+      .tool-palette button:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--primary) 8%, transparent);
+        color: var(--ink);
+      }
+      .tool-palette button[aria-checked="true"] {
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .tool-palette button:disabled { opacity: 0.38; cursor: not-allowed; }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -771,6 +815,11 @@
 
       @media (max-width: 760px) {
         .app { grid-template-rows: auto minmax(0, 1fr) auto; }
+        /* The tool palette + context bar are pointer-precision affordances; hide on phone-width where
+           the stage is small and the source editor + keyboard nav are the primary surfaces. */
+        .tool-palette,
+        .context-bar { display: none; }
+        .stage-zoom { top: 12px; right: 12px; }
         .topbar {
           grid-template-columns: minmax(0, 1fr);
           align-items: flex-start;
@@ -974,6 +1023,20 @@
             tabindex="0"
           ></ul>
           <div id="diagram-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+          <div id="tool-palette" class="tool-palette" role="radiogroup" aria-label="Tools">
+            <button id="tool-select" type="button" role="radio" aria-checked="true" tabindex="0" aria-label="Select" title="Select (V)" aria-keyshortcuts="V">
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 2l8.5 5.4-3.7.7-1.4 3.6z" fill="currentColor"/></svg>
+            </button>
+            <button id="tool-hand" type="button" role="radio" aria-checked="false" tabindex="-1" aria-label="Hand — pan" title="Hand — pan (H, or hold Space)" aria-keyshortcuts="H">
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"><path d="M8 2v12M2 8h12"/><path d="M8 2L6.2 3.8M8 2l1.8 1.8M8 14l-1.8-1.8M8 14l1.8-1.8M2 8l1.8-1.8M2 8l1.8 1.8M14 8l-1.8-1.8M14 8l-1.8 1.8"/></g></svg>
+            </button>
+            <button id="tool-connect" type="button" role="radio" aria-checked="false" tabindex="-1" aria-label="Connect" title="Connect (C)" aria-keyshortcuts="C">
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.6 11.4l6.8-6.8" stroke="currentColor" stroke-width="1.4"/><circle cx="3.3" cy="12.7" r="2.1" fill="currentColor"/><circle cx="12.7" cy="3.3" r="2.1" fill="currentColor"/></svg>
+            </button>
+            <button id="tool-place" type="button" role="radio" aria-checked="false" tabindex="-1" aria-label="Place node" title="Place node (P)" aria-keyshortcuts="P">
+              <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2.4" y="2.4" width="11.2" height="11.2" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.4v5.2M5.4 8h5.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            </button>
+          </div>
           <div class="toolbar-group zoom stage-zoom" role="group" aria-label="Zoom">
             <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
             <button id="zoom-reset" type="button" title="Reset zoom to 100%">100%</button>

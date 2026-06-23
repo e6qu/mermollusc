@@ -191,7 +191,17 @@ const arrangeMenu = document.querySelector<HTMLDivElement>("#arrange-menu");
 // are wired by id without refs).
 const distHBtn = document.querySelector<HTMLButtonElement>("#dist-h");
 const distVBtn = document.querySelector<HTMLButtonElement>("#dist-v");
+const toolPalette = document.querySelector<HTMLElement>("#tool-palette");
+const toolSelectBtn = document.querySelector<HTMLButtonElement>("#tool-select");
+const toolHandBtn = document.querySelector<HTMLButtonElement>("#tool-hand");
+const toolConnectBtn = document.querySelector<HTMLButtonElement>("#tool-connect");
+const toolPlaceBtn = document.querySelector<HTMLButtonElement>("#tool-place");
 if (
+  toolPalette === null ||
+  toolSelectBtn === null ||
+  toolHandBtn === null ||
+  toolConnectBtn === null ||
+  toolPlaceBtn === null ||
   groupBtn === null ||
   ungroupBtn === null ||
   lockBtn === null ||
@@ -978,6 +988,37 @@ interface CapabilityState {
   readonly isEdgeOnly: boolean;
 }
 
+const TOOL_BUTTONS: Record<Tool, HTMLButtonElement> = {
+  select: toolSelectBtn,
+  hand: toolHandBtn,
+  connect: toolConnectBtn,
+  place: toolPlaceBtn,
+};
+const TOOL_ORDER: readonly Tool[] = ["select", "hand", "connect", "place"];
+
+// Reflect the armed tool + per-family availability on the palette radiogroup (roving tabindex). If the
+// armed tool is no longer available (e.g. Connect on a family that can't accept it, or a switch to a
+// viewer), fall back to Select so `aria-checked` never points at a disabled control.
+const syncToolPalette = (): void => {
+  const available: Record<Tool, boolean> = {
+    select: true,
+    hand: true,
+    connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
+    place: !viewerMode && ast !== null && ast.kind === "flowchart",
+  };
+  if (!available[activeTool]) {
+    activeTool = "select";
+    stageWrap.setAttribute("data-tool", "select");
+  }
+  for (const t of TOOL_ORDER) {
+    const btn = TOOL_BUTTONS[t];
+    const checked = activeTool === t;
+    btn.setAttribute("aria-checked", checked ? "true" : "false");
+    btn.tabIndex = checked ? 0 : -1;
+    btn.disabled = !available[t];
+  }
+};
+
 const computeCapabilities = (): CapabilityState => {
   const valid = currentRenderValid && !viewerMode;
   const blockedTitle = currentRenderValid ? "viewer mode" : "fix source first";
@@ -1052,6 +1093,7 @@ const updateGroupButtons = (): void => {
   connectBtn.title = caps.connectTitle;
   iconsToggle.disabled = !caps.iconCapable;
   iconsToggle.title = caps.iconTitle;
+  syncToolPalette();
   updateTask();
 };
 
@@ -2127,6 +2169,7 @@ const setTool = (t: Tool): void => {
   if (viewerMode && t !== "select" && t !== "hand") return;
   activeTool = t;
   stageWrap.setAttribute("data-tool", t);
+  syncToolPalette();
   // Announce to the live region only — `setStatus` would overwrite the canvas's diagram aria-label
   // (the SR text alternative) with the transient tool name. The palette's active state is the visual cue.
   announce(`${TOOL_LABELS[t]} tool`);
@@ -2155,6 +2198,28 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   setTool("select");
   announce(`placed node ${n}`);
 };
+
+for (const t of TOOL_ORDER) {
+  TOOL_BUTTONS[t].addEventListener("click", () => setTool(t));
+}
+// Roving-tabindex arrow navigation within the palette (APG radiogroup), skipping disabled tools.
+toolPalette.addEventListener("keydown", (ev) => {
+  const forward = ev.key === "ArrowDown" || ev.key === "ArrowRight";
+  const backward = ev.key === "ArrowUp" || ev.key === "ArrowLeft";
+  if (!forward && !backward) return;
+  ev.preventDefault();
+  const enabled = TOOL_ORDER.filter((t) => !TOOL_BUTTONS[t].disabled);
+  if (enabled.length === 0) return;
+  const cur = enabled.indexOf(activeTool);
+  const base = cur < 0 ? 0 : cur;
+  const next =
+    enabled[forward ? (base + 1) % enabled.length : (base - 1 + enabled.length) % enabled.length];
+  if (next !== undefined) {
+    setTool(next);
+    TOOL_BUTTONS[next].focus();
+  }
+});
+syncToolPalette();
 
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
