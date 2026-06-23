@@ -66,6 +66,7 @@ export const layoutNetwork = (
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     });
   }
 

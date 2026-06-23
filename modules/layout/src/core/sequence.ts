@@ -74,6 +74,7 @@ export const layoutSequence = (
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     });
     centerX.set(actor.id, cx);
     cursor += width + ACTOR_GAP;
@@ -106,6 +107,7 @@ export const layoutSequence = (
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     });
   }
 

@@ -1,4 +1,4 @@
-import { err, ok, rect, type Point, type Result } from "@m/std";
+import { err, ok, point, rect, type Point, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { boxCenter, routeWaypoints } from "./route.js";
 import { clampedWidth } from "./measure.js";
@@ -45,6 +45,10 @@ const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
 const MIN_NODE_WIDTH = 48;
 const NODE_SPACING = 40;
+// Box reserved for an edge's midpoint label so ELK routes around it (a little padding past the measured
+// text; the height covers one line plus the renderer's label plate).
+const EDGE_LABEL_PAD = 10;
+const EDGE_LABEL_HEIGHT = 18;
 
 const nodeWidth = (label: string, measure: MeasureText): number =>
   clampedWidth(label, measure, MIN_NODE_WIDTH, LABEL_PADDING);
@@ -111,7 +115,15 @@ export const toElkGraph = (
       ...ast.nodes.filter((n) => !memberIds.has(n.id)).map(leaf),
       ...(childSubgraphs.get(null) ?? []).map(container),
     ],
-    edges: ast.edges.map((e) => ({ id: e.id, sources: [e.from], targets: [e.to] })),
+    edges: ast.edges.map((e) => ({
+      id: e.id,
+      sources: [e.from],
+      targets: [e.to],
+      label:
+        e.label === null
+          ? null
+          : { width: measure(e.label) + EDGE_LABEL_PAD, height: EDGE_LABEL_HEIGHT },
+    })),
   };
 };
 
@@ -189,6 +201,7 @@ export const toScene = (
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
       ...EDGE_STYLE[astEdge.kind],
     });
   }

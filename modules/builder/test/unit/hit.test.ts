@@ -26,6 +26,7 @@ const scene: Scene = {
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     },
   ],
   wedges: [],

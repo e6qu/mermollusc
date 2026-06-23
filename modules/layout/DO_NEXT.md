@@ -36,9 +36,8 @@
   swatches + `showData` raw values; on-slice label is just the percentage; the legend **wraps into
   columns** when it would run past the disc; `donut` adds an inner radius to slices only)*.
 
-- **Reserve ELK space for flowchart/state edge labels.** `toElkGraph` sends edges with only
-  `sources`/`targets`, so ELK doesn't reserve room for `|label|` edge labels — near a gateway the
-  renderer's midpoint anchor can overlap the diamond (visible on the BPMN demos). The fix is to pass
-  measured edge-label dimensions into the ELK graph (+ an `edgeLabels.placement` option) and carry
-  ELK's returned label position through to the scene/renderer rather than recomputing the midpoint.
-  Medium effort, broad golden churn (every flowchart/state snapshot) — worth its own pass.
+- *(done)* **ELK now reserves space for edge labels.** `toElkGraph`/the compartment graph pass each
+  edge's measured label box into ELK (`edgeLabels.placement: CENTER`), and ELK's returned label centre
+  rides through `PositionedEdge.labelPos` → `SceneEdge.labelPos`; the renderer uses it when present and
+  falls back to the routed midpoint otherwise. Flowchart/state/class/ER/requirement labels now clear
+  the nodes (the BPMN gateway overlaps are gone).

@@ -32,6 +32,9 @@ export interface LayoutEdge {
   readonly id: EdgeId;
   readonly sources: readonly NodeId[];
   readonly targets: readonly NodeId[];
+  // Measured size of the edge's midpoint label, so the router (ELK) can reserve space for it; null when
+  // the edge has no label.
+  readonly label: { readonly width: number; readonly height: number } | null;
 }
 export interface LayoutGraph {
   readonly id: string;
@@ -52,6 +55,9 @@ export interface PositionedNode {
 export interface PositionedEdge {
   readonly id: EdgeId;
   readonly points: readonly { readonly x: number; readonly y: number }[];
+  // The centre the router placed the midpoint label at (absolute coords), or null if the edge has no
+  // label / the router didn't position one.
+  readonly labelPos: XY | null;
 }
 export interface PositionedGraph {
   readonly width: number;

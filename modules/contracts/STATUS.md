@@ -19,7 +19,9 @@
   semantic node rendering roles via `SceneNode.role` (`normal` plus state pseudo-state/note roles),
   and per-end edge decorations via `SceneEdge.fromEnd`/`toEnd` (the
   `EdgeEnd` union: `none`/`arrow`/`arrowOpen`/`triangle`/`diamondFilled`/`diamondHollow` + the four
-  crow's-foot cardinalities). Pie wedges carry `innerRadius`, so full pies and donuts share one
+  crow's-foot cardinalities), plus an optional `SceneEdge.labelPos` — a router-supplied label centre
+  (ELK reserves space for edge labels) the renderer prefers over the routed midpoint. Pie wedges carry
+  `innerRadius`, so full pies and donuts share one
   primitive.
 - `LayoutOverrides`: sidecar manual geometry (scene node → position/size/pinned).
 - `Groups`: sidecar editor grouping with required `label`, ordered members, and move-only lock.

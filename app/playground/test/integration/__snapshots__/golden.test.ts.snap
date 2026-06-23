@@ -75,34 +75,34 @@ exports[`pipeline goldens > lays out dot to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out er to a stable display list 1`] = `
 [
-  "polyline 146,47 206,47 dashed=false from=l2p0c0 to=l3p0c1",
+  "polyline 146,47 324,47 dashed=false from=l2p0c0 to=l3p0c1",
   "box 12,12 134x70 r0",
   "label "CUSTOMER" 79,27 center",
   "polyline 12,42 146,42 dashed=false from=l0p0c0 to=l0p0c0",
   "label "string name PK" 20,52 left",
   "label "int age" 20,72 left",
-  "box 206,32 96x30 r0",
-  "label "ORDER" 254,47 center",
-  "label "places" 176,58 center",
+  "box 324,32 96x30 r0",
+  "label "ORDER" 372,47 center",
+  "label "places" 235,61 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 [
   "polyline 64,52 64,92 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 52,132 52,172 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 76,132 76,142 102,142 102,222 68,222 68,252 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 52,212 52,252 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 52,132 52,230 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 76,132 76,142 102,142 102,280 68,280 68,310 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 52,270 52,310 dashed=false from=l0p0c0 to=l0p1c0",
   "box 32,12 64x40 r0",
   "label "Start" 64,32 center",
   "diamond 64,112 72x40",
   "label "Choice" 64,112 center",
-  "box 12,172 80x40 r8",
-  "label "Process" 52,192 center",
-  "box 36,252 48x40 r8",
-  "label "End" 60,272 center",
-  "label "yes" 41,152 center",
-  "label "no" 91,196 center",
+  "box 12,230 80x40 r8",
+  "label "Process" 52,250 center",
+  "box 36,310 48x40 r8",
+  "label "End" 60,330 center",
+  "label "yes" 31,181 center",
+  "label "no" 120,181 center",
 ]
 `;
 
@@ -216,21 +216,21 @@ exports[`pipeline goldens > lays out pie to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out requirement to a stable display list 1`] = `
 [
-  "polyline 88,82 88,142 dashed=true from=l0p0c0 to=l2p0c0",
-  "box 24,142 128x90 r0",
-  "label "req" 88,157 center",
-  "polyline 24,172 152,172 dashed=false from=l0p0c0 to=l0p0c0",
-  "label "«requirement»" 32,182 left",
-  "label "id: 1" 32,202 left",
-  "label "risk: high" 32,222 left",
-  "polyline 24,192 152,192 dashed=false from=l0p0c0 to=l0p0c0",
-  "box 12,12 152x70 r0",
-  "label "ent" 88,27 center",
-  "polyline 12,42 164,42 dashed=false from=l0p0c0 to=l0p0c0",
-  "label "«element»" 20,52 left",
-  "label "type: simulation" 20,72 left",
-  "polyline 12,62 164,62 dashed=false from=l0p0c0 to=l0p0c0",
-  "label "satisfies" 77,112 center",
+  "polyline 98,82 98,220 dashed=true from=l0p0c0 to=l2p0c0",
+  "box 34,220 128x90 r0",
+  "label "req" 98,235 center",
+  "polyline 34,250 162,250 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "«requirement»" 42,260 left",
+  "label "id: 1" 42,280 left",
+  "label "risk: high" 42,300 left",
+  "polyline 34,270 162,270 dashed=false from=l0p0c0 to=l0p0c0",
+  "box 22,12 152x70 r0",
+  "label "ent" 98,27 center",
+  "polyline 22,42 174,42 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "«element»" 30,52 left",
+  "label "type: simulation" 30,72 left",
+  "polyline 22,62 174,62 dashed=false from=l0p0c0 to=l0p0c0",
+  "label "satisfies" 53,151 center",
 ]
 `;
 
@@ -251,41 +251,41 @@ exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out state to a stable display list 1`] = `
 [
-  "polyline 52,60 52,100 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 52,140 52,180 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 52,220 52,260 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 52,300 52,340 dashed=false from=l0p0c0 to=l0p1c0",
-  "stateStart 52,36 r24",
-  "box 24,100 56x40 r8",
-  "label "Idle" 52,120 center",
-  "box 12,180 80x40 r8",
-  "label "Loading" 52,200 center",
-  "box 20,260 64x40 r8",
-  "label "Ready" 52,280 center",
-  "stateEnd 52,364 r24",
-  "label "fetch" 41,160 center",
-  "label "ok" 41,240 center",
+  "polyline 66,60 66,100 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 66,140 66,238 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 66,278 66,376 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 66,416 66,456 dashed=false from=l0p0c0 to=l0p1c0",
+  "stateStart 66,36 r24",
+  "box 38,100 56x40 r8",
+  "label "Idle" 66,120 center",
+  "box 26,238 80x40 r8",
+  "label "Loading" 66,258 center",
+  "box 34,376 64x40 r8",
+  "label "Ready" 66,396 center",
+  "stateEnd 66,480 r24",
+  "label "fetch" 37,189 center",
+  "label "ok" 49,327 center",
 ]
 `;
 
 exports[`pipeline goldens > lays out state-composite to a stable display list 1`] = `
 [
-  "polyline 94,60 94,100 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 128,76 128,86 76,86 76,96 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 56,96 56,86 60,86 60,76 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 36,76 36,96 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 94,248 94,288 dashed=false from=l0p0c0 to=l0p1c0",
-  "stateStart 94,36 r24",
-  "stateEnd 94,312 r24",
-  "box 12,100 164x148 r4",
-  "label "Active" 94,112 center",
-  "stateStart 140,152 r24",
-  "box 28,196 80x40 r8",
-  "label "Running" 68,216 center",
-  "box 24,136 72x40 r8",
-  "label "Paused" 60,156 center",
-  "label "pause" 58,97 center",
-  "label "resume" 25,86 center",
+  "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 180,136 180,166 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 160,166 160,146 83,146 83,68 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 59,68 59,78 72,78 72,156 140,156 140,166 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0",
+  "stateStart 120,36 r24",
+  "stateEnd 120,382 r24",
+  "box 12,100 216x218 r4",
+  "label "Active" 120,112 center",
+  "stateStart 192,212 r24",
+  "box 132,266 80x40 r8",
+  "label "Running" 172,286 center",
+  "box 47,128 72x40 r8",
+  "label "Paused" 83,148 center",
+  "label "pause" 111,112 center",
+  "label "resume" 41,112 center",
 ]
 `;
 
