@@ -48,7 +48,7 @@ exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 [
-  "polyline 56,54 160,54 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 96,54 108,54 108,54 120,54 dashed=false from=l0p0c0 to=l0p0c0",
   "box 0,0 216x98 r4",
   "label "AWS" 108,12 center",
   "box 16,26 80x56 r0",
