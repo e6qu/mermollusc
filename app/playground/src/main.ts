@@ -118,6 +118,8 @@ declare global {
     __collabSetRole?: (role: string) => void;
     // e2e hook: whether a drag-alignment guide is currently active (a node is snapped to another).
     __snapActive?: () => boolean;
+    // e2e hook: the armed canvas tool ("select" | "hand" | "connect" | "place").
+    __activeTool?: () => string;
   }
 }
 
@@ -189,7 +191,39 @@ const arrangeMenu = document.querySelector<HTMLDivElement>("#arrange-menu");
 // are wired by id without refs).
 const distHBtn = document.querySelector<HTMLButtonElement>("#dist-h");
 const distVBtn = document.querySelector<HTMLButtonElement>("#dist-v");
+const toolPalette = document.querySelector<HTMLElement>("#tool-palette");
+const toolSelectBtn = document.querySelector<HTMLButtonElement>("#tool-select");
+const toolHandBtn = document.querySelector<HTMLButtonElement>("#tool-hand");
+const toolConnectBtn = document.querySelector<HTMLButtonElement>("#tool-connect");
+const toolPlaceBtn = document.querySelector<HTMLButtonElement>("#tool-place");
+const stageCol = document.querySelector<HTMLElement>(".stage-col");
+const contextBar = document.querySelector<HTMLElement>("#context-bar");
+const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
+const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
+const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
+const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
+const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
+const ctxUngroupBtn = document.querySelector<HTMLButtonElement>("#ctx-ungroup");
+const ctxLockBtn = document.querySelector<HTMLButtonElement>("#ctx-lock");
+const ctxArrangeBtn = document.querySelector<HTMLButtonElement>("#ctx-arrange");
+const ctxDeleteBtn = document.querySelector<HTMLButtonElement>("#ctx-delete");
 if (
+  toolPalette === null ||
+  toolSelectBtn === null ||
+  toolHandBtn === null ||
+  toolConnectBtn === null ||
+  toolPlaceBtn === null ||
+  stageCol === null ||
+  contextBar === null ||
+  ctxRelabelBtn === null ||
+  ctxShapeBtn === null ||
+  ctxConnectBtn === null ||
+  ctxDuplicateBtn === null ||
+  ctxGroupBtn === null ||
+  ctxUngroupBtn === null ||
+  ctxLockBtn === null ||
+  ctxArrangeBtn === null ||
+  ctxDeleteBtn === null ||
   groupBtn === null ||
   ungroupBtn === null ||
   lockBtn === null ||
@@ -262,6 +296,21 @@ const MAX_SCALE = 4;
 // True when this client's collaborative role is `viewer` — the editor and canvas become read-only (the
 // server is the real boundary; this is the matching UX). Always false in single-user / non-collab.
 let viewerMode = false;
+// The armed canvas tool (whiteboard-style). `select` is byte-for-byte the historical behavior; the
+// other tools only *bias* the existing gesture branches (modifiers like ⌥-connect / ⇧-marquee /
+// ⌘-wheel stay always-on accelerators in every tool). `spaceHeld` is a transient hand override (hold
+// Space to pan); `lastPointer` lets `setTool` recompute the cursor without waiting for a pointer move.
+type Tool = "select" | "hand" | "connect" | "place";
+let activeTool: Tool = "select";
+let spaceHeld = false;
+let lastPointer: PointerEvent | null = null;
+// The tool actually in effect: a held Space (or a viewer, who can only look/pan) outranks the armed tool.
+const effectiveTool = (): Tool => {
+  if (viewerMode) return spaceHeld ? "hand" : "select";
+  if (spaceHeld) return "hand";
+  return activeTool;
+};
+window.__activeTool = () => activeTool;
 // The last laid-out scene + logical sheet size, cached so the minimap can redraw on scroll without
 // re-running the main paint. The minimap renders a *simplified* view from the scene (node blocks,
 // faint edges) rather than the full display list — shrunk labels/icons would just be noise.
@@ -494,6 +543,11 @@ const shownScene = (base: Scene): Scene => {
   return shown;
 };
 
+// True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
+// minimap cache rebuild and to hide the selection context bar mid-gesture.
+const isInteracting = (): boolean =>
+  drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
+
 const paintScene = (): void => {
   if (scene === null) return;
   const shown = shownScene(scene);
@@ -643,10 +697,9 @@ const paintScene = (): void => {
   // each frame doubles the per-frame cost on a large diagram. Skip it while interacting — the minimap
   // goes briefly stale and the release (which repaints with no interaction in flight) refreshes it. A
   // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
-  const interacting =
-    drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
-  if (!interacting) buildMinimapCache();
+  if (!isInteracting()) buildMinimapCache();
   drawMinimap();
+  positionContextBar();
 };
 
 // Coalesces repaints to one per animation frame. Pointer-move events (drag/resize/marquee) can fire
@@ -936,50 +989,150 @@ const resizeAnchorAt = (
   return null;
 };
 
-// Reflect the current selection in the group controls (enabled state + Lock/Unlock label).
-const updateGroupButtons = (): void => {
-  if (!currentRenderValid || viewerMode) {
-    groupBtn.disabled = true;
-    ungroupBtn.disabled = true;
-    lockBtn.disabled = true;
-    arrangeBtn.disabled = true;
-    connectBtn.disabled = true;
-    connectBtn.title = currentRenderValid ? "viewer mode" : "fix source first";
-    iconsToggle.disabled = true;
-    iconsToggle.title = currentRenderValid ? "viewer mode" : "fix source first";
-    closeArrange();
-    updateTask();
-    return;
+// What the current selection + family can do — computed once and consumed by BOTH the workbench
+// controls (`updateGroupButtons`) and the on-canvas selection context toolbar (`renderContextBar`), so
+// the two surfaces provably can't drift (e.g. Connect offered on one but not the other). `valid` folds
+// the `currentRenderValid && !viewerMode` gate; every flag is false when not valid.
+interface CapabilityState {
+  readonly valid: boolean;
+  readonly canConnect: boolean;
+  readonly connectTitle: string;
+  readonly iconCapable: boolean;
+  readonly iconTitle: string;
+  readonly canGroup: boolean;
+  readonly hasGroup: boolean;
+  readonly isLocked: boolean;
+  readonly canArrange: boolean;
+  readonly canDistribute: boolean;
+  readonly canShape: boolean;
+  readonly canDuplicate: boolean;
+  readonly canRelabel: boolean;
+  readonly canDelete: boolean;
+  readonly isEdgeOnly: boolean;
+}
+
+const TOOL_BUTTONS: Record<Tool, HTMLButtonElement> = {
+  select: toolSelectBtn,
+  hand: toolHandBtn,
+  connect: toolConnectBtn,
+  place: toolPlaceBtn,
+};
+const TOOL_ORDER: readonly Tool[] = ["select", "hand", "connect", "place"];
+
+// Reflect the armed tool + per-family availability on the palette radiogroup (roving tabindex). If the
+// armed tool is no longer available (e.g. Connect on a family that can't accept it, or a switch to a
+// viewer), fall back to Select so `aria-checked` never points at a disabled control.
+const syncToolPalette = (): void => {
+  const available: Record<Tool, boolean> = {
+    select: true,
+    hand: true,
+    connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
+    place: !viewerMode && ast !== null && ast.kind === "flowchart",
+  };
+  if (!available[activeTool]) {
+    activeTool = "select";
+    stageWrap.setAttribute("data-tool", "select");
   }
+  for (const t of TOOL_ORDER) {
+    const btn = TOOL_BUTTONS[t];
+    const checked = activeTool === t;
+    btn.setAttribute("aria-checked", checked ? "true" : "false");
+    btn.tabIndex = checked ? 0 : -1;
+    btn.disabled = !available[t];
+  }
+};
+
+// Which verbs the selection context toolbar offers, driven by the same CapabilityState the workbench
+// controls use (so they can't disagree). Geometry/visibility of the bar itself is `positionContextBar`.
+const renderContextBar = (caps: CapabilityState): void => {
+  ctxRelabelBtn.hidden = !caps.canRelabel;
+  ctxShapeBtn.hidden = !caps.canShape;
+  ctxConnectBtn.hidden = !caps.canConnect;
+  ctxDuplicateBtn.hidden = !caps.canDuplicate;
+  ctxGroupBtn.hidden = !caps.canGroup;
+  ctxUngroupBtn.hidden = !caps.hasGroup;
+  ctxLockBtn.hidden = !caps.hasGroup;
+  ctxLockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  ctxArrangeBtn.hidden = !caps.canArrange;
+  ctxDeleteBtn.hidden = !caps.canDelete;
+};
+
+const computeCapabilities = (): CapabilityState => {
+  const valid = currentRenderValid && !viewerMode;
+  const blockedTitle = currentRenderValid ? "viewer mode" : "fix source first";
+  if (!valid) {
+    return {
+      valid: false,
+      canConnect: false,
+      connectTitle: blockedTitle,
+      iconCapable: false,
+      iconTitle: blockedTitle,
+      canGroup: false,
+      hasGroup: false,
+      isLocked: false,
+      canArrange: false,
+      canDistribute: false,
+      canShape: false,
+      canDuplicate: false,
+      canRelabel: false,
+      canDelete: false,
+      isEdgeOnly: false,
+    };
+  }
+  const kindLabel = ast === null ? "this diagram" : ast.kind;
+  const connectable = ast !== null && familyAffordances(ast.kind).connect;
   const iconCapable = ast !== null && familyAffordances(ast.kind).iconOverride;
-  iconsToggle.disabled = !iconCapable;
-  iconsToggle.title = iconCapable
-    ? "Insert an icon override on a node"
-    : `icons aren't available for ${ast === null ? "this diagram" : ast.kind}`;
+  const isFlowchart = ast !== null && ast.kind === "flowchart";
   const units = new Set<string>();
   for (const id of selection.nodes) {
     const top = topGroupOfNode(doc.groups(), id);
     units.add(top === null ? `n:${id}` : `g:${top}`);
   }
-  groupBtn.disabled = units.size < 2;
   const top = selectedTopGroup();
-  ungroupBtn.disabled = top === null;
-  lockBtn.disabled = top === null;
-  lockBtn.textContent = top !== null && doc.groups().get(top)?.locked === true ? "Unlock" : "Lock";
-  // Arrange acts on ≥2 movable units (distribute on ≥3); close the popover if it no longer applies.
   const movable = movableUnitCount();
-  arrangeBtn.disabled = movable < 2;
-  if (distHBtn !== null) distHBtn.disabled = movable < 3;
-  if (distVBtn !== null) distVBtn.disabled = movable < 3;
-  if (movable < 2) closeArrange();
-  const connectable = ast !== null && familyAffordances(ast.kind).connect;
-  const canConnect = connectable && selectionOrder.length >= 2;
-  connectBtn.disabled = !canConnect;
-  connectBtn.title = !connectable
-    ? `connect isn't available for ${ast === null ? "this diagram" : ast.kind}`
-    : selectionOrder.length < 2
-      ? "select two nodes"
-      : "";
+  const totalSelected = selection.nodes.size + selection.edges.size;
+  return {
+    valid: true,
+    canConnect: connectable && selectionOrder.length >= 2,
+    connectTitle: !connectable
+      ? `connect isn't available for ${kindLabel}`
+      : selectionOrder.length < 2
+        ? "select two nodes"
+        : "",
+    iconCapable,
+    iconTitle: iconCapable
+      ? "Insert an icon override on a node"
+      : `icons aren't available for ${kindLabel}`,
+    canGroup: units.size >= 2,
+    hasGroup: top !== null,
+    isLocked: top !== null && doc.groups().get(top)?.locked === true,
+    canArrange: movable >= 2,
+    canDistribute: movable >= 3,
+    canShape: isFlowchart && selectionOrder.length >= 1,
+    canDuplicate: isFlowchart && selectionOrder.length >= 1,
+    canRelabel: totalSelected === 1,
+    canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
+    isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
+  };
+};
+
+// Reflect the current selection in the workbench controls (enabled state + Lock/Unlock label).
+const updateGroupButtons = (): void => {
+  const caps = computeCapabilities();
+  groupBtn.disabled = !caps.canGroup;
+  ungroupBtn.disabled = !caps.hasGroup;
+  lockBtn.disabled = !caps.hasGroup;
+  lockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  arrangeBtn.disabled = !caps.canArrange;
+  if (distHBtn !== null) distHBtn.disabled = !caps.canDistribute;
+  if (distVBtn !== null) distVBtn.disabled = !caps.canDistribute;
+  if (!caps.canArrange) closeArrange();
+  connectBtn.disabled = !caps.canConnect;
+  connectBtn.title = caps.connectTitle;
+  iconsToggle.disabled = !caps.iconCapable;
+  iconsToggle.title = caps.iconTitle;
+  syncToolPalette();
+  renderContextBar(caps);
   updateTask();
 };
 
@@ -1400,7 +1553,10 @@ canvas.addEventListener(
 
 // Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
 // cheap, since it reuses the cached display list rather than re-running the main paint.
-stageWrap.addEventListener("scroll", drawMinimap);
+stageWrap.addEventListener("scroll", () => {
+  drawMinimap();
+  positionContextBar(); // the bar tracks the selection as the sheet scrolls inside the stage
+});
 window.addEventListener("resize", () => {
   buildMinimapCache();
   drawMinimap();
@@ -1979,7 +2135,62 @@ const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
   el.style.top = `${at.y}px`;
 };
 
+// Show + place the selection context toolbar above the selection's bounding box (flipping below if it
+// would clip the stage top). Hidden when nothing is selected or while a gesture is in flight. Positioned
+// relative to `.stage-col` (the bar's offset parent), so it stays put as the sheet scrolls inside it.
+const CONTEXT_BAR_GAP = 10;
+const positionContextBar = (): void => {
+  if (
+    scene === null ||
+    isInteracting() ||
+    (selection.nodes.size === 0 && selection.edges.size === 0)
+  ) {
+    contextBar.hidden = true;
+    return;
+  }
+  const shown = shownScene(scene);
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const node of shown.nodes) {
+    if (!selection.nodes.has(node.id)) continue;
+    const { origin, size: box } = node.bounds;
+    minX = Math.min(minX, origin.x);
+    minY = Math.min(minY, origin.y);
+    maxX = Math.max(maxX, origin.x + box.width);
+    maxY = Math.max(maxY, origin.y + box.height);
+  }
+  for (const edge of shown.edges) {
+    if (!selection.edges.has(edge.id)) continue;
+    const a = edgeLabelAnchor(edge.waypoints);
+    minX = Math.min(minX, a.x);
+    minY = Math.min(minY, a.y);
+    maxX = Math.max(maxX, a.x);
+    maxY = Math.max(maxY, a.y);
+  }
+  if (minX === Number.POSITIVE_INFINITY) {
+    contextBar.hidden = true;
+    return;
+  }
+  const colRect = stageCol.getBoundingClientRect();
+  contextBar.hidden = false; // unhide before measuring so offsetWidth/Height are real
+  const cx = (minX + maxX) / 2;
+  const above = sceneToScreen(point(cx, minY));
+  const bw = contextBar.offsetWidth;
+  const bh = contextBar.offsetHeight;
+  let top = above.y - colRect.top - bh - CONTEXT_BAR_GAP;
+  if (top < 4) {
+    // Would clip the stage top — flip below the selection.
+    top = sceneToScreen(point(cx, maxY)).y - colRect.top + CONTEXT_BAR_GAP;
+  }
+  const left = Math.max(4, Math.min(above.x - colRect.left - bw / 2, colRect.width - bw - 4));
+  contextBar.style.left = `${left}px`;
+  contextBar.style.top = `${Math.max(4, top)}px`;
+};
+
 const updateCanvasCursor = (ev: PointerEvent): void => {
+  lastPointer = ev;
   if (scene === null) {
     canvas.style.cursor = "";
     return;
@@ -1987,6 +2198,20 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
+  // Non-select tools own the cursor outright; select keeps the rich hit-aware feedback below.
+  const tool = effectiveTool();
+  if (tool === "hand") {
+    canvas.style.cursor = "grab";
+    return;
+  }
+  if (tool === "place") {
+    canvas.style.cursor = "copy";
+    return;
+  }
+  if (tool === "connect") {
+    canvas.style.cursor = hit !== null && hit.kind === "node" ? "crosshair" : "default";
+    return;
+  }
   const gboxes = groupBoxes(shown);
   if (!viewerMode && resizeAnchorAt(shown, at) !== null) {
     canvas.style.cursor = "nwse-resize";
@@ -2011,6 +2236,87 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   }
 };
 
+const TOOL_LABELS: Record<Tool, string> = {
+  select: "Select",
+  hand: "Hand",
+  connect: "Connect",
+  place: "Place node",
+};
+
+// Recompute the canvas cursor for the current tool without waiting for a pointer move.
+const refreshCursor = (): void => {
+  if (lastPointer !== null) updateCanvasCursor(lastPointer);
+};
+
+// Arm a tool. Connect/place are clamped to the families that support them and rejected *loudly*
+// (announced) rather than silently switching; a viewer may only select/hand. Repaints palette + cursor.
+const setTool = (t: Tool): void => {
+  if (t === "connect" && !(ast !== null && familyAffordances(ast.kind).connect)) {
+    setStatusAndAnnounce(
+      "ok",
+      `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
+    );
+    return;
+  }
+  if (t === "place" && !(ast !== null && ast.kind === "flowchart")) {
+    setStatusAndAnnounce("ok", "the place tool adds flowchart nodes");
+    return;
+  }
+  if (viewerMode && t !== "select" && t !== "hand") return;
+  activeTool = t;
+  stageWrap.setAttribute("data-tool", t);
+  syncToolPalette();
+  // Announce to the live region only — `setStatus` would overwrite the canvas's diagram aria-label
+  // (the SR text alternative) with the transient tool name. The palette's active state is the visual cue.
+  announce(`${TOOL_LABELS[t]} tool`);
+  refreshCursor();
+};
+
+// Place tool: drop a fresh flowchart node at the clicked point, pin it, select it, return to select.
+// Mirrors `duplicateSelection`'s add-then-pin pattern — node geometry never enters the source text.
+const placeNodeAt = async (at: Point): Promise<void> => {
+  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
+  const used = new Set<string>(ast.nodes.map((n) => n.id));
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  const id = `n${n}`;
+  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(id), `node ${n}`, "rect"));
+  await renderFromText(editor.value());
+  if (scene === null) return;
+  const sid = brand<string, "SceneNodeId">(id);
+  doc.record();
+  doc.moveNode(sid, at);
+  doc.persist();
+  selection = { nodes: new Set([sid]), edges: new Set() };
+  selectionOrder = [sid];
+  paintScene();
+  updateGroupButtons();
+  setTool("select");
+  announce(`placed node ${n}`);
+};
+
+for (const t of TOOL_ORDER) {
+  TOOL_BUTTONS[t].addEventListener("click", () => setTool(t));
+}
+// Roving-tabindex arrow navigation within the palette (APG radiogroup), skipping disabled tools.
+toolPalette.addEventListener("keydown", (ev) => {
+  const forward = ev.key === "ArrowDown" || ev.key === "ArrowRight";
+  const backward = ev.key === "ArrowUp" || ev.key === "ArrowLeft";
+  if (!forward && !backward) return;
+  ev.preventDefault();
+  const enabled = TOOL_ORDER.filter((t) => !TOOL_BUTTONS[t].disabled);
+  if (enabled.length === 0) return;
+  const cur = enabled.indexOf(activeTool);
+  const base = cur < 0 ? 0 : cur;
+  const next =
+    enabled[forward ? (base + 1) % enabled.length : (base - 1 + enabled.length) % enabled.length];
+  if (next !== undefined) {
+    setTool(next);
+    TOOL_BUTTONS[next].focus();
+  }
+});
+syncToolPalette();
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
@@ -2018,13 +2324,32 @@ canvas.addEventListener("pointerdown", (ev) => {
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
+  const tool = effectiveTool();
+  // Place tool: a click drops a new node at the pointer (flowchart only), then snaps back to select.
+  if (tool === "place" && ast !== null && ast.kind === "flowchart" && !viewerMode) {
+    ev.preventDefault();
+    void placeNodeAt(at);
+    return;
+  }
+  // Hand tool: a drag always pans, even when it starts over a node.
+  if (tool === "hand") {
+    pan = {
+      startX: screenCoord(ev.clientX),
+      startY: screenCoord(ev.clientY),
+      scrollLeft: stageWrap.scrollLeft,
+      scrollTop: stageWrap.scrollTop,
+    };
+    canvas.setPointerCapture(ev.pointerId);
+    canvas.style.cursor = "grabbing";
+    return;
+  }
   // Shift or the platform command key adds to the selection — accept Ctrl too, so additive-click works
   // on Windows/Linux (the help panel advertises "Ctrl click" there).
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
-  // ⌥-drag from a node starts a connect (a rubber-band to the cursor; an edge on release over another
-  // node) — before the resize/move paths, since ⌥ is the connect modifier. Viewers can't connect.
-  if (ev.altKey && !viewerMode && hit !== null && hit.kind === "node") {
+  // ⌥-drag from a node (or any drag from a node under the Connect tool) starts a connect — a rubber-band
+  // to the cursor, an edge on release over another node — before the resize/move paths. Viewers can't.
+  if ((ev.altKey || tool === "connect") && !viewerMode && hit !== null && hit.kind === "node") {
     const src = shown.nodes.find((nd) => nd.id === hit.id);
     if (src !== undefined) {
       ev.preventDefault();
@@ -2849,19 +3174,11 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
 const ganttLineStart = (id: SceneNodeId): number =>
   ganttSource?.tasks.get(brand<string, "GanttTaskId">(id))?.start ?? -1;
 
-// Delete key removes the selected nodes (and their edges) from the text, in the active family's
-// syntax. Guarded on the editor not being focused so it never hijacks a Backspace while editing.
-window.addEventListener("keydown", (ev) => {
-  if (ev.key !== "Delete" && ev.key !== "Backspace") return;
-  if (editor.hasFocus()) return;
-  // Also bail when a plain text field has focus (the icon-picker filter, the inline rename overlay),
-  // so editing its text never silently deletes selected canvas nodes.
-  const active = document.activeElement;
-  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-  if (viewerMode) return; // a viewer can't delete
-  if (ast === null) return;
+// Remove the selected nodes (and their edges) from the source text in the active family's syntax.
+// Shared by the Delete key and the selection context toolbar's Delete button.
+const deleteSelection = (): void => {
+  if (viewerMode || ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
-  ev.preventDefault();
   const kind = ast.kind;
   let text = editor.value();
   // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
@@ -2887,6 +3204,19 @@ window.addEventListener("keydown", (ev) => {
     "ok",
     `deleted ${removedCount} item${removedCount === 1 ? "" : "s"} — undo in the editor`,
   );
+};
+
+// Delete key removes the selection. Guarded on the editor / a text field not being focused so it never
+// hijacks a Backspace while editing.
+window.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Delete" && ev.key !== "Backspace") return;
+  if (editor.hasFocus()) return;
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+  if (viewerMode || ast === null) return;
+  if (selectionOrder.length === 0 && selection.edges.size === 0) return;
+  ev.preventDefault();
+  deleteSelection();
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
@@ -3002,9 +3332,38 @@ const cycleShape = async (): Promise<void> => {
   canvas.focus({ preventScroll: true });
 };
 
+// The selection context toolbar is a thin view over the existing handlers — each button delegates to
+// the same code path as its keyboard shortcut / workbench control, so there's a single source of truth.
+ctxRelabelBtn.addEventListener("click", () => {
+  if (scene === null) return;
+  const edgeId = [...selection.edges][0];
+  const nodeId = selectionOrder[0];
+  const hit: HitTarget | null =
+    selection.edges.size > 0 && selectionOrder.length === 0 && edgeId !== undefined
+      ? { kind: "edge", id: edgeId }
+      : nodeId !== undefined
+        ? { kind: "node", id: nodeId }
+        : null;
+  if (hit !== null) beginRelabel(shownScene(scene), hit, null);
+});
+ctxShapeBtn.addEventListener("click", () => void cycleShape());
+ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
+ctxConnectBtn.addEventListener("click", () => connectBtn.click());
+ctxGroupBtn.addEventListener("click", () => groupBtn.click());
+ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
+ctxLockBtn.addEventListener("click", () => lockBtn.click());
+ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
+ctxDeleteBtn.addEventListener("click", deleteSelection);
+
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (ev.key === "Escape") {
+    // Escape first disarms a non-default tool (back to Select); a second Escape clears the selection.
+    if (activeTool !== "select") {
+      ev.preventDefault();
+      setTool("select");
+      return;
+    }
     if (selection.nodes.size === 0 && selection.edges.size === 0) return;
     selection = emptySelection;
     selectionOrder = [];
@@ -3014,12 +3373,29 @@ window.addEventListener("keydown", (ev) => {
     return;
   }
   if (ev.metaKey || ev.ctrlKey) return; // leave ⌘-combos to the other handlers / the browser
-  // A focused text field (icon-filter, inline rename) keeps its own keys — never hijack a letter/arrow.
+  // A focused text field (icon-filter, inline rename, the family <select>) keeps its own keys — never
+  // hijack a letter/arrow/Space.
   const active = document.activeElement;
-  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-  // The keyboard diagram navigator owns arrow keys when focused (plain = move between items, Alt =
-  // nudge nodes), so don't also run the global nudge on every navigation step.
+  if (
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLTextAreaElement ||
+    active instanceof HTMLSelectElement ||
+    (active instanceof HTMLElement && active.isContentEditable)
+  ) {
+    return;
+  }
+  // The keyboard diagram navigator owns arrow keys (and its own two-step `c` connect) when focused, so
+  // don't also run the global nudge / tool switch on every navigation step.
   if (active === diagramNav) return;
+  // Hold Space to temporarily pan (whiteboard-style), released on keyup/blur.
+  if (ev.key === " ") {
+    ev.preventDefault();
+    if (!spaceHeld) {
+      spaceHeld = true;
+      refreshCursor();
+    }
+    return;
+  }
   const step = ev.shiftKey ? 10 : 1;
   switch (ev.key) {
     case "ArrowLeft":
@@ -3038,6 +3414,26 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       nudgeSelection(0, step);
       break;
+    case "v":
+    case "V":
+      ev.preventDefault();
+      setTool("select");
+      break;
+    case "h":
+    case "H":
+      ev.preventDefault();
+      setTool("hand");
+      break;
+    case "c":
+    case "C":
+      ev.preventDefault();
+      setTool("connect");
+      break;
+    case "p":
+    case "P":
+      ev.preventDefault();
+      setTool("place");
+      break;
     case "s":
     case "S":
       if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) {
@@ -3046,6 +3442,20 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       void cycleShape();
       break;
+  }
+});
+
+// Release the transient Space-pan on keyup, and on window blur (so a focus loss mid-hold can't strand it).
+window.addEventListener("keyup", (ev) => {
+  if (ev.key === " " && spaceHeld) {
+    spaceHeld = false;
+    refreshCursor();
+  }
+});
+window.addEventListener("blur", () => {
+  if (spaceHeld) {
+    spaceHeld = false;
+    refreshCursor();
   }
 });
 

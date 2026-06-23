@@ -1,5 +1,18 @@
 # @m/app (playground) — do next
 
+- **Miro-like round (landed).** A whiteboard tool model (`select|hand|connect|place`, V/H/C/P +
+  Space-pan + Esc→select, tool-aware cursors), a floating tool palette (radiogroup, roving tabindex,
+  per-family disable/fallback), a selection context mini-toolbar (thin view over existing handlers via a
+  shared `CapabilityState`), the zoom cluster relocated onto the stage, and deeper two-way-edit tests.
+  Remaining for a later pass:
+  - **Place beyond flowchart** — Place only adds flowchart nodes today (the only family `addNode`
+    supports); extend once the builder gains family-aware node insertion.
+  - **Mobile widgets** — the palette + context bar are hidden under 760px (pointer-precision
+    affordances); a touch-friendly variant could replace them rather than just hiding.
+  - **Two-history undo test + delete-shared-line note** — from the review's test plan, still worth
+    adding: an `undo.spec` case codifying that canvas ⌘Z drives the overlay history only (not text), and
+    a `delete-shared-line` spec + `modules/builder/BUGS.md` note pinning line-based `deleteNode`'s
+    collateral-loss limitation.
 - **Audit follow-ups (omnibus pass).** From the multi-dimension UX/architecture audit, the safe and
   high-value findings landed in this change (family-capability gating, fail-loud label validation,
   layout-preserving text edits, share-carries-overlay, a11y naming, platform-aware shortcut hints,

@@ -46,7 +46,20 @@
   copy-paste them via a persistent in-memory clipboard (cascading each paste); a single-node drag
   **snaps to alignment** with amber guide lines, and a **corner-handle resize snaps the moving corner**
   to the same lines (the min-size clamp drops the guide when the corner can't reach it). A **?** button (or the `?` key) opens a
-  shortcut-reference modal grouped by Select / Edit / Layout & groups / View.
+  shortcut-reference modal grouped by Select / Edit / Layout & groups / Tools / View.
+- **Whiteboard-style tool model + on-canvas widgets (Miro-like):** a closed-union **tool mode**
+  (`select | hand | connect | place`) drives the canvas. **Select** is the historical behavior verbatim
+  and modifiers stay always-on accelerators in every tool (⌥-connect, ⇧-marquee, ⌘-wheel zoom never
+  regress); **Hand** pans any drag (`H`, or hold **Space** in any tool); **Connect** turns a plain
+  node→node drag into an edge (`C`); **Place** drops a flowchart node at the click and snaps back to
+  Select (`P`, add-then-pin so geometry never enters the source). `V/H/C/P` shortcuts, `Esc`→Select,
+  tool-aware cursors. A **floating tool palette** (stage-pinned `radiogroup`, roving tabindex, active
+  tool in teal accent) exposes the tools and disables/falls-back the ones a family can't support. A
+  **selection context mini-toolbar** floats above the selection with its applicable verbs
+  (rename/shape/duplicate/connect/group/ungroup/lock/arrange/delete) — a thin view over the existing
+  handlers, driven by the same `CapabilityState` record the workbench controls use, so the two surfaces
+  can't drift. The zoom cluster is pinned to the stage (top-right) opposite the palette. All of this is
+  editor chrome — overlay DOM only; the exported diagram is untouched.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) after clearing stale PNGs, and owns its preview server on a dedicated port so it
