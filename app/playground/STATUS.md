@@ -73,8 +73,20 @@
   - structural edits: **Connect** (selected nodes → family-specific edge/relation/message; 3+ selected
     chain in click order A→B→C in one action) and
     **Delete** key (selected nodes/elements/actors or selected edges/relations/messages) work across
-    all ten families; **Add node** and **Relax** remain flowchart-only; **Regenerate** works for all and
-    preserves pinned manual overrides while replacing unpinned ones.
+    every family **whose grammar accepts the result** — a per-family capability record (`familyAffordances`)
+    gates **Connect** and the **icon picker**, disabled with a per-family reason on families that can't
+    parse what they'd insert (Connect on pie/gitGraph/timeline/mindmap/gantt, icons off everything but
+    network/cloud/block), so a toolbar click can't grey out a working diagram; **Add node** and
+    **Relax** remain flowchart-only; **Regenerate** works for all and preserves pinned manual overrides
+    while replacing unpinned ones.
+  - **two-way edits are validated, not silently corrupting**: a relabel/edge-label commit whose new
+    text contains the delimiter that would terminate its token early (`]`/`)`/`}`/`|`/`"`/newline,
+    depending on the span's opening delimiter) is **rejected loudly** (status + announce) via
+    `@m/builder`'s `validateLabel` / `relabelNode`, rather than writing un-parseable source.
+  - **a text edit preserves manual layout**: editing the source prunes only the overrides/groups whose
+    node ids the edit actually removed (after a successful layout) instead of wiping the whole overlay
+    every keystroke — the dragged/resized positions of nodes that still exist survive, and the prune is
+    undoable.
   - inline edge-label editing uses the renderer's routed-polyline label anchor, so bent-edge editors
     open at the visible label location.
   - group outlines are selectable: clicking an outline selects all leaf nodes in that group, enabling
@@ -142,10 +154,41 @@
   display list, with node icons embedded as `<image>` data-URL hrefs resolved from the registry. A
   **Copy** button (`#copy-png`) writes that same composite to the clipboard as a PNG (`ClipboardItem`),
   best-effort with a status-bar outcome.
-- **Share link** (`#share-link`): encodes the current source into the URL hash (`#src=<encoded>`,
-  reflected in the address bar) and copies the link to the clipboard (best-effort — the outcome is
-  surfaced to the status bar). On load a `#src=` hash wins over the persisted source, which wins over
-  the sample.
+- **Share link** (`#share-link`): encodes the current source into the URL hash (`#src=<encoded>`) and,
+  when the canvas has been arranged, the **manual overlay** too (`&overlay=<encoded serializeOverlay>`),
+  so a recipient sees the same positions/groups rather than a fresh auto-layout — matching what the
+  image exports already produce. The hash is reflected in the address bar and copied to the clipboard
+  (best-effort — outcome surfaced to the status bar). On load a `#src=` hash wins over the persisted
+  source (and applies any `overlay=` it carries); each key is decoded per-`&`-segment so a literal `+`
+  in the source survives. In collab mode the shared room owns the overlay, so the link stays
+  source-only.
+- **Loading an example** confirms first only when there is genuinely authored work to lose (the current
+  text is neither the sample nor another unmodified example); switching between starters never prompts.
+- **Cross-platform & a11y polish:** the CodeMirror surface carries an `aria-label` (no longer an
+  unnamed textbox); the inline-rename and icon-filter inputs are labelled; the minimap is
+  `role="application"`; the icon-picker close button meets the 24px target; a stale (error) canvas tells
+  screen readers it's "showing the last valid render" and parse/layout errors announce. Shortcut hints
+  carry `[data-mod]` chips that render `⌘/⌥/⇧` on Apple and **Ctrl/Alt/Shift** elsewhere (additive-click
+  accepts Ctrl too). A **Syntax by family** section in the help overlay lists a collapsible starter per
+  family from a closed-union-keyed catalog backed by the real `EXAMPLES`.
+- **Self-healing collab transport:** `?collab` connects through `reconnectingWebSocketTransport` — a
+  dropped relay socket reconnects with backoff and re-exchanges state, surfacing a "reconnecting" banner
+  and only falling back to local editing on a permanent give-up; a remote overlay edit that fails to
+  decode is surfaced (and logged via the session `Logger`) instead of throwing in the Yjs observer.
+- **Module layout:** pure/self-contained helpers were lifted out of `main.ts` into focused files —
+  `pdf.ts` (the dependency-free PDF builder), `raster.ts` (SVG→image), `platform.ts` (modifier-key
+  swap), `syntax-reference.ts` (the help catalog) — and the alignment-snap geometry moved to
+  `@m/builder`'s tested core. The render path makes **one** `parseDiagramWithSource` pass per edit
+  (AST + source map together) instead of parsing each family twice, and memoises `applyOverrides` +
+  group-bounds across a frame.
+- Playwright (`make e2e-ui`): covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + a control-accessible-name audit (incl. the editor + form inputs) + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+  spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
+  PDF + SVG export + icon-picker (insert + empty-filter) + an **audit-omnibus** spec (family-capability
+  gating, layout-survives-edit + share-carries-overlay, example-load confirm guard, platform modifier
+  chips + syntax reference) to the prior set (source-persistence,
+  family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
+  network-icons + override, structural edit coverage for every family, group outline selection +
+  label editing, dpr, load-pack ×2). Specs drive the editor through the `window.__editor` handle.
 - Playwright (`make e2e-ui`): covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,

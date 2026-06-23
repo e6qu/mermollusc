@@ -7,7 +7,8 @@ const canvasWidth = (page: Page) =>
 test("Backspace in the icon-filter input edits the field, not the diagram", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await setSource(page, "flowchart TD\n  A --> B\n");
+  // A network diagram so the icon picker is available (icon overrides apply to network/cloud/block).
+  await setSource(page, 'network\n  server a "A"\n  server b "B"\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   // Select everything, then edit the icon-picker filter — Backspace must not delete the selection.

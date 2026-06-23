@@ -631,3 +631,19 @@
   resize, connect, and selectable targets, and rebuilt the minimap cache on viewport resize. Added
   e2e coverage for mobile clipped controls, task guidance states, edge-selection guidance, minimap
   resize recalculation, plus a new edge-selected visual shot.
+
+- **Multi-dimension audit omnibus (2026-06-23).** Implemented the verified findings from a multi-agent
+  UX/product/architecture/backend audit. App layer: a per-family capability record gates Connect + the
+  icon picker (no more corruption-by-affordance); two-way relabel/edge-label commits validate against
+  the span delimiter and fail loud; text edits preserve manual layout (prune-vanished-ids-after-layout
+  instead of wipe-on-keystroke); Share carries the overlay and the hash is parsed per-segment; loading
+  an example confirms only over authored work; accessibility (editor aria-label, labelled inputs,
+  minimap role=application, 28px close target, error-state canvas label + announcements); platform-aware
+  shortcut chips (⌘/⌥/⇧ ↔ Ctrl/Alt/Shift) + Ctrl additive-click; an in-app "Syntax by family" reference
+  in the help overlay; self-healing `reconnectingWebSocketTransport` + surfaced overlay-reject status;
+  a single `parseDiagramWithSource` pass per edit with `applyOverrides`/group-bounds frame memos; and a
+  first decomposition of `main.ts` into `pdf.ts`/`raster.ts`/`platform.ts`/`syntax-reference.ts` (snap
+  geometry + `messageOf` sourced from `@m/builder`/`@m/std`). Added `e2e/audit-omnibus.spec.ts` and
+  broadened the a11y name guard; updated three existing icon/responsive specs that opened the picker on
+  a now-correctly-gated flowchart. The render-debounce attempt was reverted after the full e2e suite
+  caught a scene/source desync across the existing drop-stale guard (tracked in DO_NEXT).

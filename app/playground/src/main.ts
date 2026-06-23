@@ -104,6 +104,10 @@ import {
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
+import { buildImagePdf, bytesOf } from "./pdf.js";
+import { applyPlatformModifiers } from "./platform.js";
+import { rasterizeIcon, svgDataUrl } from "./raster.js";
+import { buildSyntaxReference } from "./syntax-reference.js";
 
 declare global {
   interface Window {
@@ -442,27 +446,6 @@ const measureLabel = (label: string): number => {
   if (measureCtx === null) return label.length * 8;
   measureCtx.font = activeTheme().font;
   return measureCtx.measureText(label).width;
-};
-
-// An <img> can only decode an SVG that declares its namespace and an intrinsic size. Inject each
-// only if absent — vendored packs (e.g. simple-icons) already carry xmlns, and a duplicate
-// attribute would make decoding fail.
-const svgDataUrl = (svg: string): string => {
-  let markup = svg;
-  if (!markup.includes("xmlns=")) {
-    markup = markup.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-  }
-  if (!/<svg[^>]*\swidth=/.test(markup)) {
-    markup = markup.replace("<svg ", '<svg width="24" height="24" ');
-  }
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
-};
-
-const rasterizeIcon = async (svg: string): Promise<HTMLImageElement> => {
-  const img = new Image();
-  img.src = svgDataUrl(svg);
-  await img.decode();
-  return img;
 };
 
 // Resolve every icon referenced by the scene to a drawable image before painting, so the painter
@@ -3340,68 +3323,9 @@ window.addEventListener(
   true,
 );
 
-// Shortcut hints are authored with the Apple modifier glyphs (⌘/⌥/⇧) as the no-JS default; on a
-// non-Apple platform we swap each marked `[data-mod]` chip to the word form (Ctrl/Alt/Shift), since the
-// handlers accept Ctrl too — otherwise Windows/Linux users see glyphs with no native equivalent.
-type ModKey = "mod" | "alt" | "shift";
-const isApplePlatform = (): boolean => {
-  const nav: Navigator & { userAgentData?: { readonly platform?: string } } = navigator;
-  const platform = nav.userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
-  return /mac|iphone|ipad/i.test(platform);
-};
-const applyPlatformModifiers = (): void => {
-  if (isApplePlatform()) return;
-  const words: Record<ModKey, string> = { mod: "Ctrl", alt: "Alt", shift: "Shift" };
-  const isModKey = (v: string): v is ModKey => v === "mod" || v === "alt" || v === "shift";
-  for (const el of document.querySelectorAll<HTMLElement>("[data-mod]")) {
-    const key = el.getAttribute("data-mod") ?? "";
-    if (isModKey(key)) el.textContent = words[key];
-  }
-};
+// Swap the modifier-key hints to the platform's native names, and populate the in-app syntax
+// reference (both self-contained startup DOM passes).
 applyPlatformModifiers();
-
-// In-app syntax reference: one entry per diagram family, exhaustive over the closed `DiagramAst` kind
-// union (a new family won't compile until it's named here) and pointing at the real, test-covered
-// starter in `EXAMPLES` — so the reference can't drift from what actually parses. Rendered into the
-// help overlay as collapsible snippets; the Examples menu remains the one-click loader.
-const SYNTAX_FAMILIES: Record<DiagramAst["kind"], string> = {
-  flowchart: "Flowchart",
-  sequence: "Sequence",
-  c4: "C4 context",
-  block: "Block",
-  network: "Network",
-  cloud: "Cloud",
-  state: "State",
-  er: "Entity–relationship",
-  class: "Class",
-  requirement: "Requirement",
-  gitGraph: "Git graph",
-  timeline: "Timeline",
-  mindmap: "Mind map",
-  pie: "Pie",
-  gantt: "Gantt",
-};
-const buildSyntaxReference = (): void => {
-  const list = document.querySelector<HTMLElement>("#syntax-list");
-  if (list === null) return;
-  const entries: ReadonlyArray<readonly [string, string]> = [
-    ...Object.entries(SYNTAX_FAMILIES),
-    ["dot", "DOT / Graphviz import"],
-  ];
-  for (const [key, label] of entries) {
-    const snippet = EXAMPLES.get(key);
-    if (snippet === undefined) continue;
-    const details = document.createElement("details");
-    const summary = document.createElement("summary");
-    summary.textContent = label;
-    const pre = document.createElement("pre");
-    const code = document.createElement("code");
-    code.textContent = snippet.trimEnd();
-    pre.append(code);
-    details.append(summary, pre);
-    list.append(details);
-  }
-};
 buildSyntaxReference();
 
 // The themed surface colour lives only in CSS (the canvas pixels are transparent where nothing is
@@ -3498,65 +3422,6 @@ copyBtn.addEventListener("click", () => {
     );
   }, "image/png");
 });
-
-// PDF export, dependency-free: wrap the composited canvas (as a JPEG) in a minimal one-page PDF —
-// a DCTDecode image XObject placed to fill a MediaBox sized in CSS px (so the embedded device-res
-// JPEG renders at high DPI). Byte offsets are tracked as the body is assembled, for the xref table.
-const bytesOf = (binary: string): Uint8Array => {
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-};
-
-const buildImagePdf = (
-  jpeg: Uint8Array,
-  pxWidth: number,
-  pxHeight: number,
-  ptWidth: number,
-  ptHeight: number,
-): Blob => {
-  const enc = new TextEncoder();
-  const parts: Uint8Array[] = [];
-  const offsets: number[] = [];
-  let len = 0;
-  const pushBytes = (bytes: Uint8Array): void => {
-    parts.push(bytes);
-    len += bytes.length;
-  };
-  const pushText = (text: string): void => pushBytes(enc.encode(text));
-  const startObject = (header: string): void => {
-    offsets.push(len);
-    pushText(header);
-  };
-
-  pushText("%PDF-1.4\n");
-  startObject("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-  startObject("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-  startObject(
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ptWidth} ${ptHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
-  );
-  startObject(
-    `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pxWidth} /Height ${pxHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
-  );
-  pushBytes(jpeg);
-  pushText("\nendstream\nendobj\n");
-  const content = `q ${ptWidth} 0 0 ${ptHeight} 0 0 cm /Im0 Do Q`;
-  startObject(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
-
-  const xrefAt = len;
-  let xref = `xref\n0 6\n0000000000 65535 f \n`;
-  for (const off of offsets) xref += `${String(off).padStart(10, "0")} 00000 n \n`;
-  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
-  pushText(xref);
-
-  const pdf = new Uint8Array(len);
-  let at = 0;
-  for (const part of parts) {
-    pdf.set(part, at);
-    at += part.length;
-  }
-  return new Blob([pdf], { type: "application/pdf" });
-};
 
 exportPdfBtn.addEventListener("click", () => {
   if (blockStaleExport("PDF export")) return;
@@ -3699,20 +3564,12 @@ if (!useCollab) {
 }
 // Editing the text re-renders. A hand edit no longer wipes the manual layout — `renderFromText` prunes
 // only the overrides/groups whose node ids the edit actually removed (after layout), so editing one
-// node's label keeps every other node's manual position, and the prune is undoable. A burst of
-// keystrokes is collapsed to a single parse+layout by a short trailing debounce (the canvas shows
-// `aria-busy` while a render is pending); `renderSeq` stays the drop-stale backstop. The editor is
-// created last because this closes over `renderFromText`; in collab mode it starts empty and the
-// `Y.Text` binding fills it (seeded below).
-const RENDER_DEBOUNCE_MS = 140;
-let renderDebounce: number | null = null;
+// node's label keeps every other node's manual position, and the prune is undoable. `renderSeq` drops a
+// stale async layout so a fast typist never sees an out-of-order frame. The editor is created last
+// because this closes over `renderFromText`; in collab mode it starts empty and the `Y.Text` binding
+// fills it (seeded below).
 const onTextChange = (text: string): void => {
-  if (renderDebounce !== null) window.clearTimeout(renderDebounce);
-  canvas.setAttribute("aria-busy", "true");
-  renderDebounce = window.setTimeout(() => {
-    renderDebounce = null;
-    void renderFromText(text).finally(() => canvas.setAttribute("aria-busy", "false"));
-  }, RENDER_DEBOUNCE_MS);
+  void renderFromText(text);
 };
 editor =
   collabSession !== null

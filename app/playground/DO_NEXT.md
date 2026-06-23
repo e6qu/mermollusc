@@ -1,6 +1,30 @@
 # @m/app (playground) — do next
 
-- *(in progress)* **Collaborative editor — Phase 1 (Yjs CRDT).** The `OverlayDoc` port lives in
+- **Audit follow-ups (omnibus pass).** From the multi-dimension UX/architecture audit, the safe and
+  high-value findings landed in this change (family-capability gating, fail-loud label validation,
+  layout-preserving text edits, share-carries-overlay, a11y naming, platform-aware shortcut hints,
+  in-app syntax reference, self-healing collab transport, single-pass parse + frame memos, and a first
+  decomposition of `main.ts` into `pdf.ts`/`raster.ts`/`platform.ts`/`syntax-reference.ts`). Remaining,
+  deliberately deferred:
+  - **Finish the `main.ts` split.** Continue the established pattern — lift the cohesive impure
+    concerns (theme, persistence, export, diagram-navigator) into focused app files and any remaining
+    pure geometry into library cores below the app on the DAG — in small, e2e-verified steps. No
+    big-bang rewrite.
+  - **Render debounce, done right.** A naive trailing debounce desynced `scene`/`source` from the
+    editor across the existing single `renderSeq` drop-stale check (the layout + icon-raster awaits
+    leave windows where a stale render still assigns state). Reintroduce only with a second seq guard
+    before the scene/source assignment *and* the paint, plus immediate (non-debounced) source
+    persistence — and re-run the full e2e suite, which is what caught the regression.
+  - **Incremental edge-marker rebuild (perf).** Keep display-list commands for unchanged edges and
+    recompute only edges whose endpoints are in the override delta — but home the incremental helper in
+    the renderer core and justify it with a real perf trace first, not structural evidence.
+  - **WS auth connect-ticket.** Replace the `?token=` query (logs/history exposure) with a short-lived
+    connect ticket from an HTTP endpoint; see `modules/collab/DO_NEXT.md`.
+  - **On-surface family hints (touch).** The Connect/Add/Relax "why-disabled" reasons are on hover
+    (title) + the capability record; surface them in the always-visible task status for touch/keyboard
+    too (kept out of this pass to avoid churning the task-HUD e2e copy).
+- *(in progress — Phase 2)* **Collaborative editor (Yjs CRDT).** Phase 1 (in-memory CRDT, dev
+  transport, source binding, presence) is feature-complete. The `OverlayDoc` port lives in
   `@m/contracts`; `@m/collab` provides the Yjs session. Behind a **default-off `?collab`** flag the app
   connects to the dev relay (`make collab-server`) and binds the editor to the source `Y.Text` via
   `collabSession.sourceBinding()`: two tabs on `?collab&room=…` edit **both the overlay and the diagram

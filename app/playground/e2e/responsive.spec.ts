@@ -66,6 +66,9 @@ test("phone-width workflows keep editor, relabel, help, and icon drawer usable",
   await page.keyboard.press("Escape");
   await expect(page.locator("#help-overlay")).toBeHidden();
 
+  // The icon drawer is offered on families that accept an icon override (network/cloud/block).
+  await setSource(page, 'network\n  server web "Web"\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await page.locator("#icons-toggle").click();
   const picker = page.locator("#icon-picker");
   await expect(picker).toBeVisible();
