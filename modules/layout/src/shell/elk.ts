@@ -95,7 +95,17 @@ const NodeZ: z.ZodType<ElkNode> = z.lazy(() =>
     children: z.array(NodeZ).optional(),
   }),
 );
-const EdgeZ = z.object({ id: z.string(), sections: z.array(SectionZ).optional() });
+const LabelZ = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+const EdgeZ = z.object({
+  id: z.string(),
+  sections: z.array(SectionZ).optional(),
+  labels: z.array(LabelZ).optional(),
+});
 const ResultZ = z.object({
   width: z.number(),
   height: z.number(),
@@ -150,13 +160,34 @@ const toElkNode = (c: LayoutNode): ElkInputNode => {
     : { id: c.id, width: c.width, height: c.height, x: c.position.x, y: c.position.y };
 };
 
+interface ElkInputEdge {
+  id: string;
+  sources: string[];
+  targets: string[];
+  labels?: { id: string; text: string; width: number; height: number }[];
+}
+
+const toElkInputEdge = (e: LayoutGraph["edges"][number]): ElkInputEdge => {
+  const base: ElkInputEdge = { id: e.id, sources: [...e.sources], targets: [...e.targets] };
+  if (e.label === null) return base;
+  // A space placeholder text keeps ELK from collapsing the label; only the measured box matters.
+  return { ...base, labels: [{ id: `${e.id}-lbl`, text: " ", ...e.label }] };
+};
+
 const toElkInput = (g: LayoutGraph) => ({
   id: g.id,
   // INCLUDE_CHILDREN lays the whole hierarchy out together and routes cross-subgraph edges; edges
   // stay declared on the root, so their returned coordinates are already in root (absolute) space.
-  layoutOptions: { ...elkLayoutOptions(g.config), "elk.hierarchyHandling": "INCLUDE_CHILDREN" },
+  // `edgeLabels.placement: CENTER` makes ELK reserve routing space for each edge's midpoint label and
+  // return its position, so a label clears the nodes instead of overlapping them.
+  layoutOptions: {
+    ...elkLayoutOptions(g.config),
+    "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+    "elk.edgeLabels.placement": "CENTER",
+    "elk.spacing.edgeLabel": "4",
+  },
   children: g.children.map(toElkNode),
-  edges: g.edges.map((e) => ({ id: e.id, sources: [...e.sources], targets: [...e.targets] })),
+  edges: g.edges.map(toElkInputEdge),
 });
 
 const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
@@ -190,7 +221,12 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
         ...(s.bendPoints ?? []),
         s.endPoint,
       ]);
-      return { id: brand<string, "EdgeId">(e.id), points };
+      // ELK returns the label's top-left (absolute, since edges live on the root); the renderer centres
+      // labels, so hand it the label-box centre.
+      const lbl = e.labels?.[0];
+      const labelPos =
+        lbl === undefined ? null : { x: lbl.x + lbl.width / 2, y: lbl.y + lbl.height / 2 };
+      return { id: brand<string, "EdgeId">(e.id), points, labelPos };
     }),
   };
 };
@@ -472,6 +508,7 @@ const layoutCompartments = async (
       id: brand<string, "EdgeId">(e.id),
       sources: [brand<string, "NodeId">(e.from)],
       targets: [brand<string, "NodeId">(e.to)],
+      label: e.label === null ? null : { width: measure(e.label) + 10, height: 18 },
     })),
   };
   try {
@@ -531,6 +568,7 @@ const layoutCompartments = async (
         curved: e.curved,
         fromLabel: e.fromLabel,
         toLabel: e.toLabel,
+        labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
       });
     }
     return ok({
@@ -569,6 +607,7 @@ const layoutEr = (ast: ErAst, measure: MeasureText): Promise<Result<Scene, Layou
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     })),
     measure,
   );
@@ -620,6 +659,7 @@ const layoutClass = (ast: ClassAst, measure: MeasureText): Promise<Result<Scene,
       curved: false,
       fromLabel: r.fromMult === "" ? null : r.fromMult,
       toLabel: r.toMult === "" ? null : r.toMult,
+      labelPos: null,
     })),
     measure,
   );
@@ -661,6 +701,7 @@ const layoutRequirement = (
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     })),
     measure,
   );

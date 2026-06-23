@@ -23,7 +23,7 @@ describe("toElkGraph", () => {
     const g = toElkGraph(ast, new Map(), heuristicMeasure);
     expect(g.config.direction).toBe("RIGHT");
     expect(g.children.map((c) => c.id)).toEqual(["A", "B"]);
-    expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"] }]);
+    expect(g.edges).toEqual([{ id: "e0", sources: ["A"], targets: ["B"], label: null }]);
     const a = g.children[0];
     expect(a?.kind === "leaf" ? a.width : 0).toBeGreaterThan(0);
   });
@@ -57,7 +57,7 @@ describe("toScene", () => {
       { id: nid("A"), x: 0, y: 0, width: 60, height: 40, parent: null },
       { id: nid("B"), x: 100, y: 0, width: 40, height: 40, parent: null },
     ],
-    edges: [{ id: eid("e0"), points: [{ x: 60, y: 20 }, { x: 100, y: 20 }] }],
+    edges: [{ id: eid("e0"), points: [{ x: 60, y: 20 }, { x: 100, y: 20 }], labelPos: null }],
   };
 
   it("maps a positioned graph to a branded scene", () => {

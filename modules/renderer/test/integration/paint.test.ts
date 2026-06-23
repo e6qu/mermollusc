@@ -82,6 +82,7 @@ const scene: Scene = {
       curved: false,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     },
   ],
   wedges: [],
@@ -138,6 +139,7 @@ describe("paint", () => {
           curved: false,
           fromLabel: null,
           toLabel: null,
+          labelPos: null,
         },
       ],
       wedges: [],
@@ -197,6 +199,7 @@ describe("paint", () => {
           curved: false,
           fromLabel: null,
           toLabel: null,
+          labelPos: null,
         },
       ],
       wedges: [],
@@ -327,6 +330,7 @@ describe("paint", () => {
           curved: true,
           fromLabel: null,
           toLabel: null,
+          labelPos: null,
         },
       ],
       wedges: [],
@@ -362,6 +366,34 @@ describe("paint", () => {
     expect(ctx.calls).toContain("arc");
     expect(ctx.calls).toContain("fill");
     expect(ctx.calls).toContain("fillText:50%");
+  });
+
+  it("draws a donut slice as an annular sector (inner + outer arcs)", () => {
+    const donut: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          innerRadius: 40, // > 0 → the annular-sector path (two arcs joined)
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 1,
+        },
+      ],
+      decorations: [],
+      extent: rect(0, 0, 200, 200),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(donut));
+    expect(ctx.calls.filter((c) => c === "arc")).toHaveLength(2); // outer + inner sweep
+    expect(ctx.calls).toContain("closePath");
+    expect(ctx.calls).toContain("fill");
+    expect(ctx.calls).toContain("stroke");
   });
 
   it("draws an icon glyph only when its image is supplied", () => {

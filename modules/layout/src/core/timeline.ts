@@ -144,6 +144,7 @@ export const layoutTimeline = (
         curved: false,
         fromLabel: null,
         toLabel: null,
+        labelPos: null,
       });
     }
   }

@@ -169,6 +169,7 @@ export const layoutMindmap = (
       curved: true,
       fromLabel: null,
       toLabel: null,
+      labelPos: null,
     });
   }
 

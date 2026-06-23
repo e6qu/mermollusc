@@ -84,6 +84,10 @@ export interface SceneEdge {
   // `*`); null when absent. Distinct from `label`, which sits at the edge midpoint.
   readonly fromLabel: string | null;
   readonly toLabel: string | null;
+  // An explicit centre position for `label`, supplied by a router that reserves space for edge labels
+  // (ELK, for flowchart/state) so the label clears nodes; null lets the renderer derive it from the
+  // routed midpoint.
+  readonly labelPos: Point | null;
 }
 
 // A filled circular sector (a pie-chart slice). Angles are in canvas convention — radians from the

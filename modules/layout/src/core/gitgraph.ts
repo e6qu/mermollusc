@@ -144,6 +144,7 @@ export const layoutGitGraph = (
         curved: true,
         fromLabel: null,
         toLabel: null,
+        labelPos: null,
       });
     }
   }

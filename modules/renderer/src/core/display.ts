@@ -539,7 +539,9 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       curved: edge.curved,
     });
     if (edge.label !== null) {
-      const anchor = edgeLabelAnchor(pts);
+      // A router that reserved space for the label (ELK) supplies its centre; otherwise derive it from
+      // the routed midpoint.
+      const anchor = edge.labelPos ?? edgeLabelAnchor(pts);
       labels.push({
         kind: "label",
         x: anchor.x,
