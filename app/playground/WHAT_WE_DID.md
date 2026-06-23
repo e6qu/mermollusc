@@ -608,3 +608,8 @@
   with desktop, phone-width, and dark-mode screenshots plus the full Playwright UI suite.
 - Test polish from the redesign: the reshape e2e now presses `S` through the restored keyboard
   selection instead of re-clicking a stale hard-coded canvas coordinate after re-layout.
+- UX audit follow-up: regenerated and reviewed the full visual-flow set against the personas in
+  `docs/user_stories.md`. Fixed the review harness so `make shots` clears stale generated PNGs before
+  capture, added a shortcut-help modal shot, compacted the phone-width header/toolbars so the rendered
+  output appears in the first viewport, and widened the help modal so keyboard-only guidance no longer
+  wraps awkwardly on desktop.

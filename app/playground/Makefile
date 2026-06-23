@@ -15,4 +15,5 @@ test-e2e-ui:
 # Drive the live UI through named flows and write PNGs to shots/ (generated, git-ignored). Separate
 # from the gating e2e suite — for visual review and design iteration, not a pass/fail gate.
 shots:
+	rm -f shots/*.png
 	pnpm exec playwright test -c playwright.shots.config.ts

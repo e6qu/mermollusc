@@ -51,6 +51,9 @@
 - *(done)* Redesign the shell into a computational notebook/workbench: grouped command toolbar,
   source/input and output panels, quieter graph surface, light/dark control polish, and screenshot
   review across desktop, mobile, and dark mode.
+- *(done)* Full UX review pass against `docs/user_stories.md`: regenerated a clean 33-shot journey
+  set, fixed stale shot artifacts, added help-modal coverage, tightened mobile density, and polished
+  help-modal readability.
 - *(done — already worked)* Drag-to-move spans every family: the sidecar overrides + `applyOverrides`
   are family-agnostic, so dragging any family's nodes persists and survives reload (verified + e2e).
 - *(done)* Undo/redo for canvas actions (`⌘Z` / `⌘⇧Z`): an overlay-history stack covers drag,

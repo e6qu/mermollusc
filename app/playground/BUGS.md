@@ -10,6 +10,14 @@ Resolved (collab-era audit sweep):
   — after the first `S` reshape, the spec now relies on the app's restored keyboard selection and
   presses `S` again instead of re-clicking an old pixel location. This keeps the test aligned with the
   keyboard UX and avoids false failures after shell/layout redesigns.
+- ~~**Visual review could include stale screenshots from old flows or unrelated e2e captures.**~~ Fixed
+  — `make shots` now clears generated PNGs before running the shot harness, so design review starts
+  from the current named journey set instead of mixing old artifacts with fresh ones.
+- ~~**The phone-width first viewport over-prioritized brand/export chrome over the workspace.**~~ Fixed
+  — mobile header/control density is tighter and the source plus output panels are both visible in the
+  initial phone-width review shot.
+- ~~**Shortcut help wrapped awkwardly in the keyboard-only section.**~~ Fixed — the desktop help panel
+  is wider with more grid spacing, and `make shots` now includes the help-modal journey.
 - ~~**Phone-width app shell scrolled sideways.**~~ Fixed — below 760px the topbar stacks, the workbench
   changes from editor+stage columns to editor-over-stage rows, the status bar wraps, and the icon drawer
   clamps to the viewport width. A 390px Playwright regression checks that the document is no wider than

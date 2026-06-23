@@ -286,6 +286,15 @@ const FLOWS: readonly Flow[] = [
     },
   },
   {
+    name: "22-help",
+    about: "shortcut help modal for keyboard and mouse workflows",
+    drive: async (page) => {
+      await settled(page);
+      await page.locator("#help-toggle").click();
+      await expect(page.locator("#help-panel")).toBeVisible();
+    },
+  },
+  {
     name: "23-connect-network",
     about: "Connect works beyond flowchart — joining two network nodes with an undirected link",
     drive: async (page) => {
