@@ -98,6 +98,16 @@ import { createLocalDocument } from "./document-model.js";
 import { installImageExport } from "./image-export.js";
 import { createMinimap } from "./minimap.js";
 import { createNavigator } from "./navigator.js";
+import {
+  clearPersisted,
+  hashValue,
+  loadOverlay,
+  loadSource,
+  loadThemeChoice,
+  saveOverlay,
+  saveSource,
+  saveThemeChoice,
+} from "./persistence.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
@@ -391,12 +401,6 @@ let registry = defaultRegistry;
 // The source text is persisted so a reload keeps the diagram you were working on (even mid-edit /
 // not-yet-parsing) rather than resetting to the sample. Written through `renderFromText`, which
 // every text change funnels through.
-const SOURCE_KEY = "mermollusc-source";
-
-// The sidecar overlay (manual node positions + element groups) persists alongside the source, keyed
-// by scene-node id — a reload re-parses the same source to the same ids, so the overlay re-applies.
-const OVERLAY_KEY = "mermollusc-overlay";
-
 // The overlay document owns overrides + groups + their undo/redo history. It starts empty; the
 // persisted overlay (when the source isn't a share-link) is decoded and loaded via `doc.replace`
 // below, before the first render. `save` is the only IO it touches — a localStorage write today,
@@ -409,7 +413,6 @@ const OVERLAY_KEY = "mermollusc-overlay";
 // remote-repaint at the end of this file) and the persisted localStorage overlay is *not* restored
 // (it would clobber the room). Default off, and disabled entirely in the backend-free Pages demo, so
 // the public demo never attempts to open a relay socket.
-const saveOverlay = (serialized: string): void => localStorage.setItem(OVERLAY_KEY, serialized);
 const collabRequested = new URLSearchParams(location.search).has("collab");
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
 const useCollab = collabRequested && !backendFreeDemo;
@@ -456,12 +459,11 @@ const redoOverlay = (): void => {
 };
 
 // Theme: an explicit choice (localStorage) wins; otherwise follow the OS `prefers-color-scheme`.
-const THEME_KEY = "mermollusc-theme";
 const prefersDark = (): boolean =>
   window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 const forcedColorsQuery = window.matchMedia?.("(forced-colors: active)") ?? null;
 const forcedColors = (): boolean => forcedColorsQuery?.matches ?? false;
-const storedTheme = localStorage.getItem(THEME_KEY);
+const storedTheme = loadThemeChoice();
 let theme: Theme =
   storedTheme === "dark" || (storedTheme === null && prefersDark()) ? darkTheme : defaultTheme;
 // Sketch mode is orthogonal to light/dark — composed onto the active theme at paint time.
@@ -1559,7 +1561,7 @@ const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
   currentRenderValid = false;
   updateGroupButtons();
-  localStorage.setItem(SOURCE_KEY, text);
+  saveSource(text);
   // One parse yields both the AST (to lay out) and the family's source map (the spans the inline editor
   // patches) — previously every family was parsed twice per render. `parsed.value.family` is the closed
   // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
@@ -3120,7 +3122,7 @@ const syncThemeLabel = (): void => {
 };
 themeBtn.addEventListener("click", () => {
   theme = theme === defaultTheme ? darkTheme : defaultTheme;
-  localStorage.setItem(THEME_KEY, theme === darkTheme ? "dark" : "light");
+  saveThemeChoice(theme === darkTheme ? "dark" : "light");
   syncThemeLabel();
   paintScene();
   announce(`${theme === darkTheme ? "dark" : "light"} theme`);
@@ -3436,36 +3438,13 @@ resetCacheBtn.addEventListener("click", () => {
   ) {
     return;
   }
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k !== null && k.startsWith("mermollusc-")) keys.push(k);
-  }
-  for (const k of keys) localStorage.removeItem(k);
+  clearPersisted();
   location.replace(location.pathname);
 });
 
-// One decoded value from the `#…` hash (a shared link). `encodeURIComponent` (not `+`-for-space form)
-// produced each value, so we decode with `decodeURIComponent` per key rather than `URLSearchParams`
-// (which would turn a literal `+` in the source into a space).
-const hashValue = (key: string): string | null => {
-  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
-  for (const part of hash.split("&")) {
-    const eq = part.indexOf("=");
-    if (eq < 0 || part.slice(0, eq) !== key) continue;
-    try {
-      return decodeURIComponent(part.slice(eq + 1));
-    } catch (e) {
-      console.error("ignoring malformed URL hash for key", key, messageOf(e));
-      return null;
-    }
-  }
-  return null;
-};
-
 // A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
 const fromHash = hashValue("src");
-const initialSource = fromHash ?? localStorage.getItem(SOURCE_KEY) ?? SAMPLE;
+const initialSource = fromHash ?? loadSource() ?? SAMPLE;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
 // source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
@@ -3484,7 +3463,7 @@ if (!useCollab) {
   if (linkOverlay !== null) {
     applyOverlayJson(linkOverlay, "share link");
   } else if (fromHash === null) {
-    const rawOverlay = localStorage.getItem(OVERLAY_KEY);
+    const rawOverlay = loadOverlay();
     if (rawOverlay !== null) applyOverlayJson(rawOverlay, "localStorage");
   }
 }
