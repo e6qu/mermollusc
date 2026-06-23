@@ -97,6 +97,7 @@ import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
 import { installImageExport } from "./image-export.js";
+import { createMinimap } from "./minimap.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
@@ -691,8 +692,8 @@ const paintScene = (): void => {
   // each frame doubles the per-frame cost on a large diagram. Skip it while interacting — the minimap
   // goes briefly stale and the release (which repaints with no interaction in flight) refreshes it. A
   // scroll/pan only blits the cache + redraws the viewport scrim (`drawMinimap`), never rebuilds.
-  if (!isInteracting()) buildMinimapCache();
-  drawMinimap();
+  if (!isInteracting()) minimapView.rebuildCache();
+  minimapView.draw();
   positionContextBar();
 };
 
@@ -1361,138 +1362,6 @@ ungroupBtn.addEventListener("click", ungroupSelection);
 lockBtn.addEventListener("click", toggleLockSelection);
 updateGroupButtons();
 
-// A purpose-built small-scale view (not a shrunk copy of the canvas): nodes become solid blocks and
-// edges thin guides, so the *structure* reads at ~180px where labels/icons would be noise. The
-// visible region is left bright while everything outside it is dimmed by a scrim — a clear
-// "you are here" — and framed in the drafting-table accent. Shown only when the sheet overflows.
-const MINIMAP_ACCENT_LIGHT = "#d2602c";
-const MINIMAP_ACCENT_DARK = "#f0894e";
-
-// The minimap's static content (background + faint edges + node blocks) is cached to an offscreen
-// canvas, rebuilt only when the scene/theme changes. A scroll then just blits the cache and redraws the
-// (cheap) viewport scrim — so panning a large diagram is O(1), not O(node count) per scroll event.
-const miniCache = document.createElement("canvas");
-const miniCacheCtx = miniCache.getContext("2d");
-// Null when the diagram fits (minimap hidden); else the layout the cache was built at.
-let miniLayout: {
-  readonly scale: number;
-  readonly w: number;
-  readonly h: number;
-  readonly dpr: number;
-} | null = null;
-
-const buildMinimapCache = (): void => {
-  miniLayout = null;
-  if (lastRender === null || miniCacheCtx === null) return;
-  const { scene, logicalWidth, logicalHeight } = lastRender;
-  const overflowing =
-    logicalWidth * viewScale > stageWrap.clientWidth + 1 ||
-    logicalHeight * viewScale > stageWrap.clientHeight + 1;
-  if (!overflowing) return;
-
-  const scale = Math.min(MINIMAP_MAX / logicalWidth, MINIMAP_MAX / logicalHeight);
-  const dpr = window.devicePixelRatio || 1;
-  miniCache.width = Math.round(logicalWidth * scale * dpr);
-  miniCache.height = Math.round(logicalHeight * scale * dpr);
-
-  const active = activeTheme();
-  // Work in logical coordinates (origin at the sheet's content, matching the canvas's MARGIN inset).
-  miniCacheCtx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-  miniCacheCtx.clearRect(0, 0, logicalWidth, logicalHeight);
-  miniCacheCtx.fillStyle = active.background;
-  miniCacheCtx.fillRect(0, 0, logicalWidth, logicalHeight);
-  miniCacheCtx.save();
-  miniCacheCtx.translate(MARGIN - scene.extent.origin.x, MARGIN - scene.extent.origin.y);
-  // Faint edges first, then node blocks on top.
-  miniCacheCtx.strokeStyle = active.stroke;
-  miniCacheCtx.globalAlpha = 0.35;
-  miniCacheCtx.lineWidth = 1 / scale;
-  for (const edge of scene.edges) {
-    const [head, ...tail] = edge.waypoints;
-    if (head === undefined) continue;
-    miniCacheCtx.beginPath();
-    miniCacheCtx.moveTo(head.x, head.y);
-    for (const p of tail) miniCacheCtx.lineTo(p.x, p.y);
-    miniCacheCtx.stroke();
-  }
-  miniCacheCtx.globalAlpha = 1;
-  miniCacheCtx.fillStyle = active.nodeFill;
-  miniCacheCtx.strokeStyle = active.stroke;
-  miniCacheCtx.lineWidth = 1 / scale;
-  for (const node of scene.nodes) {
-    const { origin, size } = node.bounds;
-    miniCacheCtx.fillRect(origin.x, origin.y, size.width, size.height);
-    miniCacheCtx.strokeRect(origin.x, origin.y, size.width, size.height);
-  }
-  miniCacheCtx.restore();
-  miniLayout = { scale, w: logicalWidth * scale, h: logicalHeight * scale, dpr };
-};
-
-const drawMinimap = (): void => {
-  if (miniLayout === null || lastRender === null) {
-    minimap.hidden = true;
-    return;
-  }
-  minimap.hidden = false;
-  const { logicalWidth, logicalHeight } = lastRender;
-  const { scale: miniScale, w: miniW, h: miniH, dpr } = miniLayout;
-  const W = Math.round(miniW * dpr);
-  const H = Math.round(miniH * dpr);
-  if (minimap.width !== W || minimap.height !== H) {
-    minimap.width = W;
-    minimap.height = H;
-    minimap.style.width = `${miniW}px`;
-    minimap.style.height = `${miniH}px`;
-  }
-
-  // Blit the cached static content 1:1, then draw the viewport overlay in logical coordinates.
-  miniCtx.setTransform(1, 0, 0, 1, 0, 0);
-  miniCtx.clearRect(0, 0, W, H);
-  miniCtx.drawImage(miniCache, 0, 0);
-  miniCtx.setTransform(dpr * miniScale, 0, 0, dpr * miniScale, 0, 0);
-
-  // The visible logical region, derived from the live canvas/stage rects so the centred/padded
-  // scroll container needs no special-casing. Coordinates are logical px from the canvas origin.
-  const canvasRect = canvas.getBoundingClientRect();
-  const wrapRect = stageWrap.getBoundingClientRect();
-  const left = Math.max(0, (wrapRect.left - canvasRect.left) / viewScale);
-  const top = Math.max(0, (wrapRect.top - canvasRect.top) / viewScale);
-  const right = Math.min(logicalWidth, left + stageWrap.clientWidth / viewScale);
-  const bottom = Math.min(logicalHeight, top + stageWrap.clientHeight / viewScale);
-
-  // Dim everything *outside* the viewport with a scrim (four bands), leaving the visible region
-  // bright — the strongest "you are here" cue at this size.
-  const highContrast = forcedColors();
-  const dark = theme === darkTheme;
-  miniCtx.fillStyle = highContrast ? "Canvas" : dark ? "rgba(7,16,15,0.5)" : "rgba(24,37,41,0.34)";
-  miniCtx.fillRect(0, 0, logicalWidth, top);
-  miniCtx.fillRect(0, bottom, logicalWidth, logicalHeight - bottom);
-  miniCtx.fillRect(0, top, left, bottom - top);
-  miniCtx.fillRect(right, top, logicalWidth - right, bottom - top);
-
-  // A faint accent tint inside the viewport so the "here" region reads as a lit lens, not just an
-  // un-dimmed gap — the scrim outside and the tint inside push the contrast from both sides.
-  const accent = highContrast ? "Highlight" : dark ? MINIMAP_ACCENT_DARK : MINIMAP_ACCENT_LIGHT;
-  miniCtx.fillStyle = highContrast
-    ? "transparent"
-    : dark
-      ? "rgba(240,137,78,0.12)"
-      : "rgba(210,96,44,0.10)";
-  miniCtx.fillRect(left, top, right - left, bottom - top);
-
-  // Inset the stroke by half its width and clamp it inside the sheet, so the rectangle is never
-  // half-clipped by the minimap edge when the viewport butts against the sheet boundary.
-  const lineW = 2 / miniScale;
-  const half = lineW / 2;
-  const rx = Math.min(Math.max(left, half), logicalWidth - half);
-  const ry = Math.min(Math.max(top, half), logicalHeight - half);
-  const rr = Math.min(Math.max(right, half), logicalWidth - half);
-  const rb = Math.min(Math.max(bottom, half), logicalHeight - half);
-  miniCtx.strokeStyle = accent;
-  miniCtx.lineWidth = lineW;
-  miniCtx.strokeRect(rx, ry, rr - rx, rb - ry);
-};
-
 const updateZoomLabel = (): void => {
   zoomResetBtn.textContent = `${Math.round(viewScale * 100)}%`;
 };
@@ -1548,16 +1417,10 @@ canvas.addEventListener(
 // Keep the minimap's viewport rectangle in sync as the sheet scrolls/pans or the window resizes —
 // cheap, since it reuses the cached display list rather than re-running the main paint.
 stageWrap.addEventListener("scroll", () => {
-  drawMinimap();
+  minimapView.draw();
   positionContextBar(); // the bar tracks the selection as the sheet scrolls inside the stage
 });
-window.addEventListener("resize", () => {
-  buildMinimapCache();
-  drawMinimap();
-});
 
-// Click or drag in the minimap to centre the stage viewport on that point. Maps minimap px →
-// logical px → the canvas's (invariant) position in scroll-content coords → a target scroll offset.
 // Centre the stage viewport on a point given in the diagram's logical px (the sheet coordinate space,
 // origin at the sheet's top-left including the margin). Shared by minimap navigation and the keyboard
 // diagram navigator.
@@ -1570,49 +1433,21 @@ const scrollToLogical = (logicalX: number, logicalY: number): void => {
   stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
 };
 
-let minimapDragging = false;
-const minimapNavigate = (ev: PointerEvent): void => {
-  if (lastRender === null || minimap.hidden) return;
-  const rect = minimap.getBoundingClientRect();
-  const miniScale = rect.width / lastRender.logicalWidth;
-  scrollToLogical((ev.clientX - rect.left) / miniScale, (ev.clientY - rect.top) / miniScale);
-};
-minimap.addEventListener("pointerdown", (ev) => {
-  minimapDragging = true;
-  minimap.setPointerCapture(ev.pointerId);
-  minimapNavigate(ev);
-});
-minimap.addEventListener("pointermove", (ev) => {
-  if (minimapDragging) minimapNavigate(ev);
-});
-minimap.addEventListener("pointerup", (ev) => {
-  minimapDragging = false;
-  minimap.releasePointerCapture(ev.pointerId);
-});
-minimap.addEventListener("keydown", (ev) => {
-  if (lastRender === null || minimap.hidden) return;
-  const step = ev.shiftKey ? 120 : 40;
-  if (ev.key === "ArrowLeft") {
-    ev.preventDefault();
-    stageWrap.scrollLeft -= step;
-  } else if (ev.key === "ArrowRight") {
-    ev.preventDefault();
-    stageWrap.scrollLeft += step;
-  } else if (ev.key === "ArrowUp") {
-    ev.preventDefault();
-    stageWrap.scrollTop -= step;
-  } else if (ev.key === "ArrowDown") {
-    ev.preventDefault();
-    stageWrap.scrollTop += step;
-  } else if (ev.key === "Home") {
-    ev.preventDefault();
-    stageWrap.scrollLeft = 0;
-    stageWrap.scrollTop = 0;
-  } else if (ev.key === "End") {
-    ev.preventDefault();
-    stageWrap.scrollLeft = stageWrap.scrollWidth;
-    stageWrap.scrollTop = stageWrap.scrollHeight;
-  }
+// The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
+// it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
+const minimapView = createMinimap({
+  minimap,
+  miniCtx,
+  stageWrap,
+  canvas,
+  margin: MARGIN,
+  maxSize: MINIMAP_MAX,
+  getRender: () => lastRender,
+  getViewScale: () => viewScale,
+  activeTheme,
+  isDark: () => theme === darkTheme,
+  forcedColors,
+  scrollToLogical,
 });
 
 // ---- Keyboard diagram navigator ----
