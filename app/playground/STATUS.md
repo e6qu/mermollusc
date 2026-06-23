@@ -43,9 +43,9 @@
   shortcut-reference modal grouped by Select / Edit / Layout & groups / View.
 - **UI shots harness (`make shots`):** a separate Playwright project (`playwright.shots.config.ts`
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
-  (git-ignored) — for visual review / design iteration, not a gate. It includes a phone-width
-  responsive shell flow plus state/sketch/donut flows so marker, hand-drawn, and radial polish is
-  visible during review.
+  (git-ignored) after clearing stale PNGs — for visual review / design iteration, not a gate. It
+  includes phone-width responsive shell, shortcut-help modal, state/sketch/donut, minimap, grouping,
+  and family-polish flows so task journeys and visual modes are reviewable from a clean artifact set.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay.

@@ -92,8 +92,8 @@ Coverage labels:
 | VIEW-02 | As a reviewer, I get a minimap when the sheet overflows. | Minimap hides when unnecessary, shows viewport, clicks and drags pan the stage. | Covered: `minimap.spec.ts`. |
 | VIEW-03 | As a reviewer, I can switch light/dark themes. | Theme changes canvas background and persists across reloads; shell controls remain readable in both modes. | Covered: `theme.spec.ts`, `theme-persist.spec.ts`, screenshot review. |
 | VIEW-04 | As a reviewer, I can switch Sketch/Crisp mode. | Sketch mode remeasures with the active font and redraws hand-drawn shapes without clipping labels. | Covered: `sketch.spec.ts`, renderer sketch tests, shots `04`, `28`, `30`. |
-| VIEW-05 | As a mobile user, I can use the shell on phone-width screens. | Grouped topbar/status controls wrap, editor and stage stack, no page-level horizontal overflow, pan/zoom remain reachable. | Covered: `responsive.spec.ts`, shot `01-mobile`, screenshot review. |
-| VIEW-06 | As a maintainer, visual regressions are reviewable. | `make shots` captures representative UI states and family polish flows. | Covered: `app/playground/e2e-shots/shots.spec.ts`. |
+| VIEW-05 | As a mobile user, I can use the shell on phone-width screens. | Grouped topbar/status controls wrap compactly, editor and stage stack, no page-level horizontal overflow, pan/zoom remain reachable, and the first viewport reaches the output panel. | Covered: `responsive.spec.ts`, shot `01-mobile`, screenshot review. |
+| VIEW-06 | As a maintainer, visual regressions are reviewable. | `make shots` clears stale PNGs, then captures representative UI states, help/modal flows, and family polish flows. | Covered: `app/playground/e2e-shots/shots.spec.ts`. |
 
 ## Accessibility And Keyboard
 
@@ -102,7 +102,7 @@ Coverage labels:
 | A11Y-01 | As a screen-reader user, I can understand the canvas. | Canvas has a text alternative naming family and counts; live region announces actions. | Covered: `a11y.spec.ts`. |
 | A11Y-02 | As a keyboard user, I can navigate nodes and edges. | Hidden listbox mirrors diagram items; arrows move active item; Enter relabels; Delete removes; `c` connects. | Covered: `a11y.spec.ts`. |
 | A11Y-03 | As a keyboard user, I can move and select without the mouse. | `Ctrl/Cmd-A`, Escape, Alt+Arrow, and arrow nudge behave predictably and are undoable. | Covered: `keyboard.spec.ts`, `a11y.spec.ts`. |
-| A11Y-04 | As a keyboard user, modal/drawer focus is contained. | Help and icon picker trap Tab, close on Escape, and restore focus. | Covered: `help.spec.ts`, `icon-picker.spec.ts`. |
+| A11Y-04 | As a keyboard user, modal/drawer focus is contained. | Help and icon picker trap Tab, close on Escape, restore focus, and remain visually scannable. | Covered: `help.spec.ts`, `icon-picker.spec.ts`, shot `22-help`. |
 | A11Y-05 | As a user with motion sensitivity, I can reduce motion. | `prefers-reduced-motion` collapses animations/transitions. | Covered: `a11y.spec.ts`. |
 | A11Y-06 | As a low-vision user, labels and controls have sufficient contrast and visible focus. | Renderer palette clears contrast tests; focus rings show keyboard focus. | Covered: renderer contrast tests, `a11y.spec.ts`. |
 
