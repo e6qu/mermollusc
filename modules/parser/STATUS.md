@@ -25,8 +25,8 @@
 - `parseCloud(text)` / `parseCloudWithSource(text)` → `CloudAst` (+ `CloudSource`: inner-label spans
   for groups, service leaves, and links): `cloud` subset — nestable `group "label" { … }` (synthetic
   ids `g0`…), kind-typed leaves (`compute`/`storage`/`database`/`queue`/`cdn`) with an optional
-  per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"`. `parseCloud` is the
-  ast-only wrapper.
+  per-leaf `icon "<pack>/<name>"` override, undirected links `a -- b : "label"` plus directed traffic
+  edges `a --> b : "label"` (`CloudLink.directed`). `parseCloud` is the ast-only wrapper.
 - `parseDiagram(text)` → `Result<DiagramAst, ParseError>`: sniffs the header (skipping blank/`%%`
   lines, via a forward line-scan that stops at the first meaningful line — no whole-document split) and
   routes to the flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement,

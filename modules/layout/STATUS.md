@@ -23,8 +23,10 @@
 - `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre
   links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
-  each service leaf's kind maps to a vendored simple-icons glyph (`docker`/`postgresql`/`apachekafka`/
-  `cloudflare`/`googlecloudstorage`); undirected links.
+  top-level boxes wrap to a new row past a soft width budget so a large architecture stays roughly
+  square rather than one wide strip; each service leaf's kind maps to a vendored simple-icons glyph
+  (`docker`/`postgresql`/`apachekafka`/`cloudflare`/`googlecloudstorage`); undirected `--` links plus
+  directed `-->` traffic edges (arrowhead at the target).
 - All layouts take a **required** `MeasureText` (label → px) — no default, so each caller states its
   metric explicitly (the app injects a real canvas `measureText`; callers wanting the char-width
   metric pass the exported `heuristicMeasure`). `layout(ast, seed, measure)` likewise takes `seed`

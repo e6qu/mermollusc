@@ -80,6 +80,20 @@ describe("parseCloud", () => {
     expect(r.value.links[0]?.from).toBe("web");
     expect(r.value.links[0]?.to).toBe("db");
     expect(r.value.links[0]?.label).toBe("query");
+    expect(r.value.links[0]?.directed).toBe(false);
+  });
+
+  it("parses a directed `-->` traffic edge (with and without a label)", () => {
+    const r = parseCloud(
+      'cloud\n  compute a "A"\n  compute b "B"\n  compute c "C"\n  a --> b : "HTTPS"\n  b --> c\n',
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.links).toHaveLength(2);
+    expect(r.value.links[0]?.directed).toBe(true);
+    expect(r.value.links[0]?.label).toBe("HTTPS");
+    expect(r.value.links[1]?.directed).toBe(true);
+    expect(r.value.links[1]?.label).toBe(null);
   });
 });
 

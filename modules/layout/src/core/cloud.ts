@@ -28,6 +28,9 @@ const GAP = 24;
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
+// Soft width budget for a row of top-level boxes before wrapping to the next row (keeps a large
+// architecture roughly square rather than one very wide strip).
+const MAX_ROW_WIDTH = 900;
 
 interface Box {
   readonly x: number;
@@ -101,9 +104,22 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
     return box;
   };
 
-  let cursor = 0;
+  // Lay the top-level boxes left-to-right, wrapping to a new row once a row would exceed the soft width
+  // budget — so a large architecture stays compact (roughly square) instead of one very wide strip.
+  // Each root is placed tentatively, then re-placed at the start of the next row when it overflows.
+  let cx = 0;
+  let cy = 0;
+  let rowHeight = 0;
   for (const root of roots) {
-    cursor += place(root, cursor, 0).w + GAP;
+    let b = place(root, cx, cy);
+    if (cx > 0 && cx + b.w > MAX_ROW_WIDTH) {
+      cy += rowHeight + GAP;
+      cx = 0;
+      rowHeight = 0;
+      b = place(root, cx, cy);
+    }
+    cx += b.w + GAP;
+    rowHeight = Math.max(rowHeight, b.h);
   }
 
   // Every element is reached from a root through `place`; an unplaced one means its `parent` points
@@ -151,7 +167,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
-      toEnd: "none",
+      toEnd: link.directed ? "arrow" : "none",
       curved: false,
       fromLabel: null,
       toLabel: null,

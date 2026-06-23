@@ -14,7 +14,7 @@ const ast: CloudAst = {
     { id: nid("web"), label: "Web", kind: "compute", parent: nid("g0"), icon: null },
     { id: nid("db"), label: "DB", kind: "database", parent: null, icon: null },
   ],
-  links: [{ id: eid("l0"), from: nid("web"), to: nid("db"), label: null }],
+  links: [{ id: eid("l0"), from: nid("web"), to: nid("db"), label: null, directed: false }],
 };
 
 describe("layoutCloud", () => {
@@ -38,7 +38,7 @@ describe("layoutCloud", () => {
       kind: "cloud",
       groups: [],
       nodes: [{ id: nid("web"), label: "Web", kind: "compute", parent: null, icon: null }],
-      links: [{ id: eid("l0"), from: nid("web"), to: nid("ghost"), label: null }],
+      links: [{ id: eid("l0"), from: nid("web"), to: nid("ghost"), label: null, directed: false }],
     };
     expect(layoutCloud(bad, heuristicMeasure).ok).toBe(false);
   });
@@ -65,5 +65,21 @@ describe("layoutCloud", () => {
   it("connects links undirected (no arrowhead)", () => {
     expect(scene.edges).toHaveLength(1);
     expect(scene.edges[0]?.toEnd).toBe("none");
+  });
+
+  it("draws a directed traffic edge with an arrowhead at the target", () => {
+    const directed: CloudAst = {
+      kind: "cloud",
+      groups: [],
+      nodes: [
+        { id: nid("web"), label: "Web", kind: "compute", parent: null, icon: null },
+        { id: nid("db"), label: "DB", kind: "database", parent: null, icon: null },
+      ],
+      links: [{ id: eid("l0"), from: nid("web"), to: nid("db"), label: "writes", directed: true }],
+    };
+    const r = layoutCloud(directed, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.edges[0]?.toEnd).toBe("arrow");
+    expect(r.value.edges[0]?.fromEnd).toBe("none");
   });
 });

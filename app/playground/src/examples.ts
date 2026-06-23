@@ -5,6 +5,45 @@ export const SAMPLE = `flowchart TD
   C --> D
 `;
 
+// A non-trivial AWS web stack with directed traffic paths (CloudFront → WAF → ALB → API Gateway → ECS
+// services → data tier), labelled with the protocol/route at each hop. Service glyphs are the bundled
+// gilbarbara AWS logos via `icon "gilbarbara/aws-…"`; WAF reuses the built-in firewall glyph.
+const CLOUD_AWS = `cloud
+  cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
+  storage assets "S3 static" icon "gilbarbara/aws-s3"
+  compute waf "AWS WAF" icon "arch/firewall"
+  group "Public subnet" {
+    compute alb "App Load Balancer" icon "gilbarbara/aws-elb"
+    compute apigw "API Gateway" icon "gilbarbara/aws-api-gateway"
+  }
+  group "Private subnet (ECS)" {
+    compute web "web service" icon "gilbarbara/aws-ecs"
+    compute orders "orders service" icon "gilbarbara/aws-fargate"
+    compute auth "auth service" icon "gilbarbara/aws-ecs"
+  }
+  group "Data tier" {
+    database rds "Aurora" icon "gilbarbara/aws-rds"
+    database ddb "DynamoDB" icon "gilbarbara/aws-dynamodb"
+    queue jobs "SQS jobs" icon "gilbarbara/aws-sqs"
+  }
+  compute cognito "Cognito" icon "gilbarbara/aws-cognito"
+  compute cw "CloudWatch" icon "gilbarbara/aws-cloudwatch"
+  cf --> waf : "HTTPS 443"
+  cf --> assets : "static"
+  waf --> alb : "filtered"
+  alb --> apigw : "/api/*"
+  apigw --> web : "REST"
+  apigw --> orders : "REST"
+  apigw --> auth : "REST"
+  auth --> cognito : "OIDC"
+  web --> rds : "SQL"
+  orders --> rds : "SQL"
+  orders --> ddb : "items"
+  orders --> jobs : "enqueue"
+  web --> cw : "logs"
+  orders --> cw : "logs"
+`;
+
 export const EXAMPLES = new Map<string, string>([
   ["flowchart", SAMPLE],
   [
@@ -20,10 +59,7 @@ export const EXAMPLES = new Map<string, string>([
     "network",
     'network\n  cloud net "Internet"\n  router r1 "Edge"\n  server web "Web"\n  net -- r1\n  r1 -- web : "eth0"\n',
   ],
-  [
-    "cloud",
-    'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n    database db "Orders"\n    queue jobs "Jobs"\n    cdn edge "Edge"\n  }\n  web -- db\n',
-  ],
+  ["cloud", CLOUD_AWS],
   [
     "state",
     "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> Cache\n  fork --> Notify\n  Cache --> join\n  Notify --> join\n  join --> Ready\n  Ready --> [*]\n  note right of Error : retry with corrected input\n",
