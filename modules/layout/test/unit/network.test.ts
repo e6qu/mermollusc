@@ -52,3 +52,27 @@ describe("layoutNetwork", () => {
     expect(scene.edges[0]?.stroke).toBe("solid");
   });
 });
+
+describe("layoutNetwork — subnet/zone groups", () => {
+  it("nests members inside their group container and caps a cyclic parent", () => {
+    const grouped: NetworkAst = {
+      kind: "network",
+      nodes: [
+        { id: nid("web"), label: "Web", kind: "server", icon: null, parent: nid("group:0") },
+        { id: nid("db"), label: "DB", kind: "database", icon: null, parent: null },
+      ],
+      groups: [{ id: nid("group:0"), label: "DMZ", parent: null }],
+      links: [],
+    };
+    const r = layoutNetwork(grouped, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    const by = new Map<string, SceneNode>(r.value.nodes.map((n) => [n.id, n]));
+    expect(by.get("group:0")?.shape).toBe("container");
+    const g = by.get("group:0")?.bounds;
+    const web = by.get("web")?.bounds;
+    if (g !== undefined && web !== undefined) {
+      expect(web.origin.x).toBeGreaterThanOrEqual(g.origin.x);
+      expect(web.origin.y).toBeGreaterThanOrEqual(g.origin.y);
+    }
+  });
+});

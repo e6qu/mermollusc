@@ -162,3 +162,23 @@
     stage; a contrast audit (every label/stroke pair clears WCAG AA, guarded by a renderer test).
   - *(done)* Help modal and icon drawer keep keyboard focus contained while open and restore focus to
     their trigger on close.
+
+## Audit follow-ups (from the UI/UX + usability + product + security agent pass)
+Fixed in the a11y/collapse PR: keyboard grouping (multi-select + g/u), navigator keeps its place +
+inline-edit returns focus, cloud collapse (E), ⌘D no longer swallows the keystroke off-addNode
+families, shape-cycle/Regenerate announce, #status live region, Escape closes Arrange, flowchart-
+subgraph + sequence-note + parallel-edge delete corruption, icon-pack SVG XSS guard, overlay
+negative-size fail-loud.
+Still open (lower priority, each bounded):
+- Keyboard parity: reach shape (S) / duplicate (⌘D) / Place from the navigator (today only g/u/e/Enter/
+  c/arrows); a key to focus the selection context bar; keyboard resize (the task hint promises corner
+  handles a keyboard user can't use).
+- Navigator H2: overlay (sidecar) groups aren't navigator items, so they can't be selected/relabelled by
+  keyboard — append them as a third option category.
+- Export buttons (PNG/PDF/SVG/DOT/Copy) stay enabled on an invalid source — disable with a "fix the
+  source first" title like the editor tools (today they only error after the click).
+- Group button title is the generic one for cloud's text-group meaning; help panel lists flowchart-only
+  shortcuts (⌘C/⌘V/S) without a qualifier; Place help says "flowchart node".
+- Arrange menu invoked from the context bar opens at the editor pane, far from the click.
+- `?ws=` relay override is scheme-checked but not origin-allowlisted (defense-in-depth before auth ships).
+- `deleteEdge` can't remove an `A -- text --> B` inline-labelled edge (if that grammar form is accepted).

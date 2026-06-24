@@ -83,3 +83,33 @@ describe("layoutCloud", () => {
     expect(r.value.edges[0]?.fromEnd).toBe("none");
   });
 });
+
+describe("layoutCloud — collapse", () => {
+  it("hides a collapsed group's members and re-attaches its links to the container", () => {
+    const r = layoutCloud(ast, heuristicMeasure, new Set([nid("g0")]));
+    if (!r.ok) throw new Error(r.error.message);
+    const ids = r.value.nodes.map((n) => n.id);
+    expect(ids).toContain("g0"); // the container header stays
+    expect(ids).toContain("db");
+    expect(ids).not.toContain("web"); // a member of the collapsed group is hidden
+    // The web—db link now runs g0—db (re-attached to the collapsed container).
+    expect(r.value.edges).toHaveLength(1);
+    expect([r.value.edges[0]?.from, r.value.edges[0]?.to].sort()).toEqual(["db", "g0"]);
+  });
+
+  it("drops a link whose both ends collapse into the same group", () => {
+    const twoInOne: CloudAst = {
+      kind: "cloud",
+      groups: [{ id: nid("g0"), label: "AWS", parent: null }],
+      nodes: [
+        { id: nid("a"), label: "A", kind: "compute", parent: nid("g0"), icon: null },
+        { id: nid("b"), label: "B", kind: "storage", parent: nid("g0"), icon: null },
+      ],
+      links: [{ id: eid("l0"), from: nid("a"), to: nid("b"), label: null, directed: false }],
+    };
+    const r = layoutCloud(twoInOne, heuristicMeasure, new Set([nid("g0")]));
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.edges).toHaveLength(0); // a—b would self-loop on g0, so it's dropped
+    expect(r.value.nodes.map((n) => n.id)).toEqual(["g0"]);
+  });
+});

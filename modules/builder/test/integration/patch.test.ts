@@ -492,6 +492,27 @@ describe("relabelNode", () => {
     expect(out).not.toContain("grp\n"); // no stray old id
   });
 
+  it("covers no-op / guard branches of the new delete + rename helpers", () => {
+    // deleteGroupBlock on an unbalanced (never-closed) group → unchanged.
+    expect(deleteGroupBlock('network\n  group "g" {\n    server x\n', { start: 16, end: 17 })).toBe(
+      'network\n  group "g" {\n    server x\n',
+    );
+    // wrapCloudGroup with out-of-range indices → unchanged (filtered, then < 2).
+    expect(wrapCloudGroup("cloud\n  compute a\n", [99], "G")).toBe("cloud\n  compute a\n");
+    // renameBlockId with an empty old id → unchanged.
+    expect(renameBlockId("block-beta\n  a\n", "", "b")).toBe("block-beta\n  a\n");
+    // deleteEdge with no matching edge → unchanged.
+    expect(deleteEdge("flowchart TD\n  A --> B\n", nid("X"), nid("Y"))).toBe(
+      "flowchart TD\n  A --> B\n",
+    );
+  });
+
+  it("reshapeNode rejects a label containing the target shape's closer", () => {
+    const text = "flowchart TD\n  A --> B\n";
+    const r = reshapeNode(text, sourceOf(text), nid("A"), "a]b", "rect");
+    expect(r.ok).toBe(false);
+  });
+
   it("deleteFlowSubgraph removes a `subgraph … end` block whole (balancing nesting)", () => {
     const text = "flowchart TD\n  subgraph G1\n    A\n    subgraph G2\n      B\n    end\n  end\n  A --> B\n";
     expect(deleteFlowSubgraph(text, nid("G1"))).toBe("flowchart TD\n  A --> B\n");
