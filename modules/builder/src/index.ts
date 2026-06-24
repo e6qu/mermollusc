@@ -28,6 +28,7 @@ export {
   connectMessage,
   connectEr,
   connectClass,
+  connectMindmap,
   connectRequirement,
   deleteNode,
   deleteLineAt,

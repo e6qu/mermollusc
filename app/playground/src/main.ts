@@ -6,6 +6,7 @@ import {
   connectClass,
   connectEr,
   connectMessage,
+  connectMindmap,
   connectRequirement,
   connectUndirected,
   decodeOverlay,
@@ -911,9 +912,12 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
       return { connect: true, iconOverride: false, addNode: true };
     case "requirement":
       return { connect: true, iconOverride: false, addNode: false };
+    case "mindmap":
+      // Connect re-parents a node (drag one node onto another to nest it); no Add (a node's place is its
+      // indentation, set by where you connect it).
+      return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
     case "timeline":
-    case "mindmap":
     case "pie":
     case "gantt":
       return { connect: false, iconOverride: false, addNode: false };
@@ -2845,12 +2849,22 @@ const appendEdge = (
         brand<string, "NodeId">(second),
         "arrow",
       );
-    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline/mindmap grammars would
-    // reject the flowchart `A --> B` arrow (it would grey the diagram). Connect is a no-op for all of
-    // them — `familyAffordances` also disables the button so this branch is defence-in-depth.
+    // Mindmap connect re-parents `first`→`second` (makes the target a child of the source) by editing the
+    // indentation tree; it needs the AST levels + line spans, available from module state here.
+    case "mindmap":
+      return ast !== null && ast.kind === "mindmap" && mindmapSource !== null
+        ? connectMindmap(
+            text,
+            mindmapSource,
+            ast,
+            brand<string, "MindmapNodeId">(first),
+            brand<string, "MindmapNodeId">(second),
+          )
+        : text;
+    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline grammars would reject a
+    // generic arrow. Connect stays a no-op for these — `familyAffordances` also gates the button.
     case "gitGraph":
     case "timeline":
-    case "mindmap":
     case "pie":
     case "gantt":
       return text;

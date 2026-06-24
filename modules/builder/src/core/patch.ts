@@ -5,6 +5,9 @@ import type {
   ClassEntityId,
   EdgeKind,
   ErEntityId,
+  MindmapAst,
+  MindmapNodeId,
+  MindmapSource,
   ReqEntityId,
   NodeId,
   NodeShape,
@@ -151,6 +154,59 @@ export const deleteClassRel = (text: string, from: ClassEntityId, to: ClassEntit
 // any of the seven (contains/copies/derives/verifies/refines/traces) in the text.
 export const connectRequirement = (text: string, from: ReqEntityId, to: ReqEntityId): string =>
   `${withTrailingNewline(text)}  ${from} - satisfies -> ${to}\n`;
+
+const MINDMAP_INDENT_STEP = 2;
+// Shift a line's leading indentation by `delta` spaces (never below zero); blank lines unchanged.
+const reindentLine = (line: string, delta: number): string => {
+  if (line.trim() === "") return line;
+  const lead = line.length - line.trimStart().length;
+  return " ".repeat(Math.max(0, lead + delta)) + line.slice(lead);
+};
+
+// Mindmap connect = re-parent: make `child` a child of `parent` by moving `child`'s whole subtree (its
+// line + every deeper line under it) to directly after `parent`'s line and re-indenting it to one level
+// below `parent`. Mindmap parentage is purely indentation, and lines carry no ids, so this needs the AST
+// (levels/order) + source map (each node's line, via its label span). No-op (returns the text unchanged)
+// when it would re-parent the root, form a cycle (parent inside the child's subtree), or change nothing.
+export const connectMindmap = (
+  text: string,
+  source: MindmapSource,
+  ast: MindmapAst,
+  parentId: MindmapNodeId,
+  childId: MindmapNodeId,
+): string => {
+  const nodes = ast.nodes;
+  const pIdx = nodes.findIndex((n) => n.id === parentId);
+  const cIdx = nodes.findIndex((n) => n.id === childId);
+  const parent = nodes[pIdx];
+  const child = nodes[cIdx];
+  if (parent === undefined || child === undefined) return text;
+  if (child.parent === null || child.id === parent.id || child.parent === parent.id) return text;
+  // The child's subtree is the contiguous run of deeper nodes after it (pre-order).
+  let cEnd = cIdx + 1;
+  while (cEnd < nodes.length && (nodes[cEnd]?.level ?? -1) > child.level) cEnd++;
+  if (pIdx >= cIdx && pIdx < cEnd) return text; // parent is inside the child's subtree → cycle
+
+  const lineOf = (id: MindmapNodeId): number | null => {
+    const span = source.nodes.get(id);
+    return span === undefined ? null : text.slice(0, span.start).split("\n").length - 1;
+  };
+  const blockStart = lineOf(child.id);
+  const lastSub = nodes[cEnd - 1];
+  const blockEnd = lastSub === undefined ? null : lineOf(lastSub.id);
+  const parentLine = lineOf(parent.id);
+  if (blockStart === null || blockEnd === null || parentLine === null) return text;
+
+  const lines = text.split("\n");
+  const delta = (parent.level + 1 - child.level) * MINDMAP_INDENT_STEP;
+  const block = lines.slice(blockStart, blockEnd + 1).map((ln) => reindentLine(ln, delta));
+  const blockLen = blockEnd - blockStart + 1;
+  lines.splice(blockStart, blockLen);
+  // After removal, a parent below the block shifts up by the block's length.
+  const insertAt = (parentLine > blockEnd ? parentLine - blockLen : parentLine) + 1;
+  lines.splice(insertAt, 0, ...block);
+  return lines.join("\n");
+};
 
 // The forward `a - verb -> b` form that `connectRequirement` writes (a→b).
 const REQ_REL = /^\s*(\S+)\s*-\s*\w+\s*->\s*(\S+)/;
