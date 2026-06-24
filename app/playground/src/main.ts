@@ -7,6 +7,7 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  deleteMindmapNode,
   connectRequirement,
   connectUndirected,
   decodeOverlay,
@@ -951,7 +952,7 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "class":
       return { connect: true, iconOverride: false, addNode: true };
     case "requirement":
-      return { connect: true, iconOverride: false, addNode: false };
+      return { connect: true, iconOverride: false, addNode: true };
     case "mindmap":
       // Connect re-parents a node (drag one node onto another to nest it); no Add (a node's place is its
       // indentation, set by where you connect it).
@@ -2656,6 +2657,9 @@ const appendNode = (
       return `${body}  class ${id}\n`;
     case "state":
       return `${body}  state ${id}\n`;
+    // A requirement entity, named by its id (the user can retype `requirement` → `element` or add a body).
+    case "requirement":
+      return `${body}  requirement ${id} {\n  }\n`;
     default:
       return text;
   }
@@ -2663,7 +2667,7 @@ const appendNode = (
 
 // Families whose node declaration uses the node's name *as* its id; a new node's id is therefore a
 // unique, identifier-safe version of its label rather than a generic `n1`.
-const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state"]);
+const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state", "requirement"]);
 const sanitizeId = (s: string): string => s.replace(/[^A-Za-z0-9_]/g, "") || "Node";
 const uniqueId = (used: ReadonlySet<string>, base: string): string => {
   if (!used.has(base)) return base;
@@ -2675,6 +2679,7 @@ const ADD_BASE: Partial<Record<DiagramAst["kind"], string>> = {
   er: "Entity",
   class: "Class",
   state: "State",
+  requirement: "Requirement",
 };
 
 // A fresh `{ id, label }` for a new node in `kind`: for name-as-id families both are one unique name;
@@ -2967,8 +2972,13 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "cloud":
     case "gitGraph":
     case "timeline":
-    case "mindmap":
       return deleteNode(text, brand<string, "NodeId">(id));
+    // A mindmap node has no in-text id (synthetic, like a pie slice), so line-based `deleteNode` can't
+    // find it; remove the node and its whole subtree by the source-map span + the AST levels.
+    case "mindmap":
+      return ast !== null && ast.kind === "mindmap" && mindmapSource !== null
+        ? deleteMindmapNode(text, mindmapSource, ast, brand<string, "MindmapNodeId">(id))
+        : text;
     // gantt/pie: the item has no in-text id (auto-numbered task / synthetic slice id), so delete its
     // line by the label span from the source map. Multi-delete is ordered bottom-up so spans stay valid.
     case "gantt": {

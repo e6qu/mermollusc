@@ -20,6 +20,7 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  deleteMindmapNode,
   connectRequirement,
   connectUndirected,
   deleteActor,
@@ -454,5 +455,25 @@ describe("relabelNode", () => {
     expect(mm("A", "root")).toBe(text); // can't re-parent the root
     expect(mm("A1", "A")).toBe(text); // A under its own descendant A1 → cycle
     expect(mm("A", "A1")).toBe(text); // A1 is already A's child → no change
+  });
+
+  it("deleteMindmapNode removes the node and its whole subtree", () => {
+    const text = "mindmap\n  root\n    A\n      A1\n    B\n";
+    const r = parseMindmapWithSource(text);
+    if (!isOk(r)) throw new Error("parse");
+    const { ast, source } = r.value;
+    const idOf = (label: string): string => {
+      const n = ast.nodes.find((x) => x.label === label);
+      if (n === undefined) throw new Error(`no ${label}`);
+      return n.id;
+    };
+    // Deleting A also removes its child A1; sibling B is untouched.
+    expect(deleteMindmapNode(text, source, ast, brand(idOf("A")))).toBe(
+      "mindmap\n  root\n    B\n",
+    );
+    // Deleting a leaf removes just its line.
+    expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
+      "mindmap\n  root\n    A\n      A1\n",
+    );
   });
 });
