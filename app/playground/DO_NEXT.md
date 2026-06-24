@@ -29,14 +29,16 @@
   per-family disable/fallback), a selection context mini-toolbar (thin view over existing handlers via a
   shared `CapabilityState`), the zoom cluster relocated onto the stage, and deeper two-way-edit tests.
   Remaining for a later pass:
-  - **Place beyond flowchart** — Place only adds flowchart nodes today (the only family `addNode`
-    supports); extend once the builder gains family-aware node insertion.
-  - **Mobile widgets** — the palette + context bar are hidden under 760px (pointer-precision
-    affordances); a touch-friendly variant could replace them rather than just hiding.
-  - **Two-history undo test + delete-shared-line note** — from the review's test plan, still worth
-    adding: an `undo.spec` case codifying that canvas ⌘Z drives the overlay history only (not text), and
-    a `delete-shared-line` spec + `modules/builder/BUGS.md` note pinning line-based `deleteNode`'s
-    collateral-loss limitation.
+  - *(done)* **Place beyond flowchart** — Place now drops a node (shared `appendNode` + a position
+    override) for every `canAddNode` family.
+  - *(done)* **Two-history undo + delete collateral loss** — `undo.spec` codifies canvas ⌘Z = overlay
+    only; deleting a node that shares an edge line now re-declares the surviving endpoints (was: whole
+    diagram could vanish), with an e2e.
+  - **Mobile widgets (deferred — needs real device testing).** The palette + context bar are hidden
+    under 760px deliberately (pointer-precision affordances). A *good* touch variant means larger targets,
+    gesture handling (pinch-zoom vs pan), and reflow — verified on real devices, which can't be done from
+    here. Un-hiding as a CSS tweak would be a worse experience than the deliberate hide, so this wants its
+    own focused pass with device testing, not a bundled change.
 - **Audit follow-ups (omnibus pass).** From the multi-dimension UX/architecture audit, the safe and
   high-value findings landed in this change (family-capability gating, fail-loud label validation,
   layout-preserving text edits, share-carries-overlay, a11y naming, platform-aware shortcut hints,

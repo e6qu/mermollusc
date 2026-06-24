@@ -49,5 +49,10 @@
 - **Membership source (next):** with the fail-closed RBAC default, an auth-on deployment needs a real
   per-room roles claim (or a server-side membership store behind `authorizeRoom`) so authenticated users
   aren't all denied. Wire it alongside the browser Auth0 login.
-- **Same-key merge for groups:** group objects are stored whole (LWW per group). If concurrent edits to
-  one group's membership need finer merge, model members as a nested `Y.Array`/`Y.Map`.
+- **Same-key merge for groups (own PR — architectural):** group objects are stored whole (LWW per group).
+  Finer merge means modelling members as a nested `Y.Array`/`Y.Map` — but that diverges from this module's
+  deliberate invariant that *each group is one Y.Map value encoded through the builder's shared per-entry
+  encoder* (the single source of truth shared with JSON persistence; see `session.ts`). Nesting a CRDT
+  inside the group needs its own encode/decode path, multi-client convergence tests, and a wire-format
+  change — a deliberate design decision for an experimental, gated feature's rare scenario (two clients
+  editing one group's membership at once). It deserves a focused PR, not a bundled line-item.

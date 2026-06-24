@@ -3,7 +3,7 @@
 - Add the next AST variants as families land: sequence, C4/architecture, block/network.
 - *(done)* `LayoutOverrides` is the shared sidecar contract (`nodeId → { position, size?, pinned }`);
   `OverlayDoc.replaceOverrides` lets regenerate replace only the unpinned portion of the map.
-- Add type-level tests (e.g. `expect-type`) pinning the discriminated unions.
+- *(done)* Type-level tests (`expectTypeOf`) pin `DiagramAst` narrowing + closed-union `kind` (test/unit/ast-union).
 - Keep AST and SceneGraph IR stable — downstream modules depend on these shapes.
 - *(done)* Sidecar groups include a required label for editor-owned group titles.
 - *(done)* State-specific Scene rendering intent is explicit through `SceneNode.role`, instead of
