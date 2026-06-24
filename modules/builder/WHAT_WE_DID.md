@@ -123,3 +123,5 @@
   tests (snap never exceeds `SNAP_T` and lands the edge exactly on the line; globally-closest
   first-seen-wins tie-break; no candidate ⇒ `{ delta: 0, line: null }`; `snapCandidates` excludes the
   dragged node and emits three lines per other axis).
+- core: `descendantsOf(scene, containerId)` — every node transitively nested in a container via the
+  scene parent hierarchy (cycle-guarded). Powers dragging a subgraph/boundary/composite as one. 2 tests.

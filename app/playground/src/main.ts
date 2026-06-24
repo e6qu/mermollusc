@@ -24,6 +24,7 @@ import {
   deleteRequirementEntity,
   deleteRequirementRel,
   deleteStateEntity,
+  descendantsOf,
   emptySelection,
   hitTest,
   leafNodes,
@@ -525,6 +526,16 @@ const shownScene = (base: Scene): Scene => {
   shownCacheOverrides = ov;
   shownCacheResult = shown;
   return shown;
+};
+
+// A moved node plus, if it's a container (subgraph / boundary / composite), everything nested inside it —
+// so dragging or nudging a container carries its contents. Used by both the pointer-drag and keyboard
+// paths to keep them consistent.
+const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => {
+  const node = shown.nodes.find((n) => n.id === id);
+  return node !== undefined && node.shape === "container"
+    ? [id, ...descendantsOf(shown, id)]
+    : [id];
 };
 
 // True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
@@ -2105,10 +2116,14 @@ canvas.addEventListener("pointerdown", (ev) => {
   // is locked, in which case it's selectable (for Ungroup/Lock) but not draggable. Empty canvas pans.
   if (hit !== null && hit.kind === "node" && !pathLocked(doc.groups(), hit.id) && !viewerMode) {
     const moveIds = new Set<SceneNodeId>();
+    // Dragging a node moves it; a grouped node moves its whole group's leaves; a *container* (a
+    // subgraph / boundary / composite) moves itself plus everything nested inside it, so the box and
+    // its contents travel as one. applyOverrides then re-routes connectors — interior edges (both ends
+    // moved by the same delta) translate rigidly, boundary-crossing edges blend to stay attached.
     for (const id of selection.nodes) {
       const top = topGroupOfNode(doc.groups(), id);
-      if (top === null) moveIds.add(id);
-      else for (const leaf of leafNodes(doc.groups(), top)) moveIds.add(leaf);
+      const seeds = top === null ? [id] : leafNodes(doc.groups(), top);
+      for (const seed of seeds) for (const m of withContents(shown, seed)) moveIds.add(m);
     }
     const origin = new Map<SceneNodeId, Point>();
     for (const node of shown.nodes) {
@@ -3123,11 +3138,13 @@ window.addEventListener("keydown", (ev) => {
 // group — minus anything under a locked group (which is selectable but not movable, like drag).
 const movableSelectionLeaves = (): SceneNodeId[] => {
   const ids = new Set<SceneNodeId>();
+  const shown = scene === null ? null : shownScene(scene);
   for (const id of selection.nodes) {
     if (pathLocked(doc.groups(), id)) continue;
     const top = topGroupOfNode(doc.groups(), id);
-    if (top === null) ids.add(id);
-    else for (const leaf of leafNodes(doc.groups(), top)) ids.add(leaf);
+    const seeds = top === null ? [id] : leafNodes(doc.groups(), top);
+    for (const seed of seeds)
+      for (const m of shown === null ? [seed] : withContents(shown, seed)) ids.add(m);
   }
   return [...ids];
 };

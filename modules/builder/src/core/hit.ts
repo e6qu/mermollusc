@@ -18,6 +18,27 @@ const distanceToSegment = (p: Point, a: Point, b: Point): number => {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 };
 
+// Every node nested (transitively) inside `containerId`, via the scene parent hierarchy — the members
+// that travel with a container (a flowchart subgraph, a c4 boundary, a composite state) when it's
+// dragged as one. Guards against a cyclic parent chain so a malformed scene can't loop forever.
+export const descendantsOf = (scene: Scene, containerId: SceneNodeId): SceneNodeId[] => {
+  const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+  const out: SceneNodeId[] = [];
+  for (const node of scene.nodes) {
+    const seen = new Set<SceneNodeId>();
+    let parent = node.parent;
+    while (parent !== null && !seen.has(parent)) {
+      if (parent === containerId) {
+        out.push(node.id);
+        break;
+      }
+      seen.add(parent);
+      parent = byId.get(parent)?.parent ?? null;
+    }
+  }
+  return out;
+};
+
 // Nodes sit above edges; later nodes sit above earlier ones, so scan back to front.
 export const hitTest = (scene: Scene, at: Point): HitTarget | null => {
   for (let i = scene.nodes.length - 1; i >= 0; i--) {
