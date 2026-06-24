@@ -905,11 +905,11 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "cloud":
       return { connect: true, iconOverride: true, addNode: false };
     case "sequence":
-      return { connect: true, iconOverride: false, addNode: true };
     case "state":
-    case "c4":
     case "er":
     case "class":
+      return { connect: true, iconOverride: false, addNode: true };
+    case "c4":
     case "requirement":
       return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
@@ -2590,21 +2590,61 @@ const appendNode = (
       return `${body}  server ${id} "${label}"\n`;
     case "sequence":
       return `${body}  participant ${id} as ${label}\n`;
+    // Name-as-id families: the node *is* its identifier (`id` already carries the display name); `label`
+    // is unused.
+    case "er":
+      return `${body}  ${id} {\n  }\n`;
+    case "class":
+      return `${body}  class ${id}\n`;
+    case "state":
+      return `${body}  state ${id}\n`;
     default:
       return text;
   }
 };
 
+// Families whose node declaration uses the node's name *as* its id; a new node's id is therefore a
+// unique, identifier-safe version of its label rather than a generic `n1`.
+const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state"]);
+const sanitizeId = (s: string): string => s.replace(/[^A-Za-z0-9_]/g, "") || "Node";
+const uniqueId = (used: ReadonlySet<string>, base: string): string => {
+  if (!used.has(base)) return base;
+  let i = 2;
+  while (used.has(`${base}${i}`)) i++;
+  return `${base}${i}`;
+};
+const ADD_BASE: Partial<Record<DiagramAst["kind"], string>> = {
+  er: "Entity",
+  class: "Class",
+  state: "State",
+};
+
+// A fresh `{ id, label }` for a new node in `kind`: for name-as-id families both are one unique name;
+// otherwise a `n<N>` id with a separate display label.
+const freshNode = (
+  kind: DiagramAst["kind"],
+  used: ReadonlySet<string>,
+  labelHint: string,
+): { readonly id: string; readonly label: string } => {
+  if (NAME_AS_ID.has(kind)) {
+    const id = uniqueId(used, sanitizeId(labelHint));
+    return { id, label: id };
+  }
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  return { id: `n${n}`, label: labelHint };
+};
+
 addBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
   const used = new Set<string>(scene.nodes.map((n) => n.id));
-  let n = 1;
-  while (used.has(`n${n}`)) n++;
-  const next = appendNode(ast.kind, editor.value(), `n${n}`, `node ${n}`, "rect");
+  const hint = NAME_AS_ID.has(ast.kind) ? (ADD_BASE[ast.kind] ?? "Node") : `node ${used.size + 1}`;
+  const { id, label } = freshNode(ast.kind, used, hint);
+  const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
   editor.setValue(next);
   void renderFromText(next);
-  announce(`added node ${n}`);
+  announce(`added ${label}`);
 });
 
 // Duplicate the selected node(s) (⌘D): append a fresh-id copy of each (same label + shape) in the
@@ -2617,16 +2657,14 @@ const duplicateSelection = async (): Promise<void> => {
   // Read label + shape from the laid scene (family-agnostic) rather than the per-family AST node types.
   const sceneById = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd]));
   const used = new Set<string>(scene.nodes.map((nd) => nd.id));
-  let next = 1;
   const pairs: Array<{ readonly from: SceneNodeId; readonly to: SceneNodeId }> = [];
   let text = editor.value();
   for (const id of selectionOrder) {
     const orig = sceneById.get(brand<string, "SceneNodeId">(id));
     if (orig === undefined) continue;
-    while (used.has(`n${next}`)) next++;
-    const newId = `n${next}`;
+    const { id: newId, label } = freshNode(ast.kind, used, orig.label);
     used.add(newId);
-    text = appendNode(ast.kind, text, newId, orig.label, orig.shape);
+    text = appendNode(ast.kind, text, newId, label, orig.shape);
     pairs.push({ from: id, to: brand<string, "SceneNodeId">(newId) });
   }
   if (pairs.length === 0) return;
