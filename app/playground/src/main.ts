@@ -13,6 +13,7 @@ import {
   decodeOverlay,
   deleteActor,
   deleteBlockGroup,
+  deleteFlowSubgraph,
   deleteGroupBlock,
   renameBlockId,
   wrapCloudGroup,
@@ -3088,8 +3089,15 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       }
       return deleteNode(text, cloudId);
     }
+    // A flowchart subgraph deletes its whole `subgraph … end` block; a node deletes its line.
+    case "flowchart": {
+      const flowId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "flowchart" && ast.subgraphs.some((s) => s.id === flowId)) {
+        return deleteFlowSubgraph(text, flowId);
+      }
+      return deleteNode(text, flowId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
-    case "flowchart":
     case "gitGraph":
     case "timeline":
       return deleteNode(text, brand<string, "NodeId">(id));

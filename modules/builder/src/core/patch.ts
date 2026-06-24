@@ -428,6 +428,9 @@ const seqMessageIds = (line: string): readonly [string, string] | null => {
 };
 
 // Remove a sequence actor: its `participant` declaration (if any) and every message referencing it.
+// A sequence `note (left of|right of|over) <actors>: text` line — the actors part is one id or `A,B`.
+const SEQ_NOTE = /^\s*note\s+(?:left of|right of|over)\s+([^:]+?)\s*:/i;
+
 export const deleteActor = (text: string, id: ActorId): string =>
   text
     .split("\n")
@@ -435,9 +438,51 @@ export const deleteActor = (text: string, id: ActorId): string =>
       const p = SEQ_PARTICIPANT.exec(line);
       if (p !== null && p[1] === id) return false;
       const msg = seqMessageIds(line);
-      return !(msg !== null && (msg[0] === id || msg[1] === id));
+      if (msg !== null && (msg[0] === id || msg[1] === id)) return false;
+      // Drop notes anchored to the actor — leaving an orphaned `note … of Alice` is un-parseable.
+      const note = SEQ_NOTE.exec(line);
+      if (note !== null && note[1] !== undefined) {
+        const actors = note[1].split(",").map((a) => a.trim());
+        if (actors.includes(id)) return false;
+      }
+      return true;
     })
     .join("\n");
+
+// Delete a flowchart `subgraph <id> … end` block whole (balancing nested subgraphs) — the line-based
+// `deleteNode` strips only the `subgraph <id>` line and orphans the dangling `end`, breaking the parse.
+const opensSubgraph = (trimmed: string): boolean => {
+  if (!trimmed.startsWith("subgraph")) return false;
+  const c = trimmed[8] ?? ""; // the char after the keyword must not continue an identifier (`subgraphX`)
+  return !((c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || (c >= "0" && c <= "9") || c === "_");
+};
+export const deleteFlowSubgraph = (text: string, id: NodeId): string => {
+  const lines = text.split("\n");
+  const IDENT = /^[A-Za-z0-9_]+/;
+  const openIdx = lines.findIndex((line) => {
+    const t = line.trimStart();
+    if (!opensSubgraph(t)) return false;
+    const m = IDENT.exec(t.slice("subgraph".length).trimStart());
+    return m !== null && m[0] === id;
+  });
+  if (openIdx === -1) return text;
+  let depth = 0;
+  let endIdx = -1;
+  for (let i = openIdx; i < lines.length; i++) {
+    const t = (lines[i] ?? "").trimStart();
+    if (opensSubgraph(t)) depth++;
+    if (/^end(?![A-Za-z0-9_])/.test(t)) {
+      depth--;
+      if (depth === 0) {
+        endIdx = i;
+        break;
+      }
+    }
+  }
+  if (endIdx === -1) return text;
+  lines.splice(openIdx, endIdx - openIdx + 1);
+  return lines.join("\n");
+};
 
 // Remove the first message line between two actors (duplicates can't be told apart by endpoints).
 export const deleteMessage = (text: string, from: ActorId, to: ActorId): string => {
@@ -600,14 +645,18 @@ const identTokens = (line: string): string[] =>
 // Removes a standalone edge line (`from <arrow> to`, with labels stripped). Line-based like
 // `deleteNode`: it matches a line whose only identifiers are exactly `[from, to]`, so node
 // declarations and multi-hop chains are left intact (span-accurate removal would need edge spans).
-export const deleteEdge = (text: string, from: NodeId, to: NodeId): string =>
-  text
-    .split("\n")
-    .filter((line) => {
-      const toks = identTokens(line);
-      return !(toks.length === 2 && toks[0] === from && toks[1] === to);
-    })
-    .join("\n");
+export const deleteEdge = (text: string, from: NodeId, to: NodeId): string => {
+  // Remove only the *first* matching edge line — parallel edges (`A --> B` twice) are distinct, so the
+  // relationship-family deletes all use first-match too; a `.filter` would collaterally drop the twin.
+  const lines = text.split("\n");
+  const idx = lines.findIndex((line) => {
+    const toks = identTokens(line);
+    return toks.length === 2 && toks[0] === from && toks[1] === to;
+  });
+  if (idx === -1) return text;
+  lines.splice(idx, 1);
+  return lines.join("\n");
+};
 
 // Two-way edit: rewrite a node's label in the source text, touching only its span so the rest of
 // the file (formatting, comments, ordering) is preserved. A bare node gets wrapped in brackets.

@@ -33,6 +33,7 @@ export {
   connectRequirement,
   deleteNode,
   deleteBlockGroup,
+  deleteFlowSubgraph,
   deleteGroupBlock,
   renameBlockId,
   wrapCloudGroup,

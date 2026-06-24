@@ -35,6 +35,16 @@ describe("decodePack", () => {
     expect(isErr(decodePack("not an object"))).toBe(true);
   });
 
+  it("rejects an icon carrying scripts / event handlers / foreignObject (export-XSS guard)", () => {
+    const withIcon = (svg: string) => ({ meta: validJson.meta, icons: { evil: svg } });
+    expect(isErr(decodePack(withIcon('<svg><script>alert(1)</script></svg>')))).toBe(true);
+    expect(isErr(decodePack(withIcon('<svg onload="alert(1)"></svg>')))).toBe(true);
+    expect(isErr(decodePack(withIcon('<svg><foreignObject><body></body></foreignObject></svg>')))).toBe(
+      true,
+    );
+    expect(isOk(decodePack(withIcon('<svg><path d="M0 0h24v24H0z"/></svg>')))).toBe(true); // clean ok
+  });
+
   it("a decoded pack registers and resolves through findIcon", () => {
     const r = decodePack(validJson);
     expect(isOk(r)).toBe(true);
