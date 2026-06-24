@@ -42,7 +42,7 @@ describe("layoutBlock — grid invariants (property-based)", () => {
           const ast: BlockAst = {
             kind: "block",
             columns: positiveInt(columns),
-            blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null })),
+            blocks: ids.map((id) => ({ id: nid(id), label: id, shape: "rect", icon: null, span: positiveInt(1) })),
             groups: [],
             roots: ids.map((id) => nid(id)),
             edges: [],
@@ -67,7 +67,14 @@ describe("layoutNetwork — grid invariants (property-based)", () => {
         (ids, kinds) => {
           const ast: NetworkAst = {
             kind: "network",
-            nodes: ids.map((id, i) => ({ id: nid(id), label: id, kind: kinds[i] ?? "host", icon: null })),
+            nodes: ids.map((id, i) => ({
+              id: nid(id),
+              label: id,
+              kind: kinds[i] ?? "host",
+              icon: null,
+              parent: null,
+            })),
+            groups: [],
             links: [],
           };
           const result = layoutNetwork(ast, heuristicMeasure);

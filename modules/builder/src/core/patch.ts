@@ -497,6 +497,87 @@ export const deleteBlockGroup = (text: string, id: NodeId): string => {
   return lines.join("\n");
 };
 
+// Delete a brace-delimited `group "label" { … }` container (network subnet/zone, cloud group) by the
+// label's span: from the group's opening line, balance `{`/`}` (nested groups included) to its closing
+// `}` and drop the whole block. The group id is synthetic (not in the text), so the label span is the
+// reliable anchor; line-based `deleteNode` can't find it and would orphan the body + dangling `}`.
+export const deleteGroupBlock = (text: string, labelSpan: TextSpan): string => {
+  const lines = text.split("\n");
+  const startLine = text.slice(0, labelSpan.start).split("\n").length - 1;
+  let depth = 0;
+  let started = false;
+  let endLine = -1;
+  let inQuote = false;
+  for (let i = startLine; i < lines.length; i++) {
+    for (const ch of lines[i] ?? "") {
+      // Braces inside a `"…"` label aren't structural — track quote state so `group "a{b" { … }` counts
+      // only the real braces.
+      if (ch === '"') inQuote = !inQuote;
+      else if (!inQuote && ch === "{") {
+        depth++;
+        started = true;
+      } else if (!inQuote && ch === "}") {
+        depth--;
+      }
+    }
+    if (started && depth <= 0) {
+      endLine = i;
+      break;
+    }
+  }
+  if (endLine === -1) return text; // unbalanced (the parser would have rejected it); leave it untouched
+  lines.splice(startLine, endLine - startLine + 1);
+  return lines.join("\n");
+};
+
+// Rename a block composite by rewriting every standalone-identifier occurrence of `oldId` to `newId`
+// (the `block:id` opener *and* any edge endpoint that references the composite) — a plain label-span
+// patch would rename only the opener and orphan the edges. A boundary-aware char scan (not a regex
+// built from `oldId`) keeps it ReDoS-free; the parser guarantees ids are `[A-Za-z0-9_]+` and unique.
+const isIdentChar = (c: string): boolean =>
+  c.length === 1 &&
+  ((c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || (c >= "0" && c <= "9") || c === "_");
+export const renameBlockId = (text: string, oldId: string, newId: string): string => {
+  if (oldId.length === 0) return text;
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    if (
+      text.startsWith(oldId, i) &&
+      !isIdentChar(text[i - 1] ?? "") &&
+      !isIdentChar(text[i + oldId.length] ?? "")
+    ) {
+      out += newId;
+      i += oldId.length;
+    } else {
+      out += text[i] ?? "";
+      i++;
+    }
+  }
+  return out;
+};
+
+// Wrap the given source lines (by 0-based index) into a new `group "label" { … }` at the position of
+// the first — gathering selected cloud leaves into a group. Lines are captured, removed bottom-up (so
+// earlier indices stay valid), re-indented, and the group block inserted where the first one was. A
+// no-op below two lines (a group of one is pointless).
+export const wrapCloudGroup = (
+  text: string,
+  lineIndices: readonly number[],
+  label: string,
+): string => {
+  const lines = text.split("\n");
+  const idxs = [...new Set(lineIndices)]
+    .filter((i) => i >= 0 && i < lines.length)
+    .sort((a, b) => a - b);
+  if (idxs.length < 2) return text;
+  const captured = idxs.map((i) => (lines[i] ?? "").trim());
+  for (let k = idxs.length - 1; k >= 0; k--) lines.splice(idxs[k] ?? 0, 1);
+  const block = [`  group "${label}" {`, ...captured.map((l) => `    ${l}`), "  }"];
+  lines.splice(idxs[0] ?? 0, 0, ...block);
+  return lines.join("\n");
+};
+
 // Removes the whole source line (with its line break) containing `span`. Used to delete a Gantt task or
 // a pie slice by its label span — families whose item may have no in-text id (a Gantt task's id can be
 // auto-generated `t0…` and absent from the text; a pie slice's id is synthetic), so the span is the

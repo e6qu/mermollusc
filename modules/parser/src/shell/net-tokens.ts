@@ -15,10 +15,13 @@ const Router = createToken({ name: "Router", pattern: /router/, longer_alt: Iden
 const Switch = createToken({ name: "Switch", pattern: /switch/, longer_alt: Identifier });
 const Firewall = createToken({ name: "Firewall", pattern: /firewall/, longer_alt: Identifier });
 const Host = createToken({ name: "Host", pattern: /host/, longer_alt: Identifier });
+const Group = createToken({ name: "NetGroup", pattern: /group/, longer_alt: Identifier });
 const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier });
 
 const Dash = createToken({ name: "Dash", pattern: /--/ });
 const Colon = createToken({ name: "Colon", pattern: /:/ });
+const LBrace = createToken({ name: "NetLBrace", pattern: /\{/ });
+const RBrace = createToken({ name: "NetRBrace", pattern: /\}/ });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
@@ -38,9 +41,12 @@ const order: TokenType[] = [
   Switch,
   Firewall,
   Host,
+  Group,
   Icon,
   Dash,
   Colon,
+  LBrace,
+  RBrace,
   QuotedString,
   Identifier,
 ];
@@ -57,9 +63,12 @@ export const NetTok = {
   Switch,
   Firewall,
   Host,
+  Group,
   Icon,
   Dash,
   Colon,
+  LBrace,
+  RBrace,
   QuotedString,
   NewLine,
   Semicolon,

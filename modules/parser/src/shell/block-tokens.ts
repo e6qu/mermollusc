@@ -15,6 +15,8 @@ const Columns = createToken({ name: "Columns", pattern: /columns/, longer_alt: I
 const Num = createToken({ name: "Number", pattern: /[0-9]+/, longer_alt: Identifier });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
+// A leaf/composite column span: `a:2`, `block:id:3`. Distinct from `block:` (the `BlockGroupOpen`).
+const Colon = createToken({ name: "BlockColon", pattern: /:/ });
 const WhiteSpace = createToken({ name: "WhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
 const Comment = createToken({ name: "Comment", pattern: /%%[^\n]*/, group: Lexer.SKIPPED });
 const Icon = createToken({ name: "BlockIcon", pattern: /icon/, longer_alt: Identifier });
@@ -48,6 +50,7 @@ export const blockLexer = new Lexer({
       Comment,
       NewLine,
       Semicolon,
+      Colon,
       BlockGroupOpen,
       BlockHeader,
       End,
@@ -84,6 +87,7 @@ export const BlockTok = {
   Quoted,
   NewLine,
   Semicolon,
+  Colon,
   DottedArrow,
   ThickArrow,
   Arrow,
@@ -107,6 +111,7 @@ export const blockAllTokens: TokenType[] = [
   Comment,
   NewLine,
   Semicolon,
+  Colon,
   BlockGroupOpen,
   BlockHeader,
   End,

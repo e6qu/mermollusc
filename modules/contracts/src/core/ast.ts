@@ -102,6 +102,8 @@ export interface BlockNode {
   readonly shape: NodeShape;
   // An explicit `icon "<pack>/<name>"` override; null otherwise.
   readonly icon: IconRef | null;
+  // How many grid columns this block spans (`a:2`); 1 when unspecified.
+  readonly span: PositiveInt;
 }
 
 // A `block:id … end` composite block — a container that lays its own children out in a nested grid.
@@ -112,6 +114,8 @@ export interface BlockGroup {
   // The group's own grid width (its inner `columns N`, else one row of its direct children).
   readonly columns: PositiveInt;
   readonly children: readonly NodeId[];
+  // How many grid columns this composite spans in its parent (`block:id:2`); 1 when unspecified.
+  readonly span: PositiveInt;
 }
 
 export interface BlockEdge {
@@ -150,6 +154,15 @@ export interface NetworkNode {
   readonly kind: NetworkNodeKind;
   // An explicit `icon "<pack>/<name>"` override; null means use the kind's default glyph.
   readonly icon: IconRef | null;
+  // The enclosing `group "…" { … }` (a subnet/zone), or null at the top level.
+  readonly parent: NodeId | null;
+}
+
+// A `group "label" { … }` container in a network diagram — a subnet/zone grouping its members.
+export interface NetworkGroup {
+  readonly id: NodeId;
+  readonly label: string;
+  readonly parent: NodeId | null;
 }
 
 export interface NetworkLink {
@@ -160,10 +173,12 @@ export interface NetworkLink {
   readonly label: string | null;
 }
 
-// A network diagram: kind-typed nodes joined by undirected links.
+// A network diagram: kind-typed nodes joined by undirected links, optionally nested in subnet/zone
+// `group "…" { … }` containers (membership via each node/group's `parent`).
 export interface NetworkAst {
   readonly kind: "network";
   readonly nodes: readonly NetworkNode[];
+  readonly groups: readonly NetworkGroup[];
   readonly links: readonly NetworkLink[];
 }
 

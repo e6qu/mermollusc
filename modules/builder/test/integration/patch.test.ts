@@ -2,6 +2,7 @@ import { brand, isOk } from "@m/std";
 import {
   parseC4WithSource,
   parseClassWithSource,
+  parseCloudWithSource,
   parseErWithSource,
   parseGanttWithSource,
   parseRequirementWithSource,
@@ -32,6 +33,9 @@ import {
   deleteErEntity,
   deleteErRel,
   deleteBlockGroup,
+  deleteGroupBlock,
+  renameBlockId,
+  wrapCloudGroup,
   deleteLineAt,
   deleteMessage,
   deleteNode,
@@ -475,6 +479,52 @@ describe("relabelNode", () => {
     // Deleting a leaf removes just its line.
     expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
       "mindmap\n  root\n    A\n      A1\n",
+    );
+  });
+
+  it("renameBlockId rewrites every standalone occurrence of a composite id (opener + edges)", () => {
+    const text = "block-beta\n  x\n  block:grp\n    y\n  end\n  x --> grp\n  grpExtra\n";
+    const out = renameBlockId(text, "grp", "svc");
+    expect(out).toContain("block:svc"); // the opener renamed
+    expect(out).toContain("x --> svc"); // the edge endpoint renamed
+    expect(out).toContain("grpExtra"); // a different identifier left alone
+    expect(out).not.toContain("grp\n"); // no stray old id
+  });
+
+  it("deleteGroupBlock ignores braces inside a quoted label", () => {
+    const text = 'network\n  group "a{b}c" {\n    server x\n  }\n  server y\n';
+    expect(deleteGroupBlock(text, { start: text.indexOf('"a{b') + 1, end: text.indexOf('}c"') + 2 })).toBe(
+      "network\n  server y\n",
+    );
+  });
+
+  it("wrapCloudGroup gathers the given lines into a new `group \"…\" { … }`, parseable", () => {
+    const text = 'cloud\n  compute a "A"\n  compute b "B"\n  database c "C"\n';
+    // Lines 1 and 2 (the two compute leaves) → a group; line 3 (database) stays.
+    const next = wrapCloudGroup(text, [1, 2], "Tier");
+    expect(next).toBe(
+      'cloud\n  group "Tier" {\n    compute a "A"\n    compute b "B"\n  }\n  database c "C"\n',
+    );
+    const r = parseCloudWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.groups).toHaveLength(1);
+    const byId = new Map(r.value.ast.nodes.map((n) => [n.id, n]));
+    expect(byId.get(nid("a"))?.parent).toBe(r.value.ast.groups[0]?.id); // a moved into the group
+    expect(byId.get(nid("c"))?.parent).toBeNull(); // c stayed top-level
+    expect(wrapCloudGroup(text, [1], "Tier")).toBe(text); // < 2 lines → no-op
+  });
+
+  it("deleteGroupBlock removes a brace-delimited `group \"…\" { … }` whole, balancing nesting", () => {
+    const text =
+      'network\n  group "DMZ" {\n    server web "Web"\n    group "Inner" {\n      host h\n    }\n  }\n  server db "DB"\n';
+    // The label span of the outer group (inside its quotes).
+    const outer = { start: text.indexOf('"DMZ"') + 1, end: text.indexOf('"DMZ"') + 4 };
+    expect(deleteGroupBlock(text, outer)).toBe('network\n  server db "DB"\n');
+    // The inner group, by its label span — outer stays.
+    const inner = { start: text.indexOf('"Inner"') + 1, end: text.indexOf('"Inner"') + 6 };
+    expect(deleteGroupBlock(text, inner)).toBe(
+      'network\n  group "DMZ" {\n    server web "Web"\n  }\n  server db "DB"\n',
     );
   });
 

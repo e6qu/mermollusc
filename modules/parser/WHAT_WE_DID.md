@@ -252,3 +252,6 @@
   empty `SourceMap`. All existing exports keep working. +`diagram-source.test.ts` (per-family tag +
   one-pass AST parity with `parseDiagram` + DOT/flowchart discrimination + a flowchart-span check + a
   fail-loud case).
+- Grouping grammar: block `block:id … end` composites + column spans (`a:N`/`block:id:N`); network
+  `group "…" { }` subnet/zone groups (recursive, synthetic `group:N` ids). Block composite-id collisions
+  (with a leaf or another composite) fail loud. Bare-node relabel + group label spans recorded.

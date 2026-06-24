@@ -28,8 +28,23 @@ class NetworkParser extends CstParser {
   );
 
   private readonly statement = this.RULE("statement", () =>
-    this.OR([{ ALT: () => this.SUBRULE(this.nodeDecl) }, { ALT: () => this.SUBRULE(this.link) }]),
+    this.OR([
+      { ALT: () => this.SUBRULE(this.group) },
+      { ALT: () => this.SUBRULE(this.nodeDecl) },
+      { ALT: () => this.SUBRULE(this.link) },
+    ]),
   );
+
+  // `group "label" { … }` — a subnet/zone container whose body is its own statement list (nestable).
+  private readonly group = this.RULE("group", () => {
+    this.CONSUME(NetTok.Group);
+    this.CONSUME(NetTok.QuotedString);
+    this.CONSUME(NetTok.LBrace);
+    this.MANY(() =>
+      this.OR([{ ALT: () => this.SUBRULE(this.sep) }, { ALT: () => this.SUBRULE(this.statement) }]),
+    );
+    this.CONSUME(NetTok.RBrace);
+  });
 
   private readonly nodeDecl = this.RULE("nodeDecl", () => {
     this.SUBRULE(this.kind);

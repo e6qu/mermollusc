@@ -38,10 +38,12 @@
     (`block:id:N` / `a:N`) — they force the grid-algorithm redesign (*high* risk), a separate item.
   - Network subnet/zone grouping — network has **zero** group infrastructure (no AST/layout); a
     from-scratch nested-box layout (*high* risk). Mirror cloud's AST + layout.
-  - Cloud "group/region collapse" is **not** grammar — cloud groups already parse/AST/layout
-    hierarchically. Collapse is an editor UX feature (per-group visibility state + render skip), separate
-    scope. Group *creation* via the editor (wrap selected nodes into `group "…" { }`) is the smaller
-    adjacent win.
+  - *(done)* Cloud group **creation + delete** — the Group button wraps the selected cloud leaves into a
+    `group "Group" { … }` (builder `wrapCloudGroup`), and deleting a group removes its whole block
+    (`deleteGroupBlock`, shared with network) instead of orphaning the `}`.
+  - **Cloud group collapse (deferred — UX, not grammar).** Cloud groups already render hierarchically;
+    collapse is per-group visibility state + a layout that hides children + a toggle + persistence — a
+    distinct editor feature, its own focused change.
 - *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
   now parses into `C4Element.description` (null when omitted); the layout renders it as a second
   label line. Boundaries stay 2-arg.

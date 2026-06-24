@@ -6,6 +6,7 @@ import type {
   EdgeId,
   IconRef,
   NetworkAst,
+  NetworkGroup,
   NetworkLink,
   NetworkNode,
   NetworkNodeKind,
@@ -58,61 +59,87 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const bareSpans = new Map<NodeId, TextSpan>();
   const linkSpans = new Map<EdgeId, TextSpan>();
   const links: NetworkLink[] = [];
+  const groups: NetworkGroup[] = [];
+  const groupSpans = new Map<NodeId, TextSpan>();
+  let failure: ParseError | null = null;
 
-  for (const stmt of childNodes(root, "statement")) {
-    const decl = childNodes(stmt.children, "nodeDecl")[0];
-    if (decl !== undefined) {
-      const idTok = childTokens(decl.children, "Identifier")[0];
-      const id = idTok?.image ?? "";
-      const nodeId = brand<string, "NodeId">(id);
-      const kindNode = childNodes(decl.children, "kind")[0];
-      const kind = kindNode === undefined ? "host" : kindOf(kindNode.children);
-      // Grammar order is `[label] [icon "ref"]`: with an `icon`, the ref is the last quoted string
-      // and a label exists only when there are two; without one, the sole quoted string is the label.
-      const quotes = childTokens(decl.children, "QuotedString");
-      const hasIcon = childTokens(decl.children, "Icon").length > 0;
-      const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
-      const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
-      let icon: IconRef | null = null;
-      if (iconToken !== undefined) {
-        const ref = iconRefOf(iconToken.image);
-        if (!ref.ok) {
-          return err(parseErrorAt(ref.error, iconToken.startOffset, iconToken.image.length));
-        }
-        icon = ref.value;
+  // Walk a statement list under `parent` (null at the top). Groups recurse; a malformed icon bails.
+  const walk = (statements: readonly CstNode[], parent: NodeId | null): void => {
+    for (const stmt of statements) {
+      if (failure !== null) return;
+      const grp = childNodes(stmt.children, "group")[0];
+      if (grp !== undefined) {
+        // Group ids are synthetic (named only by a quoted label); the `:` keeps them out of the
+        // identifier space so a user node can't collide with a group's id.
+        const id = brand<string, "NodeId">(`group:${groups.length}`);
+        const label = childTokens(grp.children, "QuotedString")[0];
+        groups.push({ id, label: unquote(label?.image ?? '""'), parent });
+        if (label !== undefined) groupSpans.set(id, innerSpan(label));
+        walk(childNodes(grp.children, "statement"), id);
+        continue;
       }
-      nodeMap.set(id, {
-        id: nodeId,
-        label: labelToken === undefined ? id : unquote(labelToken.image),
-        kind,
-        icon,
-      });
-      if (labelToken !== undefined) nodeSpans.set(nodeId, innerSpan(labelToken));
-      else if (idTok !== undefined)
-        bareSpans.set(nodeId, {
-          start: idTok.startOffset,
-          end: idTok.startOffset + idTok.image.length,
-        });
-      continue;
-    }
 
-    const link = childNodes(stmt.children, "link")[0];
-    if (link === undefined) continue;
-    const ids = childTokens(link.children, "Identifier");
-    const labelToken = childTokens(link.children, "QuotedString")[0];
-    const linkId = brand<string, "EdgeId">(`l${links.length}`);
-    links.push({
-      id: linkId,
-      from: brand<string, "NodeId">(ids[0]?.image ?? ""),
-      to: brand<string, "NodeId">(ids[1]?.image ?? ""),
-      label: labelToken === undefined ? null : unquote(labelToken.image),
-    });
-    if (labelToken !== undefined) linkSpans.set(linkId, innerSpan(labelToken));
-  }
+      const decl = childNodes(stmt.children, "nodeDecl")[0];
+      if (decl !== undefined) {
+        const idTok = childTokens(decl.children, "Identifier")[0];
+        const id = idTok?.image ?? "";
+        const nodeId = brand<string, "NodeId">(id);
+        const kindNode = childNodes(decl.children, "kind")[0];
+        const kind = kindNode === undefined ? "host" : kindOf(kindNode.children);
+        // Grammar order is `[label] [icon "ref"]`: with an `icon`, the ref is the last quoted string
+        // and a label exists only when there are two; without one, the sole quoted string is the label.
+        const quotes = childTokens(decl.children, "QuotedString");
+        const hasIcon = childTokens(decl.children, "Icon").length > 0;
+        const iconToken = hasIcon ? quotes[quotes.length - 1] : undefined;
+        const labelToken = hasIcon ? (quotes.length >= 2 ? quotes[0] : undefined) : quotes[0];
+        let icon: IconRef | null = null;
+        if (iconToken !== undefined) {
+          const ref = iconRefOf(iconToken.image);
+          if (!ref.ok) {
+            failure = parseErrorAt(ref.error, iconToken.startOffset, iconToken.image.length);
+            return;
+          }
+          icon = ref.value;
+        }
+        if (!nodeMap.has(id)) {
+          nodeMap.set(id, {
+            id: nodeId,
+            label: labelToken === undefined ? id : unquote(labelToken.image),
+            kind,
+            icon,
+            parent,
+          });
+        }
+        if (labelToken !== undefined) nodeSpans.set(nodeId, innerSpan(labelToken));
+        else if (idTok !== undefined && !nodeSpans.has(nodeId))
+          bareSpans.set(nodeId, {
+            start: idTok.startOffset,
+            end: idTok.startOffset + idTok.image.length,
+          });
+        continue;
+      }
+
+      const link = childNodes(stmt.children, "link")[0];
+      if (link === undefined) continue;
+      const ids = childTokens(link.children, "Identifier");
+      const labelToken = childTokens(link.children, "QuotedString")[0];
+      const linkId = brand<string, "EdgeId">(`l${links.length}`);
+      links.push({
+        id: linkId,
+        from: brand<string, "NodeId">(ids[0]?.image ?? ""),
+        to: brand<string, "NodeId">(ids[1]?.image ?? ""),
+        label: labelToken === undefined ? null : unquote(labelToken.image),
+      });
+      if (labelToken !== undefined) linkSpans.set(linkId, innerSpan(labelToken));
+    }
+  };
+
+  walk(childNodes(root, "statement"), null);
+  if (failure !== null) return err(failure);
 
   return ok({
-    ast: { kind: "network", nodes: [...nodeMap.values()], links },
-    source: { nodes: nodeSpans, links: linkSpans, bareNodes: bareSpans },
+    ast: { kind: "network", nodes: [...nodeMap.values()], groups, links },
+    source: { nodes: nodeSpans, links: linkSpans, bareNodes: bareSpans, groups: groupSpans },
   });
 };
 

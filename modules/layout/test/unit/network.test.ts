@@ -10,10 +10,11 @@ const eid = (s: string) => brand<string, "EdgeId">(s);
 const ast: NetworkAst = {
   kind: "network",
   nodes: [
-    { id: nid("a"), label: "A", kind: "server", icon: null },
-    { id: nid("b"), label: "B", kind: "database", icon: null },
-    { id: nid("c"), label: "C", kind: "cloud", icon: null },
+    { id: nid("a"), label: "A", kind: "server", icon: null, parent: null },
+    { id: nid("b"), label: "B", kind: "database", icon: null, parent: null },
+    { id: nid("c"), label: "C", kind: "cloud", icon: null, parent: null },
   ],
+  groups: [],
   links: [{ id: eid("l0"), from: nid("a"), to: nid("b"), label: null }],
 };
 
@@ -26,7 +27,8 @@ describe("layoutNetwork", () => {
   it("fails loudly when a link references an unknown node", () => {
     const bad: NetworkAst = {
       kind: "network",
-      nodes: [{ id: nid("a"), label: "A", kind: "server", icon: null }],
+      nodes: [{ id: nid("a"), label: "A", kind: "server", icon: null, parent: null }],
+      groups: [],
       links: [{ id: eid("l0"), from: nid("a"), to: nid("ghost"), label: null }],
     };
     expect(layoutNetwork(bad, heuristicMeasure).ok).toBe(false);

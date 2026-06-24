@@ -13,6 +13,9 @@ import {
   decodeOverlay,
   deleteActor,
   deleteBlockGroup,
+  deleteGroupBlock,
+  renameBlockId,
+  wrapCloudGroup,
   deleteC4,
   deleteC4Rel,
   deleteClassEntity,
@@ -1365,6 +1368,32 @@ for (const { id, kind } of ARRANGE_ACTIONS) {
 // existing group) or itself — so groups and loose elements bundle together, in selection order.
 const groupSelection = (): void => {
   if (viewerMode) return;
+  // Cloud has native text groups: gather the selected *top-level leaves* into a `group "Group" { … }`
+  // the user can rename, rather than a sidecar overlay group. Skip containers + already-nested leaves —
+  // each captured line must be a single self-contained statement, or wrapCloudGroup would pull a line
+  // out of its existing group and unbalance the braces.
+  if (ast !== null && ast.kind === "cloud" && cloudSource !== null && scene !== null) {
+    const cs = cloudSource;
+    const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+    const lineOf = (id: SceneNodeId): number | null => {
+      const node = byId.get(id);
+      if (node === undefined || node.shape === "container" || node.parent !== null) return null;
+      const nid = brand<string, "NodeId">(id);
+      const span = cs.nodes.get(nid) ?? cs.bareNodes.get(nid);
+      return span === undefined ? null : editor.value().slice(0, span.start).split("\n").length - 1;
+    };
+    const lineIdxs = selectionOrder.map(lineOf).filter((n): n is number => n !== null);
+    if (lineIdxs.length < 2) {
+      setStatusAndAnnounce("ok", "select two or more top-level services to group");
+      return;
+    }
+    const next = wrapCloudGroup(editor.value(), lineIdxs, "Group");
+    if (next === editor.value()) return;
+    editor.setValue(next);
+    void renderFromText(next);
+    announce(`grouped ${lineIdxs.length} services — double-click the group title to rename`);
+    return;
+  }
   const units: GroupMember[] = [];
   const seen = new Set<string>();
   for (const id of selectionOrder) {
@@ -2546,12 +2575,29 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (span !== undefined) pending = patchAt(span);
     } else {
       const id = brand<string, "NodeId">(hit.id);
-      // A composite relabels through its `block:id` span (renaming the id); a leaf through its label
-      // span, or by wrapping a bare id.
-      const span = blockSource.blocks.get(id) ?? blockSource.groups.get(id);
+      const labelSpan = blockSource.blocks.get(id);
+      const groupSpan = blockSource.groups.get(id);
       const bare = blockSource.bareNodes.get(id);
-      if (span !== undefined) pending = patchAt(span);
-      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i}["${l}"]`);
+      if (labelSpan !== undefined)
+        pending = patchAt(labelSpan); // a leaf's label
+      else if (groupSpan !== undefined) {
+        // A composite's id *is* its name and is referenced by edges, so renaming it rewrites every
+        // occurrence (the `block:id` opener + edge endpoints). The new value must stay a valid id.
+        const current = editor.value().slice(groupSpan.start, groupSpan.end);
+        pending = {
+          text: current,
+          commit: (next) => {
+            if (next === current) return;
+            if (!/^[A-Za-z0-9_]+$/.test(next)) {
+              setStatusAndAnnounce("error", "a block id must be letters, digits, or underscores");
+              return;
+            }
+            const renamed = renameBlockId(editor.value(), current, next);
+            editor.setValue(renamed);
+            void renderFromText(renamed);
+          },
+        };
+      } else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i}["${l}"]`);
     }
   } else if (hit !== null && ast.kind === "network" && netSource !== null) {
     if (hit.kind === "edge") {
@@ -2559,7 +2605,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (span !== undefined) pending = patchAt(span);
     } else {
       const id = brand<string, "NodeId">(hit.id);
-      const span = netSource.nodes.get(id);
+      const span = netSource.nodes.get(id) ?? netSource.groups.get(id);
       const bare = netSource.bareNodes.get(id);
       if (span !== undefined) pending = patchAt(span);
       else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
@@ -3009,10 +3055,26 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
         ? deleteBlockGroup(text, blockId)
         : deleteNode(text, blockId);
     }
+    // A network subnet/zone group deletes its whole `group "…" { … }` block; a node deletes its line.
+    case "network": {
+      const netId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "network" && ast.groups.some((g) => g.id === netId)) {
+        const span = netSource?.groups.get(netId);
+        return span === undefined ? text : deleteGroupBlock(text, span);
+      }
+      return deleteNode(text, netId);
+    }
+    // A cloud subnet/group deletes its whole `group "…" { … }` block; a leaf deletes its line.
+    case "cloud": {
+      const cloudId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "cloud" && ast.groups.some((g) => g.id === cloudId)) {
+        const span = cloudSource?.groups.get(cloudId);
+        return span === undefined ? text : deleteGroupBlock(text, span);
+      }
+      return deleteNode(text, cloudId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
     case "flowchart":
-    case "network":
-    case "cloud":
     case "gitGraph":
     case "timeline":
       return deleteNode(text, brand<string, "NodeId">(id));
@@ -3122,7 +3184,9 @@ const deleteSelection = async (): Promise<void> => {
     kind === "gantt" && ganttSource !== null
       ? [...selectionOrder].sort((a, b) => ganttLineStart(b) - ganttLineStart(a))
       : selectionOrder;
-  const removedCount = order.length + selection.edges.size;
+  // Count every node that actually disappears (a deleted container takes its descendants), not just the
+  // top-level selection — so deleting a subnet of 6 doesn't announce "deleted 1 item".
+  const removedCount = shown.nodes.filter(isDeleted).length + selection.edges.size;
   for (const id of order) text = removeNode(kind, text, id);
   for (const edgeId of selection.edges) {
     const edge = scene.edges.find((e) => e.id === edgeId);
@@ -3858,7 +3922,13 @@ if (collabSession !== null) {
   const params = new URLSearchParams(location.search);
   const room = params.get("room") ?? "playground";
   const scheme = location.protocol === "https:" ? "wss" : "ws";
-  const wsBase = params.get("ws") ?? `${scheme}://${location.hostname || "localhost"}:1234`;
+  // A `?ws=` override lets a shared `?collab` link point a victim's session (source + edits, and any
+  // forwarded token) at an arbitrary relay. Accept only a websocket-scheme URL and fall back to the
+  // default on anything else — never an http(s)/javascript: or scheme-relative value.
+  const wsOverride = params.get("ws");
+  const wsAllowed =
+    wsOverride !== null && /^wss?:[/][/]/.test(wsOverride) && URL.canParse(wsOverride);
+  const wsBase = wsAllowed ? wsOverride : `${scheme}://${location.hostname || "localhost"}:1234`;
   session.onOverlayChange(() => {
     requestPaint();
     updateGroupButtons();

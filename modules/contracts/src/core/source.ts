@@ -73,6 +73,8 @@ export interface NetworkSource {
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
+  // Inner-label span of each subnet/zone `group "…"`, for relabel.
+  readonly groups: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a state diagram: each state's label (from `id : label` or

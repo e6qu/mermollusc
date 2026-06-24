@@ -51,11 +51,22 @@ interface Ref {
   // The id-token's own span, so a label-less block can be relabelled by wrapping its id into `id["…"]`.
   readonly idSpan: TextSpan | null;
   readonly icon: IconRef | null;
+  // Column span (`a:2`); ≥ 1.
+  readonly span: number;
 }
+
+// The trailing `:N` column span, if any (a direct `Number` child of the ref/group); ≥ 1.
+const spanOf = (children: Children): number => {
+  const raw = imageOf(children, "Number");
+  if (raw === null) return 1;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+};
 
 const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   const idTok = childTokens(node.children, "Identifier")[0];
   const id = idTok?.image ?? "";
+  const span = spanOf(node.children);
   const idSpan =
     idTok === undefined
       ? null
@@ -71,7 +82,16 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   }
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return ok({ id, label: id, shape: "rect", explicit: false, labelSpan: null, idSpan, icon });
+    return ok({
+      id,
+      label: id,
+      shape: "rect",
+      explicit: false,
+      labelSpan: null,
+      idSpan,
+      span,
+      icon,
+    });
   }
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
@@ -83,6 +103,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       explicit: true,
       labelSpan: labelSpan(square),
       idSpan,
+      span,
       icon,
     });
   }
@@ -95,6 +116,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       explicit: true,
       labelSpan: labelSpan(paren),
       idSpan,
+      span,
       icon,
     });
   }
@@ -106,6 +128,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
     explicit: true,
     labelSpan: curly === undefined ? null : labelSpan(curly),
     idSpan,
+    span,
     icon,
   });
 };
@@ -129,6 +152,21 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const groupSpans = new Map<NodeId, TextSpan>();
   // A first malformed-ref failure; once set, the walk bails and the parse fails loudly.
   let failure: ParseError | null = null;
+
+  // Every composite id, gathered up front (composites may be referenced before they're declared). A
+  // chain reference to one of these is a reference to the composite — not a new leaf block — so an edge
+  // can target a composite (`x --> grp`) without minting a phantom leaf that duplicates the container.
+  const composites = new Set<string>();
+  const collectComposites = (statements: readonly CstNode[]): void => {
+    for (const stmt of statements) {
+      const group = childNodes(stmt.children, "groupBlock")[0];
+      if (group === undefined) continue;
+      const id = childTokens(group.children, "Identifier")[0]?.image;
+      if (id !== undefined) composites.add(id);
+      collectComposites(childNodes(group.children, "statement"));
+    }
+  };
+  collectComposites(childNodes(root, "statement"));
 
   // Walk a statement list, populating the shared maps. Returns this level's `columns N` (if declared)
   // and the ordered ids of its direct children (blocks and nested groups), as declared.
@@ -163,6 +201,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
           label: idTok?.image ?? "",
           columns: gColumns,
           children: inner.children,
+          span: positiveInt(spanOf(group.children)),
         });
         children.push(gid);
         continue;
@@ -183,10 +222,17 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
       const links = childNodes(chain.children, "link");
 
       for (const ref of refs) {
+        if (composites.has(ref.id)) continue; // a reference to a composite, not a leaf declaration
         const id = brand<string, "NodeId">(ref.id);
         const existing = blockMap.get(ref.id);
         if (existing === undefined) {
-          blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape, icon: ref.icon });
+          blockMap.set(ref.id, {
+            id,
+            label: ref.label,
+            shape: ref.shape,
+            icon: ref.icon,
+            span: positiveInt(ref.span),
+          });
           children.push(id); // first declaration fixes the block's container + grid position
         } else if (ref.explicit) {
           blockMap.set(ref.id, {
@@ -194,6 +240,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
             label: ref.label,
             shape: ref.shape,
             icon: ref.icon,
+            span: existing.span,
           });
         }
         if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
@@ -225,6 +272,16 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
 
   const top = walk(childNodes(root, "statement"));
   if (failure !== null) return err(failure);
+
+  // Two composites can't share an id (they'd mint two containers with the same scene id). A leaf can't
+  // collide with a composite because composite references are suppressed above. Fail loud on a dup.
+  const seenGroup = new Set<string>();
+  for (const g of groups) {
+    if (seenGroup.has(g.id)) {
+      return err(parseError([`block: duplicate composite id "${g.id}"`]));
+    }
+    seenGroup.add(g.id);
+  }
 
   const blocks = [...blockMap.values()];
   // A block is "bare" (relabel by wrapping its id) when it never carried an explicit label span.

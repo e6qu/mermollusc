@@ -39,6 +39,10 @@ class BlockParser extends CstParser {
   private readonly groupBlock = this.RULE("groupBlock", () => {
     this.CONSUME(BlockTok.BlockGroupOpen);
     this.CONSUME(BlockTok.Identifier);
+    this.OPTION(() => {
+      this.CONSUME(BlockTok.Colon);
+      this.CONSUME(BlockTok.Number); // column span: `block:id:2`
+    });
     this.MANY(() =>
       this.OR([{ ALT: () => this.SUBRULE(this.sep) }, { ALT: () => this.SUBRULE(this.statement) }]),
     );
@@ -64,6 +68,10 @@ class BlockParser extends CstParser {
     this.OPTION2(() => {
       this.CONSUME(BlockTok.Icon);
       this.CONSUME(BlockTok.Quoted);
+    });
+    this.OPTION3(() => {
+      this.CONSUME(BlockTok.Colon);
+      this.CONSUME(BlockTok.Number); // column span: `a:2`
     });
   });
 

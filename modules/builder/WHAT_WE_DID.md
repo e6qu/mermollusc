@@ -128,3 +128,6 @@
 - core: `deleteBlockGroup(text, id)` — remove a `block:id … end` composite whole by matching its opening
   line to the balancing `end` (nested composites balanced), so a line-based delete can't orphan the body
   or the dangling `end`. 3 tests.
+- Grouping patches: `deleteGroupBlock` (brace-balanced, quote-masked — network/cloud), `wrapCloudGroup`
+  (gather leaves into a `group "…" { }`), `renameBlockId` (rename a composite id everywhere — opener +
+  edge endpoints — keeping edges valid).
