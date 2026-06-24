@@ -53,7 +53,11 @@ const leafWidth = (label: string, measure: MeasureText): number =>
 
 // Pure recursive nested-box layout: groups wrap their children (sized to fit) and render as
 // containers; service leaves carry a kind glyph. Links are straight, undirected centre-to-centre.
-export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, LayoutError> => {
+export const layoutCloud = (
+  ast: CloudAst,
+  measure: MeasureText,
+  collapsed: ReadonlySet<NodeId> = new Set(),
+): Result<Scene, LayoutError> => {
   const elements: Elem[] = [
     ...ast.groups.map((g) => ({
       id: g.id,
@@ -71,6 +75,22 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
       group: false,
     })),
   ];
+  const elById = new Map<NodeId, Elem>(elements.map((el) => [el.id, el]));
+
+  // A node is hidden when an ancestor group is collapsed; its outermost collapsed ancestor is the
+  // "anchor" the layout shows + that its links re-attach to.
+  const anchorOf = (id: NodeId): NodeId => {
+    let cur = elById.get(id);
+    let anchor = id;
+    while (cur !== undefined && cur.parent !== null) {
+      if (collapsed.has(cur.parent)) anchor = cur.parent;
+      cur = elById.get(cur.parent);
+    }
+    return anchor;
+  };
+  const hidden = new Set<NodeId>(
+    elements.filter((el) => anchorOf(el.id) !== el.id).map((el) => el.id),
+  );
 
   const childrenOf = new Map<NodeId, Elem[]>();
   const roots: Elem[] = [];
@@ -87,7 +107,8 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
   const boxes = new Map<NodeId, Box>();
   const place = (el: Elem, x: number, y: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
-    if (kids.length === 0) {
+    // A collapsed group is drawn as a header-only box and its descendants aren't placed at all.
+    if (kids.length === 0 || collapsed.has(el.id)) {
       const box: Box = { x, y, w: leafWidth(el.label, measure), h: LEAF_HEIGHT };
       boxes.set(el.id, box);
       return box;
@@ -128,6 +149,7 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
   // at the origin.
   const nodes: SceneNode[] = [];
   for (const el of elements) {
+    if (hidden.has(el.id)) continue; // inside a collapsed group — not drawn
     const b = boxes.get(el.id);
     if (b === undefined) {
       return err({
@@ -152,15 +174,20 @@ export const layoutCloud = (ast: CloudAst, measure: MeasureText): Result<Scene, 
 
   const edges: SceneEdge[] = [];
   for (const link of ast.links) {
-    const from = boxes.get(link.from);
-    const to = boxes.get(link.to);
+    // Re-attach a link touching a hidden node to its collapsed container; drop it if both ends collapse
+    // into the same group (it would become a self-loop on the container).
+    const fromId = anchorOf(link.from);
+    const toId = anchorOf(link.to);
+    if (fromId === toId) continue;
+    const from = boxes.get(fromId);
+    const to = boxes.get(toId);
     if (from === undefined || to === undefined) {
       return err({ kind: "layout", message: `cloud: link ${link.id} references an unknown node` });
     }
     edges.push({
       id: sceneEdgeId(link.id),
-      from: sceneNodeId(link.from),
-      to: sceneNodeId(link.to),
+      from: sceneNodeId(fromId),
+      to: sceneNodeId(toId),
       waypoints: orthogonalRoute(from, to),
       label: link.label,
       stroke: "solid",

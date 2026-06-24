@@ -1666,6 +1666,47 @@ const armRenderCooldown = (): void => {
   }, RENDER_DEBOUNCE_MS);
 };
 
+// Cloud groups the user has collapsed (contents hidden). Keyed by the group's synthetic id and
+// persisted across reloads; stale ids (after a structural edit reindexes groups) are filtered out at
+// layout time so a collapse never lands on the wrong group.
+const COLLAPSE_KEY = "mermollusc-cloud-collapsed";
+const loadCollapsed = (): string[] => {
+  try {
+    const raw = localStorage.getItem(COLLAPSE_KEY);
+    const v: unknown = raw === null ? [] : JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch (e) {
+    console.error("collapse state load failed", e);
+    return [];
+  }
+};
+const cloudCollapsed = new Set<string>(loadCollapsed());
+const persistCollapsed = (): void => {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...cloudCollapsed]));
+  } catch (e) {
+    console.error("collapse state persist failed", e);
+  }
+};
+const collapsedBranded = (): ReadonlySet<NodeId> =>
+  new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
+
+// Toggle the collapse of the single selected cloud group (E). Collapsing hides its contents + re-routes
+// its links to the container; the state persists across reloads.
+const toggleCloudCollapse = (): void => {
+  if (viewerMode || ast === null || ast.kind !== "cloud" || scene === null) return;
+  if (selectionOrder.length !== 1) return;
+  const id = selectionOrder[0];
+  if (id === undefined) return;
+  const node = scene.nodes.find((n) => n.id === id);
+  if (node === undefined || node.shape !== "container") return;
+  if (cloudCollapsed.has(id)) cloudCollapsed.delete(id);
+  else cloudCollapsed.add(id);
+  persistCollapsed();
+  void renderFromText(editor.value());
+  announce(cloudCollapsed.has(id) ? "collapsed group" : "expanded group");
+};
+
 const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
   currentRenderValid = false;
@@ -1695,7 +1736,7 @@ const renderFromText = async (text: string): Promise<void> => {
   const result = parsed.value;
   const diagram = result.ast;
   lastDirection = "direction" in diagram ? diagram.direction : null;
-  const laid = await layoutDiagram(diagram, measureLabel);
+  const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded());
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
@@ -3498,6 +3539,14 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       void cycleShape();
       break;
+    case "e":
+    case "E":
+      // Collapse / expand the selected cloud group.
+      if (ast !== null && ast.kind === "cloud") {
+        ev.preventDefault();
+        toggleCloudCollapse();
+      }
+      break;
   }
 });
 
@@ -3941,6 +3990,7 @@ const navController = createNavigator({
   nudgeSelection,
   groupSelection,
   ungroupSelection,
+  toggleCloudCollapse,
   beginRelabel,
   shownScene,
   appendEdge,

@@ -32,6 +32,8 @@ export interface NavigatorDeps {
   // Group / ungroup the current selection (the app announces a no-op below two units / no group).
   readonly groupSelection: () => void;
   readonly ungroupSelection: () => void;
+  // Collapse / expand the selected cloud group (a no-op for other families / non-container selections).
+  readonly toggleCloudCollapse: () => void;
   readonly beginRelabel: (shown: Scene, hit: HitTarget | null, group: GroupId | null) => boolean;
   readonly shownScene: (base: Scene) => Scene;
   readonly appendEdge: (
@@ -247,6 +249,9 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     } else if ((ev.key === "u" || ev.key === "U") && !viewerMode) {
       ev.preventDefault();
       deps.ungroupSelection();
+    } else if ((ev.key === "e" || ev.key === "E") && !viewerMode) {
+      ev.preventDefault();
+      deps.toggleCloudCollapse(); // collapse/expand a selected cloud group
     } else if (ev.key === "Home") {
       ev.preventDefault();
       setNavActive(0);
