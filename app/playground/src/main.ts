@@ -1017,7 +1017,7 @@ const syncToolPalette = (): void => {
     select: true,
     hand: true,
     connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
-    place: !viewerMode && ast !== null && ast.kind === "flowchart",
+    place: !viewerMode && ast !== null && familyAffordances(ast.kind).addNode,
   };
   if (!available[activeTool]) {
     activeTool = "select";
@@ -1035,7 +1035,7 @@ const syncToolPalette = (): void => {
     select: label.select,
     hand: label.hand,
     connect: `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
-    place: "the place tool adds flowchart nodes",
+    place: `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
   };
   for (const t of TOOL_ORDER) {
     const btn = TOOL_BUTTONS[t];
@@ -1934,8 +1934,11 @@ const setTool = (t: Tool): void => {
     );
     return;
   }
-  if (t === "place" && !(ast !== null && ast.kind === "flowchart")) {
-    setStatusAndAnnounce("ok", "the place tool adds flowchart nodes");
+  if (t === "place" && !(ast !== null && familyAffordances(ast.kind).addNode)) {
+    setStatusAndAnnounce(
+      "ok",
+      `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
+    );
     return;
   }
   if (viewerMode && t !== "select" && t !== "hand") return;
@@ -1951,15 +1954,16 @@ const setTool = (t: Tool): void => {
 // Place tool: drop a fresh flowchart node at the clicked point, pin it, select it, return to select.
 // Mirrors `duplicateSelection`'s add-then-pin pattern — node geometry never enters the source text.
 const placeNodeAt = async (at: Point): Promise<void> => {
-  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
-  const used = new Set<string>(ast.nodes.map((n) => n.id));
-  let n = 1;
-  while (used.has(`n${n}`)) n++;
-  const id = `n${n}`;
-  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(id), `node ${n}`, "rect"));
-  await renderFromText(editor.value());
+  if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
+  const used = new Set<string>(scene.nodes.map((n) => n.id));
+  const { id, label } = newNodeIdLabel(ast.kind, used);
+  const next = appendNode(ast.kind, editor.value(), id, label, "rect");
+  if (next === editor.value()) return;
+  editor.setValue(next);
+  await renderFromText(next);
   if (scene === null) return;
   const sid = brand<string, "SceneNodeId">(id);
+  // Pin the new node where it was dropped (the override moves it for any family, deterministic or not).
   doc.record();
   doc.moveNode(sid, at);
   doc.persist();
@@ -1968,7 +1972,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   paintScene();
   updateGroupButtons();
   setTool("select");
-  announce(`placed node ${n}`);
+  announce(`placed ${label}`);
 };
 
 for (const t of TOOL_ORDER) {
@@ -2002,7 +2006,7 @@ canvas.addEventListener("pointerdown", (ev) => {
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
   const tool = effectiveTool();
   // Place tool: a click drops a new node at the pointer (flowchart only), then snaps back to select.
-  if (tool === "place" && ast !== null && ast.kind === "flowchart" && !viewerMode) {
+  if (tool === "place" && ast !== null && familyAffordances(ast.kind).addNode && !viewerMode) {
     ev.preventDefault();
     void placeNodeAt(at);
     return;
@@ -2252,6 +2256,7 @@ canvas.addEventListener("pointerup", (ev) => {
       if (next !== editor.value()) {
         editor.setValue(next);
         void renderFromText(next);
+        announce(`connected${connectHint(ast.kind)}`);
       } else {
         paintScene();
         announce(`connect isn't available for ${ast.kind}`);
@@ -2644,20 +2649,25 @@ const freshNode = (
   return { id: `n${n}`, label: labelHint };
 };
 
+// The id/label for a *brand new* node (Add / Place): name-as-id families get a unique family-base name
+// (Entity/Class/State…); the rest get `n<N>` + a `node <N>` label tracking the id number.
+const newNodeIdLabel = (
+  kind: DiagramAst["kind"],
+  used: ReadonlySet<string>,
+): { readonly id: string; readonly label: string } => {
+  if (NAME_AS_ID.has(kind)) {
+    const id = uniqueId(used, ADD_BASE[kind] ?? "Node");
+    return { id, label: id };
+  }
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  return { id: `n${n}`, label: `node ${n}` };
+};
+
 addBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
   const used = new Set<string>(scene.nodes.map((n) => n.id));
-  let id: string;
-  let label: string;
-  if (NAME_AS_ID.has(ast.kind)) {
-    id = uniqueId(used, ADD_BASE[ast.kind] ?? "Node");
-    label = id;
-  } else {
-    let n = 1;
-    while (used.has(`n${n}`)) n++;
-    id = `n${n}`;
-    label = `node ${n}`; // the display label tracks the id number, as before
-  }
+  const { id, label } = newNodeIdLabel(ast.kind, used);
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
   editor.setValue(next);
@@ -2791,9 +2801,24 @@ connectBtn.addEventListener("click", () => {
   editor.setValue(text);
   void renderFromText(text);
   announce(
-    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}`,
+    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
   );
 });
+
+// Families whose connect writes a *placeholder* label the user will usually want to rename right away;
+// the connect handlers append this to their announcement so the inserted stub is signposted.
+const CONNECT_PLACEHOLDER: Partial<Record<DiagramAst["kind"], string>> = {
+  sequence: "message",
+  c4: "relationship",
+  er: "relationship",
+  requirement: "link",
+};
+const connectHint = (kind: DiagramAst["kind"]): string => {
+  const placeholder = CONNECT_PLACEHOLDER[kind];
+  return placeholder === undefined
+    ? ""
+    : ` — added a placeholder ${placeholder} label, double-click to rename`;
+};
 
 const appendEdge = (
   kind: DiagramAst["kind"],
@@ -3664,6 +3689,7 @@ const navController = createNavigator({
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
   canConnect: (kind) => familyAffordances(kind).connect,
+  connectHint,
   isViewerMode: () => viewerMode,
   editor,
   scrollToLogical,
