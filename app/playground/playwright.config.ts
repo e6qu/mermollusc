@@ -10,6 +10,14 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: true,
+  // Under full parallelism the workers contend for CPU (each drives a browser + shares the one Vite
+  // server), so an ELK layout + render can briefly exceed the 5s `expect.poll` default — which surfaced
+  // as an intermittent pre-push failure (the render *does* arrive, just slower under load). Give the
+  // web-first assertions real headroom, and allow one retry to absorb a genuinely transient blip without
+  // masking a real failure (which fails the retry too).
+  expect: { timeout: 15_000 },
+  timeout: 45_000,
+  retries: 1,
   use: { baseURL: `http://localhost:${PORT}` },
   webServer: [
     {
