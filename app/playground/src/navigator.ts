@@ -37,6 +37,11 @@ export interface NavigatorDeps {
   // Cycle the selected flowchart node's shape (parity with the canvas `S` shortcut, which the global
   // handler suppresses while the navigator owns focus).
   readonly cycleShape: () => void;
+  // The sidecar (overlay) groups, so the navigator can list them as a third category — otherwise a
+  // group is selectable/relabelable only by mouse (click the outline / double-click the title).
+  readonly getGroups: () => readonly { readonly id: GroupId; readonly label: string }[];
+  readonly selectGroup: (id: GroupId) => void;
+  readonly scrollToGroup: (id: GroupId) => void;
   // Move focus to the floating selection context bar (its buttons cover rename/shape/connect/duplicate/
   // group/lock/arrange/delete) so every selection action is reachable without a mouse.
   readonly focusContextBar: () => void;
@@ -63,12 +68,16 @@ const ARROW_DELTA: Record<string, readonly [number, number]> = {
   ArrowDown: [0, 1],
 };
 
+// A navigator option: a scene node or edge (a `HitTarget`, which the selection/relabel paths speak
+// directly), or a sidecar group listed after them.
+type NavItem = HitTarget | { readonly kind: "group"; readonly id: GroupId };
+
 export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   const { diagramNav, stageWrap, margin, announce } = deps;
 
-  // The navigator's options are the scene's nodes then its edges, each a focus target. `HitTarget` is
-  // the node/edge shape the selection and relabel paths already speak, so an item feeds them directly.
-  let navItems: HitTarget[] = [];
+  // The navigator's options are the scene's nodes, then its edges, then the sidecar groups — each a
+  // focus target the selection and relabel paths already understand.
+  let navItems: NavItem[] = [];
   let navIndex = -1; // the active option's index into `navItems`, or -1 when nothing is active yet
   // The accumulated multi-node selection (Shift+Arrow extends it) — so a keyboard user can select two
   // nodes to Connect or several to Group, mirroring Shift-click on the canvas. Order is insertion order.
@@ -76,7 +85,7 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   // The chosen source while a keyboard Connect is in progress (press `c` to pick it, navigate, `c`
   // again to connect to the target). Cleared on connect, cancel, or any re-render.
   let navConnectSource: SceneNodeId | null = null;
-  const navActive = (): HitTarget | null => (navIndex >= 0 ? (navItems[navIndex] ?? null) : null);
+  const navActive = (): NavItem | null => (navIndex >= 0 ? (navItems[navIndex] ?? null) : null);
 
   const navLabel = (id: SceneNodeId): string => {
     const node = deps.getScene()?.nodes.find((n) => n.id === id);
@@ -140,10 +149,16 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       navItems = [];
       return;
     }
+    const groups = deps.getGroups();
     navItems = [
-      ...scene.nodes.map((n): HitTarget => ({ kind: "node", id: n.id })),
-      ...scene.edges.map((e): HitTarget => ({ kind: "edge", id: e.id })),
+      ...scene.nodes.map((n): NavItem => ({ kind: "node", id: n.id })),
+      ...scene.edges.map((e): NavItem => ({ kind: "edge", id: e.id })),
+      ...groups.map((g): NavItem => ({ kind: "group", id: g.id })),
     ];
+    const groupLabel = (id: GroupId): string => {
+      const l = groups.find((g) => g.id === id)?.label ?? "";
+      return l.length > 0 ? l : "group";
+    };
     navItems.forEach((item, i) => {
       const option = document.createElement("li");
       option.id = `diagram-item-${i}`;
@@ -152,7 +167,9 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       option.textContent =
         item.kind === "node"
           ? navLabel(item.id) || `node ${i + 1}`
-          : `${edgeLabel(item.id)} (edge)`;
+          : item.kind === "edge"
+            ? `${edgeLabel(item.id)} (edge)`
+            : `${groupLabel(item.id)} (group)`;
       diagramNav.appendChild(option);
     });
     // Restore the active item + multi-selection by id (silently — re-announcing on every render would
@@ -198,13 +215,23 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       centerOnNode(item.id);
       const count = navSelectedOrder.length > 1 ? ` — ${navSelectedOrder.length} selected` : "";
       announce(`${navLabel(item.id)}, ${position}${count}. ${describeConnections(item.id)}`);
-    } else {
+    } else if (item.kind === "edge") {
       navSelectedOrder = [];
       deps.setSelection({ nodes: new Set(), edges: new Set([item.id]) }, []);
       deps.paintScene();
       deps.updateGroupButtons();
       centerOnEdge(item.id);
       announce(`${edgeLabel(item.id)}, edge, ${position}`);
+    } else {
+      // A sidecar group: select it as a unit (its member nodes) so Lock/Ungroup/relabel act on it.
+      navSelectedOrder = [];
+      deps.selectGroup(item.id);
+      deps.paintScene();
+      deps.updateGroupButtons();
+      deps.scrollToGroup(item.id);
+      const raw = deps.getGroups().find((g) => g.id === item.id)?.label ?? "";
+      const label = raw.length > 0 ? raw : "group";
+      announce(`${label}, group, ${position}. Enter to rename`);
     }
     // Keep the listbox's aria-selected in sync with the (possibly multi-) node selection.
     Array.from(diagramNav.children).forEach((child, i) => {
@@ -272,10 +299,13 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       ev.preventDefault();
       setNavActive(navItems.length - 1);
     } else if (ev.key === "Enter" && item !== null && !viewerMode) {
-      // Open the inline relabel editor on the active node or edge — parity with a canvas double-click.
+      // Open the inline relabel editor on the active item — parity with a canvas double-click (a group
+      // relabels its title, a node/edge its label).
       ev.preventDefault();
       navConnectSource = null;
-      deps.beginRelabel(deps.shownScene(scene), item, null);
+      const shown = deps.shownScene(scene);
+      if (item.kind === "group") deps.beginRelabel(shown, null, item.id);
+      else deps.beginRelabel(shown, item, null);
     } else if (
       (ev.key === "c" || ev.key === "C") &&
       item?.kind === "node" &&

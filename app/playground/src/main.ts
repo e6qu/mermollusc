@@ -1399,6 +1399,11 @@ for (const { id, kind } of ARRANGE_ACTIONS) {
 
 // Bundle the selection into a new group. Each selected node contributes its top group (nesting an
 // existing group) or itself — so groups and loose elements bundle together, in selection order.
+// Sidecar group create/ungroup/relabel changes the navigator's group category without re-rendering the
+// diagram, so these handlers (defined before the navigator) refresh it through this hook, set once the
+// navigator exists. (Cloud's text groups go through renderFromText, which rebuilds the list anyway.)
+let refreshNavigatorGroups: () => void = () => {};
+
 const groupSelection = (): void => {
   if (viewerMode) return;
   // Cloud has native text groups: gather the selected *top-level leaves* into a `group "Group" { … }`
@@ -1443,6 +1448,7 @@ const groupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  refreshNavigatorGroups();
   announce(`grouped ${units.length} item${units.length === 1 ? "" : "s"}`);
 };
 
@@ -1455,6 +1461,7 @@ const ungroupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  refreshNavigatorGroups();
   announce("ungrouped selection");
 };
 
@@ -1545,6 +1552,19 @@ const scrollToLogical = (logicalX: number, logicalY: number): void => {
   const canvasContentTop = stageWrap.scrollTop + (canvasRect.top - wrapRect.top);
   stageWrap.scrollLeft = canvasContentLeft + logicalX * viewScale - stageWrap.clientWidth / 2;
   stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
+};
+
+// Centre a sidecar group in view (the keyboard navigator lands on one) — same framing math as a node,
+// using the group's outline box in the last rendered scene.
+const scrollToGroup = (id: GroupId): void => {
+  const rendered = lastRender?.scene ?? null;
+  if (rendered === null) return;
+  const box = groupBoxes(rendered).find((b) => b.id === id);
+  if (box === undefined) return;
+  scrollToLogical(
+    MARGIN - rendered.extent.origin.x + box.x + box.w / 2,
+    MARGIN - rendered.extent.origin.y + box.y + box.h / 2,
+  );
 };
 
 // The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
@@ -2648,6 +2668,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
           doc.setGroupLabel(groupHit, next);
           doc.persist();
           paintScene();
+          refreshNavigatorGroups(); // the group's navigator label changed
         },
       };
     }
@@ -4092,11 +4113,16 @@ const navController = createNavigator({
   toggleCloudCollapse,
   cycleShape,
   focusContextBar,
+  getGroups: () => [...doc.groups().values()].map((g) => ({ id: g.id, label: g.label })),
+  selectGroup,
+  scrollToGroup,
   beginRelabel,
   shownScene,
   appendEdge,
   renderFromText,
 });
+// Now that the navigator exists, let the (earlier-defined) group handlers refresh its group list.
+refreshNavigatorGroups = () => navController.rebuild();
 
 // Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
 // itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the

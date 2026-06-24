@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { setSource } from "./support/source.js";
+import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -174,4 +174,46 @@ test("keyboard: Shift+Arrow multi-selects in the navigator and `g`/`u` group/ung
 
   await page.keyboard.press("u");
   await expect.poll(() => groupCount()).toBe(0); // and ungrouped
+});
+
+test("keyboard: a created group is listed in the navigator and Enter relabels it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const groupItem = () =>
+    page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll("#diagram-nav li")).find((li) =>
+          /\(group\)/.test(li.textContent ?? ""),
+        )?.textContent ?? null,
+    );
+
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Shift+ArrowDown");
+  await page.keyboard.press("g");
+  await expect.poll(groupItem).not.toBeNull(); // the sidecar group shows up as a navigator option
+
+  // End lands on the group (it's last); Enter opens its relabel editor.
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#inline-edit")).toBeVisible();
+  await page.evaluate(() => {
+    const el = document.querySelector<HTMLInputElement>("#inline-edit");
+    if (el !== null) el.value = "Cluster";
+  });
+  await page.keyboard.press("Enter");
+  await expect.poll(groupItem).toContain("Cluster"); // relabel reached the group's navigator entry
+});
+
+test("keyboard: `s` in the navigator cycles a flowchart node's shape", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Start] --> B[End]\n");
+
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Home"); // first node (A)
+  await page.keyboard.press("s");
+  await expectSourceMatches(page, /A\(Start\)/); // rect → round
 });
