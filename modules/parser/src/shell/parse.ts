@@ -8,6 +8,7 @@ import type {
   FlowNode,
   FlowSubgraph,
   FlowchartAst,
+  IconRef,
   NodeId,
   NodeShape,
   NodeSpans,
@@ -17,7 +18,8 @@ import type {
 import { childNodes, childTokens, imageOf, spanOf } from "./cst.js";
 import type { Children } from "./cst.js";
 import { flowchartParser } from "./grammar.js";
-import { lexingError, parseError, recognitionError } from "./parse-error.js";
+import { iconRefOf } from "./icon-ref.js";
+import { lexingError, parseError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { lexer } from "./tokens.js";
 
@@ -54,7 +56,7 @@ const toDirection = (raw: string | null): FlowDirection | null => {
   }
 };
 
-interface Ref {
+interface ShapeRef {
   readonly id: string;
   readonly label: string;
   readonly shape: NodeShape;
@@ -65,8 +67,23 @@ interface Ref {
   readonly declSpan: TextSpan;
   readonly bracketed: boolean;
 }
+interface Ref extends ShapeRef {
+  // The raw `"<pack>/<name>"` from an `icon` clause (validated by the caller), or null when absent.
+  readonly iconImage: string | null;
+  readonly iconSpan: TextSpan | null;
+}
 
 const readNodeRef = (node: CstNode): Ref => {
+  const base = readNodeShape(node);
+  const iconToken = childTokens(node.children, "QuotedString")[0];
+  return {
+    ...base,
+    iconImage: iconToken?.image ?? null,
+    iconSpan: iconToken === undefined ? null : spanOf(iconToken),
+  };
+};
+
+const readNodeShape = (node: CstNode): ShapeRef => {
   const c = node.children;
   const idToken = childTokens(c, "Identifier")[0];
   const id = idToken?.image ?? "";
@@ -201,16 +218,31 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const subgraphs: FlowSubgraph[] = [];
   const claimed = new Set<string>();
   let malformed = false;
+  // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
+  // than silently dropping to no glyph; captured here and returned after the statement walk.
+  let iconError: ParseError | null = null;
 
   // Records the refs' nodes/spans and the chain's edges; returns the statement's node ids in order.
   const processStatement = (stmt: CstNode): readonly string[] => {
     const refs = childNodes(stmt.children, "nodeRef").map(readNodeRef);
     const links = childNodes(stmt.children, "link");
     for (const ref of refs) {
+      let icon: IconRef | null = null;
+      if (ref.iconImage !== null && ref.iconSpan !== null) {
+        const r = iconRefOf(ref.iconImage);
+        if (r.ok) icon = r.value;
+        else if (iconError === null) {
+          iconError = parseErrorAt(
+            r.error,
+            ref.iconSpan.start,
+            ref.iconSpan.end - ref.iconSpan.start,
+          );
+        }
+      }
       const existing = nodeMap.get(ref.id);
       if (existing === undefined) {
         const nodeId = brand<string, "NodeId">(ref.id);
-        nodeMap.set(ref.id, { id: nodeId, label: ref.label, shape: ref.shape });
+        nodeMap.set(ref.id, { id: nodeId, label: ref.label, shape: ref.shape, icon });
         nodeSpans.set(nodeId, {
           id: ref.idSpan,
           label: ref.labelSpan,
@@ -218,7 +250,13 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
           bracketed: ref.bracketed,
         });
       } else if (ref.explicit) {
-        nodeMap.set(ref.id, { id: existing.id, label: ref.label, shape: ref.shape });
+        // A re-declaration with a shape replaces label/shape; it keeps the prior glyph unless it sets one.
+        nodeMap.set(ref.id, {
+          id: existing.id,
+          label: ref.label,
+          shape: ref.shape,
+          icon: icon ?? existing.icon,
+        });
         nodeSpans.set(existing.id, {
           id: ref.idSpan,
           label: ref.labelSpan,
@@ -294,6 +332,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   };
 
   const topLevel = processContainer(root, null);
+  if (iconError !== null) return err(iconError);
   if (malformed) return err(parseError(["internal: malformed edge chain"]));
 
   // Canonical node order = top-level nodes, then each subgraph's nodes depth-first — exactly how the

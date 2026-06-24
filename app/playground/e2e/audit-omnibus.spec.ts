@@ -16,9 +16,8 @@ test("Connect and Icons are gated to families whose grammar accepts them", async
   const connect = page.locator("#connect");
   const icons = page.locator("#icons-toggle");
 
-  // Default flowchart: no icon overrides (network/cloud/block only).
-  await expect(icons).toBeDisabled();
-  await expect(icons).toHaveAttribute("title", /icons aren't available for flowchart/);
+  // Default flowchart: icon overrides are offered (flowchart nodes can carry a glyph, e.g. BPMN).
+  await expect(icons).toBeEnabled();
 
   // Pie: neither Connect nor Icons applies.
   await setSource(page, 'pie\n  "A" : 1\n  "B" : 2\n');

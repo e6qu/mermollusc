@@ -493,7 +493,9 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
       continue;
     }
     try {
-      iconImages.set(key, await rasterizeIcon(resolved.value));
+      // Bake the active theme foreground into `currentColor` line-art (bpmn/arch/sketch) so glyphs stay
+      // legible in dark mode; the cache is cleared on a theme toggle so they re-rasterise.
+      iconImages.set(key, await rasterizeIcon(resolved.value, activeTheme().text));
     } catch (e) {
       console.error("icon decode failed:", key, messageOf(e));
       failed.push(key);
@@ -891,11 +893,11 @@ interface FamilyAffordances {
 }
 const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   switch (kind) {
+    case "flowchart":
     case "network":
     case "cloud":
     case "block":
       return { connect: true, iconOverride: true };
-    case "flowchart":
     case "state":
     case "c4":
     case "sequence":
@@ -1011,12 +1013,27 @@ const syncToolPalette = (): void => {
     activeTool = "select";
     stageWrap.setAttribute("data-tool", "select");
   }
+  // A disabled tool explains *why* on hover — the same reason `setTool` announces to the keyboard path —
+  // so the palette never reads as inertly broken; an available tool shows its hotkey label.
+  const label: Record<Tool, string> = {
+    select: "Select (V)",
+    hand: "Hand / pan (H)",
+    connect: "Connect (C)",
+    place: "Place node (P)",
+  };
+  const reason: Record<Tool, string> = {
+    select: label.select,
+    hand: label.hand,
+    connect: `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
+    place: "the place tool adds flowchart nodes",
+  };
   for (const t of TOOL_ORDER) {
     const btn = TOOL_BUTTONS[t];
     const checked = activeTool === t;
     btn.setAttribute("aria-checked", checked ? "true" : "false");
     btn.tabIndex = checked ? 0 : -1;
     btn.disabled = !available[t];
+    btn.title = available[t] ? label[t] : reason[t];
   }
 };
 
@@ -1992,8 +2009,12 @@ canvas.addEventListener("pointerdown", (ev) => {
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
   // ⌥-drag from a node (or any drag from a node under the Connect tool) starts a connect — a rubber-band
-  // to the cursor, an edge on release over another node — before the resize/move paths. Viewers can't.
-  if ((ev.altKey || tool === "connect") && !viewerMode && hit !== null && hit.kind === "node") {
+  // to the cursor, an edge on release over another node — before the resize/move paths. Viewers can't,
+  // and neither can families whose grammar can't accept the edit (else the rubber-band arms a dead
+  // gesture that, on release, triggers a full no-op re-layout).
+  const connectArmed =
+    (ev.altKey || tool === "connect") && ast !== null && familyAffordances(ast.kind).connect;
+  if (connectArmed && !viewerMode && hit !== null && hit.kind === "node") {
     const src = shown.nodes.find((nd) => nd.id === hit.id);
     if (src !== undefined) {
       ev.preventDefault();
@@ -2209,8 +2230,17 @@ canvas.addEventListener("pointerup", (ev) => {
     connectDrag = null;
     const target = scene === null ? null : hitTest(shownScene(scene), scenePoint(ev));
     if (ast !== null && target !== null && target.kind === "node" && target.id !== cd.from) {
-      editor.setValue(appendEdge(ast.kind, editor.value(), cd.from, target.id));
-      void renderFromText(editor.value());
+      // Only commit when the family's `appendEdge` actually changes the text — otherwise a full re-layout
+      // (and a nav reset) would run for nothing. The arming guard already blocks non-connectable families;
+      // this also covers a family whose builder declines a specific pair.
+      const next = appendEdge(ast.kind, editor.value(), cd.from, target.id);
+      if (next !== editor.value()) {
+        editor.setValue(next);
+        void renderFromText(next);
+      } else {
+        paintScene();
+        announce(`connect isn't available for ${ast.kind}`);
+      }
     } else {
       paintScene(); // released on empty space / the same node — clear the rubber-band
     }
@@ -3129,7 +3159,11 @@ const syncThemeLabel = (): void => {
 themeBtn.addEventListener("click", () => {
   themeCtl.toggleTheme();
   syncThemeLabel();
-  paintScene();
+  // Authored line-art glyphs bake in the theme foreground, so drop them and re-rasterise for the new
+  // theme before repainting (re-ensure is a no-op when nothing's cached / the diagram has no icons).
+  iconImages.clear();
+  if (scene !== null) void ensureIcons(scene).then(() => paintScene());
+  else paintScene();
   announce(`${themeCtl.isDark() ? "dark" : "light"} theme`);
 });
 forcedColorsQuery?.addEventListener("change", () => {
@@ -3512,6 +3546,7 @@ const navController = createNavigator({
   getScene: () => scene,
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
+  canConnect: (kind) => familyAffordances(kind).connect,
   isViewerMode: () => viewerMode,
   editor,
   scrollToLogical,

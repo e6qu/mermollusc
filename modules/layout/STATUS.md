@@ -15,6 +15,11 @@
   and flattens ELK's parent-relative child coordinates to absolutes (`PositionedNode.parent` tags the
   container). `toScene` emits a `container`-shape SceneNode per subgraph with members parented to it —
   which the renderer's existing C4-boundary `container` rendering draws, so no renderer change.
+  **Edge geometry is also container-relative** under INCLUDE_CHILDREN: ELK tags each returned edge with
+  its least-common-ancestor `container` and returns its sections + label box *relative to that container*.
+  `toPositioned` records every container's absolute origin while flattening nodes and offsets each edge's
+  points + label by it (root → 0,0), so an intra-subgraph edge's endpoints land on its member boxes
+  rather than a container-origin away (the old bug made internal edges look detached / routed around).
 - `layoutSequence(ast)` (pure): actors row, vertical dashed lifelines, stacked message arrows.
 - `layoutC4(ast)` (pure): nested-box layout — boundaries wrap their children; relations are
   straight centre-to-centre edges.

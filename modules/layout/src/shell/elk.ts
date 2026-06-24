@@ -103,6 +103,10 @@ const LabelZ = z.object({
 });
 const EdgeZ = z.object({
   id: z.string(),
+  // The id of the edge's least-common-ancestor container (`"root"` at the top level). Under
+  // `hierarchyHandling: INCLUDE_CHILDREN` ELK returns an edge's section + label coordinates *relative
+  // to this container*, so they must be offset by the container's absolute origin to become absolute.
+  container: z.string().optional(),
   sections: z.array(SectionZ).optional(),
   labels: z.array(LabelZ).optional(),
 });
@@ -176,10 +180,11 @@ const toElkInputEdge = (e: LayoutGraph["edges"][number]): ElkInputEdge => {
 
 const toElkInput = (g: LayoutGraph) => ({
   id: g.id,
-  // INCLUDE_CHILDREN lays the whole hierarchy out together and routes cross-subgraph edges; edges
-  // stay declared on the root, so their returned coordinates are already in root (absolute) space.
-  // `edgeLabels.placement: CENTER` makes ELK reserve routing space for each edge's midpoint label and
-  // return its position, so a label clears the nodes instead of overlapping them.
+  // INCLUDE_CHILDREN lays the whole hierarchy out together and routes cross-subgraph edges. ELK then
+  // returns each edge's geometry relative to the edge's least-common-ancestor container (tagged on the
+  // edge as `container`); `toPositioned` offsets by that container's absolute origin. `edgeLabels.
+  // placement: CENTER` makes ELK reserve routing space for each edge's midpoint label and return its
+  // position, so a label clears the nodes instead of overlapping them.
   layoutOptions: {
     ...elkLayoutOptions(g.config),
     "elk.hierarchyHandling": "INCLUDE_CHILDREN",
@@ -192,8 +197,13 @@ const toElkInput = (g: LayoutGraph) => ({
 
 const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
   // Child coordinates are relative to their parent; accumulate ancestor offsets into absolutes and
-  // tag each node with its container so the renderer can nest them.
+  // tag each node with its container so the renderer can nest them. We also record each container's
+  // absolute origin (keyed by id) so edge geometry — which ELK returns relative to the edge's container
+  // — can be offset back to absolute below. The top level is `"root"` at the origin.
   const nodes: PositionedNode[] = [];
+  const containerOrigin = new Map<string, { readonly x: number; readonly y: number }>([
+    ["root", { x: 0, y: 0 }],
+  ]);
   const flatten = (
     children: readonly ElkNode[] | undefined,
     parent: NodeId | null,
@@ -205,6 +215,7 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
       const y = oy + c.y;
       const id = brand<string, "NodeId">(c.id);
       nodes.push({ id, x, y, width: c.width, height: c.height, parent });
+      containerOrigin.set(c.id, { x, y });
       flatten(c.children, id, x, y);
     }
   };
@@ -214,18 +225,24 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
     height: r.height,
     nodes,
     edges: (r.edges ?? []).map((e) => {
+      // ELK returns this edge's geometry relative to its `container` (the least-common-ancestor subgraph,
+      // or `"root"`); shift by that container's absolute origin to make it absolute. A missing tag means
+      // the top level.
+      const off = containerOrigin.get(e.container ?? "root") ?? { x: 0, y: 0 };
       // An edge crossing a container boundary is split into multiple `sections`; concatenate them all
       // so the full route survives (taking only `sections[0]` truncated such edges).
       const points = (e.sections ?? []).flatMap((s) => [
-        s.startPoint,
-        ...(s.bendPoints ?? []),
-        s.endPoint,
+        { x: s.startPoint.x + off.x, y: s.startPoint.y + off.y },
+        ...(s.bendPoints ?? []).map((p) => ({ x: p.x + off.x, y: p.y + off.y })),
+        { x: s.endPoint.x + off.x, y: s.endPoint.y + off.y },
       ]);
-      // ELK returns the label's top-left (absolute, since edges live on the root); the renderer centres
-      // labels, so hand it the label-box centre.
+      // ELK returns the label's top-left in the same container-relative space; the renderer centres
+      // labels, so hand it the absolute label-box centre.
       const lbl = e.labels?.[0];
       const labelPos =
-        lbl === undefined ? null : { x: lbl.x + lbl.width / 2, y: lbl.y + lbl.height / 2 };
+        lbl === undefined
+          ? null
+          : { x: off.x + lbl.x + lbl.width / 2, y: off.y + lbl.y + lbl.height / 2 };
       return { id: brand<string, "EdgeId">(e.id), points, labelPos };
     }),
   };
@@ -281,12 +298,14 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
       id: brand<string, "NodeId">(s.id),
       label: s.label,
       shape: stateShape(s.kind),
+      icon: null,
     })),
     // Each note is a plain rect; an arrowless connector to its target makes ELK place it adjacent.
     ...ast.notes.map((n) => ({
       id: brand<string, "NodeId">(n.id),
       label: n.text,
       shape: "rect" as const,
+      icon: null,
     })),
   ],
   edges: [

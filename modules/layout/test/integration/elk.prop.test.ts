@@ -34,7 +34,7 @@ const astArb: fc.Arbitrary<FlowchartAst> = fc.integer({ min: 1, max: 5 }).chain(
       (r): FlowchartAst => ({
         kind: "flowchart",
         direction: r.direction,
-        nodes: r.labels.map((label, i) => ({ id: nid(`n${i}`), label, shape: r.shapes[i] ?? "rect" })),
+        nodes: r.labels.map((label, i) => ({ id: nid(`n${i}`), label, shape: r.shapes[i] ?? "rect" , icon: null })),
         edges: r.edges.map((e, j) => ({
           id: eid(`e${j}`),
           from: nid(`n${e.from % count}`),

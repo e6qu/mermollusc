@@ -12,8 +12,8 @@ describe("print", () => {
       kind: "flowchart",
       direction: "LR",
       nodes: [
-        { id: nid("A"), label: "Start", shape: "round" },
-        { id: nid("B"), label: "Decision", shape: "diamond" },
+        { id: nid("A"), label: "Start", shape: "round" , icon: null },
+        { id: nid("B"), label: "Decision", shape: "diamond" , icon: null },
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: "go" }],
       subgraphs: [],
@@ -26,8 +26,8 @@ describe("print", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("api"), label: "API", shape: "rect" },
-        { id: nid("user"), label: "User", shape: "rect" },
+        { id: nid("api"), label: "API", shape: "rect" , icon: null },
+        { id: nid("user"), label: "User", shape: "rect" , icon: null },
       ],
       edges: [{ id: eid("e0"), from: nid("user"), to: nid("api"), kind: "arrow", label: null }],
       subgraphs: [{ id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api")] }],

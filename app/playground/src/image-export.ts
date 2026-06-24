@@ -163,7 +163,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       const key = `${node.icon.pack}/${node.icon.name}`;
       if (icons.has(key)) continue;
       const resolved = findIcon(deps.getRegistry(), node.icon.pack, node.icon.name);
-      if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value));
+      if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value, deps.activeTheme().text));
       else console.error("icon resolve failed:", resolved.error.message);
     }
     const svg = toSvg(toDisplayList(shown), {

@@ -560,11 +560,15 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       labels.push(endLabel(edge.toLabel, last, prev));
     }
   }
-  const nodes = scene.nodes.flatMap(nodeCmds);
+  // Container nodes (subgraph / boundary backgrounds) draw *behind* the edges, so an edge between two
+  // members inside a subgraph isn't hidden by the container's fill; leaf nodes draw in front of the
+  // edges so a link is cleanly occluded by any box it crosses.
+  const containers = scene.nodes.filter((n) => n.shape === "container").flatMap(nodeCmds);
+  const leaves = scene.nodes.filter((n) => n.shape !== "container").flatMap(nodeCmds);
   const wedges = scene.wedges.flatMap(wedgeCmds);
   const decorations = scene.decorations.map(decorationCmd);
   // Decorations (axis chrome) draw first, behind everything else.
-  return [...decorations, ...wedges, ...edges, ...nodes, ...labels];
+  return [...decorations, ...containers, ...wedges, ...edges, ...leaves, ...labels];
 };
 
 // Axis chrome → draw commands: a `band` is a filled background rect; a `rule` is a markerless dashed

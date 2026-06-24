@@ -16,6 +16,9 @@ export interface NavigatorDeps {
   // The scene that was last painted (used for centring); usually identical to getScene().
   readonly getRenderedScene: () => Scene | null;
   readonly getAst: () => DiagramAst | null;
+  // Whether the family's grammar can accept a new edge — so keyboard Connect (`c`) doesn't arm a source
+  // and walk the user into a two-step gesture that can't commit. Mirrors the palette/button gating.
+  readonly canConnect: (kind: DiagramAst["kind"]) => boolean;
   readonly isViewerMode: () => boolean;
   readonly editor: Editor;
   readonly scrollToLogical: (logicalX: number, logicalY: number) => void;
@@ -216,6 +219,11 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       ev.preventDefault();
       const ast = deps.getAst();
       if (ast === null) return;
+      // Gate up front so the user isn't armed into a gesture the grammar can't accept.
+      if (!deps.canConnect(ast.kind)) {
+        announce(`connect isn't available for ${ast.kind}`);
+        return;
+      }
       if (navConnectSource === null) {
         navConnectSource = item.id;
         announce(`connecting from ${navLabel(item.id)} — move to a target and press c`);

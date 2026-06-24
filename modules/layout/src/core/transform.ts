@@ -164,7 +164,7 @@ export const toScene = (
       label: fn.label,
       shape: fn.shape,
       parent,
-      icon: null,
+      icon: fn.icon,
       rows: null,
       rowDivider: null,
       subtitle: null,

@@ -14,6 +14,9 @@ export interface FlowNode {
   readonly id: NodeId;
   readonly label: string;
   readonly shape: NodeShape;
+  // An optional glyph override (`icon "<pack>/<name>"`), e.g. a BPMN event/gateway/task glyph; null
+  // when none. Mirrors network/cloud/block nodes so a flowchart node can carry a pack glyph too.
+  readonly icon: IconRef | null;
 }
 
 export interface FlowEdge {

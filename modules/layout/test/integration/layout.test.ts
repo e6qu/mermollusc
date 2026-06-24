@@ -30,8 +30,8 @@ const A_THEN_B: FlowchartAst = {
   kind: "flowchart",
   direction: "TB",
   nodes: [
-    { id: nid("A"), label: "A", shape: "rect" },
-    { id: nid("B"), label: "B", shape: "rect" },
+    { id: nid("A"), label: "A", shape: "rect" , icon: null },
+    { id: nid("B"), label: "B", shape: "rect" , icon: null },
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
   subgraphs: [],
@@ -46,8 +46,8 @@ describe("layout", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("A"), label: "Start", shape: "rect" },
-        { id: nid("B"), label: "End", shape: "round" },
+        { id: nid("A"), label: "Start", shape: "rect" , icon: null },
+        { id: nid("B"), label: "End", shape: "round" , icon: null },
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
       subgraphs: [],
@@ -72,9 +72,9 @@ describe("layout", () => {
       kind: "flowchart",
       direction: "TB",
       nodes: [
-        { id: nid("api"), label: "API", shape: "rect" },
-        { id: nid("db"), label: "DB", shape: "rect" },
-        { id: nid("user"), label: "User", shape: "rect" },
+        { id: nid("api"), label: "API", shape: "rect" , icon: null },
+        { id: nid("db"), label: "DB", shape: "rect" , icon: null },
+        { id: nid("user"), label: "User", shape: "rect" , icon: null },
       ],
       edges: [
         { id: eid("e0"), from: nid("api"), to: nid("db"), kind: "arrow", label: null },
@@ -104,6 +104,46 @@ describe("layout", () => {
     expect(a.origin.y).toBeGreaterThanOrEqual(b.origin.y);
     expect(a.origin.x + a.size.width).toBeLessThanOrEqual(b.origin.x + b.size.width);
     expect(a.origin.y + a.size.height).toBeLessThanOrEqual(b.origin.y + b.size.height);
+  });
+
+  it("routes every edge's endpoints onto its member boxes, including intra-subgraph edges", async () => {
+    // Guards the container-offset bug: ELK returns an intra-subgraph edge's geometry relative to its
+    // subgraph, so without offsetting it back to absolute the endpoints land a container-origin away
+    // from their nodes (edges appear detached / route 'around' the subgraph). One subgraph-internal
+    // edge (api->db) and one crossing edge (user->api) cover both cases.
+    const ast: FlowchartAst = {
+      kind: "flowchart",
+      direction: "TB",
+      nodes: [
+        { id: nid("api"), label: "API", shape: "rect" , icon: null },
+        { id: nid("db"), label: "DB", shape: "rect" , icon: null },
+        { id: nid("user"), label: "User", shape: "rect" , icon: null },
+      ],
+      edges: [
+        { id: eid("e0"), from: nid("api"), to: nid("db"), kind: "arrow", label: "calls" },
+        { id: eid("e1"), from: nid("user"), to: nid("api"), kind: "arrow", label: null },
+      ],
+      subgraphs: [
+        { id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api"), nid("db")] },
+      ],
+    };
+    const r = await layout(ast, new Map(), heuristicMeasure);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const byId = new Map(r.value.nodes.map((n) => [n.id, n.bounds]));
+    const near = (p: { x: number; y: number }, b: ReturnType<typeof byId.get>): boolean =>
+      b !== undefined &&
+      p.x >= b.origin.x - 6 &&
+      p.x <= b.origin.x + b.size.width + 6 &&
+      p.y >= b.origin.y - 6 &&
+      p.y <= b.origin.y + b.size.height + 6;
+    for (const e of r.value.edges) {
+      const first = e.waypoints[0];
+      const last = e.waypoints[e.waypoints.length - 1];
+      if (last === undefined) throw new Error("edge has no waypoints");
+      expect(near(first, byId.get(e.from))).toBe(true);
+      expect(near(last, byId.get(e.to))).toBe(true);
+    }
   });
 
   it("relaxes around a seed: flipped seed order flips the layout", async () => {
