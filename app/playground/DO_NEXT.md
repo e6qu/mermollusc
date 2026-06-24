@@ -188,3 +188,22 @@ Still open (lower priority, each bounded):
 - Minimap arrow-pan has no spoken feedback (LOW; the navigator is the primary SR surface).
 - (Moot) `deleteEdge` of an `A -- text --> B` inline-labelled flowchart edge: that syntax doesn't parse
   in this grammar, so the no-op is unreachable.
+
+## Family connect + realism review (gitGraph/timeline connect PR)
+Added: gitGraph connect = merge branches, timeline connect = re-parent an event to a period (mindmap
+already re-parented). A three-agent review (family-capability matrix, UX-flow, anti-fake) confirmed the
+product is real (no facades) and surfaced over-promising affordances, now fixed: honest delete/relabel
+messages where an item has no source line, resize handles gated to box families, family-accurate connect
+confirmations, navigator S/E announce off-family, network Group title corrected, collab disconnect
+severity, and assorted doc-rot (c4/cloud add-node comments, collab/icons STATUS).
+Deferred (each bounded, not a fake — all fail loud or are cosmetic):
+- DOT import loads as a flowchart, so Add/Connect inject flowchart syntax into a `digraph{…}` body and
+  the next parse rejects it (loud, not silent). Gate Add/Connect/Shape on the parsed `family === "dot"`
+  (read-only-ish import) rather than `ast.kind === "flowchart"`.
+- gitGraph/timeline node delete could be *implemented* (commit-span delete; timeline event/period line
+  removal) rather than just gated honestly — a real capability upgrade if wanted.
+- `flashStatus` confirmations (add/duplicate/connect/shape) don't nudge the task HUD the way the
+  `setStatusAndAnnounce` ones do — unify the confirmation channel.
+- `routeWaypoints` straight-line fallback for <2-point ELK sections vs. layout's "no positional
+  fallback" wording — return a LayoutError or carve out the wording.
+- `e2e/network-icons.spec.ts` asserts only `errors==[]`; assert painted pixels / registry resolution.

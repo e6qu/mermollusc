@@ -31,11 +31,12 @@
   - `k8sPack` — 25 official Kubernetes *resource* shapes from kubernetes/community **Apache-2.0**
     (pod, deploy, svc, ing, cm, secret, sts, ds, rs, job, cronjob, hpa, crd, netpol, … + node).
   - resolve via `findIcon(registry, "simpleicons"|"devicon"|"gilbarbara"|"k8s", <name>)`.
-- **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/cncf.json` — the full CNCF landscape
+- **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/open/cncf.json` — the full CNCF landscape
   (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
   wanted. Kept out of the bundle so it can't affect app/test performance.
-- tests: 15 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
-  valid/invalid + default/explicit categories, BPMN + sketch packs, vendored-pack provenance).
+- tests: 16 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
+  valid/invalid + default/explicit categories incl. the script/handler/foreignObject reject, BPMN +
+  sketch packs, vendored-pack provenance).
 - The **cloud** family renders these marks (kind→slug map); the **network**, **cloud**, and **block**
   families each accept a per-node `icon "<pack>/<name>"` override (`icon: IconRef | null` on their AST
   nodes) that resolves against any registered pack.
