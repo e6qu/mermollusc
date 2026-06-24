@@ -12,24 +12,33 @@
     stay flowchart-only; c4/cloud/er/class — typed/nested node decls — remain gated.)
   - *(done)* **B6 — block orthogonal edge routing**, via a shared `core/route.ts orthogonalRoute` (also
     used by cloud).
-  - **Still open:** add-node for **er/class/state** (name-as-id duplication needs a label→id derivation);
-    **c4/cloud** node creation (typed/nested decls). **B4/B5 + provenance (optional):** family-aware
-    connect for gitGraph/timeline/mindmap; signpost the placeholder labels connect inserts; promote the
-    AWS-trademark caveat into `source-icons.mjs`'s header.
+  - *(done)* **add-node now covers all nine graph families** (flowchart/block/network/sequence/er/class/
+    state/c4/cloud); *(done)* provenance caveat in `source-icons.mjs`.
+  - *(done)* **B4 — mindmap connect** re-parents a node (`connectMindmap`).
+  - **B4 — timeline/gitGraph connect: deliberately NOT done — the connect gesture doesn't map cleanly.**
+    *Timeline:* an event lives `:`-delimited on its period's line (`Parser : Flowchart : Sequence`); a
+    "connect event→period" would have to splice the event token out of one line and onto another, and only
+    makes sense event→period (not the symmetric node→node the gesture implies). Viable but niche — would
+    want a dedicated drag-an-event affordance, not generic Connect. *gitGraph:* commits are command-
+    sequential and merges are **branch**-level, so "add commit B as a parent of A" has no faithful
+    single-edit representation. Recommend leaving both `connect:false` rather than bolting on a confusing
+    verb. **B5 (optional):** auto-signpost the placeholder labels connect inserts (sequence/c4/er/req).
 
 - **Miro-like round (landed).** A whiteboard tool model (`select|hand|connect|place`, V/H/C/P +
   Space-pan + Esc→select, tool-aware cursors), a floating tool palette (radiogroup, roving tabindex,
   per-family disable/fallback), a selection context mini-toolbar (thin view over existing handlers via a
   shared `CapabilityState`), the zoom cluster relocated onto the stage, and deeper two-way-edit tests.
   Remaining for a later pass:
-  - **Place beyond flowchart** — Place only adds flowchart nodes today (the only family `addNode`
-    supports); extend once the builder gains family-aware node insertion.
-  - **Mobile widgets** — the palette + context bar are hidden under 760px (pointer-precision
-    affordances); a touch-friendly variant could replace them rather than just hiding.
-  - **Two-history undo test + delete-shared-line note** — from the review's test plan, still worth
-    adding: an `undo.spec` case codifying that canvas ⌘Z drives the overlay history only (not text), and
-    a `delete-shared-line` spec + `modules/builder/BUGS.md` note pinning line-based `deleteNode`'s
-    collateral-loss limitation.
+  - *(done)* **Place beyond flowchart** — Place now drops a node (shared `appendNode` + a position
+    override) for every `canAddNode` family.
+  - *(done)* **Two-history undo + delete collateral loss** — `undo.spec` codifies canvas ⌘Z = overlay
+    only; deleting a node that shares an edge line now re-declares the surviving endpoints (was: whole
+    diagram could vanish), with an e2e.
+  - **Mobile widgets (deferred — needs real device testing).** The palette + context bar are hidden
+    under 760px deliberately (pointer-precision affordances). A *good* touch variant means larger targets,
+    gesture handling (pinch-zoom vs pan), and reflow — verified on real devices, which can't be done from
+    here. Un-hiding as a CSS tweak would be a worse experience than the deliberate hide, so this wants its
+    own focused pass with device testing, not a bundled change.
 - **Audit follow-ups (omnibus pass).** From the multi-dimension UX/architecture audit, the safe and
   high-value findings landed in this change (family-capability gating, fail-loud label validation,
   layout-preserving text edits, share-carries-overlay, a11y naming, platform-aware shortcut hints,

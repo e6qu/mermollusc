@@ -26,8 +26,8 @@ test("clicking a palette tool arms it and moves the radiogroup's checked state",
 
 test("arrow keys rove the palette radiogroup, skipping disabled tools", async ({ page }) => {
   await ready(page);
-  // network supports connect + icons but not place — Place must be skipped by roving.
-  await setSource(page, 'network\n  server web "Web"\n  server db "DB"\n');
+  // mindmap supports connect (re-parent) but not place — Place must be skipped by roving.
+  await setSource(page, "mindmap\n  root\n    A\n    B\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await expect(page.locator("#tool-place")).toBeDisabled();
 

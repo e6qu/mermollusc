@@ -1,9 +1,11 @@
 # @m/builder — do next
 
 - Span-accurate delete (per-statement spans from the parser) to replace the line-based `deleteNode`/
-  `deleteEdge` heuristic. Note: deleting a node mid-chain (`A --> B --> C`) is a semantic choice, not
-  just a span removal — the line-based version removes the whole chain line; decide the intended
-  behaviour before reworking.
+  `deleteEdge` heuristic. *The mid-chain collateral loss is now handled app-side* (`deleteSelection`
+  re-declares any survivor a shared edge line took down, via the family-agnostic `appendNode`), so the
+  semantic question "deleting `B` from `A --> B --> C` keeps `A` and `C` as bare nodes" is answered. A
+  parser-span rework would still be cleaner (no extra render, no re-declare round-trip), but it's no
+  longer a correctness gap — lower priority now.
 - Wire the app shell to call `validateLabel(label, context)` before committing every inline
   edge/element label edit (the `patchAt`/`commit` path in `beginRelabel`): flowchart/network/cloud/block
   pipe labels → `pipe`; C4 element/relation labels → `quoted`; the remaining families → `plain`. Surface

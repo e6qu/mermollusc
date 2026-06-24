@@ -8,6 +8,7 @@ import {
   parseNetworkWithSource,
   parseSequenceWithSource,
   parseStateWithSource,
+  parseMindmapWithSource,
   parseWithSource,
 } from "@m/parser";
 import { describe, expect, it } from "vitest";
@@ -18,6 +19,7 @@ import {
   connectClass,
   connectEr,
   connectMessage,
+  connectMindmap,
   connectRequirement,
   connectUndirected,
   deleteActor,
@@ -415,5 +417,42 @@ describe("relabelNode", () => {
     const next = deleteMessage(text, aid("A"), aid("B"));
     expect(next).not.toContain("one");
     expect(next).toContain("two");
+  });
+
+  it("connectMindmap re-parents a node's subtree under the target, re-indented", () => {
+    const text = "mindmap\n  root\n    A\n      A1\n    B\n";
+    const r = parseMindmapWithSource(text);
+    if (!isOk(r)) throw new Error("parse");
+    const { ast, source } = r.value;
+    const idOf = (label: string): string => {
+      const n = ast.nodes.find((x) => x.label === label);
+      if (n === undefined) throw new Error(`no ${label}`);
+      return n.id;
+    };
+    // Make B a child of A: B moves to A's first child, indented one level deeper.
+    const next = connectMindmap(text, source, ast, brand(idOf("A")), brand(idOf("B")));
+    expect(next).toBe("mindmap\n  root\n    A\n      B\n      A1\n");
+    const r2 = parseMindmapWithSource(next);
+    if (!isOk(r2)) throw new Error("reparse");
+    const a = r2.value.ast.nodes.find((n) => n.label === "A");
+    const b = r2.value.ast.nodes.find((n) => n.label === "B");
+    expect(b?.parent).toBe(a?.id);
+  });
+
+  it("connectMindmap is a no-op for the root, a cycle, or an existing child", () => {
+    const text = "mindmap\n  root\n    A\n      A1\n";
+    const r = parseMindmapWithSource(text);
+    if (!isOk(r)) throw new Error("parse");
+    const { ast, source } = r.value;
+    const idOf = (label: string): string => {
+      const n = ast.nodes.find((x) => x.label === label);
+      if (n === undefined) throw new Error(`no ${label}`);
+      return n.id;
+    };
+    const mm = (p: string, c: string): string =>
+      connectMindmap(text, source, ast, brand(idOf(p)), brand(idOf(c)));
+    expect(mm("A", "root")).toBe(text); // can't re-parent the root
+    expect(mm("A1", "A")).toBe(text); // A under its own descendant A1 → cycle
+    expect(mm("A", "A1")).toBe(text); // A1 is already A's child → no change
   });
 });

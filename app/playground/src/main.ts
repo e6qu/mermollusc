@@ -6,6 +6,7 @@ import {
   connectClass,
   connectEr,
   connectMessage,
+  connectMindmap,
   connectRequirement,
   connectUndirected,
   decodeOverlay,
@@ -61,6 +62,7 @@ import type {
   NodeShape,
   OverlayDoc,
   Scene,
+  SceneNode,
   SceneNodeId,
   SequenceSource,
   SourceMap,
@@ -911,9 +913,12 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
       return { connect: true, iconOverride: false, addNode: true };
     case "requirement":
       return { connect: true, iconOverride: false, addNode: false };
+    case "mindmap":
+      // Connect re-parents a node (drag one node onto another to nest it); no Add (a node's place is its
+      // indentation, set by where you connect it).
+      return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
     case "timeline":
-    case "mindmap":
     case "pie":
     case "gantt":
       return { connect: false, iconOverride: false, addNode: false };
@@ -1013,7 +1018,7 @@ const syncToolPalette = (): void => {
     select: true,
     hand: true,
     connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
-    place: !viewerMode && ast !== null && ast.kind === "flowchart",
+    place: !viewerMode && ast !== null && familyAffordances(ast.kind).addNode,
   };
   if (!available[activeTool]) {
     activeTool = "select";
@@ -1031,7 +1036,7 @@ const syncToolPalette = (): void => {
     select: label.select,
     hand: label.hand,
     connect: `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
-    place: "the place tool adds flowchart nodes",
+    place: `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
   };
   for (const t of TOOL_ORDER) {
     const btn = TOOL_BUTTONS[t];
@@ -1930,8 +1935,11 @@ const setTool = (t: Tool): void => {
     );
     return;
   }
-  if (t === "place" && !(ast !== null && ast.kind === "flowchart")) {
-    setStatusAndAnnounce("ok", "the place tool adds flowchart nodes");
+  if (t === "place" && !(ast !== null && familyAffordances(ast.kind).addNode)) {
+    setStatusAndAnnounce(
+      "ok",
+      `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
+    );
     return;
   }
   if (viewerMode && t !== "select" && t !== "hand") return;
@@ -1947,15 +1955,16 @@ const setTool = (t: Tool): void => {
 // Place tool: drop a fresh flowchart node at the clicked point, pin it, select it, return to select.
 // Mirrors `duplicateSelection`'s add-then-pin pattern — node geometry never enters the source text.
 const placeNodeAt = async (at: Point): Promise<void> => {
-  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
-  const used = new Set<string>(ast.nodes.map((n) => n.id));
-  let n = 1;
-  while (used.has(`n${n}`)) n++;
-  const id = `n${n}`;
-  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(id), `node ${n}`, "rect"));
-  await renderFromText(editor.value());
+  if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
+  const used = new Set<string>(scene.nodes.map((n) => n.id));
+  const { id, label } = newNodeIdLabel(ast.kind, used);
+  const next = appendNode(ast.kind, editor.value(), id, label, "rect");
+  if (next === editor.value()) return;
+  editor.setValue(next);
+  await renderFromText(next);
   if (scene === null) return;
   const sid = brand<string, "SceneNodeId">(id);
+  // Pin the new node where it was dropped (the override moves it for any family, deterministic or not).
   doc.record();
   doc.moveNode(sid, at);
   doc.persist();
@@ -1964,7 +1973,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   paintScene();
   updateGroupButtons();
   setTool("select");
-  announce(`placed node ${n}`);
+  announce(`placed ${label}`);
 };
 
 for (const t of TOOL_ORDER) {
@@ -1998,7 +2007,7 @@ canvas.addEventListener("pointerdown", (ev) => {
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
   const tool = effectiveTool();
   // Place tool: a click drops a new node at the pointer (flowchart only), then snaps back to select.
-  if (tool === "place" && ast !== null && ast.kind === "flowchart" && !viewerMode) {
+  if (tool === "place" && ast !== null && familyAffordances(ast.kind).addNode && !viewerMode) {
     ev.preventDefault();
     void placeNodeAt(at);
     return;
@@ -2248,6 +2257,7 @@ canvas.addEventListener("pointerup", (ev) => {
       if (next !== editor.value()) {
         editor.setValue(next);
         void renderFromText(next);
+        announce(`connected${connectHint(ast.kind)}`);
       } else {
         paintScene();
         announce(`connect isn't available for ${ast.kind}`);
@@ -2640,20 +2650,25 @@ const freshNode = (
   return { id: `n${n}`, label: labelHint };
 };
 
+// The id/label for a *brand new* node (Add / Place): name-as-id families get a unique family-base name
+// (Entity/Class/State…); the rest get `n<N>` + a `node <N>` label tracking the id number.
+const newNodeIdLabel = (
+  kind: DiagramAst["kind"],
+  used: ReadonlySet<string>,
+): { readonly id: string; readonly label: string } => {
+  if (NAME_AS_ID.has(kind)) {
+    const id = uniqueId(used, ADD_BASE[kind] ?? "Node");
+    return { id, label: id };
+  }
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  return { id: `n${n}`, label: `node ${n}` };
+};
+
 addBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
   const used = new Set<string>(scene.nodes.map((n) => n.id));
-  let id: string;
-  let label: string;
-  if (NAME_AS_ID.has(ast.kind)) {
-    id = uniqueId(used, ADD_BASE[ast.kind] ?? "Node");
-    label = id;
-  } else {
-    let n = 1;
-    while (used.has(`n${n}`)) n++;
-    id = `n${n}`;
-    label = `node ${n}`; // the display label tracks the id number, as before
-  }
+  const { id, label } = newNodeIdLabel(ast.kind, used);
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
   editor.setValue(next);
@@ -2787,9 +2802,24 @@ connectBtn.addEventListener("click", () => {
   editor.setValue(text);
   void renderFromText(text);
   announce(
-    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}`,
+    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
   );
 });
+
+// Families whose connect writes a *placeholder* label the user will usually want to rename right away;
+// the connect handlers append this to their announcement so the inserted stub is signposted.
+const CONNECT_PLACEHOLDER: Partial<Record<DiagramAst["kind"], string>> = {
+  sequence: "message",
+  c4: "relationship",
+  er: "relationship",
+  requirement: "link",
+};
+const connectHint = (kind: DiagramAst["kind"]): string => {
+  const placeholder = CONNECT_PLACEHOLDER[kind];
+  return placeholder === undefined
+    ? ""
+    : ` — added a placeholder ${placeholder} label, double-click to rename`;
+};
 
 const appendEdge = (
   kind: DiagramAst["kind"],
@@ -2845,12 +2875,22 @@ const appendEdge = (
         brand<string, "NodeId">(second),
         "arrow",
       );
-    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline/mindmap grammars would
-    // reject the flowchart `A --> B` arrow (it would grey the diagram). Connect is a no-op for all of
-    // them — `familyAffordances` also disables the button so this branch is defence-in-depth.
+    // Mindmap connect re-parents `first`→`second` (makes the target a child of the source) by editing the
+    // indentation tree; it needs the AST levels + line spans, available from module state here.
+    case "mindmap":
+      return ast !== null && ast.kind === "mindmap" && mindmapSource !== null
+        ? connectMindmap(
+            text,
+            mindmapSource,
+            ast,
+            brand<string, "MindmapNodeId">(first),
+            brand<string, "MindmapNodeId">(second),
+          )
+        : text;
+    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline grammars would reject a
+    // generic arrow. Connect stays a no-op for these — `familyAffordances` also gates the button.
     case "gitGraph":
     case "timeline":
-    case "mindmap":
     case "pie":
     case "gantt":
       return text;
@@ -2953,10 +2993,32 @@ const ganttLineStart = (id: SceneNodeId): number =>
 
 // Remove the selected nodes (and their edges) from the source text in the active family's syntax.
 // Shared by the Delete key and the selection context toolbar's Delete button.
-const deleteSelection = (): void => {
-  if (viewerMode || ast === null) return;
+const deleteSelection = async (): Promise<void> => {
+  if (viewerMode || ast === null || scene === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   const kind = ast.kind;
+  // The leaf nodes that should survive (everything not being deleted). In families where nodes are
+  // referenced inline on edge lines (`A --> B`), a line-based delete of one node takes the whole line —
+  // and with it the *other* endpoint's only reference — so we re-declare any survivor that vanished.
+  // Containers are layout artifacts, not source declarations.
+  const deleted = new Set<string>(selectionOrder);
+  const shown = shownScene(scene);
+  const shownById = new Map(shown.nodes.map((n) => [n.id, n]));
+  // A node counts as deleted if it *or any ancestor* is being deleted — deleting a container (a c4
+  // boundary, a composite state) intentionally removes its nested children, so they aren't "survivors".
+  const isDeleted = (node: SceneNode): boolean => {
+    let cur: SceneNode | undefined = node;
+    const seen = new Set<string>();
+    while (cur !== undefined && !seen.has(cur.id)) {
+      if (deleted.has(cur.id)) return true;
+      seen.add(cur.id);
+      cur = cur.parent === null ? undefined : shownById.get(cur.parent);
+    }
+    return false;
+  };
+  const survivors = shown.nodes
+    .filter((n) => n.shape !== "container" && !isDeleted(n))
+    .map((n) => ({ id: n.id, label: n.label, shape: n.shape }));
   let text = editor.value();
   // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
   // earlier line's offset, keeping each remaining span valid against the prior edit.
@@ -2966,16 +3028,33 @@ const deleteSelection = (): void => {
       : selectionOrder;
   const removedCount = order.length + selection.edges.size;
   for (const id of order) text = removeNode(kind, text, id);
-  if (scene !== null) {
-    for (const edgeId of selection.edges) {
-      const edge = scene.edges.find((e) => e.id === edgeId);
-      if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
-    }
+  for (const edgeId of selection.edges) {
+    const edge = scene.edges.find((e) => e.id === edgeId);
+    if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
   }
   selection = emptySelection;
   selectionOrder = [];
   editor.setValue(text);
-  void renderFromText(text);
+  await renderFromText(text);
+  // Restore any survivor the delete collaterally dropped (only the inline-edge families can hit this;
+  // for the rest every survivor is still present, so this is a no-op). One extra render, only when needed.
+  if (scene !== null && familyAffordances(kind).addNode) {
+    const present = new Set<string>(scene.nodes.map((n) => n.id));
+    let restored = editor.value();
+    let changed = false;
+    for (const s of survivors) {
+      if (present.has(s.id)) continue;
+      const next = appendNode(kind, restored, s.id, s.label, s.shape);
+      if (next !== restored) {
+        restored = next;
+        changed = true;
+      }
+    }
+    if (changed) {
+      editor.setValue(restored);
+      await renderFromText(restored);
+    }
+  }
   // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
   setStatusAndAnnounce(
     "ok",
@@ -2993,7 +3072,7 @@ window.addEventListener("keydown", (ev) => {
   if (viewerMode || ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
-  deleteSelection();
+  void deleteSelection();
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
@@ -3130,7 +3209,7 @@ ctxGroupBtn.addEventListener("click", () => groupBtn.click());
 ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
 ctxLockBtn.addEventListener("click", () => lockBtn.click());
 ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
-ctxDeleteBtn.addEventListener("click", deleteSelection);
+ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
@@ -3650,6 +3729,7 @@ const navController = createNavigator({
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
   canConnect: (kind) => familyAffordances(kind).connect,
+  connectHint,
   isViewerMode: () => viewerMode,
   editor,
   scrollToLogical,

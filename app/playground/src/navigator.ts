@@ -19,6 +19,8 @@ export interface NavigatorDeps {
   // Whether the family's grammar can accept a new edge — so keyboard Connect (`c`) doesn't arm a source
   // and walk the user into a two-step gesture that can't commit. Mirrors the palette/button gating.
   readonly canConnect: (kind: DiagramAst["kind"]) => boolean;
+  // A trailing hint for the connect announcement (e.g. "added a placeholder label, …"); "" when none.
+  readonly connectHint: (kind: DiagramAst["kind"]) => string;
   readonly isViewerMode: () => boolean;
   readonly editor: Editor;
   readonly scrollToLogical: (logicalX: number, logicalY: number) => void;
@@ -240,7 +242,7 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
         } else {
           deps.editor.setValue(text);
           void deps.renderFromText(text);
-          announce(`connected ${from} to ${to}`);
+          announce(`connected ${from} to ${to}${deps.connectHint(ast.kind)}`);
         }
       }
     } else if (ev.key === "Escape" && navConnectSource !== null) {
