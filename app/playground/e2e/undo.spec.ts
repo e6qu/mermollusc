@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -44,6 +45,28 @@ test("⌘Z undoes a node drag and ⌘⇧Z redoes it", async ({ page }) => {
   await expect.poll(() => overrideCount(page)).toBe(1); // redo reinstates the move
 
   expect(errors).toEqual([]);
+});
+
+test("canvas ⌘Z drives the overlay history only, never the source text", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) return;
+
+  const textBefore = await sourceValue(page);
+  // Drag a node → one overlay override (the editor text is unchanged by a drag).
+  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 280, box.y + 220, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(() => overrideCount(page)).toBe(1);
+  expect(await sourceValue(page)).toBe(textBefore);
+
+  // ⌘Z with focus outside the editor undoes the drag (overlay history), leaving the text untouched —
+  // the two histories are independent.
+  await page.keyboard.press("Control+z");
+  await expect.poll(() => overrideCount(page)).toBe(0);
+  expect(await sourceValue(page)).toBe(textBefore);
 });
 
 test("⌘Z undoes a Group", async ({ page }) => {
