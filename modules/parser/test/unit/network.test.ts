@@ -41,8 +41,12 @@ describe("parseNetworkWithSource", () => {
     expect(link).toBeDefined();
     if (link !== undefined) expect(SAMPLE.slice(link.start, link.end)).toBe("eth0");
 
-    // An unlabelled node has no span.
+    // An unlabelled node has no label span, but carries a bare-node (id-token) span so the editor can
+    // relabel it by appending a quoted label.
     expect(r.value.source.nodes.get(nid("r1"))).toBeUndefined();
+    const bare = r.value.source.bareNodes.get(nid("r1"));
+    expect(bare).toBeDefined();
+    if (bare !== undefined) expect(SAMPLE.slice(bare.start, bare.end)).toBe("r1");
   });
 });
 

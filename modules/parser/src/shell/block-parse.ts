@@ -47,11 +47,18 @@ interface Ref {
   readonly shape: NodeShape;
   readonly explicit: boolean;
   readonly labelSpan: TextSpan | null;
+  // The id-token's own span, so a label-less block can be relabelled by wrapping its id into `id["…"]`.
+  readonly idSpan: TextSpan | null;
   readonly icon: IconRef | null;
 }
 
 const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
-  const id = imageOf(node.children, "Identifier") ?? "";
+  const idTok = childTokens(node.children, "Identifier")[0];
+  const id = idTok?.image ?? "";
+  const idSpan =
+    idTok === undefined
+      ? null
+      : { start: idTok.startOffset, end: idTok.startOffset + idTok.image.length };
   // The optional `icon "<pack>/<name>"` is a sibling of the shape, on the nodeRef directly. A
   // malformed ref fails the parse loudly (located at the token) rather than silently dropping it.
   const iconTok = childTokens(node.children, "BlockQuoted")[0];
@@ -63,7 +70,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   }
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return ok({ id, label: id, shape: "rect", explicit: false, labelSpan: null, icon });
+    return ok({ id, label: id, shape: "rect", explicit: false, labelSpan: null, idSpan, icon });
   }
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
@@ -74,6 +81,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       shape: "rect",
       explicit: true,
       labelSpan: labelSpan(square),
+      idSpan,
       icon,
     });
   }
@@ -85,6 +93,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       shape: "round",
       explicit: true,
       labelSpan: labelSpan(paren),
+      idSpan,
       icon,
     });
   }
@@ -95,6 +104,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
     shape: "diamond",
     explicit: true,
     labelSpan: curly === undefined ? null : labelSpan(curly),
+    idSpan,
     icon,
   });
 };
@@ -110,6 +120,8 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const root = cst.children;
   const blockMap = new Map<string, BlockNode>();
   const blockSpans = new Map<NodeId, TextSpan>();
+  // First id-token span seen per block, kept only for blocks that never carry a label (below).
+  const firstIdSpan = new Map<string, TextSpan>();
   const edgeSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
   let columns: number | null = null;
@@ -146,6 +158,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
         });
       }
       if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
+      if (ref.idSpan !== null && !firstIdSpan.has(ref.id)) firstIdSpan.set(ref.id, ref.idSpan);
     }
 
     for (let i = 0; i < links.length; i++) {
@@ -169,13 +182,19 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   }
 
   const blocks = [...blockMap.values()];
+  // A block is "bare" (relabel by wrapping its id) when it never carried an explicit label span.
+  const bareSpans = new Map<NodeId, TextSpan>();
+  for (const [idStr, span] of firstIdSpan) {
+    const id = brand<string, "NodeId">(idStr);
+    if (!blockSpans.has(id)) bareSpans.set(id, span);
+  }
   // Mermaid defaults to a single row when `columns` is omitted; clamp to ≥1 (a finite integer) before
   // minting — so the grid width is `PositiveInt` and the layout never divides by zero.
   const requested = columns !== null && Number.isFinite(columns) ? columns : blocks.length;
   const resolved = positiveInt(Math.max(1, Math.trunc(requested)));
   return ok({
     ast: { kind: "block", columns: resolved, blocks, edges },
-    source: { blocks: blockSpans, edges: edgeSpans },
+    source: { blocks: blockSpans, edges: edgeSpans, bareNodes: bareSpans },
   });
 };
 

@@ -54,13 +54,16 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const root = cst.children;
   const nodeMap = new Map<string, NetworkNode>();
   const nodeSpans = new Map<NodeId, TextSpan>();
+  // Id-token spans for label-less nodes, so the editor can relabel one by wrapping its id into a label.
+  const bareSpans = new Map<NodeId, TextSpan>();
   const linkSpans = new Map<EdgeId, TextSpan>();
   const links: NetworkLink[] = [];
 
   for (const stmt of childNodes(root, "statement")) {
     const decl = childNodes(stmt.children, "nodeDecl")[0];
     if (decl !== undefined) {
-      const id = childTokens(decl.children, "Identifier")[0]?.image ?? "";
+      const idTok = childTokens(decl.children, "Identifier")[0];
+      const id = idTok?.image ?? "";
       const nodeId = brand<string, "NodeId">(id);
       const kindNode = childNodes(decl.children, "kind")[0];
       const kind = kindNode === undefined ? "host" : kindOf(kindNode.children);
@@ -85,6 +88,11 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
         icon,
       });
       if (labelToken !== undefined) nodeSpans.set(nodeId, innerSpan(labelToken));
+      else if (idTok !== undefined)
+        bareSpans.set(nodeId, {
+          start: idTok.startOffset,
+          end: idTok.startOffset + idTok.image.length,
+        });
       continue;
     }
 
@@ -104,7 +112,7 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
 
   return ok({
     ast: { kind: "network", nodes: [...nodeMap.values()], links },
-    source: { nodes: nodeSpans, links: linkSpans },
+    source: { nodes: nodeSpans, links: linkSpans, bareNodes: bareSpans },
   });
 };
 

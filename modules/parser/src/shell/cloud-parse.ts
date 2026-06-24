@@ -1,5 +1,5 @@
 import type { CstNode, IToken } from "chevrotain";
-import { childNodes, childTokens, imageOf } from "./cst.js";
+import { childNodes, childTokens } from "./cst.js";
 import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
@@ -53,6 +53,8 @@ interface Acc {
   readonly links: CloudLink[];
   readonly groupSpans: Map<NodeId, TextSpan>;
   readonly nodeSpans: Map<NodeId, TextSpan>;
+  // Id-token spans for label-less leaves, so the editor can relabel one by appending a `"label"`.
+  readonly bareSpans: Map<NodeId, TextSpan>;
   readonly linkSpans: Map<EdgeId, TextSpan>;
   // First malformed-icon (or other semantic) failure; once set, the walk bails and the parse fails.
   error: ParseError | null;
@@ -75,7 +77,8 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
     }
     const leaf = childNodes(item.children, "leaf")[0];
     if (leaf !== undefined) {
-      const id = brand<string, "NodeId">(imageOf(leaf.children, "CloudIdentifier") ?? "");
+      const idTok = childTokens(leaf.children, "CloudIdentifier")[0];
+      const id = brand<string, "NodeId">(idTok?.image ?? "");
       // Grammar order is `[label] [icon "ref"]`: with an `icon`, the ref is the last quoted string
       // and a label exists only when there are two; without one, the sole quote is the label.
       const quotes = childTokens(leaf.children, "CloudQuoted");
@@ -100,6 +103,11 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
         icon,
       });
       if (labelToken !== undefined) acc.nodeSpans.set(id, innerSpan(labelToken));
+      else if (idTok !== undefined)
+        acc.bareSpans.set(id, {
+          start: idTok.startOffset,
+          end: idTok.startOffset + idTok.image.length,
+        });
       continue;
     }
     const link = childNodes(item.children, "link")[0];
@@ -135,6 +143,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
     links: [],
     groupSpans: new Map(),
     nodeSpans: new Map(),
+    bareSpans: new Map(),
     linkSpans: new Map(),
     error: null,
   };
@@ -142,7 +151,12 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
   if (acc.error !== null) return err(acc.error);
   return ok({
     ast: { kind: "cloud", groups: acc.groups, nodes: acc.nodes, links: acc.links },
-    source: { groups: acc.groupSpans, nodes: acc.nodeSpans, links: acc.linkSpans },
+    source: {
+      groups: acc.groupSpans,
+      nodes: acc.nodeSpans,
+      links: acc.linkSpans,
+      bareNodes: acc.bareSpans,
+    },
   });
 };
 

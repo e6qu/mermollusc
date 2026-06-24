@@ -2472,6 +2472,26 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       void renderFromText(editor.value());
     },
   });
+  // A bare (label-less) node: open an empty editor and, on commit, wrap its id into a label in the
+  // family's syntax. The label always lands inside quotes, so the "quoted" rules apply.
+  const wrapBareLabel = (
+    idSpan: TextSpan,
+    wrap: (id: string, label: string) => string,
+  ): { readonly text: string; readonly commit: (n: string) => void } => ({
+    text: "",
+    commit: (next) => {
+      if (next.length === 0) return;
+      const checked = validateLabel(next, "quoted");
+      if (!isOk(checked)) {
+        console.error("relabel rejected:", checked.error.message);
+        setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
+        return;
+      }
+      const id = editor.value().slice(idSpan.start, idSpan.end);
+      editor.setValue(patchSpan(editor.value(), idSpan, wrap(id, next)));
+      void renderFromText(editor.value());
+    },
+  });
 
   let pending: { readonly text: string; readonly commit: (n: string) => void } | null = null;
   let anchor: Anchor | null = null;
@@ -2520,24 +2540,38 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         : c4Source.rels.get(brand<string, "C4RelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "block" && blockSource !== null) {
-    const span =
-      hit.kind === "node"
-        ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
-        : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = blockSource.edges.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = blockSource.blocks.get(id);
+      const bare = blockSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i}["${l}"]`);
+    }
   } else if (hit !== null && ast.kind === "network" && netSource !== null) {
-    const span =
-      hit.kind === "node"
-        ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
-        : netSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = netSource.links.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = netSource.nodes.get(id);
+      const bare = netSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
+    }
   } else if (hit !== null && ast.kind === "cloud" && cloudSource !== null) {
-    const id = brand<string, "NodeId">(hit.id);
-    const span =
-      hit.kind === "node"
-        ? (cloudSource.nodes.get(id) ?? cloudSource.groups.get(id))
-        : cloudSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = cloudSource.links.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = cloudSource.nodes.get(id) ?? cloudSource.groups.get(id);
+      const bare = cloudSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
+    }
   } else if (hit !== null && ast.kind === "sequence" && seqSource !== null) {
     const span =
       hit.kind === "node"
