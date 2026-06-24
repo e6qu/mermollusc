@@ -17,7 +17,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
-  deleteGanttTask,
+  deleteLineAt,
   deleteMessage,
   deleteNode,
   deleteRequirementEntity,
@@ -51,6 +51,7 @@ import type {
   GitGraphSource,
   TimelineSource,
   MindmapSource,
+  PieSource,
   GanttSource,
   GroupId,
   GroupMember,
@@ -288,6 +289,7 @@ let reqSource: ReqSource | null = null;
 let gitSource: GitGraphSource | null = null;
 let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
+let pieSource: PieSource | null = null;
 let ganttSource: GanttSource | null = null;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
@@ -1670,6 +1672,7 @@ const renderFromText = async (text: string): Promise<void> => {
   gitSource = null;
   timelineSource = null;
   mindmapSource = null;
+  pieSource = null;
   // Adopt the source map produced by the single parse above (the spans the inline editor patches).
   // Exhaustive over the closed `family` union — a new family must add its arm or this won't compile.
   ganttSource = null;
@@ -1716,7 +1719,7 @@ const renderFromText = async (text: string): Promise<void> => {
       mindmapSource = result.source;
       break;
     case "pie":
-      // pie has no editable source map (no node/edge text spans to patch).
+      pieSource = result.source;
       break;
     case "gantt":
       ganttSource = result.source;
@@ -2534,6 +2537,10 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
     // A task bar / milestone relabels through its label span; the day-axis chrome carries no span.
     const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "pie" && pieSource !== null && hit.kind === "node") {
+    // A slice's invisible marker node carries its id; relabel through its quoted-label span.
+    const span = pieSource.slices.get(brand<string, "PieSliceId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
   }
 
   if (pending === null) return false;
@@ -2786,14 +2793,18 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "gitGraph":
     case "timeline":
     case "mindmap":
-    case "pie":
       return deleteNode(text, brand<string, "NodeId">(id));
-    // gantt: a task has no id in the text when it's auto-numbered, so delete its line by the label
-    // span from the source map. Multi-delete is ordered bottom-up by the caller so spans stay valid.
+    // gantt/pie: the item has no in-text id (auto-numbered task / synthetic slice id), so delete its
+    // line by the label span from the source map. Multi-delete is ordered bottom-up so spans stay valid.
     case "gantt": {
       if (ganttSource === null) return text;
       const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(id));
-      return span === undefined ? text : deleteGanttTask(text, span);
+      return span === undefined ? text : deleteLineAt(text, span);
+    }
+    case "pie": {
+      if (pieSource === null) return text;
+      const span = pieSource.slices.get(brand<string, "PieSliceId">(id));
+      return span === undefined ? text : deleteLineAt(text, span);
     }
     default:
       return assertNever(kind);

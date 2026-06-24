@@ -30,7 +30,7 @@ export {
   connectClass,
   connectRequirement,
   deleteNode,
-  deleteGanttTask,
+  deleteLineAt,
   deleteEdge,
   deleteC4,
   deleteC4Rel,

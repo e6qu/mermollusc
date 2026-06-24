@@ -284,6 +284,9 @@ const NOTE_FOLD = 14;
 const SUBTITLE_H = 16;
 
 const nodeCmds = (node: SceneNode): DrawCmd[] => {
+  // A marker node is an invisible hit/selection region (its visual — e.g. a pie wedge — is drawn
+  // elsewhere); emit nothing for it.
+  if (node.role === "marker") return [];
   const { origin, size } = node.bounds;
   const cx = coordinate(origin.x + size.width / 2);
   const cy = coordinate(origin.y + size.height / 2);

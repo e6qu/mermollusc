@@ -28,7 +28,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
-  deleteGanttTask,
+  deleteLineAt,
   deleteMessage,
   deleteNode,
   deleteRequirementEntity,
@@ -313,7 +313,7 @@ describe("relabelNode", () => {
     expect(deleteNode(text, nid("B"))).toBe(text);
   });
 
-  it("deleteGanttTask removes a task line by its label span, including an auto-id task", () => {
+  it("deleteLineAt removes a task line by its label span, including an auto-id task", () => {
     const text = "gantt\n  dateFormat YYYY-MM-DD\n  Design :des, 2024-01-01, 5d\n  Review : after des, 2d\n";
     const r = parseGanttWithSource(text);
     if (!isOk(r)) throw new Error(`parse failed: ${r.error.errors.join("; ")}`);
@@ -324,7 +324,7 @@ describe("relabelNode", () => {
     const span = r.value.source.tasks.get(review.id);
     expect(span).toBeDefined();
     if (span === undefined) return;
-    const next = deleteGanttTask(text, span);
+    const next = deleteLineAt(text, span);
     expect(next).not.toContain("Review");
     expect(next).toContain("Design :des"); // the other task and the directives survive
     const after = parseGanttWithSource(next);
@@ -333,7 +333,7 @@ describe("relabelNode", () => {
     expect(after.value.ast.tasks.map((t) => t.label)).toEqual(["Design"]);
   });
 
-  it("deleteGanttTask removes only the spanned line, leaving the first and last lines intact", () => {
+  it("deleteLineAt removes only the spanned line, leaving the first and last lines intact", () => {
     const text = "gantt\n  A :a, 2024-01-01, 1d\n  B :b, 2024-01-02, 1d\n";
     const r = parseGanttWithSource(text);
     if (!isOk(r)) throw new Error("parse failed");
@@ -341,7 +341,7 @@ describe("relabelNode", () => {
     if (a === undefined) throw new Error("no A");
     const span = r.value.source.tasks.get(a.id);
     if (span === undefined) throw new Error("no span");
-    expect(deleteGanttTask(text, span)).toBe("gantt\n  B :b, 2024-01-02, 1d\n");
+    expect(deleteLineAt(text, span)).toBe("gantt\n  B :b, 2024-01-02, 1d\n");
   });
 
   it("deleteEdge removes the standalone edge line, keeping declarations and other edges", () => {
