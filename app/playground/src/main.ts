@@ -62,6 +62,7 @@ import type {
   NodeShape,
   OverlayDoc,
   Scene,
+  SceneNode,
   SceneNodeId,
   SequenceSource,
   SourceMap,
@@ -2992,10 +2993,32 @@ const ganttLineStart = (id: SceneNodeId): number =>
 
 // Remove the selected nodes (and their edges) from the source text in the active family's syntax.
 // Shared by the Delete key and the selection context toolbar's Delete button.
-const deleteSelection = (): void => {
-  if (viewerMode || ast === null) return;
+const deleteSelection = async (): Promise<void> => {
+  if (viewerMode || ast === null || scene === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   const kind = ast.kind;
+  // The leaf nodes that should survive (everything not being deleted). In families where nodes are
+  // referenced inline on edge lines (`A --> B`), a line-based delete of one node takes the whole line —
+  // and with it the *other* endpoint's only reference — so we re-declare any survivor that vanished.
+  // Containers are layout artifacts, not source declarations.
+  const deleted = new Set<string>(selectionOrder);
+  const shown = shownScene(scene);
+  const shownById = new Map(shown.nodes.map((n) => [n.id, n]));
+  // A node counts as deleted if it *or any ancestor* is being deleted — deleting a container (a c4
+  // boundary, a composite state) intentionally removes its nested children, so they aren't "survivors".
+  const isDeleted = (node: SceneNode): boolean => {
+    let cur: SceneNode | undefined = node;
+    const seen = new Set<string>();
+    while (cur !== undefined && !seen.has(cur.id)) {
+      if (deleted.has(cur.id)) return true;
+      seen.add(cur.id);
+      cur = cur.parent === null ? undefined : shownById.get(cur.parent);
+    }
+    return false;
+  };
+  const survivors = shown.nodes
+    .filter((n) => n.shape !== "container" && !isDeleted(n))
+    .map((n) => ({ id: n.id, label: n.label, shape: n.shape }));
   let text = editor.value();
   // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
   // earlier line's offset, keeping each remaining span valid against the prior edit.
@@ -3005,16 +3028,33 @@ const deleteSelection = (): void => {
       : selectionOrder;
   const removedCount = order.length + selection.edges.size;
   for (const id of order) text = removeNode(kind, text, id);
-  if (scene !== null) {
-    for (const edgeId of selection.edges) {
-      const edge = scene.edges.find((e) => e.id === edgeId);
-      if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
-    }
+  for (const edgeId of selection.edges) {
+    const edge = scene.edges.find((e) => e.id === edgeId);
+    if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
   }
   selection = emptySelection;
   selectionOrder = [];
   editor.setValue(text);
-  void renderFromText(text);
+  await renderFromText(text);
+  // Restore any survivor the delete collaterally dropped (only the inline-edge families can hit this;
+  // for the rest every survivor is still present, so this is a no-op). One extra render, only when needed.
+  if (scene !== null && familyAffordances(kind).addNode) {
+    const present = new Set<string>(scene.nodes.map((n) => n.id));
+    let restored = editor.value();
+    let changed = false;
+    for (const s of survivors) {
+      if (present.has(s.id)) continue;
+      const next = appendNode(kind, restored, s.id, s.label, s.shape);
+      if (next !== restored) {
+        restored = next;
+        changed = true;
+      }
+    }
+    if (changed) {
+      editor.setValue(restored);
+      await renderFromText(restored);
+    }
+  }
   // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
   setStatusAndAnnounce(
     "ok",
@@ -3032,7 +3072,7 @@ window.addEventListener("keydown", (ev) => {
   if (viewerMode || ast === null) return;
   if (selectionOrder.length === 0 && selection.edges.size === 0) return;
   ev.preventDefault();
-  deleteSelection();
+  void deleteSelection();
 });
 
 // Undo/redo for canvas (overlay) actions — drag, group/ungroup/lock, group label, regenerate. Only
@@ -3169,7 +3209,7 @@ ctxGroupBtn.addEventListener("click", () => groupBtn.click());
 ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
 ctxLockBtn.addEventListener("click", () => lockBtn.click());
 ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
-ctxDeleteBtn.addEventListener("click", deleteSelection);
+ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
