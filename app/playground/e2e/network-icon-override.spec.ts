@@ -21,5 +21,13 @@ test("a per-node `icon` override resolves and renders a vendored mark", async ({
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await page.waitForTimeout(200);
-  expect(errors).toEqual([]);
+  expect(errors).toEqual([]); // a valid override resolves silently
+
+  // …and the other half of the criterion ("or fail loudly"): a bogus ref must surface a loud error, not
+  // be silently swallowed (which is exactly what a regression that ignored overrides would do).
+  await setSource(
+    page,
+    'network\n  server web "Web" icon "simpleicons/definitely-not-a-real-icon"\n',
+  );
+  await expect.poll(() => errors.join("\n")).toMatch(/unknown icon|definitely-not-a-real-icon/);
 });

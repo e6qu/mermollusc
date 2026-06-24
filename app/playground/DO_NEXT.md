@@ -207,3 +207,21 @@ Deferred (each bounded, not a fake — all fail loud or are cosmetic):
 - `routeWaypoints` straight-line fallback for <2-point ELK sections vs. layout's "no positional
   fallback" wording — return a LayoutError or carve out the wording.
 - `e2e/network-icons.spec.ts` asserts only `errors==[]`; assert painted pixels / registry resolution.
+
+## Fuzz + journey-tracing review (this PR)
+Ran real fuzzers (parser totality ~11k runs, parse→layout pipeline over mutated examples, builder
+patch op-sequences) — found + fixed a real corruption: relabel/reshape to an empty or bracket-bearing
+label wrote `A[]`/`B([)` (now rejected loudly). Two journey-tracing review agents verified all ~60
+user stories trace to real code and pass real exercises (no fakes; contrast strong in both themes,
+only decorative borders below 3:1, mitigated by forced-colors). Closed the "pretends-to-work" gaps:
+timeline node delete is now a real span edit; DOT import is honestly gated read-only on the canvas.
+Deferred (bounded, documented — none is a fake):
+- `parseDotWithSource` to make DOT a truly editable family (today it's import + export only).
+- gitGraph node delete depth: delete a commit by source span / a branch lane structurally (today only
+  honest "can't delete"); visually distinguish inert vs. actionable gitGraph/timeline items in the nav.
+- CAN-01a / CAN-08 automated assertions (edge route-highlight draw call; regenerate clears an imported
+  unpinned override) — behaviors are real; the e2e assertions are the gap.
+- Move `arrangeDeltas` align/distribute math from `main.ts` into `@m/builder` core (boundary hygiene).
+- Production collab store (Postgres/S3) + browser Auth0 login (collab Phase 2 remainder).
+- Shell `--line`/`--line-strong` borders are below the 3:1 non-text UI contrast minimum (decorative;
+  forced-colors switches them to CanvasText) — raise them if a high-contrast pass is prioritized.
