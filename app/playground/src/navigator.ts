@@ -34,6 +34,12 @@ export interface NavigatorDeps {
   readonly ungroupSelection: () => void;
   // Collapse / expand the selected cloud group (a no-op for other families / non-container selections).
   readonly toggleCloudCollapse: () => void;
+  // Cycle the selected flowchart node's shape (parity with the canvas `S` shortcut, which the global
+  // handler suppresses while the navigator owns focus).
+  readonly cycleShape: () => void;
+  // Move focus to the floating selection context bar (its buttons cover rename/shape/connect/duplicate/
+  // group/lock/arrange/delete) so every selection action is reachable without a mouse.
+  readonly focusContextBar: () => void;
   readonly beginRelabel: (shown: Scene, hit: HitTarget | null, group: GroupId | null) => boolean;
   readonly shownScene: (base: Scene) => Scene;
   readonly appendEdge: (
@@ -252,6 +258,13 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     } else if ((ev.key === "e" || ev.key === "E") && !viewerMode) {
       ev.preventDefault();
       deps.toggleCloudCollapse(); // collapse/expand a selected cloud group
+    } else if ((ev.key === "s" || ev.key === "S") && item?.kind === "node" && !viewerMode) {
+      ev.preventDefault();
+      deps.cycleShape(); // cycle a flowchart node's shape (no-op off flowchart)
+    } else if (ev.key === "F2") {
+      // Jump to the floating action bar for the current selection (rename/shape/connect/… are there).
+      ev.preventDefault();
+      deps.focusContextBar();
     } else if (ev.key === "Home") {
       ev.preventDefault();
       setNavActive(0);

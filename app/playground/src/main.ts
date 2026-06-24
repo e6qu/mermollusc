@@ -1171,6 +1171,15 @@ const computeCapabilities = (): CapabilityState => {
 const updateGroupButtons = (): void => {
   const caps = computeCapabilities();
   groupBtn.disabled = !caps.canGroup;
+  // The verb means different things per family — a source-level labelled group for cloud/network, a
+  // sidecar visual group elsewhere — so the title says which, instead of a generic "Group".
+  const groupKind = ast === null ? null : ast.kind;
+  groupBtn.title = !caps.canGroup
+    ? "select two or more nodes to group"
+    : groupKind === "cloud" || groupKind === "network"
+      ? "wrap the selection in a labelled group in the source text"
+      : "bundle the selection into a movable visual group";
+  ctxGroupBtn.title = groupBtn.title;
   ungroupBtn.disabled = !caps.hasGroup;
   lockBtn.disabled = !caps.hasGroup;
   lockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
@@ -1334,17 +1343,40 @@ const applyArrange = (kind: AlignKind): void => {
 const closeArrange = (): void => {
   arrangeMenu.hidden = true;
   arrangeBtn.setAttribute("aria-expanded", "false");
+  ctxArrangeBtn.setAttribute("aria-expanded", "false");
+  // Drop any fixed placement so the next editor-toolbar open uses the CSS-default anchored position.
+  arrangeMenu.style.cssText = "";
+};
+// Open the align/distribute menu near the control that invoked it. The editor-toolbar button uses the
+// CSS-default anchored placement (anchor=null); the on-canvas context-bar button positions it next to
+// itself with fixed coords, instead of opening it across the workbench at the editor pane.
+const openArrangeMenu = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
+  arrangeMenu.hidden = false;
+  if (anchor !== null) {
+    const r = anchor.getBoundingClientRect();
+    const mh = arrangeMenu.offsetHeight;
+    const mw = arrangeMenu.offsetWidth;
+    arrangeMenu.style.position = "fixed";
+    arrangeMenu.style.bottom = "auto";
+    arrangeMenu.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - mw - 4))}px`;
+    const above = r.top - mh - 6;
+    arrangeMenu.style.top = `${above > 4 ? above : r.bottom + 6}px`;
+  }
+  expander.setAttribute("aria-expanded", "true");
+};
+const toggleArrange = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
+  if (arrangeMenu.hidden) openArrangeMenu(anchor, expander);
+  else closeArrange();
 };
 arrangeBtn.addEventListener("click", (ev) => {
   ev.stopPropagation();
-  const willOpen = arrangeMenu.hidden;
-  arrangeMenu.hidden = !willOpen;
-  arrangeBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  toggleArrange(null, arrangeBtn);
 });
 document.addEventListener("pointerdown", (ev) => {
   if (arrangeMenu.hidden) return;
   const t = ev.target;
-  if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn)) return;
+  if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn || t === ctxArrangeBtn))
+    return;
   closeArrange();
 });
 
@@ -1568,6 +1600,15 @@ const lineColOf = (
   return { line, col };
 };
 
+// Disable the export/copy controls while the current text doesn't render — they'd otherwise fail only
+// after the click. Re-evaluated on every render outcome, since setStatus runs on success and failure alike.
+const syncExportButtons = (): void => {
+  for (const b of [exportBtn, copyBtn, exportPdfBtn, exportSvgBtn, exportDotBtn]) {
+    b.disabled = !currentRenderValid;
+    b.title = currentRenderValid ? "" : "fix the source first";
+  }
+};
+
 const setStatus = (
   level: "ok" | "warning" | "error",
   message: string,
@@ -1595,6 +1636,7 @@ const setStatus = (
       : message,
   );
   updateTask();
+  syncExportButtons();
 };
 
 const setStatusAndAnnounce = (
@@ -3436,6 +3478,39 @@ const cycleShape = async (): Promise<void> => {
   canvas.focus({ preventScroll: true });
 };
 
+const ctxButtons = (): HTMLButtonElement[] =>
+  Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
+    (b) => !b.hidden && !b.disabled,
+  );
+
+// Move keyboard focus into the floating action bar (F2 from the navigator), so a keyboard user reaches
+// rename/shape/connect/duplicate/group/lock/arrange/delete without a mouse. No-op when nothing's shown.
+const focusContextBar = (): void => {
+  if (contextBar.hidden) return;
+  ctxButtons()[0]?.focus();
+};
+
+// The bar is a `role="toolbar"`: arrows rove between its buttons, Escape hands focus back to the
+// diagram navigator (the keyboard user's home), matching the ARIA toolbar pattern.
+contextBar.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    diagramNav.focus();
+    return;
+  }
+  const btns = ctxButtons();
+  if (btns.length === 0) return;
+  const active = document.activeElement;
+  const here = active instanceof HTMLButtonElement ? btns.indexOf(active) : -1;
+  if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+    ev.preventDefault();
+    btns[(here + 1) % btns.length]?.focus();
+  } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    btns[(here - 1 + btns.length) % btns.length]?.focus();
+  }
+});
+
 // The selection context toolbar is a thin view over the existing handlers — each button delegates to
 // the same code path as its keyboard shortcut / workbench control, so there's a single source of truth.
 ctxRelabelBtn.addEventListener("click", () => {
@@ -3456,7 +3531,10 @@ ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());
 ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
 ctxLockBtn.addEventListener("click", () => lockBtn.click());
-ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
+ctxArrangeBtn.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  toggleArrange(ctxArrangeBtn, ctxArrangeBtn); // anchor the menu to the on-canvas button, not the editor pane
+});
 ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 
 window.addEventListener("keydown", (ev) => {
@@ -3559,6 +3637,13 @@ window.addEventListener("keydown", (ev) => {
       if (ast !== null && ast.kind === "cloud") {
         ev.preventDefault();
         toggleCloudCollapse();
+      }
+      break;
+    case "F2":
+      // Jump to the floating action bar for the current selection.
+      if (!contextBar.hidden) {
+        ev.preventDefault();
+        focusContextBar();
       }
       break;
   }
@@ -4005,6 +4090,8 @@ const navController = createNavigator({
   groupSelection,
   ungroupSelection,
   toggleCloudCollapse,
+  cycleShape,
+  focusContextBar,
   beginRelabel,
   shownScene,
   appendEdge,
@@ -4028,11 +4115,19 @@ if (collabSession !== null) {
   const room = params.get("room") ?? "playground";
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   // A `?ws=` override lets a shared `?collab` link point a victim's session (source + edits, and any
-  // forwarded token) at an arbitrary relay. Accept only a websocket-scheme URL and fall back to the
-  // default on anything else — never an http(s)/javascript: or scheme-relative value.
+  // forwarded token) at an arbitrary relay. A scheme check alone doesn't stop that — require the host to
+  // match this page's origin (a different relay port on the same host is fine), so a crafted link can't
+  // exfiltrate the document/token to `wss://evil.example`. Reject loudly and fall back to the default.
   const wsOverride = params.get("ws");
-  const wsAllowed =
-    wsOverride !== null && /^wss?:[/][/]/.test(wsOverride) && URL.canParse(wsOverride);
+  const sameOriginWs = (raw: string): boolean => {
+    if (!URL.canParse(raw)) return false;
+    const u = new URL(raw);
+    return (u.protocol === "ws:" || u.protocol === "wss:") && u.hostname === location.hostname;
+  };
+  const wsAllowed = wsOverride !== null && sameOriginWs(wsOverride);
+  if (wsOverride !== null && !wsAllowed) {
+    console.error(`collab: rejected ?ws= relay override (not same-origin): ${wsOverride}`);
+  }
   const wsBase = wsAllowed ? wsOverride : `${scheme}://${location.hostname || "localhost"}:1234`;
   session.onOverlayChange(() => {
     requestPaint();
