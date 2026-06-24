@@ -14,6 +14,7 @@ import {
   deleteActor,
   deleteBlockGroup,
   deleteGroupBlock,
+  wrapCloudGroup,
   deleteC4,
   deleteC4Rel,
   deleteClassEntity,
@@ -1366,6 +1367,24 @@ for (const { id, kind } of ARRANGE_ACTIONS) {
 // existing group) or itself — so groups and loose elements bundle together, in selection order.
 const groupSelection = (): void => {
   if (viewerMode) return;
+  // Cloud has native text groups: gather the selected leaves into a `group "Group" { … }` the user can
+  // rename, rather than a sidecar overlay group. Leaves resolve to a source line via their span.
+  if (ast !== null && ast.kind === "cloud" && cloudSource !== null) {
+    const cs = cloudSource;
+    const lineOf = (id: SceneNodeId): number | null => {
+      const nid = brand<string, "NodeId">(id);
+      const span = cs.nodes.get(nid) ?? cs.bareNodes.get(nid);
+      return span === undefined ? null : editor.value().slice(0, span.start).split("\n").length - 1;
+    };
+    const lineIdxs = selectionOrder.map(lineOf).filter((n): n is number => n !== null);
+    if (lineIdxs.length < 2) return;
+    const next = wrapCloudGroup(editor.value(), lineIdxs, "Group");
+    if (next === editor.value()) return;
+    editor.setValue(next);
+    void renderFromText(next);
+    announce(`grouped ${lineIdxs.length} services`);
+    return;
+  }
   const units: GroupMember[] = [];
   const seen = new Set<string>();
   for (const id of selectionOrder) {
@@ -3019,9 +3038,17 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       }
       return deleteNode(text, netId);
     }
+    // A cloud subnet/group deletes its whole `group "…" { … }` block; a leaf deletes its line.
+    case "cloud": {
+      const cloudId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "cloud" && ast.groups.some((g) => g.id === cloudId)) {
+        const span = cloudSource?.groups.get(cloudId);
+        return span === undefined ? text : deleteGroupBlock(text, span);
+      }
+      return deleteNode(text, cloudId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
     case "flowchart":
-    case "cloud":
     case "gitGraph":
     case "timeline":
       return deleteNode(text, brand<string, "NodeId">(id));

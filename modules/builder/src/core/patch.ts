@@ -526,6 +526,27 @@ export const deleteGroupBlock = (text: string, labelSpan: TextSpan): string => {
   return lines.join("\n");
 };
 
+// Wrap the given source lines (by 0-based index) into a new `group "label" { … }` at the position of
+// the first — gathering selected cloud leaves into a group. Lines are captured, removed bottom-up (so
+// earlier indices stay valid), re-indented, and the group block inserted where the first one was. A
+// no-op below two lines (a group of one is pointless).
+export const wrapCloudGroup = (
+  text: string,
+  lineIndices: readonly number[],
+  label: string,
+): string => {
+  const lines = text.split("\n");
+  const idxs = [...new Set(lineIndices)]
+    .filter((i) => i >= 0 && i < lines.length)
+    .sort((a, b) => a - b);
+  if (idxs.length < 2) return text;
+  const captured = idxs.map((i) => (lines[i] ?? "").trim());
+  for (let k = idxs.length - 1; k >= 0; k--) lines.splice(idxs[k] ?? 0, 1);
+  const block = [`  group "${label}" {`, ...captured.map((l) => `    ${l}`), "  }"];
+  lines.splice(idxs[0] ?? 0, 0, ...block);
+  return lines.join("\n");
+};
+
 // Removes the whole source line (with its line break) containing `span`. Used to delete a Gantt task or
 // a pie slice by its label span — families whose item may have no in-text id (a Gantt task's id can be
 // auto-generated `t0…` and absent from the text; a pie slice's id is synthetic), so the span is the

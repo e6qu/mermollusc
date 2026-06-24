@@ -34,6 +34,7 @@ export {
   deleteNode,
   deleteBlockGroup,
   deleteGroupBlock,
+  wrapCloudGroup,
   deleteLineAt,
   deleteEdge,
   deleteC4,

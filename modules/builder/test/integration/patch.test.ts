@@ -2,6 +2,7 @@ import { brand, isOk } from "@m/std";
 import {
   parseC4WithSource,
   parseClassWithSource,
+  parseCloudWithSource,
   parseErWithSource,
   parseGanttWithSource,
   parseRequirementWithSource,
@@ -33,6 +34,7 @@ import {
   deleteErRel,
   deleteBlockGroup,
   deleteGroupBlock,
+  wrapCloudGroup,
   deleteLineAt,
   deleteMessage,
   deleteNode,
@@ -477,6 +479,23 @@ describe("relabelNode", () => {
     expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
       "mindmap\n  root\n    A\n      A1\n",
     );
+  });
+
+  it("wrapCloudGroup gathers the given lines into a new `group \"…\" { … }`, parseable", () => {
+    const text = 'cloud\n  compute a "A"\n  compute b "B"\n  database c "C"\n';
+    // Lines 1 and 2 (the two compute leaves) → a group; line 3 (database) stays.
+    const next = wrapCloudGroup(text, [1, 2], "Tier");
+    expect(next).toBe(
+      'cloud\n  group "Tier" {\n    compute a "A"\n    compute b "B"\n  }\n  database c "C"\n',
+    );
+    const r = parseCloudWithSource(next);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.ast.groups).toHaveLength(1);
+    const byId = new Map(r.value.ast.nodes.map((n) => [n.id, n]));
+    expect(byId.get(nid("a"))?.parent).toBe(r.value.ast.groups[0]?.id); // a moved into the group
+    expect(byId.get(nid("c"))?.parent).toBeNull(); // c stayed top-level
+    expect(wrapCloudGroup(text, [1], "Tier")).toBe(text); // < 2 lines → no-op
   });
 
   it("deleteGroupBlock removes a brace-delimited `group \"…\" { … }` whole, balancing nesting", () => {
