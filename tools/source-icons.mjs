@@ -4,9 +4,14 @@
 //
 // Requires network. Pins MUST be full 40-char commit SHAs verified against the live repo and at
 // least 24h old (AGENTS §0.3) — never branch names. Only bundleable licenses (Apache-2.0, MIT,
-// CC0) belong here; AWS/Azure/GCP asset packs are NOT redistributable — load those at runtime with
-// `decodePack` instead. The PACKS table is intentionally empty: fill it with values discovered and
-// verified against the live repos, then run. Do not commit guessed commits, paths, or licenses.
+// CC0) belong here. The "NOT redistributable" rule targets the *official vendor asset packs*
+// (AWS/Azure/GCP architecture-icon sets, whose licenses forbid redistribution) — load those at
+// runtime with `decodePack` instead. A CC0 third-party logo re-drawing (e.g. gilbarbara/logos) IS
+// bundleable: CC0 waives the authors' copyright. Note the residual: CC0 does not grant trademark
+// rights, so any AWS/GCP *service marks* it contains remain trademarks of their owners and are used
+// here only nominatively to label those services. The PACKS table is intentionally empty: fill it
+// with values discovered and verified against the live repos, then run. Do not commit guessed
+// commits, paths, or licenses.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
