@@ -13,6 +13,7 @@ import {
   decodeOverlay,
   deleteActor,
   deleteBlockGroup,
+  deleteFlowSubgraph,
   deleteGroupBlock,
   renameBlockId,
   wrapCloudGroup,
@@ -1534,6 +1535,9 @@ const minimapView = createMinimap({
 // Push a message to the diagram's live region (screen-reader announcement). Shared by the keyboard
 // navigator, the status bar (`setStatusAndAnnounce`), and the on-canvas group/lock commands.
 const announce = (message: string): void => {
+  // Re-fire even when the text is identical to the last message (two "moved Alpha" in a row): most
+  // screen readers ignore a live-region write that doesn't change the text, so clear then set.
+  if (diagramLive.textContent === message) diagramLive.textContent = "";
   diagramLive.textContent = message;
 };
 
@@ -1662,6 +1666,47 @@ const armRenderCooldown = (): void => {
   }, RENDER_DEBOUNCE_MS);
 };
 
+// Cloud groups the user has collapsed (contents hidden). Keyed by the group's synthetic id and
+// persisted across reloads; stale ids (after a structural edit reindexes groups) are filtered out at
+// layout time so a collapse never lands on the wrong group.
+const COLLAPSE_KEY = "mermollusc-cloud-collapsed";
+const loadCollapsed = (): string[] => {
+  try {
+    const raw = localStorage.getItem(COLLAPSE_KEY);
+    const v: unknown = raw === null ? [] : JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch (e) {
+    console.error("collapse state load failed", e);
+    return [];
+  }
+};
+const cloudCollapsed = new Set<string>(loadCollapsed());
+const persistCollapsed = (): void => {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...cloudCollapsed]));
+  } catch (e) {
+    console.error("collapse state persist failed", e);
+  }
+};
+const collapsedBranded = (): ReadonlySet<NodeId> =>
+  new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
+
+// Toggle the collapse of the single selected cloud group (E). Collapsing hides its contents + re-routes
+// its links to the container; the state persists across reloads.
+const toggleCloudCollapse = (): void => {
+  if (viewerMode || ast === null || ast.kind !== "cloud" || scene === null) return;
+  if (selectionOrder.length !== 1) return;
+  const id = selectionOrder[0];
+  if (id === undefined) return;
+  const node = scene.nodes.find((n) => n.id === id);
+  if (node === undefined || node.shape !== "container") return;
+  if (cloudCollapsed.has(id)) cloudCollapsed.delete(id);
+  else cloudCollapsed.add(id);
+  persistCollapsed();
+  void renderFromText(editor.value());
+  announce(cloudCollapsed.has(id) ? "collapsed group" : "expanded group");
+};
+
 const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
   currentRenderValid = false;
@@ -1691,7 +1736,7 @@ const renderFromText = async (text: string): Promise<void> => {
   const result = parsed.value;
   const diagram = result.ast;
   lastDirection = "direction" in diagram ? diagram.direction : null;
-  const laid = await layoutDiagram(diagram, measureLabel);
+  const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded());
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
@@ -2418,6 +2463,9 @@ const openInlineEditor = (
     inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   };
   place();
+  // Where focus was before the editor grabbed it (the navigator/canvas), to return it on close so a
+  // keyboard user's editing loop continues instead of dropping to <body>.
+  const returnFocus = activeElement();
   // `true` capture so a scroll on the stage container (not just window) repositions the overlay.
   window.addEventListener("scroll", place, true);
   window.addEventListener("resize", place);
@@ -2434,6 +2482,15 @@ const openInlineEditor = (
     if (apply) {
       commit(inlineEl.value);
       if (inlineEl.value !== value) announceCommit(inlineEl.value);
+    }
+    // Restore focus only if it would otherwise be lost (Enter/Escape) — not if the user clicked away.
+    const active = document.activeElement;
+    if (
+      returnFocus !== null &&
+      document.body.contains(returnFocus) &&
+      (active === document.body || active === inlineEl || active === null)
+    ) {
+      returnFocus.focus();
     }
   };
   inlineEl.onkeydown = (e) => {
@@ -3073,8 +3130,15 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       }
       return deleteNode(text, cloudId);
     }
+    // A flowchart subgraph deletes its whole `subgraph … end` block; a node deletes its line.
+    case "flowchart": {
+      const flowId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "flowchart" && ast.subgraphs.some((s) => s.id === flowId)) {
+        return deleteFlowSubgraph(text, flowId);
+      }
+      return deleteNode(text, flowId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
-    case "flowchart":
     case "gitGraph":
     case "timeline":
       return deleteNode(text, brand<string, "NodeId">(id));
@@ -3260,8 +3324,10 @@ window.addEventListener("keydown", (ev) => {
     paintScene();
     updateGroupButtons();
   } else if (key === "d") {
-    // Duplicate the selected flowchart node(s) (overriding the browser's ⌘D bookmark).
+    // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
+    // can add a node, else we'd swallow the keystroke and silently do nothing.
     if (viewerMode || selectionOrder.length === 0) return;
+    if (ast === null || !familyAffordances(ast.kind).addNode) return;
     ev.preventDefault();
     void duplicateSelection();
   } else if (key === "c") {
@@ -3334,9 +3400,11 @@ const cycleShape = async (): Promise<void> => {
     .sort((a, b) => b.start - a.start);
   if (targets.length === 0) return;
   let text = editor.value();
+  let lastShape: NodeShape = "rect";
   for (const t of targets) {
     const idx = SHAPE_CYCLE.indexOf(t.node.shape);
     const next = SHAPE_CYCLE[(idx + 1) % SHAPE_CYCLE.length] ?? "rect";
+    lastShape = next;
     const out = reshapeNode(text, src, t.nid, t.node.label, next);
     if (isOk(out)) text = out.value;
   }
@@ -3347,6 +3415,10 @@ const cycleShape = async (): Promise<void> => {
   selectionOrder = keep;
   paintScene();
   updateGroupButtons();
+  // Announce the outcome — every other mutating action does, so a screen-reader user gets parity.
+  announce(
+    targets.length === 1 ? `shape: ${lastShape}` : `cycled shape of ${targets.length} nodes`,
+  );
   canvas.focus({ preventScroll: true });
 };
 
@@ -3376,6 +3448,13 @@ ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (ev.key === "Escape") {
+    // An open Arrange menu closes first (parity with the Help/Icons drawers, which honour Escape).
+    if (!arrangeMenu.hidden) {
+      ev.preventDefault();
+      closeArrange();
+      arrangeBtn.focus();
+      return;
+    }
     // Escape first disarms a non-default tool (back to Select); a second Escape clears the selection.
     if (activeTool !== "select") {
       ev.preventDefault();
@@ -3460,6 +3539,14 @@ window.addEventListener("keydown", (ev) => {
       ev.preventDefault();
       void cycleShape();
       break;
+    case "e":
+    case "E":
+      // Collapse / expand the selected cloud group.
+      if (ast !== null && ast.kind === "cloud") {
+        ev.preventDefault();
+        toggleCloudCollapse();
+      }
+      break;
   }
 });
 
@@ -3492,6 +3579,7 @@ regenBtn.addEventListener("click", () => {
   doc.replaceOverrides(pinnedOverrides(doc.overrides()));
   doc.persist();
   void renderFromText(editor.value());
+  setStatusAndAnnounce("ok", "regenerated layout — pinned nodes kept");
 });
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
@@ -3900,6 +3988,9 @@ const navController = createNavigator({
   updateGroupButtons,
   setSelection,
   nudgeSelection,
+  groupSelection,
+  ungroupSelection,
+  toggleCloudCollapse,
   beginRelabel,
   shownScene,
   appendEdge,

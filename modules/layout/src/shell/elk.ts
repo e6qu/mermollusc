@@ -730,6 +730,8 @@ const layoutRequirement = (
 export const layoutDiagram = async (
   ast: DiagramAst,
   measure: MeasureText,
+  // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
+  collapsed: ReadonlySet<NodeId> = new Set(),
 ): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":
@@ -743,7 +745,7 @@ export const layoutDiagram = async (
     case "network":
       return layoutNetwork(ast, measure);
     case "cloud":
-      return layoutCloud(ast, measure);
+      return layoutCloud(ast, measure, collapsed);
     case "state":
       return map(await layout(stateToFlow(ast), new Map(), measure), (scene) =>
         applyStateSemantics(scene, ast),

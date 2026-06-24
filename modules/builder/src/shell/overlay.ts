@@ -11,8 +11,11 @@ export interface Overlay {
   readonly groups: Groups;
 }
 
+// `z.number()` already rejects NaN/Infinity; a size must additionally be non-negative — otherwise
+// `length()` throws a RangeError *inside* the decoder (a tampered share-link/localStorage) instead of
+// failing as a Result value.
 const PointZ = z.object({ x: z.number(), y: z.number() });
-const SizeZ = z.object({ width: z.number(), height: z.number() });
+const SizeZ = z.object({ width: z.number().nonnegative(), height: z.number().nonnegative() });
 const OverrideZ = z.object({ position: PointZ, size: SizeZ.nullable(), pinned: z.boolean() });
 const MemberZ = z.object({ kind: z.enum(["node", "group"]), id: z.string() });
 const GroupZ = z.object({

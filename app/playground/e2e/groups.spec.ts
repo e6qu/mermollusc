@@ -149,3 +149,29 @@ test("a group is pruned when its nodes leave the source (no stale resurrection)"
 
   expect(errors).toEqual([]);
 });
+
+test("keyboard: Shift+Arrow multi-selects in the navigator and `g`/`u` group/ungroup", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const groupCount = () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem("mermollusc-overlay");
+      return raw === null ? 0 : ((JSON.parse(raw) as { groups?: unknown[] }).groups?.length ?? 0);
+    });
+
+  // Focus the diagram navigator (selects the first node), Shift+Down to add the second, then `g`.
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect(page.locator("#ungroup")).toBeDisabled();
+  expect(await groupCount()).toBe(0);
+
+  await page.keyboard.press("g");
+  await expect.poll(() => groupCount()).toBe(1); // a group was created from the keyboard selection
+  await expect(page.locator("#ungroup")).toBeEnabled();
+
+  await page.keyboard.press("u");
+  await expect.poll(() => groupCount()).toBe(0); // and ungrouped
+});
