@@ -72,11 +72,11 @@ describe("overrides", () => {
     expect(moved.extent.size.height).toBe(140 - -30); // original extent bottom (140) − minY (−30)
   });
 
-  it("re-anchors a boundary edge to the moved node's new border", () => {
-    // Move only A → the A→B edge must re-anchor; its A end lands on A's new (left) border toward B.
+  it("follows a boundary edge's moved endpoint, keeping its shape (no straight-line collapse)", () => {
+    // Move only A by (+200,+50). The A end (t=0) translates by A's full delta — staying at A's relative
+    // attachment (its bottom-centre, now on A's new border); the B end (t=1) is unchanged.
     const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(200, 50)));
-    // A' = rect(200,50,60,40) centre (230,70); B centre (30,120) → border point on A' toward B.
-    expect(moved.edges[0]?.waypoints).toEqual([point(200, 77.5), point(60, 112.5)]);
+    expect(moved.edges[0]?.waypoints).toEqual([point(230, 90), point(30, 100)]);
   });
 
   it("translates an edge whose endpoints both move by the same delta (group move)", () => {

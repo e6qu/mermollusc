@@ -1,5 +1,6 @@
 import { ok, point, rect, type Result } from "@m/std";
-import type { PieAst, Scene, SceneWedge } from "@m/contracts";
+import { sceneNodeId } from "@m/contracts";
+import type { PieAst, Scene, SceneNode, SceneWedge } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 
 const RADIUS = 150;
@@ -47,6 +48,14 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   const colPitch = 2 * SWATCH_R + LABEL_GAP + maxLabelW + LEGEND_GAP;
   const legendX0 = discSpan + LEGEND_GAP + SWATCH_R;
 
+  // A small invisible hit region at each slice's centroid (mid-angle, ~0.62 radius) carrying the slice
+  // id, so a slice is selectable / relabelable / deletable through the normal node path — the wedge is
+  // the visual, this is the target. The renderer draws nothing for a `marker` node.
+  const PROXY_W = 44;
+  const PROXY_H = 26;
+  const labelRadius = ast.donut ? (DONUT_INNER_RADIUS + RADIUS) / 2 : RADIUS * 0.62;
+  const nodes: SceneNode[] = [];
+
   const slices: SceneWedge[] = [];
   const legend: SceneWedge[] = [];
   let angle = -Math.PI / 2; // 12 o'clock
@@ -56,6 +65,25 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     const endAngle = angle + fraction * TWO_PI;
     angle = endAngle;
     const percent = fraction * 100;
+    const mid = (startAngle + endAngle) / 2;
+    nodes.push({
+      id: sceneNodeId(slice.id),
+      bounds: rect(
+        center.x + labelRadius * Math.cos(mid) - PROXY_W / 2,
+        center.y + labelRadius * Math.sin(mid) - PROXY_H / 2,
+        PROXY_W,
+        PROXY_H,
+      ),
+      label: slice.label,
+      shape: "rect",
+      parent: null,
+      icon: null,
+      rows: null,
+      rowDivider: null,
+      subtitle: null,
+      accent: "none",
+      role: "marker",
+    });
     slices.push({
       center,
       radius: RADIUS,
@@ -90,7 +118,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   const height = Math.max(discSpan, legendBottom + MARGIN);
 
   return ok({
-    nodes: [],
+    nodes,
     edges: [],
     wedges: [...slices, ...legend],
     decorations: [],

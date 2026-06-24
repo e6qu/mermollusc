@@ -47,14 +47,17 @@ describe("layoutBlock", () => {
     expect(c.origin.y).toBeGreaterThan(a.origin.y);
   });
 
-  it("connects edges centre-to-centre between the two blocks", () => {
+  it("routes an edge orthogonally between the two blocks' facing borders", () => {
     expect(scene.edges).toHaveLength(1);
     const edge = scene.edges[0];
     const a = byId.get("a")?.bounds;
     const b = byId.get("b")?.bounds;
     if (edge === undefined || a === undefined || b === undefined) throw new Error("missing");
-    expect(edge.waypoints[0]).toEqual({ x: a.origin.x + a.size.width / 2, y: a.origin.y + 20 });
-    expect(edge.waypoints[1]).toEqual({ x: b.origin.x + b.size.width / 2, y: b.origin.y + 20 });
+    // a→b is left-to-right on the same row: exit a's right border, enter b's left border (4-point Z that
+    // degenerates to a straight horizontal run here), not a diagonal centre-to-centre line.
+    expect(edge.waypoints).toHaveLength(4);
+    expect(edge.waypoints[0]).toEqual({ x: a.origin.x + a.size.width, y: a.origin.y + 20 });
+    expect(edge.waypoints[edge.waypoints.length - 1]).toEqual({ x: b.origin.x, y: b.origin.y + 20 });
   });
 
   it("sizes the extent to the populated grid", () => {

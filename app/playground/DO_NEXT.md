@@ -1,26 +1,21 @@
 # @m/app (playground) — do next
 
-- **Manipulation-breadth follow-ups (from the BPMN/multi-family bug audit).** The audit's flagship
-  fixes landed (subgraph edge routing + occlusion; uniform connect gating across alt-drag/navigator/
-  palette; flowchart/BPMN node glyphs + theme-aware line-art). Remaining, verified + prioritised:
-  - **A4 — pie is 100% un-manipulable.** `layoutPie` emits only wedges (zero `nodes`/`edges`), so
-    `hitTest`/navigator/relabel have nothing to act on. Fix: emit a `SceneNode` per slice (clickable
-    proxy box) **and** add a `PieSource` (label spans over the `"Label" : value` lines) wired into the
-    `renderFromText` source switch, plus `removeNode`/relabel pie arms — mirrors the other deterministic
-    families. A full source-map chain (contracts→parser→layout→builder→app), comparable to the icon work.
-  - **A3 — sequence actor drag corrupts message edges.** `applyOverrides` (family-agnostic) re-anchors a
-    message edge with one moved endpoint to a border-to-border segment at the actor box-centre y,
-    discarding the message-row y → messages snap to the header row. (The lifeline self-edge is fine — it
-    takes the same-delta translate branch.) Fix: an override-aware re-layout hook so a sequence-actor x
-    change re-runs `layoutSequence`, or tag family-managed connectors so `applyOverrides` skips them.
-  - **B3 — add/place/duplicate/shape are flowchart-only** while connect spans 10 families. Add per-family
-    `addNode` builders (er/class/state/sequence/network/cloud/block) + a `canAddNode` affordance; gate
-    place/add/duplicate/shape on it instead of the literal `=== "flowchart"`.
-  - **B6 — block edges are straight centre-to-centre** over a row-major grid (diagonal crossings). Give
-    block edges simple orthogonal routing in `block.ts`.
-  - **B4/B5 + provenance (optional).** Family-aware connect for gitGraph/timeline/mindmap; signpost the
-    placeholder labels connect inserts (sequence/c4/er/requirement); promote the AWS-trademark caveat
-    into `source-icons.mjs`'s header.
+- **Manipulation-breadth (from the BPMN/multi-family bug audit) — landed.** Flagship: subgraph edge
+  routing + occlusion; uniform connect gating; flowchart/BPMN node glyphs + theme-aware line-art. Then:
+  - *(done)* **A4 — pie manipulable.** `layoutPie` emits an invisible `marker` SceneNode per slice; the
+    `PieSource` is wired into `renderFromText` with relabel + delete arms (slices select / relabel / delete).
+  - *(done)* **A3 — sequence actor drag.** `applyOverrides` now blend-translates a crossing edge's
+    waypoints by a position-weighted mix of the endpoints' deltas (instead of collapsing to a straight
+    border line), so message rows + routed bends survive a one-endpoint move.
+  - *(done)* **B3 — add/duplicate across families.** `familyAffordances.canAddNode` + `appendNode` give
+    Add/Duplicate to flowchart/block/network/sequence; gated families show a reason. (Place + shape-cycle
+    stay flowchart-only; c4/cloud/er/class — typed/nested node decls — remain gated.)
+  - *(done)* **B6 — block orthogonal edge routing**, via a shared `core/route.ts orthogonalRoute` (also
+    used by cloud).
+  - **Still open:** add-node for **er/class/state** (name-as-id duplication needs a label→id derivation);
+    **c4/cloud** node creation (typed/nested decls). **B4/B5 + provenance (optional):** family-aware
+    connect for gitGraph/timeline/mindmap; signpost the placeholder labels connect inserts; promote the
+    AWS-trademark caveat into `source-icons.mjs`'s header.
 
 - **Miro-like round (landed).** A whiteboard tool model (`select|hand|connect|place`, V/H/C/P +
   Space-pan + Esc→select, tool-aware cursors), a floating tool palette (radiogroup, roving tabindex,

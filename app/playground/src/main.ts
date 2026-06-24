@@ -17,7 +17,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
-  deleteGanttTask,
+  deleteLineAt,
   deleteMessage,
   deleteNode,
   deleteRequirementEntity,
@@ -51,6 +51,7 @@ import type {
   GitGraphSource,
   TimelineSource,
   MindmapSource,
+  PieSource,
   GanttSource,
   GroupId,
   GroupMember,
@@ -288,6 +289,7 @@ let reqSource: ReqSource | null = null;
 let gitSource: GitGraphSource | null = null;
 let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
+let pieSource: PieSource | null = null;
 let ganttSource: GanttSource | null = null;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
@@ -890,6 +892,9 @@ const setTask = (message: string, tone: TaskTone): void => {
 interface FamilyAffordances {
   readonly connect: boolean;
   readonly iconOverride: boolean;
+  // Whether `Add node` / `Duplicate` can append a node in the family's own one-line declaration syntax.
+  // (Families whose node is a typed/nested block — c4/cloud — or has no standalone node decl are off.)
+  readonly addNode: boolean;
 }
 const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   switch (kind) {
@@ -897,20 +902,21 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "network":
     case "cloud":
     case "block":
-      return { connect: true, iconOverride: true };
+      return { connect: true, iconOverride: true, addNode: true };
+    case "sequence":
     case "state":
     case "c4":
-    case "sequence":
     case "er":
     case "class":
+      return { connect: true, iconOverride: false, addNode: true };
     case "requirement":
-      return { connect: true, iconOverride: false };
+      return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
     case "timeline":
     case "mindmap":
     case "pie":
     case "gantt":
-      return { connect: false, iconOverride: false };
+      return { connect: false, iconOverride: false, addNode: false };
     default:
       return assertNever(kind);
   }
@@ -1104,7 +1110,7 @@ const computeCapabilities = (): CapabilityState => {
     canArrange: movable >= 2,
     canDistribute: movable >= 3,
     canShape: isFlowchart && selectionOrder.length >= 1,
-    canDuplicate: isFlowchart && selectionOrder.length >= 1,
+    canDuplicate: ast !== null && familyAffordances(ast.kind).addNode && selectionOrder.length >= 1,
     canRelabel: totalSelected === 1,
     canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
     isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
@@ -1527,17 +1533,21 @@ statusEl.addEventListener("click", () => {
   editor.select(errorRange.offset, errorRange.offset + errorRange.length);
 });
 
-// Add-node and Relax patch/seed flowchart specifically. Connect and Delete now work for every family
-// (each dispatches to its own edge/element syntax). Disabling Add/Relax off flowchart makes that
-// explicit rather than a silent dead click.
-const flowchartOnly = [addBtn, relaxBtn];
+// Relax seeds ELK (flowchart specifically). Add-node now works for every family with a one-line node
+// decl (flowchart/block/network/sequence); off those it's disabled with a reason rather than a silent
+// dead click. Connect and Delete already work for every family.
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
   const isFlowchart = currentRenderValid && kind === "flowchart";
-  for (const btn of flowchartOnly) {
-    btn.disabled = !isFlowchart;
-    btn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
-  }
+  relaxBtn.disabled = !isFlowchart;
+  relaxBtn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
+  const canAdd = currentRenderValid && familyAffordances(kind).addNode;
+  addBtn.disabled = !canAdd;
+  addBtn.title = canAdd
+    ? ""
+    : currentRenderValid
+      ? `adding nodes isn't available for ${kind}`
+      : "fix source first";
 };
 
 const reconcileSelection = (rendered: Scene): void => {
@@ -1670,6 +1680,7 @@ const renderFromText = async (text: string): Promise<void> => {
   gitSource = null;
   timelineSource = null;
   mindmapSource = null;
+  pieSource = null;
   // Adopt the source map produced by the single parse above (the spans the inline editor patches).
   // Exhaustive over the closed `family` union — a new family must add its arm or this won't compile.
   ganttSource = null;
@@ -1716,7 +1727,7 @@ const renderFromText = async (text: string): Promise<void> => {
       mindmapSource = result.source;
       break;
     case "pie":
-      // pie has no editable source map (no node/edge text spans to patch).
+      pieSource = result.source;
       break;
     case "gantt":
       ganttSource = result.source;
@@ -2534,6 +2545,10 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
     // A task bar / milestone relabels through its label span; the day-axis chrome carries no span.
     const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
+  } else if (hit !== null && ast.kind === "pie" && pieSource !== null && hit.kind === "node") {
+    // A slice's invisible marker node carries its id; relabel through its quoted-label span.
+    const span = pieSource.slices.get(brand<string, "PieSliceId">(hit.id));
+    if (span !== undefined) pending = patchAt(span);
   }
 
   if (pending === null) return false;
@@ -2553,33 +2568,117 @@ canvas.addEventListener("dblclick", (ev) => {
 });
 
 // Add node: append a fresh rect node to the flowchart text (flowchart only for now).
-addBtn.addEventListener("click", () => {
-  if (viewerMode || ast === null || ast.kind !== "flowchart") return;
-  const used = new Set<string>(ast.nodes.map((n) => n.id));
+// Append a new node in the active family's own one-line declaration syntax (the node-creation analogue of
+// `appendEdge`). `id` is a fresh unique identifier; `label` its display text; `shape` only applies to
+// flowchart. Families gated off in `familyAffordances` (c4/cloud/state/er/class/… — typed or nested node
+// decls) return the text unchanged.
+const appendNode = (
+  kind: DiagramAst["kind"],
+  text: string,
+  id: string,
+  label: string,
+  shape: NodeShape,
+): string => {
+  const body = text === "" || text.endsWith("\n") ? text : `${text}\n`;
+  switch (kind) {
+    case "flowchart":
+      return addNode(text, brand<string, "NodeId">(id), label, shape);
+    case "block":
+      return `${body}  ${id}["${label}"]\n`;
+    case "network":
+      return `${body}  server ${id} "${label}"\n`;
+    case "sequence":
+      return `${body}  participant ${id} as ${label}\n`;
+    case "c4":
+      // A generic software element (the family's Person/System/Container set); the user can retype it.
+      return `${body}  Container(${id}, "${label}")\n`;
+    case "cloud":
+      // A loose top-level compute service (the user can move it into a group in the text).
+      return `${body}  compute ${id} "${label}"\n`;
+    // Name-as-id families: the node *is* its identifier (`id` already carries the display name); `label`
+    // is unused.
+    case "er":
+      return `${body}  ${id} {\n  }\n`;
+    case "class":
+      return `${body}  class ${id}\n`;
+    case "state":
+      return `${body}  state ${id}\n`;
+    default:
+      return text;
+  }
+};
+
+// Families whose node declaration uses the node's name *as* its id; a new node's id is therefore a
+// unique, identifier-safe version of its label rather than a generic `n1`.
+const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state"]);
+const sanitizeId = (s: string): string => s.replace(/[^A-Za-z0-9_]/g, "") || "Node";
+const uniqueId = (used: ReadonlySet<string>, base: string): string => {
+  if (!used.has(base)) return base;
+  let i = 2;
+  while (used.has(`${base}${i}`)) i++;
+  return `${base}${i}`;
+};
+const ADD_BASE: Partial<Record<DiagramAst["kind"], string>> = {
+  er: "Entity",
+  class: "Class",
+  state: "State",
+};
+
+// A fresh `{ id, label }` for a new node in `kind`: for name-as-id families both are one unique name;
+// otherwise a `n<N>` id with a separate display label.
+const freshNode = (
+  kind: DiagramAst["kind"],
+  used: ReadonlySet<string>,
+  labelHint: string,
+): { readonly id: string; readonly label: string } => {
+  if (NAME_AS_ID.has(kind)) {
+    const id = uniqueId(used, sanitizeId(labelHint));
+    return { id, label: id };
+  }
   let n = 1;
   while (used.has(`n${n}`)) n++;
-  editor.setValue(addNode(editor.value(), brand<string, "NodeId">(`n${n}`), `node ${n}`, "rect"));
-  void renderFromText(editor.value());
-  announce(`added node ${n}`);
+  return { id: `n${n}`, label: labelHint };
+};
+
+addBtn.addEventListener("click", () => {
+  if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
+  const used = new Set<string>(scene.nodes.map((n) => n.id));
+  let id: string;
+  let label: string;
+  if (NAME_AS_ID.has(ast.kind)) {
+    id = uniqueId(used, ADD_BASE[ast.kind] ?? "Node");
+    label = id;
+  } else {
+    let n = 1;
+    while (used.has(`n${n}`)) n++;
+    id = `n${n}`;
+    label = `node ${n}`; // the display label tracks the id number, as before
+  }
+  const next = appendNode(ast.kind, editor.value(), id, label, "rect");
+  if (next === editor.value()) return;
+  editor.setValue(next);
+  void renderFromText(next);
+  announce(`added ${label}`);
 });
 
-// Duplicate the selected flowchart node(s) (⌘D): append a fresh-id copy of each (same label + shape)
-// to the source, then — after the re-layout — pin each copy just off its original via an override and
-// select the copies. (Edges aren't copied; the duplicates are loose, like Add node.)
+// Duplicate the selected node(s) (⌘D): append a fresh-id copy of each (same label + shape) in the
+// family's own syntax, then — after the re-layout — pin each copy just off its original via an override
+// and select the copies. (Edges aren't copied; the duplicates are loose, like Add node.) Works for every
+// family whose grammar can append a one-line node decl (`familyAffordances.addNode`).
 const duplicateSelection = async (): Promise<void> => {
-  if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) return;
-  const nodeById = new Map(ast.nodes.map((nd) => [nd.id, nd]));
-  const used = new Set<string>(ast.nodes.map((nd) => nd.id));
-  let next = 1;
+  if (viewerMode || ast === null || scene === null) return;
+  if (!familyAffordances(ast.kind).addNode || selectionOrder.length === 0) return;
+  // Read label + shape from the laid scene (family-agnostic) rather than the per-family AST node types.
+  const sceneById = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd]));
+  const used = new Set<string>(scene.nodes.map((nd) => nd.id));
   const pairs: Array<{ readonly from: SceneNodeId; readonly to: SceneNodeId }> = [];
   let text = editor.value();
   for (const id of selectionOrder) {
-    const orig = nodeById.get(brand<string, "NodeId">(id));
+    const orig = sceneById.get(brand<string, "SceneNodeId">(id));
     if (orig === undefined) continue;
-    while (used.has(`n${next}`)) next++;
-    const newId = `n${next}`;
+    const { id: newId, label } = freshNode(ast.kind, used, orig.label);
     used.add(newId);
-    text = addNode(text, brand<string, "NodeId">(newId), orig.label, orig.shape);
+    text = appendNode(ast.kind, text, newId, label, orig.shape);
     pairs.push({ from: id, to: brand<string, "SceneNodeId">(newId) });
   }
   if (pairs.length === 0) return;
@@ -2786,14 +2885,18 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "gitGraph":
     case "timeline":
     case "mindmap":
-    case "pie":
       return deleteNode(text, brand<string, "NodeId">(id));
-    // gantt: a task has no id in the text when it's auto-numbered, so delete its line by the label
-    // span from the source map. Multi-delete is ordered bottom-up by the caller so spans stay valid.
+    // gantt/pie: the item has no in-text id (auto-numbered task / synthetic slice id), so delete its
+    // line by the label span from the source map. Multi-delete is ordered bottom-up so spans stay valid.
     case "gantt": {
       if (ganttSource === null) return text;
       const span = ganttSource.tasks.get(brand<string, "GanttTaskId">(id));
-      return span === undefined ? text : deleteGanttTask(text, span);
+      return span === undefined ? text : deleteLineAt(text, span);
+    }
+    case "pie": {
+      if (pieSource === null) return text;
+      const span = pieSource.slices.get(brand<string, "PieSliceId">(id));
+      return span === undefined ? text : deleteLineAt(text, span);
     }
     default:
       return assertNever(kind);

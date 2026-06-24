@@ -20,7 +20,11 @@ export type SceneNodeRole =
   | "stateEnd"
   | "stateFork"
   | "stateJoin"
-  | "stateNote";
+  | "stateNote"
+  // An invisible hit/selection region the renderer draws nothing for — its own geometry (e.g. a pie
+  // slice's wedge) is drawn elsewhere, but it carries an id so the slice is selectable / relabelable /
+  // deletable through the normal node path.
+  | "marker";
 // A marker drawn at one end of an edge:
 //   - `none` / `arrow` (filled arrowhead, flowchart/state/C4/sequence);
 //   - UML class heads: `arrowOpen` (association/dependency V), `triangle` (hollow inheritance/

@@ -28,11 +28,14 @@ describe("layoutPie", () => {
   const slices = scene.wedges.filter(isSlice);
   const legend = scene.wedges.filter(isLegend);
 
-  it("emits a slice wedge and a legend swatch per slice, and no nodes/edges", () => {
-    expect(scene.nodes).toHaveLength(0);
+  it("emits a slice wedge + legend swatch + an invisible marker hit-node per slice (no edges)", () => {
     expect(scene.edges).toHaveLength(0);
     expect(slices).toHaveLength(2);
     expect(legend).toHaveLength(2);
+    // One `marker` node per slice (the selectable/relabelable/deletable hit region), keyed by slice id.
+    expect(scene.nodes).toHaveLength(2);
+    expect(scene.nodes.every((n) => n.role === "marker")).toBe(true);
+    expect(scene.nodes.map((n) => n.id)).toEqual(["s0", "s1"]);
   });
 
   it("sizes slices by their share of the total and starts at 12 o'clock", () => {
