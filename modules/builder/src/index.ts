@@ -33,6 +33,7 @@ export {
   connectRequirement,
   deleteNode,
   deleteBlockGroup,
+  deleteGroupBlock,
   deleteLineAt,
   deleteEdge,
   deleteC4,

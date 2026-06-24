@@ -13,6 +13,7 @@ import {
   decodeOverlay,
   deleteActor,
   deleteBlockGroup,
+  deleteGroupBlock,
   deleteC4,
   deleteC4Rel,
   deleteClassEntity,
@@ -2559,7 +2560,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (span !== undefined) pending = patchAt(span);
     } else {
       const id = brand<string, "NodeId">(hit.id);
-      const span = netSource.nodes.get(id);
+      const span = netSource.nodes.get(id) ?? netSource.groups.get(id);
       const bare = netSource.bareNodes.get(id);
       if (span !== undefined) pending = patchAt(span);
       else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
@@ -3009,9 +3010,17 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
         ? deleteBlockGroup(text, blockId)
         : deleteNode(text, blockId);
     }
+    // A network subnet/zone group deletes its whole `group "…" { … }` block; a node deletes its line.
+    case "network": {
+      const netId = brand<string, "NodeId">(id);
+      if (ast !== null && ast.kind === "network" && ast.groups.some((g) => g.id === netId)) {
+        const span = netSource?.groups.get(netId);
+        return span === undefined ? text : deleteGroupBlock(text, span);
+      }
+      return deleteNode(text, netId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
     case "flowchart":
-    case "network":
     case "cloud":
     case "gitGraph":
     case "timeline":

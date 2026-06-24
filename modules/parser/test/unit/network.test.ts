@@ -67,6 +67,22 @@ describe("parseNetwork — per-node icon override", () => {
     expect(byId.get(nid("plain"))?.icon).toBeNull();
   });
 
+  it("parses nested subnet/zone `group \"…\" { … }` with parent pointers + label spans", () => {
+    const text = 'network\n  group "DMZ" {\n    server web "Web"\n  }\n  server db "DB"\n  web -- db\n';
+    const r = parseNetworkWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const { ast, source } = r.value;
+    expect(ast.groups).toEqual([{ id: nid("group:0"), label: "DMZ", parent: null }]);
+    const byId = new Map(ast.nodes.map((n) => [n.id, n]));
+    expect(byId.get(nid("web"))?.parent).toBe(nid("group:0")); // nested
+    expect(byId.get(nid("db"))?.parent).toBeNull(); // top-level
+    expect(ast.links.map((l) => [l.from, l.to])).toContainEqual([nid("web"), nid("db")]); // crosses
+    const span = source.groups.get(nid("group:0"));
+    expect(span).toBeDefined();
+    if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("DMZ");
+  });
+
   it("fails loudly on a malformed icon reference (no pack/name split) instead of silently dropping it", () => {
     const r = parseNetwork('network\n  server x "Y" icon "bogus"\n');
     expect(isOk(r)).toBe(false);

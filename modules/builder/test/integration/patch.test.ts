@@ -32,6 +32,7 @@ import {
   deleteErEntity,
   deleteErRel,
   deleteBlockGroup,
+  deleteGroupBlock,
   deleteLineAt,
   deleteMessage,
   deleteNode,
@@ -475,6 +476,19 @@ describe("relabelNode", () => {
     // Deleting a leaf removes just its line.
     expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
       "mindmap\n  root\n    A\n      A1\n",
+    );
+  });
+
+  it("deleteGroupBlock removes a brace-delimited `group \"…\" { … }` whole, balancing nesting", () => {
+    const text =
+      'network\n  group "DMZ" {\n    server web "Web"\n    group "Inner" {\n      host h\n    }\n  }\n  server db "DB"\n';
+    // The label span of the outer group (inside its quotes).
+    const outer = { start: text.indexOf('"DMZ"') + 1, end: text.indexOf('"DMZ"') + 4 };
+    expect(deleteGroupBlock(text, outer)).toBe('network\n  server db "DB"\n');
+    // The inner group, by its label span — outer stays.
+    const inner = { start: text.indexOf('"Inner"') + 1, end: text.indexOf('"Inner"') + 6 };
+    expect(deleteGroupBlock(text, inner)).toBe(
+      'network\n  group "DMZ" {\n    server web "Web"\n  }\n  server db "DB"\n',
     );
   });
 

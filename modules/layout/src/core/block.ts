@@ -13,6 +13,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { variableGrid, type Size } from "./grid.js";
 import { clampedWidth } from "./measure.js";
 import { orthogonalRoute, type RouteBox } from "./route.js";
 
@@ -28,56 +29,6 @@ const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly toEnd
   open: { stroke: "solid", toEnd: "none" },
   dotted: { stroke: "dashed", toEnd: "arrow" },
   thick: { stroke: "solid", toEnd: "arrow" },
-};
-
-interface Size {
-  readonly w: number;
-  readonly h: number;
-}
-
-// Place items (given their intrinsic sizes) into a `columns`-wide *variable* grid: each column takes
-// the widest item in it, each row the tallest — so a composite bigger than a leaf cell fits without
-// overlapping. Uniform leaf sizes degenerate to the old fixed grid. Returns each cell's top-left + the
-// content extent.
-const variableGrid = (
-  sizes: readonly Size[],
-  columns: number,
-  gap: number,
-): {
-  readonly cells: readonly { x: number; y: number }[];
-  readonly width: number;
-  readonly height: number;
-} => {
-  const rows = Math.max(1, Math.ceil(sizes.length / columns));
-  const colW = new Array<number>(columns).fill(0);
-  const rowH = new Array<number>(rows).fill(0);
-  sizes.forEach((s, i) => {
-    const c = i % columns;
-    const r = Math.floor(i / columns);
-    colW[c] = Math.max(colW[c] ?? 0, s.w);
-    rowH[r] = Math.max(rowH[r] ?? 0, s.h);
-  });
-  const colX: number[] = [];
-  let x = 0;
-  for (let c = 0; c < columns; c++) {
-    colX.push(x);
-    x += (colW[c] ?? 0) + gap;
-  }
-  const rowY: number[] = [];
-  let y = 0;
-  for (let r = 0; r < rows; r++) {
-    rowY.push(y);
-    y += (rowH[r] ?? 0) + gap;
-  }
-  const cells = sizes.map((_, i) => ({
-    x: colX[i % columns] ?? 0,
-    y: rowY[Math.floor(i / columns)] ?? 0,
-  }));
-  const usedCols = Math.min(columns, Math.max(1, sizes.length));
-  const width =
-    colW.slice(0, usedCols).reduce((a, b) => a + b, 0) + Math.max(0, usedCols - 1) * gap;
-  const height = rowH.reduce((a, b) => a + b, 0) + Math.max(0, rows - 1) * gap;
-  return { cells, width, height };
 };
 
 // Pure nested grid layout. Leaf blocks fill a `columns`-wide grid in a uniform cell (sized to the

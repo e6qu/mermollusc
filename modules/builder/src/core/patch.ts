@@ -497,6 +497,35 @@ export const deleteBlockGroup = (text: string, id: NodeId): string => {
   return lines.join("\n");
 };
 
+// Delete a brace-delimited `group "label" { … }` container (network subnet/zone, cloud group) by the
+// label's span: from the group's opening line, balance `{`/`}` (nested groups included) to its closing
+// `}` and drop the whole block. The group id is synthetic (not in the text), so the label span is the
+// reliable anchor; line-based `deleteNode` can't find it and would orphan the body + dangling `}`.
+export const deleteGroupBlock = (text: string, labelSpan: TextSpan): string => {
+  const lines = text.split("\n");
+  const startLine = text.slice(0, labelSpan.start).split("\n").length - 1;
+  let depth = 0;
+  let started = false;
+  let endLine = -1;
+  for (let i = startLine; i < lines.length; i++) {
+    for (const ch of lines[i] ?? "") {
+      if (ch === "{") {
+        depth++;
+        started = true;
+      } else if (ch === "}") {
+        depth--;
+      }
+    }
+    if (started && depth <= 0) {
+      endLine = i;
+      break;
+    }
+  }
+  if (endLine === -1) return text;
+  lines.splice(startLine, endLine - startLine + 1);
+  return lines.join("\n");
+};
+
 // Removes the whole source line (with its line break) containing `span`. Used to delete a Gantt task or
 // a pie slice by its label span — families whose item may have no in-text id (a Gantt task's id can be
 // auto-generated `t0…` and absent from the text; a pie slice's id is synthetic), so the span is the

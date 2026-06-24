@@ -26,6 +26,7 @@ export type {
   BlockAst,
   NetworkNodeKind,
   NetworkNode,
+  NetworkGroup,
   NetworkLink,
   NetworkAst,
   CloudNodeKind,
