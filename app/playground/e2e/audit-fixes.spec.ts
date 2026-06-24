@@ -58,18 +58,12 @@ test("exports and image copy are blocked while the current source is stale", asy
   await setSource(page, "flowchart TD\n  A[Start --> ??? broken |\n");
   await expect(page.locator("#status")).toHaveAttribute("data-level", "error");
 
-  for (const id of ["#export-png", "#export-pdf", "#export-svg", "#export-dot"]) {
-    const download = page.waitForEvent("download", { timeout: 300 }).then(
-      () => "download",
-      () => "none",
-    );
-    await page.locator(id).click();
-    await expect(page.locator("#status")).toHaveAttribute("data-level", "error");
-    expect(await download).toBe("none");
+  // While the source doesn't render, the export/copy controls are disabled up front (with a "fix the
+  // source first" title) rather than erroring only after a click.
+  for (const id of ["#export-png", "#export-pdf", "#export-svg", "#export-dot", "#copy-png"]) {
+    await expect(page.locator(id)).toBeDisabled();
+    await expect(page.locator(id)).toHaveAttribute("title", /fix the source first/);
   }
-
-  await page.locator("#copy-png").click();
-  await expect(page.locator("#status")).toHaveText(/Copy blocked/);
   await expect(page.locator("#stage-wrap")).toHaveAttribute("data-stale", "true");
 });
 

@@ -1668,6 +1668,14 @@ const setStatusAndAnnounce = (
   announce(message);
 };
 
+// A transient action confirmation (added/duplicated/connected/…): show it in the status bar and
+// announce it, but — unlike setStatus — don't touch the canvas's screen-reader description or the
+// parse-status level/stale flag, which describe the *diagram*, not the last command.
+const flashStatus = (message: string): void => {
+  statusEl.textContent = message;
+  announce(message);
+};
+
 statusEl.addEventListener("click", () => {
   if (errorRange === null) return;
   editor.focus();
@@ -1953,10 +1961,7 @@ const relax = async (): Promise<void> => {
   doc.persist();
   paintScene();
   // Relax discards manual positions — say so, since the user can't otherwise tell a re-layout cleared them.
-  setStatusAndAnnounce(
-    "ok",
-    hadPins ? "relaxed layout — manual positions cleared" : "relaxed layout",
-  );
+  flashStatus(hadPins ? "relaxed layout — manual positions cleared" : "relaxed layout");
 };
 
 // The displayed extent origin (the offset `paintScene` translates by) — (0,0) until the first render.
@@ -2157,7 +2162,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   paintScene();
   updateGroupButtons();
   setTool("select");
-  setStatusAndAnnounce("ok", `placed ${label}`);
+  flashStatus(`placed ${label}`);
 };
 
 for (const t of TOOL_ORDER) {
@@ -2934,7 +2939,7 @@ addBtn.addEventListener("click", () => {
   if (next === editor.value()) return;
   editor.setValue(next);
   void renderFromText(next);
-  setStatusAndAnnounce("ok", `added ${label}`);
+  flashStatus(`added ${label}`);
 });
 
 // Duplicate the selected node(s) (⌘D): append a fresh-id copy of each (same label + shape) in the
@@ -2972,7 +2977,7 @@ const duplicateSelection = async (): Promise<void> => {
   selectionOrder = pairs.map((p) => p.to);
   paintScene();
   updateGroupButtons();
-  setStatusAndAnnounce("ok", `duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
+  flashStatus(`duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
 };
 
 // In-memory node clipboard for ⌘C/⌘V (flowchart). Each entry is a node's label + shape and its offset
@@ -3059,13 +3064,12 @@ connectBtn.addEventListener("click", () => {
   if (text === before) {
     // The button is only enabled when the family supports connect, so an unchanged result means this
     // particular pairing was a no-op (e.g. a mindmap re-parent onto an existing parent or a cycle).
-    setStatusAndAnnounce("warning", "connect made no change");
+    flashStatus("connect made no change");
     return;
   }
   editor.setValue(text);
   void renderFromText(text);
-  setStatusAndAnnounce(
-    "ok",
+  flashStatus(
     `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
   );
 });
@@ -3492,8 +3496,7 @@ const cycleShape = async (): Promise<void> => {
   paintScene();
   updateGroupButtons();
   // Announce the outcome — every other mutating action does, so a screen-reader user gets parity.
-  setStatusAndAnnounce(
-    "ok",
+  flashStatus(
     targets.length === 1 ? `shape: ${lastShape}` : `cycled shape of ${targets.length} nodes`,
   );
   canvas.focus({ preventScroll: true });
