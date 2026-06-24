@@ -2,11 +2,15 @@ import { createToken, Lexer, type TokenType } from "chevrotain";
 
 // Shapes/edge-text use per-bracket lexer modes (as in the flowchart lexer) so labels keep spaces.
 const Identifier = createToken({ name: "Identifier", pattern: /[A-Za-z0-9_]+/ });
+// `block:` opens a composite block; matched before `BlockHeader` so `block:id` isn't read as the
+// `block` header plus a stray `:id`.
+const BlockGroupOpen = createToken({ name: "BlockGroupOpen", pattern: /block:/ });
 const BlockHeader = createToken({
   name: "BlockHeader",
   pattern: /block-beta|block/,
   longer_alt: Identifier,
 });
+const End = createToken({ name: "End", pattern: /end/, longer_alt: Identifier });
 const Columns = createToken({ name: "Columns", pattern: /columns/, longer_alt: Identifier });
 const Num = createToken({ name: "Number", pattern: /[0-9]+/, longer_alt: Identifier });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
@@ -44,7 +48,9 @@ export const blockLexer = new Lexer({
       Comment,
       NewLine,
       Semicolon,
+      BlockGroupOpen,
       BlockHeader,
+      End,
       Columns,
       Num,
       Icon,
@@ -69,7 +75,9 @@ export const blockLexer = new Lexer({
 
 export const BlockTok = {
   Identifier,
+  BlockGroupOpen,
   BlockHeader,
+  End,
   Columns,
   Number: Num,
   Icon,
@@ -99,7 +107,9 @@ export const blockAllTokens: TokenType[] = [
   Comment,
   NewLine,
   Semicolon,
+  BlockGroupOpen,
   BlockHeader,
+  End,
   Columns,
   Num,
   Icon,

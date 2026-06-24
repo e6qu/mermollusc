@@ -104,6 +104,16 @@ export interface BlockNode {
   readonly icon: IconRef | null;
 }
 
+// A `block:id … end` composite block — a container that lays its own children out in a nested grid.
+// `children` is the ordered list of its direct child ids (blocks and/or nested groups), as declared.
+export interface BlockGroup {
+  readonly id: NodeId;
+  readonly label: string;
+  // The group's own grid width (its inner `columns N`, else one row of its direct children).
+  readonly columns: PositiveInt;
+  readonly children: readonly NodeId[];
+}
+
 export interface BlockEdge {
   readonly id: EdgeId;
   readonly from: NodeId;
@@ -112,12 +122,16 @@ export interface BlockEdge {
   readonly label: string | null;
 }
 
-// A `block-beta` diagram: blocks flow into a `columns`-wide grid; edges connect them.
+// A `block-beta` diagram: blocks flow into a `columns`-wide grid; `block:id … end` composites nest
+// their own grids; edges connect blocks (across composite boundaries too). The membership tree is the
+// ordered `roots` (top-level child ids) plus each group's `children` — a block/group appears once.
 export interface BlockAst {
   readonly kind: "block";
   // ≥ 1 by construction (the parser clamps); a zero/negative grid width is unrepresentable.
   readonly columns: PositiveInt;
   readonly blocks: readonly BlockNode[];
+  readonly groups: readonly BlockGroup[];
+  readonly roots: readonly NodeId[];
   readonly edges: readonly BlockEdge[];
 }
 

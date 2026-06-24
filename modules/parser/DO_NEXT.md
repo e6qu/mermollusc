@@ -32,9 +32,10 @@
   `kind id "…"`). Was a silent no-op.
 - **Grouping syntax (own PR each — layout rewrites).** These are not parser-only: each needs a
   hierarchical layout, the risky piece.
-  - Block `block:id … end` + column spans — the block layout is a flat `gridGeometry`; nesting means a
-    new nested-grid layout + boundary-aware edge routing. Block grouping is *medium*; column spans force
-    a grid-algorithm redesign (*high* risk). Reuse the cloud nested-`place()` shape where it fits.
+  - *(done)* Block `block:id … end` composites — parser (recursive `groupBlock`, ordered `roots`/group
+    `children` tree), a new **nested variable-cell** block layout (uniform leaves degenerate to the old
+    grid), container render, and editor relabel/delete/drag of the composite. **Column spans still TODO**
+    (`block:id:N` / `a:N`) — they force the grid-algorithm redesign (*high* risk), a separate item.
   - Network subnet/zone grouping — network has **zero** group infrastructure (no AST/layout); a
     from-scratch nested-box layout (*high* risk). Mirror cloud's AST + layout.
   - Cloud "group/region collapse" is **not** grammar — cloud groups already parse/AST/layout

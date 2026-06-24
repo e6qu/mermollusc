@@ -463,6 +463,40 @@ export const deleteNode = (text: string, id: NodeId): string =>
     .filter((line) => !line.replace(LABELS, "").split(NON_IDENT).includes(id))
     .join("\n");
 
+// Delete a `block:id … end` composite and everything inside it (nested composites included), by
+// matching the opening line to its balancing `end`. Line-based `deleteNode` can't: it would drop the
+// `block:id` line but orphan the body + the dangling `end`.
+export const deleteBlockGroup = (text: string, id: NodeId): string => {
+  const lines = text.split("\n");
+  // Match `block:<id>` by extracting the identifier after `block:` and comparing — avoids building a
+  // regex from `id` (a non-literal pattern), and the lexer already restricts ids to `[A-Za-z0-9_]`.
+  const IDENT = /^[A-Za-z0-9_]+/;
+  const opensThisGroup = (line: string): boolean => {
+    const t = line.trimStart();
+    if (!t.startsWith("block:")) return false;
+    const m = IDENT.exec(t.slice("block:".length));
+    return m !== null && m[0] === id;
+  };
+  const openIdx = lines.findIndex(opensThisGroup);
+  if (openIdx === -1) return text;
+  let depth = 0;
+  let endIdx = -1;
+  for (let i = openIdx; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (/^\s*block:/.test(line)) depth++;
+    if (/^\s*end(?![A-Za-z0-9_])/.test(line)) {
+      depth--;
+      if (depth === 0) {
+        endIdx = i;
+        break;
+      }
+    }
+  }
+  if (endIdx === -1) return text;
+  lines.splice(openIdx, endIdx - openIdx + 1);
+  return lines.join("\n");
+};
+
 // Removes the whole source line (with its line break) containing `span`. Used to delete a Gantt task or
 // a pie slice by its label span — families whose item may have no in-text id (a Gantt task's id can be
 // auto-generated `t0…` and absent from the text; a pie slice's id is synthetic), so the span is the

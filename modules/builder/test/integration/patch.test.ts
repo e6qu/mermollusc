@@ -31,6 +31,7 @@ import {
   deleteEdge,
   deleteErEntity,
   deleteErRel,
+  deleteBlockGroup,
   deleteLineAt,
   deleteMessage,
   deleteNode,
@@ -475,5 +476,17 @@ describe("relabelNode", () => {
     expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
       "mindmap\n  root\n    A\n      A1\n",
     );
+  });
+
+  it("deleteBlockGroup removes a `block:id … end` composite whole, balancing nested composites", () => {
+    const text = "block-beta\n  a\n  block:svc\n    api\n    block:inner\n      x\n    end\n  end\n  c\n";
+    // Deleting the outer composite takes its body (and the nested composite) with it.
+    expect(deleteBlockGroup(text, brand("svc"))).toBe("block-beta\n  a\n  c\n");
+    // Deleting only the inner composite leaves the outer intact.
+    expect(deleteBlockGroup(text, brand("inner"))).toBe(
+      "block-beta\n  a\n  block:svc\n    api\n  end\n  c\n",
+    );
+    // Unknown id is a no-op.
+    expect(deleteBlockGroup(text, brand("nope"))).toBe(text);
   });
 });

@@ -5,6 +5,7 @@ import { brand, err, map, ok, positiveInt, type Result } from "@m/std";
 import type {
   BlockAst,
   BlockEdge,
+  BlockGroup,
   BlockNode,
   BlockSource,
   EdgeId,
@@ -124,62 +125,106 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const firstIdSpan = new Map<string, TextSpan>();
   const edgeSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
-  let columns: number | null = null;
+  const groups: BlockGroup[] = [];
+  const groupSpans = new Map<NodeId, TextSpan>();
+  // A first malformed-ref failure; once set, the walk bails and the parse fails loudly.
+  let failure: ParseError | null = null;
 
-  for (const stmt of childNodes(root, "statement")) {
-    const colDecl = childNodes(stmt.children, "columnsDecl")[0];
-    if (colDecl !== undefined) {
-      const raw = imageOf(colDecl.children, "Number");
-      if (raw !== null) columns = Number.parseInt(raw, 10);
-      continue;
-    }
+  // Walk a statement list, populating the shared maps. Returns this level's `columns N` (if declared)
+  // and the ordered ids of its direct children (blocks and nested groups), as declared.
+  const walk = (statements: readonly CstNode[]): { columns: number | null; children: NodeId[] } => {
+    let levelColumns: number | null = null;
+    const children: NodeId[] = [];
+    for (const stmt of statements) {
+      if (failure !== null) break;
+      const colDecl = childNodes(stmt.children, "columnsDecl")[0];
+      if (colDecl !== undefined) {
+        const raw = imageOf(colDecl.children, "Number");
+        if (raw !== null) levelColumns = Number.parseInt(raw, 10);
+        continue;
+      }
 
-    const chain = childNodes(stmt.children, "chain")[0];
-    if (chain === undefined) continue;
-    const refs: Ref[] = [];
-    for (const refNode of childNodes(chain.children, "nodeRef")) {
-      const ref = readNodeRef(refNode);
-      if (!ref.ok) return err(ref.error); // malformed `icon "…"` → fail the parse loudly
-      refs.push(ref.value);
-    }
-    const links = childNodes(chain.children, "link");
-
-    for (const ref of refs) {
-      const id = brand<string, "NodeId">(ref.id);
-      const existing = blockMap.get(ref.id);
-      if (existing === undefined) {
-        blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape, icon: ref.icon });
-      } else if (ref.explicit) {
-        blockMap.set(ref.id, {
-          id: existing.id,
-          label: ref.label,
-          shape: ref.shape,
-          icon: ref.icon,
+      const group = childNodes(stmt.children, "groupBlock")[0];
+      if (group !== undefined) {
+        const idTok = childTokens(group.children, "Identifier")[0];
+        const gid = brand<string, "NodeId">(idTok?.image ?? "");
+        if (idTok !== undefined)
+          groupSpans.set(gid, {
+            start: idTok.startOffset,
+            end: idTok.startOffset + idTok.image.length,
+          });
+        const inner = walk(childNodes(group.children, "statement"));
+        // A group with no `columns` of its own defaults to one row of its direct children.
+        const gColumns = positiveInt(
+          Math.max(1, Math.trunc(inner.columns ?? inner.children.length)),
+        );
+        groups.push({
+          id: gid,
+          label: idTok?.image ?? "",
+          columns: gColumns,
+          children: inner.children,
         });
+        children.push(gid);
+        continue;
       }
-      if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
-      if (ref.idSpan !== null && !firstIdSpan.has(ref.id)) firstIdSpan.set(ref.id, ref.idSpan);
-    }
 
-    for (let i = 0; i < links.length; i++) {
-      const link = links[i];
-      const from = refs[i];
-      const to = refs[i + 1];
-      if (link === undefined || from === undefined || to === undefined) {
-        return err(parseError(["internal: malformed edge chain"]));
+      const chain = childNodes(stmt.children, "chain")[0];
+      if (chain === undefined) continue;
+      const refs: Ref[] = [];
+      for (const refNode of childNodes(chain.children, "nodeRef")) {
+        const ref = readNodeRef(refNode);
+        if (!ref.ok) {
+          failure = ref.error; // malformed `icon "…"` → fail the parse loudly
+          break;
+        }
+        refs.push(ref.value);
       }
-      const pipe = childTokens(link.children, "PipeText")[0];
-      const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
-      edges.push({
-        id: edgeId,
-        from: brand<string, "NodeId">(from.id),
-        to: brand<string, "NodeId">(to.id),
-        kind: linkKind(link.children),
-        label: pipe === undefined ? null : cleanLabel(pipe.image),
-      });
-      if (pipe !== undefined) edgeSpans.set(edgeId, labelSpan(pipe));
+      if (failure !== null) break;
+      const links = childNodes(chain.children, "link");
+
+      for (const ref of refs) {
+        const id = brand<string, "NodeId">(ref.id);
+        const existing = blockMap.get(ref.id);
+        if (existing === undefined) {
+          blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape, icon: ref.icon });
+          children.push(id); // first declaration fixes the block's container + grid position
+        } else if (ref.explicit) {
+          blockMap.set(ref.id, {
+            id: existing.id,
+            label: ref.label,
+            shape: ref.shape,
+            icon: ref.icon,
+          });
+        }
+        if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);
+        if (ref.idSpan !== null && !firstIdSpan.has(ref.id)) firstIdSpan.set(ref.id, ref.idSpan);
+      }
+
+      for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        const from = refs[i];
+        const to = refs[i + 1];
+        if (link === undefined || from === undefined || to === undefined) {
+          failure = parseError(["internal: malformed edge chain"]);
+          break;
+        }
+        const pipe = childTokens(link.children, "PipeText")[0];
+        const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
+        edges.push({
+          id: edgeId,
+          from: brand<string, "NodeId">(from.id),
+          to: brand<string, "NodeId">(to.id),
+          kind: linkKind(link.children),
+          label: pipe === undefined ? null : cleanLabel(pipe.image),
+        });
+        if (pipe !== undefined) edgeSpans.set(edgeId, labelSpan(pipe));
+      }
     }
-  }
+    return { columns: levelColumns, children };
+  };
+
+  const top = walk(childNodes(root, "statement"));
+  if (failure !== null) return err(failure);
 
   const blocks = [...blockMap.values()];
   // A block is "bare" (relabel by wrapping its id) when it never carried an explicit label span.
@@ -188,13 +233,14 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
     const id = brand<string, "NodeId">(idStr);
     if (!blockSpans.has(id)) bareSpans.set(id, span);
   }
-  // Mermaid defaults to a single row when `columns` is omitted; clamp to ≥1 (a finite integer) before
-  // minting — so the grid width is `PositiveInt` and the layout never divides by zero.
-  const requested = columns !== null && Number.isFinite(columns) ? columns : blocks.length;
+  // Mermaid defaults the grid width to the *top-level* item count when `columns` is omitted; clamp to
+  // ≥1 (a finite integer) before minting — so the grid width is `PositiveInt`, never zero.
+  const requested =
+    top.columns !== null && Number.isFinite(top.columns) ? top.columns : top.children.length;
   const resolved = positiveInt(Math.max(1, Math.trunc(requested)));
   return ok({
-    ast: { kind: "block", columns: resolved, blocks, edges },
-    source: { blocks: blockSpans, edges: edgeSpans, bareNodes: bareSpans },
+    ast: { kind: "block", columns: resolved, blocks, groups, roots: top.children, edges },
+    source: { blocks: blockSpans, edges: edgeSpans, bareNodes: bareSpans, groups: groupSpans },
   });
 };
 

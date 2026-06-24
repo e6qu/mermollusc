@@ -32,6 +32,7 @@ export {
   deleteMindmapNode,
   connectRequirement,
   deleteNode,
+  deleteBlockGroup,
   deleteLineAt,
   deleteEdge,
   deleteC4,

@@ -30,9 +30,20 @@ class BlockParser extends CstParser {
   private readonly statement = this.RULE("statement", () =>
     this.OR([
       { ALT: () => this.SUBRULE(this.columnsDecl) },
+      { ALT: () => this.SUBRULE(this.groupBlock) },
       { ALT: () => this.SUBRULE(this.chain) },
     ]),
   );
+
+  // `block:id … end` — a composite block whose body is its own statement list (nestable).
+  private readonly groupBlock = this.RULE("groupBlock", () => {
+    this.CONSUME(BlockTok.BlockGroupOpen);
+    this.CONSUME(BlockTok.Identifier);
+    this.MANY(() =>
+      this.OR([{ ALT: () => this.SUBRULE(this.sep) }, { ALT: () => this.SUBRULE(this.statement) }]),
+    );
+    this.CONSUME(BlockTok.End);
+  });
 
   private readonly columnsDecl = this.RULE("columnsDecl", () => {
     this.CONSUME(BlockTok.Columns);
