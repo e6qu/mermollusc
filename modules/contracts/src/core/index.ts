@@ -21,6 +21,7 @@ export type {
   C4Rel,
   C4Ast,
   BlockNode,
+  BlockGroup,
   BlockEdge,
   BlockAst,
   NetworkNodeKind,

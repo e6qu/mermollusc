@@ -125,3 +125,6 @@
   dragged node and emits three lines per other axis).
 - core: `descendantsOf(scene, containerId)` — every node transitively nested in a container via the
   scene parent hierarchy (cycle-guarded). Powers dragging a subgraph/boundary/composite as one. 2 tests.
+- core: `deleteBlockGroup(text, id)` — remove a `block:id … end` composite whole by matching its opening
+  line to the balancing `end` (nested composites balanced), so a line-based delete can't orphan the body
+  or the dangling `end`. 3 tests.

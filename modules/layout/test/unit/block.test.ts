@@ -15,6 +15,8 @@ const ast: BlockAst = {
     { id: nid("b"), label: "B", shape: "rect", icon: null },
     { id: nid("c"), label: "C", shape: "rect", icon: null },
   ],
+  groups: [],
+  roots: [nid("a"), nid("b"), nid("c")],
   edges: [{ id: eid("e0"), from: nid("a"), to: nid("b"), kind: "arrow", label: null }],
 };
 
@@ -29,6 +31,8 @@ describe("layoutBlock", () => {
       kind: "block",
       columns: positiveInt(1),
       blocks: [{ id: nid("a"), label: "A", shape: "rect", icon: null }],
+      groups: [],
+      roots: [nid("a")],
       edges: [{ id: eid("e0"), from: nid("a"), to: nid("ghost"), kind: "arrow", label: null }],
     };
     expect(layoutBlock(bad, heuristicMeasure).ok).toBe(false);

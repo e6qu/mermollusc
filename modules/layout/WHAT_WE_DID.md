@@ -231,3 +231,7 @@
 - core: `retidyRoutes(scene)` — re-route every non-orthogonal, non-curved connector as a right-angle
   path between its endpoints' boxes (reuses `orthogonalRoute`); leaves clean + curved edges (and returns
   the same scene on a no-op). Lets the app snap a move-blended diagonal back to right angles. 3 unit tests.
+- Block composites: `layoutBlock` is now a recursive **nested variable-cell grid** — each column takes
+  its widest item, each row its tallest, so a `block:id … end` container (laid out from its own
+  `children`/`columns`) fits as one larger cell; uniform leaves degenerate to the prior fixed grid.
+  Containers render via the shared `container` shape; edges route orthogonally across boundaries.

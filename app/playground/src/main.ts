@@ -12,6 +12,7 @@ import {
   connectUndirected,
   decodeOverlay,
   deleteActor,
+  deleteBlockGroup,
   deleteC4,
   deleteC4Rel,
   deleteClassEntity,
@@ -2545,7 +2546,9 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (span !== undefined) pending = patchAt(span);
     } else {
       const id = brand<string, "NodeId">(hit.id);
-      const span = blockSource.blocks.get(id);
+      // A composite relabels through its `block:id` span (renaming the id); a leaf through its label
+      // span, or by wrapping a bare id.
+      const span = blockSource.blocks.get(id) ?? blockSource.groups.get(id);
       const bare = blockSource.bareNodes.get(id);
       if (span !== undefined) pending = patchAt(span);
       else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i}["${l}"]`);
@@ -2999,9 +3002,15 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     // Composite states own a `{ … }` body that line-based `deleteNode` would orphan.
     case "state":
       return deleteStateEntity(text, brand<string, "StateId">(id));
+    // A block composite (`block:id … end`) deletes as a whole block; a leaf block deletes its line.
+    case "block": {
+      const blockId = brand<string, "NodeId">(id);
+      return ast !== null && ast.kind === "block" && ast.groups.some((g) => g.id === blockId)
+        ? deleteBlockGroup(text, blockId)
+        : deleteNode(text, blockId);
+    }
     // Families whose nodes are single declaration lines: the line-based removal is correct.
     case "flowchart":
-    case "block":
     case "network":
     case "cloud":
     case "gitGraph":

@@ -5,6 +5,25 @@ import { parseBlock, parseBlockWithSource } from "../../src/shell/block-parse.js
 const nid = (s: string) => brand<string, "NodeId">(s);
 const eid = (s: string) => brand<string, "EdgeId">(s);
 
+describe("parseBlock — composite blocks", () => {
+  it("parses a `block:id … end` group: nested parent pointers, group columns, cross-boundary edge", () => {
+    const text =
+      'block-beta\n  columns 2\n  a["A"]\n  block:grp\n    columns 1\n    b\n    c\n  end\n  d\n  a --> b\n';
+    const r = parseBlockWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const { ast, source } = r.value;
+    // One composite, its inner `columns 1` honoured, b + c as its ordered children.
+    expect(ast.groups).toEqual([{ id: nid("grp"), label: "grp", columns: 1, children: [nid("b"), nid("c")] }]);
+    // Top level is a, the group, then d — in declaration order.
+    expect(ast.roots).toEqual([nid("a"), nid("grp"), nid("d")]);
+    // An edge can cross the boundary (a → b).
+    expect(ast.edges.map((e) => [e.from, e.to])).toContainEqual([nid("a"), nid("b")]);
+    // The group carries a label span (its id) for relabel.
+    expect(source.groups.get(nid("grp"))).toBeDefined();
+  });
+});
+
 describe("parseBlock", () => {
   it("parses block declarations with shapes, a columns directive, and edges", () => {
     const text = 'block-beta\n  columns 2\n  a["Web"]\n  b(API)\n  c\n  a --> b\n';

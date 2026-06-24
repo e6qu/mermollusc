@@ -62,6 +62,8 @@ export interface BlockSource {
   readonly blocks: ReadonlyMap<NodeId, TextSpan>;
   readonly edges: ReadonlyMap<EdgeId, TextSpan>;
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
+  // Label span of each `block:id … end` composite — its `["label"]` if present, else the id token.
+  readonly groups: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a network diagram: the inner label of each node that has a quoted label
