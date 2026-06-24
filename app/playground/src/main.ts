@@ -1171,6 +1171,15 @@ const computeCapabilities = (): CapabilityState => {
 const updateGroupButtons = (): void => {
   const caps = computeCapabilities();
   groupBtn.disabled = !caps.canGroup;
+  // The verb means different things per family — a source-level labelled group for cloud/network, a
+  // sidecar visual group elsewhere — so the title says which, instead of a generic "Group".
+  const groupKind = ast === null ? null : ast.kind;
+  groupBtn.title = !caps.canGroup
+    ? "select two or more nodes to group"
+    : groupKind === "cloud" || groupKind === "network"
+      ? "wrap the selection in a labelled group in the source text"
+      : "bundle the selection into a movable visual group";
+  ctxGroupBtn.title = groupBtn.title;
   ungroupBtn.disabled = !caps.hasGroup;
   lockBtn.disabled = !caps.hasGroup;
   lockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
@@ -1334,17 +1343,40 @@ const applyArrange = (kind: AlignKind): void => {
 const closeArrange = (): void => {
   arrangeMenu.hidden = true;
   arrangeBtn.setAttribute("aria-expanded", "false");
+  ctxArrangeBtn.setAttribute("aria-expanded", "false");
+  // Drop any fixed placement so the next editor-toolbar open uses the CSS-default anchored position.
+  arrangeMenu.style.cssText = "";
+};
+// Open the align/distribute menu near the control that invoked it. The editor-toolbar button uses the
+// CSS-default anchored placement (anchor=null); the on-canvas context-bar button positions it next to
+// itself with fixed coords, instead of opening it across the workbench at the editor pane.
+const openArrangeMenu = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
+  arrangeMenu.hidden = false;
+  if (anchor !== null) {
+    const r = anchor.getBoundingClientRect();
+    const mh = arrangeMenu.offsetHeight;
+    const mw = arrangeMenu.offsetWidth;
+    arrangeMenu.style.position = "fixed";
+    arrangeMenu.style.bottom = "auto";
+    arrangeMenu.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - mw - 4))}px`;
+    const above = r.top - mh - 6;
+    arrangeMenu.style.top = `${above > 4 ? above : r.bottom + 6}px`;
+  }
+  expander.setAttribute("aria-expanded", "true");
+};
+const toggleArrange = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
+  if (arrangeMenu.hidden) openArrangeMenu(anchor, expander);
+  else closeArrange();
 };
 arrangeBtn.addEventListener("click", (ev) => {
   ev.stopPropagation();
-  const willOpen = arrangeMenu.hidden;
-  arrangeMenu.hidden = !willOpen;
-  arrangeBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  toggleArrange(null, arrangeBtn);
 });
 document.addEventListener("pointerdown", (ev) => {
   if (arrangeMenu.hidden) return;
   const t = ev.target;
-  if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn)) return;
+  if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn || t === ctxArrangeBtn))
+    return;
   closeArrange();
 });
 
@@ -1367,6 +1399,11 @@ for (const { id, kind } of ARRANGE_ACTIONS) {
 
 // Bundle the selection into a new group. Each selected node contributes its top group (nesting an
 // existing group) or itself — so groups and loose elements bundle together, in selection order.
+// Sidecar group create/ungroup/relabel changes the navigator's group category without re-rendering the
+// diagram, so these handlers (defined before the navigator) refresh it through this hook, set once the
+// navigator exists. (Cloud's text groups go through renderFromText, which rebuilds the list anyway.)
+let refreshNavigatorGroups: () => void = () => {};
+
 const groupSelection = (): void => {
   if (viewerMode) return;
   // Cloud has native text groups: gather the selected *top-level leaves* into a `group "Group" { … }`
@@ -1411,6 +1448,7 @@ const groupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  refreshNavigatorGroups();
   announce(`grouped ${units.length} item${units.length === 1 ? "" : "s"}`);
 };
 
@@ -1423,6 +1461,7 @@ const ungroupSelection = (): void => {
   updateGroupButtons();
   doc.persist();
   paintScene();
+  refreshNavigatorGroups();
   announce("ungrouped selection");
 };
 
@@ -1515,6 +1554,19 @@ const scrollToLogical = (logicalX: number, logicalY: number): void => {
   stageWrap.scrollTop = canvasContentTop + logicalY * viewScale - stageWrap.clientHeight / 2;
 };
 
+// Centre a sidecar group in view (the keyboard navigator lands on one) — same framing math as a node,
+// using the group's outline box in the last rendered scene.
+const scrollToGroup = (id: GroupId): void => {
+  const rendered = lastRender?.scene ?? null;
+  if (rendered === null) return;
+  const box = groupBoxes(rendered).find((b) => b.id === id);
+  if (box === undefined) return;
+  scrollToLogical(
+    MARGIN - rendered.extent.origin.x + box.x + box.w / 2,
+    MARGIN - rendered.extent.origin.y + box.y + box.h / 2,
+  );
+};
+
 // The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
 // it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
 const minimapView = createMinimap({
@@ -1568,6 +1620,15 @@ const lineColOf = (
   return { line, col };
 };
 
+// Disable the export/copy controls while the current text doesn't render — they'd otherwise fail only
+// after the click. Re-evaluated on every render outcome, since setStatus runs on success and failure alike.
+const syncExportButtons = (): void => {
+  for (const b of [exportBtn, copyBtn, exportPdfBtn, exportSvgBtn, exportDotBtn]) {
+    b.disabled = !currentRenderValid;
+    b.title = currentRenderValid ? "" : "fix the source first";
+  }
+};
+
 const setStatus = (
   level: "ok" | "warning" | "error",
   message: string,
@@ -1595,6 +1656,7 @@ const setStatus = (
       : message,
   );
   updateTask();
+  syncExportButtons();
 };
 
 const setStatusAndAnnounce = (
@@ -1603,6 +1665,14 @@ const setStatusAndAnnounce = (
   range: { readonly offset: number; readonly length: number } | null = null,
 ): void => {
   setStatus(level, message, range);
+  announce(message);
+};
+
+// A transient action confirmation (added/duplicated/connected/…): show it in the status bar and
+// announce it, but — unlike setStatus — don't touch the canvas's screen-reader description or the
+// parse-status level/stale flag, which describe the *diagram*, not the last command.
+const flashStatus = (message: string): void => {
+  statusEl.textContent = message;
   announce(message);
 };
 
@@ -1882,12 +1952,16 @@ const relax = async (): Promise<void> => {
   const laid = await layout(ast, seed, measureLabel);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
+    setStatusAndAnnounce("error", `relax failed — ${laid.error.message}`);
     return;
   }
   scene = laid.value;
+  const hadPins = doc.overrides().size > 0;
   doc.clearOverrides();
   doc.persist();
   paintScene();
+  // Relax discards manual positions — say so, since the user can't otherwise tell a re-layout cleared them.
+  flashStatus(hadPins ? "relaxed layout — manual positions cleared" : "relaxed layout");
 };
 
 // The displayed extent origin (the offset `paintScene` translates by) — (0,0) until the first render.
@@ -2088,7 +2162,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   paintScene();
   updateGroupButtons();
   setTool("select");
-  announce(`placed ${label}`);
+  flashStatus(`placed ${label}`);
 };
 
 for (const t of TOOL_ORDER) {
@@ -2481,7 +2555,10 @@ const openInlineEditor = (
     inlineEl.onblur = null;
     if (apply) {
       commit(inlineEl.value);
-      if (inlineEl.value !== value) announceCommit(inlineEl.value);
+      // A rejected label sets an error status synchronously (a successful commit only re-renders, which
+      // is async) — so don't also announce "relabel committed" over the "can't rename" the user just got.
+      const rejected = statusEl.getAttribute("data-level") === "error";
+      if (!rejected && inlineEl.value !== value) announceCommit(inlineEl.value);
     }
     // Restore focus only if it would otherwise be lost (Enter/Escape) — not if the user clicked away.
     const active = document.activeElement;
@@ -2596,6 +2673,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
           doc.setGroupLabel(groupHit, next);
           doc.persist();
           paintScene();
+          refreshNavigatorGroups(); // the group's navigator label changed
         },
       };
     }
@@ -2861,7 +2939,7 @@ addBtn.addEventListener("click", () => {
   if (next === editor.value()) return;
   editor.setValue(next);
   void renderFromText(next);
-  announce(`added ${label}`);
+  flashStatus(`added ${label}`);
 });
 
 // Duplicate the selected node(s) (⌘D): append a fresh-id copy of each (same label + shape) in the
@@ -2899,7 +2977,7 @@ const duplicateSelection = async (): Promise<void> => {
   selectionOrder = pairs.map((p) => p.to);
   paintScene();
   updateGroupButtons();
-  announce(`duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
+  flashStatus(`duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
 };
 
 // In-memory node clipboard for ⌘C/⌘V (flowchart). Each entry is a node's label + shape and its offset
@@ -2984,12 +3062,14 @@ connectBtn.addEventListener("click", () => {
     text = appendEdge(ast.kind, text, from, to);
   }
   if (text === before) {
-    announce("connect isn't available for this diagram");
+    // The button is only enabled when the family supports connect, so an unchanged result means this
+    // particular pairing was a no-op (e.g. a mindmap re-parent onto an existing parent or a cycle).
+    flashStatus("connect made no change");
     return;
   }
   editor.setValue(text);
   void renderFromText(text);
-  announce(
+  flashStatus(
     `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
   );
 });
@@ -3416,11 +3496,44 @@ const cycleShape = async (): Promise<void> => {
   paintScene();
   updateGroupButtons();
   // Announce the outcome — every other mutating action does, so a screen-reader user gets parity.
-  announce(
+  flashStatus(
     targets.length === 1 ? `shape: ${lastShape}` : `cycled shape of ${targets.length} nodes`,
   );
   canvas.focus({ preventScroll: true });
 };
+
+const ctxButtons = (): HTMLButtonElement[] =>
+  Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
+    (b) => !b.hidden && !b.disabled,
+  );
+
+// Move keyboard focus into the floating action bar (F2 from the navigator), so a keyboard user reaches
+// rename/shape/connect/duplicate/group/lock/arrange/delete without a mouse. No-op when nothing's shown.
+const focusContextBar = (): void => {
+  if (contextBar.hidden) return;
+  ctxButtons()[0]?.focus();
+};
+
+// The bar is a `role="toolbar"`: arrows rove between its buttons, Escape hands focus back to the
+// diagram navigator (the keyboard user's home), matching the ARIA toolbar pattern.
+contextBar.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    diagramNav.focus();
+    return;
+  }
+  const btns = ctxButtons();
+  if (btns.length === 0) return;
+  const active = document.activeElement;
+  const here = active instanceof HTMLButtonElement ? btns.indexOf(active) : -1;
+  if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+    ev.preventDefault();
+    btns[(here + 1) % btns.length]?.focus();
+  } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    btns[(here - 1 + btns.length) % btns.length]?.focus();
+  }
+});
 
 // The selection context toolbar is a thin view over the existing handlers — each button delegates to
 // the same code path as its keyboard shortcut / workbench control, so there's a single source of truth.
@@ -3442,7 +3555,10 @@ ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());
 ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
 ctxLockBtn.addEventListener("click", () => lockBtn.click());
-ctxArrangeBtn.addEventListener("click", () => arrangeBtn.click());
+ctxArrangeBtn.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  toggleArrange(ctxArrangeBtn, ctxArrangeBtn); // anchor the menu to the on-canvas button, not the editor pane
+});
 ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 
 window.addEventListener("keydown", (ev) => {
@@ -3545,6 +3661,13 @@ window.addEventListener("keydown", (ev) => {
       if (ast !== null && ast.kind === "cloud") {
         ev.preventDefault();
         toggleCloudCollapse();
+      }
+      break;
+    case "F2":
+      // Jump to the floating action bar for the current selection.
+      if (!contextBar.hidden) {
+        ev.preventDefault();
+        focusContextBar();
       }
       break;
   }
@@ -3991,11 +4114,18 @@ const navController = createNavigator({
   groupSelection,
   ungroupSelection,
   toggleCloudCollapse,
+  cycleShape,
+  focusContextBar,
+  getGroups: () => [...doc.groups().values()].map((g) => ({ id: g.id, label: g.label })),
+  selectGroup,
+  scrollToGroup,
   beginRelabel,
   shownScene,
   appendEdge,
   renderFromText,
 });
+// Now that the navigator exists, let the (earlier-defined) group handlers refresh its group list.
+refreshNavigatorGroups = () => navController.rebuild();
 
 // Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
 // itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
@@ -4014,11 +4144,19 @@ if (collabSession !== null) {
   const room = params.get("room") ?? "playground";
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   // A `?ws=` override lets a shared `?collab` link point a victim's session (source + edits, and any
-  // forwarded token) at an arbitrary relay. Accept only a websocket-scheme URL and fall back to the
-  // default on anything else — never an http(s)/javascript: or scheme-relative value.
+  // forwarded token) at an arbitrary relay. A scheme check alone doesn't stop that — require the host to
+  // match this page's origin (a different relay port on the same host is fine), so a crafted link can't
+  // exfiltrate the document/token to `wss://evil.example`. Reject loudly and fall back to the default.
   const wsOverride = params.get("ws");
-  const wsAllowed =
-    wsOverride !== null && /^wss?:[/][/]/.test(wsOverride) && URL.canParse(wsOverride);
+  const sameOriginWs = (raw: string): boolean => {
+    if (!URL.canParse(raw)) return false;
+    const u = new URL(raw);
+    return (u.protocol === "ws:" || u.protocol === "wss:") && u.hostname === location.hostname;
+  };
+  const wsAllowed = wsOverride !== null && sameOriginWs(wsOverride);
+  if (wsOverride !== null && !wsAllowed) {
+    console.error(`collab: rejected ?ws= relay override (not same-origin): ${wsOverride}`);
+  }
   const wsBase = wsAllowed ? wsOverride : `${scheme}://${location.hostname || "localhost"}:1234`;
   session.onOverlayChange(() => {
     requestPaint();

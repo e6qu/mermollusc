@@ -329,7 +329,10 @@ export const deleteRequirementEntity = (text: string, id: ReqEntityId): string =
 // composite block) or the `id : description` form — all belong to `id`. A transition (`a --> b`) or a
 // description line never matches: the declaration needs the `state` keyword, and the description needs
 // the `:` immediately after the id (transitions have the arrow first).
-const STATE_DECL = /^\s*state\s+(?:"[^"]*"\s+as\s+)?([A-Za-z_]\w*)\s*\{?\s*$/;
+// The trailing `<<fork>>`/`<<join>>`/`<<choice>>` stereotype must be allowed, else a special state's
+// declaration line isn't recognized and a canvas delete strips its transitions but leaves the node.
+const STATE_DECL =
+  /^\s*state\s+(?:"[^"]*"\s+as\s+)?([A-Za-z_]\w*)\s*(?:<<(?:fork|join|choice)>>)?\s*\{?\s*$/;
 const STATE_DESC = /^\s*([A-Za-z_]\w*)\s*:\s*\S/;
 const stateDeclId = (line: string): string | null =>
   STATE_DECL.exec(line)?.[1] ?? STATE_DESC.exec(line)?.[1] ?? null;
@@ -639,6 +642,9 @@ export const deleteLineAt = (text: string, span: TextSpan): string => {
 const identTokens = (line: string): string[] =>
   line
     .replace(LABELS, "")
+    // Drop a trailing `: label` (network/cloud edges read `a -- b : "eth0"`) so the endpoint match
+    // isn't defeated by the label's words — otherwise a labelled edge is silently undeletable.
+    .replace(/:.*$/, "")
     .split(NON_IDENT)
     .filter((t) => t.length > 0);
 

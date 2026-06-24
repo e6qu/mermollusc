@@ -169,16 +169,22 @@ inline-edit returns focus, cloud collapse (E), ⌘D no longer swallows the keyst
 families, shape-cycle/Regenerate announce, #status live region, Escape closes Arrange, flowchart-
 subgraph + sequence-note + parallel-edge delete corruption, icon-pack SVG XSS guard, overlay
 negative-size fail-loud.
+Landed in the round-2 a11y/UX PR: navigator keyboard parity (S cycles shape; F2 focuses the floating
+action bar, which roves and Escapes back to the navigator) and sidecar groups as a third navigator
+category (arrow to select, Enter to relabel); export/Copy disabled on an invalid source; family-aware
+Group title + flowchart-only help qualifiers + the navigator keys documented; the context-bar Arrange
+opens next to itself; `?ws=` origin-allowlisted. Plus boy-scout correctness — double-announce removed,
+false "relabel committed" suppressed, "connect made no change" message, Relax surfaces failure +
+pin-clear, labelled network/cloud edges deletable, special-state (`<<fork>>`) declarations deletable.
+
 Still open (lower priority, each bounded):
-- Keyboard parity: reach shape (S) / duplicate (⌘D) / Place from the navigator (today only g/u/e/Enter/
-  c/arrows); a key to focus the selection context bar; keyboard resize (the task hint promises corner
-  handles a keyboard user can't use).
-- Navigator H2: overlay (sidecar) groups aren't navigator items, so they can't be selected/relabelled by
-  keyboard — append them as a third option category.
-- Export buttons (PNG/PDF/SVG/DOT/Copy) stay enabled on an invalid source — disable with a "fix the
-  source first" title like the editor tools (today they only error after the click).
-- Group button title is the generic one for cloud's text-group meaning; help panel lists flowchart-only
-  shortcuts (⌘C/⌘V/S) without a qualifier; Place help says "flowchart node".
-- Arrange menu invoked from the context bar opens at the editor pane, far from the click.
-- `?ws=` relay override is scheme-checked but not origin-allowlisted (defense-in-depth before auth ships).
-- `deleteEdge` can't remove an `A -- text --> B` inline-labelled edge (if that grammar form is accepted).
+- Keyboard resize: the task hint promises corner handles a keyboard user can't operate. Either add a
+  resize-by-key or scope the hint.
+- Collab hardening (defense-in-depth, before auth ships): move the WS `?token=` out of the query string
+  into the first frame after open; add a `connect-src` CSP. See `modules/collab/DO_NEXT.md`.
+- Icon-pack SVG blocklist misses external-subresource refs (`<image href="http…">`, `<use>`) and SMIL
+  `set`; not exploitable today since pack markup is only embedded via `<image href="data:…">` (image
+  mode disables scripting/fetch). Tighten to an element/attribute allowlist if it's ever inlined.
+- Minimap arrow-pan has no spoken feedback (LOW; the navigator is the primary SR surface).
+- (Moot) `deleteEdge` of an `A -- text --> B` inline-labelled flowchart edge: that syntax doesn't parse
+  in this grammar, so the no-op is unreachable.
