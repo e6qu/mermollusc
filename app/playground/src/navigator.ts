@@ -119,6 +119,9 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   };
 
   const rebuild = (): void => {
+    // Remember where the keyboard user was so an edit/re-render doesn't dump them back at the top.
+    const prevActive = navActive();
+    const prevSelected = navSelectedOrder;
     diagramNav.replaceChildren();
     diagramNav.removeAttribute("aria-activedescendant");
     navIndex = -1;
@@ -143,6 +146,24 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
           ? navLabel(item.id) || `node ${i + 1}`
           : `${edgeLabel(item.id)} (edge)`;
       diagramNav.appendChild(option);
+    });
+    // Restore the active item + multi-selection by id (silently — re-announcing on every render would
+    // spam a screen reader while editing source text). The next arrow press continues from here.
+    navSelectedOrder = prevSelected.filter((id) => scene.nodes.some((n) => n.id === id));
+    if (prevActive !== null) {
+      const idx = navItems.findIndex(
+        (it) => it.kind === prevActive.kind && it.id === prevActive.id,
+      );
+      if (idx >= 0) {
+        navIndex = idx;
+        const option = diagramNav.children[idx];
+        if (option !== undefined) diagramNav.setAttribute("aria-activedescendant", option.id);
+      }
+    }
+    Array.from(diagramNav.children).forEach((child, i) => {
+      const it = navItems[i];
+      const selected = it !== undefined && it.kind === "node" && navSelectedOrder.includes(it.id);
+      child.setAttribute("aria-selected", selected ? "true" : "false");
     });
   };
 

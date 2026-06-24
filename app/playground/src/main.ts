@@ -2418,6 +2418,9 @@ const openInlineEditor = (
     inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
   };
   place();
+  // Where focus was before the editor grabbed it (the navigator/canvas), to return it on close so a
+  // keyboard user's editing loop continues instead of dropping to <body>.
+  const returnFocus = activeElement();
   // `true` capture so a scroll on the stage container (not just window) repositions the overlay.
   window.addEventListener("scroll", place, true);
   window.addEventListener("resize", place);
@@ -2434,6 +2437,15 @@ const openInlineEditor = (
     if (apply) {
       commit(inlineEl.value);
       if (inlineEl.value !== value) announceCommit(inlineEl.value);
+    }
+    // Restore focus only if it would otherwise be lost (Enter/Escape) — not if the user clicked away.
+    const active = document.activeElement;
+    if (
+      returnFocus !== null &&
+      document.body.contains(returnFocus) &&
+      (active === document.body || active === inlineEl || active === null)
+    ) {
+      returnFocus.focus();
     }
   };
   inlineEl.onkeydown = (e) => {
