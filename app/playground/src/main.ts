@@ -900,16 +900,15 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   switch (kind) {
     case "flowchart":
     case "network":
+    case "cloud":
     case "block":
       return { connect: true, iconOverride: true, addNode: true };
-    case "cloud":
-      return { connect: true, iconOverride: true, addNode: false };
     case "sequence":
     case "state":
+    case "c4":
     case "er":
     case "class":
       return { connect: true, iconOverride: false, addNode: true };
-    case "c4":
     case "requirement":
       return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
@@ -2590,6 +2589,12 @@ const appendNode = (
       return `${body}  server ${id} "${label}"\n`;
     case "sequence":
       return `${body}  participant ${id} as ${label}\n`;
+    case "c4":
+      // A generic software element (the family's Person/System/Container set); the user can retype it.
+      return `${body}  Container(${id}, "${label}")\n`;
+    case "cloud":
+      // A loose top-level compute service (the user can move it into a group in the text).
+      return `${body}  compute ${id} "${label}"\n`;
     // Name-as-id families: the node *is* its identifier (`id` already carries the display name); `label`
     // is unused.
     case "er":
