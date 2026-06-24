@@ -124,3 +124,6 @@
 - `StateNote` gained `side` (`right`/`left`/`over`), preserving the source annotation for layout.
   `PieAst` gained `donut`, and `SceneWedge` gained `innerRadius`, so donut pies are a first-class
   contract instead of a renderer-only convention.
+- Grouping AST: `BlockGroup` (+ `BlockNode.span`, `BlockAst.roots`/`groups` membership tree),
+  `NetworkGroup` (+ `NetworkNode.parent`, `NetworkAst.groups`); `*Source.groups`/`bareNodes` spans for
+  relabel. Supports block composites (`block:id…end`, column spans) and network subnet/zone groups.

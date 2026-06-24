@@ -153,6 +153,21 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   // A first malformed-ref failure; once set, the walk bails and the parse fails loudly.
   let failure: ParseError | null = null;
 
+  // Every composite id, gathered up front (composites may be referenced before they're declared). A
+  // chain reference to one of these is a reference to the composite — not a new leaf block — so an edge
+  // can target a composite (`x --> grp`) without minting a phantom leaf that duplicates the container.
+  const composites = new Set<string>();
+  const collectComposites = (statements: readonly CstNode[]): void => {
+    for (const stmt of statements) {
+      const group = childNodes(stmt.children, "groupBlock")[0];
+      if (group === undefined) continue;
+      const id = childTokens(group.children, "Identifier")[0]?.image;
+      if (id !== undefined) composites.add(id);
+      collectComposites(childNodes(group.children, "statement"));
+    }
+  };
+  collectComposites(childNodes(root, "statement"));
+
   // Walk a statement list, populating the shared maps. Returns this level's `columns N` (if declared)
   // and the ordered ids of its direct children (blocks and nested groups), as declared.
   const walk = (statements: readonly CstNode[]): { columns: number | null; children: NodeId[] } => {
@@ -207,6 +222,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
       const links = childNodes(chain.children, "link");
 
       for (const ref of refs) {
+        if (composites.has(ref.id)) continue; // a reference to a composite, not a leaf declaration
         const id = brand<string, "NodeId">(ref.id);
         const existing = blockMap.get(ref.id);
         if (existing === undefined) {
@@ -256,6 +272,16 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
 
   const top = walk(childNodes(root, "statement"));
   if (failure !== null) return err(failure);
+
+  // Two composites can't share an id (they'd mint two containers with the same scene id). A leaf can't
+  // collide with a composite because composite references are suppressed above. Fail loud on a dup.
+  const seenGroup = new Set<string>();
+  for (const g of groups) {
+    if (seenGroup.has(g.id)) {
+      return err(parseError([`block: duplicate composite id "${g.id}"`]));
+    }
+    seenGroup.add(g.id);
+  }
 
   const blocks = [...blockMap.values()];
   // A block is "bare" (relabel by wrapping its id) when it never carried an explicit label span.

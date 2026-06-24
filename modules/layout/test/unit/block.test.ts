@@ -78,3 +78,52 @@ describe("layoutBlock", () => {
     expect(scene.nodes.find((n) => n.id === "a")?.bounds.size.width).toBe(48);
   });
 });
+
+describe("layoutBlock — spans, nesting, and the cycle guard", () => {
+  it("a leaf with span N is N cells wide; a nested composite contains its child", () => {
+    const ast: BlockAst = {
+      kind: "block",
+      columns: positiveInt(2),
+      blocks: [
+        { id: nid("h"), label: "H", shape: "rect", icon: null, span: positiveInt(2) },
+        { id: nid("x"), label: "X", shape: "rect", icon: null, span: positiveInt(1) },
+      ],
+      groups: [
+        { id: nid("g"), label: "G", columns: positiveInt(1), children: [nid("x")], span: positiveInt(1) },
+      ],
+      roots: [nid("h"), nid("g")],
+      edges: [],
+    };
+    const r = layoutBlock(ast, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    const by = new Map<string, SceneNode>(r.value.nodes.map((n) => [n.id, n]));
+    const h = by.get("h")?.bounds;
+    const cell = by.get("x")?.bounds.size.width ?? 0;
+    // span-2 leaf spans two cells + the gap between them (wider than a single cell).
+    expect(h?.size.width).toBeGreaterThan(cell * 2);
+    // x is nested: its box sits fully inside g's container box.
+    const g = by.get("g")?.bounds;
+    const x = by.get("x")?.bounds;
+    expect(by.get("x")?.parent).toBe("g");
+    if (g !== undefined && x !== undefined) {
+      expect(x.origin.x).toBeGreaterThanOrEqual(g.origin.x);
+      expect(x.origin.x + x.size.width).toBeLessThanOrEqual(g.origin.x + g.size.width + 0.01);
+    }
+  });
+
+  it("fails loud (no stack overflow) on a cyclic child-in-two-groups tree", () => {
+    // g1 contains g2, g2 contains g1 — a cycle a hand-built AST could express.
+    const ast: BlockAst = {
+      kind: "block",
+      columns: positiveInt(1),
+      blocks: [],
+      groups: [
+        { id: nid("g1"), label: "1", columns: positiveInt(1), children: [nid("g2")], span: positiveInt(1) },
+        { id: nid("g2"), label: "2", columns: positiveInt(1), children: [nid("g1")], span: positiveInt(1) },
+      ],
+      roots: [nid("g1")],
+      edges: [],
+    };
+    expect(layoutBlock(ast, heuristicMeasure).ok).toBe(false);
+  });
+});

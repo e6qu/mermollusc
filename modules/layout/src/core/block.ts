@@ -23,6 +23,7 @@ const MIN_CELL_WIDTH = 48;
 const GAP = 24;
 const GROUP_PAD = 14; // inner padding around a composite's content
 const GROUP_HEADER = 24; // composite title band
+const MAX_NEST_DEPTH = 64; // a cyclic tree can't arise from the parser; cap to stay total
 
 const EDGE_STYLE: Record<EdgeKind, { readonly stroke: EdgeStroke; readonly toEnd: EdgeEnd }> = {
   arrow: { stroke: "solid", toEnd: "arrow" },
@@ -46,6 +47,9 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
   const nodes: SceneNode[] = [];
   const boxes = new Map<NodeId, RouteBox>();
   const pitch = cellWidth + GAP; // one column's horizontal stride
+  // The parser only mints an acyclic roots/children tree, but `layoutBlock` is a total core function
+  // over a branded AST: a hand-built child-in-two-groups would recurse forever, so cap depth + fail loud.
+  let overflow = false;
 
   interface Item {
     readonly id: NodeId;
@@ -55,14 +59,15 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
 
   // A child's column span + rendered box. A leaf spans its declared `a:N` (a wider box); a composite
   // spans `max(block:id:N, the columns its content needs)`, snapped so its box is column-aligned.
-  const itemOf = (id: NodeId, columns: number): Item => {
+  const itemOf = (id: NodeId, columns: number, depth: number): Item => {
     const g = groupById.get(id);
-    if (g === undefined) {
+    if (g === undefined || depth > MAX_NEST_DEPTH) {
+      if (depth > MAX_NEST_DEPTH) overflow = true;
       const declared = blockById.get(id)?.span ?? 1;
       const span = Math.max(1, Math.min(declared, columns));
       return { id, span, size: { w: span * cellWidth + (span - 1) * GAP, h: NODE_HEIGHT } };
     }
-    const inner = measureContainer(g.children, g.columns);
+    const inner = measureContainer(g.children, g.columns, depth + 1);
     const labelW = clampedWidth(g.label, measure, 0, LABEL_PADDING);
     const natW = Math.max(inner.w, labelW) + 2 * GROUP_PAD;
     const fit = Math.max(1, Math.ceil((natW + GAP) / pitch));
@@ -110,9 +115,9 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     return { cells, width, height: Math.max(0, y - GAP) };
   };
 
-  const measureContainer = (childIds: readonly NodeId[], columns: number): Size => {
+  const measureContainer = (childIds: readonly NodeId[], columns: number, depth: number): Size => {
     const ap = autoPlace(
-      childIds.map((id) => itemOf(id, columns)),
+      childIds.map((id) => itemOf(id, columns, depth)),
       columns,
     );
     return { w: ap.width, h: ap.height };
@@ -126,8 +131,13 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     ox: number,
     oy: number,
     parent: NodeId | null,
+    depth: number,
   ): void => {
-    const items = childIds.map((id) => itemOf(id, columns));
+    if (depth > MAX_NEST_DEPTH) {
+      overflow = true;
+      return;
+    }
+    const items = childIds.map((id) => itemOf(id, columns, depth));
     const ap = autoPlace(items, columns);
     childIds.forEach((id, i) => {
       const cell = ap.cells[i];
@@ -169,11 +179,14 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
         accent: "none",
         role: "normal",
       });
-      place(g.children, g.columns, cx + GROUP_PAD, cy + GROUP_HEADER, id);
+      place(g.children, g.columns, cx + GROUP_PAD, cy + GROUP_HEADER, id, depth + 1);
     });
   };
 
-  place(ast.roots, ast.columns, 0, 0, null);
+  place(ast.roots, ast.columns, 0, 0, null, 0);
+  if (overflow) {
+    return err({ kind: "layout", message: "block: composite nesting too deep (cyclic tree?)" });
+  }
 
   const edges: SceneEdge[] = [];
   for (const e of ast.edges) {
@@ -197,6 +210,12 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     });
   }
 
-  const top = measureContainer(ast.roots, ast.columns);
-  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, top.w, top.h) });
+  // Extent from the already-placed boxes (one source of truth) rather than re-measuring the whole tree.
+  let width = 0;
+  let height = 0;
+  for (const box of boxes.values()) {
+    width = Math.max(width, box.x + box.w);
+    height = Math.max(height, box.y + box.h);
+  }
+  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
 };

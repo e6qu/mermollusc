@@ -20,6 +20,7 @@ const MIN_CELL_WIDTH = 64;
 const GAP = 40;
 const GROUP_PAD = 16; // inner padding around a subnet/zone's content
 const GROUP_HEADER = 26; // subnet/zone title band
+const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
 // Nested squarish-grid layout. Leaf nodes fill a `ceil(sqrt n)`-wide grid in a uniform cell; a
 // subnet/zone `group "…" { … }` lays its own members out the same way and is placed as a single larger
@@ -55,13 +56,23 @@ export const layoutNetwork = (
 
   const nodes: SceneNode[] = [];
   const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
+  // The parser only mints acyclic parent graphs, but `layoutNetwork` is a total core function over a
+  // branded AST: a hand-built cyclic `parent` would recurse forever, so cap the depth and fail loud.
+  let overflow = false;
 
   // The intrinsic size of a child id: a uniform leaf cell, or a group = its members' nested grid plus
   // padding + a title band (and never narrower than its own label).
-  const sizeOf = (id: NodeId): Size => {
-    if (!groupById.has(id)) return { w: cellWidth, h: NODE_HEIGHT };
+  const sizeOf = (id: NodeId, depth: number): Size => {
+    if (depth > MAX_NEST_DEPTH || !groupById.has(id)) {
+      if (depth > MAX_NEST_DEPTH) overflow = true;
+      return { w: cellWidth, h: NODE_HEIGHT };
+    }
     const kids = childrenOf.get(id) ?? [];
-    const inner = variableGrid(kids.map(sizeOf), columnsFor(kids.length), GAP);
+    const inner = variableGrid(
+      kids.map((k) => sizeOf(k, depth + 1)),
+      columnsFor(kids.length),
+      GAP,
+    );
     const labelW = clampedWidth(groupById.get(id)?.label ?? "", measure, 0, LABEL_PADDING);
     return {
       w: Math.max(inner.width, labelW) + 2 * GROUP_PAD,
@@ -74,8 +85,13 @@ export const layoutNetwork = (
     ox: number,
     oy: number,
     parent: NodeId | null,
+    depth: number,
   ): void => {
-    const sizes = childIds.map(sizeOf);
+    if (depth > MAX_NEST_DEPTH) {
+      overflow = true;
+      return;
+    }
+    const sizes = childIds.map((id) => sizeOf(id, depth));
     const grid = variableGrid(sizes, columnsFor(childIds.length), GAP);
     childIds.forEach((id, i) => {
       const cell = grid.cells[i];
@@ -118,11 +134,14 @@ export const layoutNetwork = (
         accent: "none",
         role: "normal",
       });
-      place(childrenOf.get(id) ?? [], cx + GROUP_PAD, cy + GROUP_HEADER, id);
+      place(childrenOf.get(id) ?? [], cx + GROUP_PAD, cy + GROUP_HEADER, id, depth + 1);
     });
   };
 
-  place(rootIds, 0, 0, null);
+  place(rootIds, 0, 0, null, 0);
+  if (overflow) {
+    return err({ kind: "layout", message: "network: group nesting too deep (cyclic parent?)" });
+  }
 
   const edges: SceneEdge[] = [];
   for (const link of ast.links) {

@@ -34,6 +34,7 @@ import {
   deleteErRel,
   deleteBlockGroup,
   deleteGroupBlock,
+  renameBlockId,
   wrapCloudGroup,
   deleteLineAt,
   deleteMessage,
@@ -478,6 +479,22 @@ describe("relabelNode", () => {
     // Deleting a leaf removes just its line.
     expect(deleteMindmapNode(text, source, ast, brand(idOf("B")))).toBe(
       "mindmap\n  root\n    A\n      A1\n",
+    );
+  });
+
+  it("renameBlockId rewrites every standalone occurrence of a composite id (opener + edges)", () => {
+    const text = "block-beta\n  x\n  block:grp\n    y\n  end\n  x --> grp\n  grpExtra\n";
+    const out = renameBlockId(text, "grp", "svc");
+    expect(out).toContain("block:svc"); // the opener renamed
+    expect(out).toContain("x --> svc"); // the edge endpoint renamed
+    expect(out).toContain("grpExtra"); // a different identifier left alone
+    expect(out).not.toContain("grp\n"); // no stray old id
+  });
+
+  it("deleteGroupBlock ignores braces inside a quoted label", () => {
+    const text = 'network\n  group "a{b}c" {\n    server x\n  }\n  server y\n';
+    expect(deleteGroupBlock(text, { start: text.indexOf('"a{b') + 1, end: text.indexOf('}c"') + 2 })).toBe(
+      "network\n  server y\n",
     );
   });
 

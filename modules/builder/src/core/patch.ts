@@ -507,12 +507,16 @@ export const deleteGroupBlock = (text: string, labelSpan: TextSpan): string => {
   let depth = 0;
   let started = false;
   let endLine = -1;
+  let inQuote = false;
   for (let i = startLine; i < lines.length; i++) {
     for (const ch of lines[i] ?? "") {
-      if (ch === "{") {
+      // Braces inside a `"…"` label aren't structural — track quote state so `group "a{b" { … }` counts
+      // only the real braces.
+      if (ch === '"') inQuote = !inQuote;
+      else if (!inQuote && ch === "{") {
         depth++;
         started = true;
-      } else if (ch === "}") {
+      } else if (!inQuote && ch === "}") {
         depth--;
       }
     }
@@ -521,9 +525,36 @@ export const deleteGroupBlock = (text: string, labelSpan: TextSpan): string => {
       break;
     }
   }
-  if (endLine === -1) return text;
+  if (endLine === -1) return text; // unbalanced (the parser would have rejected it); leave it untouched
   lines.splice(startLine, endLine - startLine + 1);
   return lines.join("\n");
+};
+
+// Rename a block composite by rewriting every standalone-identifier occurrence of `oldId` to `newId`
+// (the `block:id` opener *and* any edge endpoint that references the composite) — a plain label-span
+// patch would rename only the opener and orphan the edges. A boundary-aware char scan (not a regex
+// built from `oldId`) keeps it ReDoS-free; the parser guarantees ids are `[A-Za-z0-9_]+` and unique.
+const isIdentChar = (c: string): boolean =>
+  c.length === 1 &&
+  ((c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || (c >= "0" && c <= "9") || c === "_");
+export const renameBlockId = (text: string, oldId: string, newId: string): string => {
+  if (oldId.length === 0) return text;
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    if (
+      text.startsWith(oldId, i) &&
+      !isIdentChar(text[i - 1] ?? "") &&
+      !isIdentChar(text[i + oldId.length] ?? "")
+    ) {
+      out += newId;
+      i += oldId.length;
+    } else {
+      out += text[i] ?? "";
+      i++;
+    }
+  }
+  return out;
 };
 
 // Wrap the given source lines (by 0-based index) into a new `group "label" { … }` at the position of
