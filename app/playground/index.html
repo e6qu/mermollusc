@@ -1010,7 +1010,7 @@
             <button id="add-node" type="button">Add node</button>
             <button id="connect" type="button">Connect</button>
             <button id="relax" type="button">Relax</button>
-            <button id="regenerate" type="button">Regenerate</button>
+            <button id="regenerate" type="button" title="Re-run auto-layout, keeping pinned nodes">Regenerate</button>
             <button id="group" type="button" title="Bundle the selected nodes into a group">Group</button>
             <button id="ungroup" type="button" title="Dissolve the selected node's group">Ungroup</button>
             <button id="lock" type="button" title="Lock the group so it can't be dragged">Lock</button>
@@ -1100,7 +1100,7 @@
       </main>
 
       <footer class="statusbar">
-        <span id="status" class="status">ready</span>
+        <span id="status" class="status" role="status">ready</span>
         <span class="task-status" id="task-status" aria-live="polite">
           <strong>Next</strong>
           <span id="task-status-text">choose an example or edit the source</span>

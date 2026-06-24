@@ -1534,6 +1534,9 @@ const minimapView = createMinimap({
 // Push a message to the diagram's live region (screen-reader announcement). Shared by the keyboard
 // navigator, the status bar (`setStatusAndAnnounce`), and the on-canvas group/lock commands.
 const announce = (message: string): void => {
+  // Re-fire even when the text is identical to the last message (two "moved Alpha" in a row): most
+  // screen readers ignore a live-region write that doesn't change the text, so clear then set.
+  if (diagramLive.textContent === message) diagramLive.textContent = "";
   diagramLive.textContent = message;
 };
 
@@ -3272,8 +3275,10 @@ window.addEventListener("keydown", (ev) => {
     paintScene();
     updateGroupButtons();
   } else if (key === "d") {
-    // Duplicate the selected flowchart node(s) (overriding the browser's ⌘D bookmark).
+    // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
+    // can add a node, else we'd swallow the keystroke and silently do nothing.
     if (viewerMode || selectionOrder.length === 0) return;
+    if (ast === null || !familyAffordances(ast.kind).addNode) return;
     ev.preventDefault();
     void duplicateSelection();
   } else if (key === "c") {
@@ -3346,9 +3351,11 @@ const cycleShape = async (): Promise<void> => {
     .sort((a, b) => b.start - a.start);
   if (targets.length === 0) return;
   let text = editor.value();
+  let lastShape: NodeShape = "rect";
   for (const t of targets) {
     const idx = SHAPE_CYCLE.indexOf(t.node.shape);
     const next = SHAPE_CYCLE[(idx + 1) % SHAPE_CYCLE.length] ?? "rect";
+    lastShape = next;
     const out = reshapeNode(text, src, t.nid, t.node.label, next);
     if (isOk(out)) text = out.value;
   }
@@ -3359,6 +3366,10 @@ const cycleShape = async (): Promise<void> => {
   selectionOrder = keep;
   paintScene();
   updateGroupButtons();
+  // Announce the outcome — every other mutating action does, so a screen-reader user gets parity.
+  announce(
+    targets.length === 1 ? `shape: ${lastShape}` : `cycled shape of ${targets.length} nodes`,
+  );
   canvas.focus({ preventScroll: true });
 };
 
@@ -3388,6 +3399,13 @@ ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 window.addEventListener("keydown", (ev) => {
   if (editor.hasFocus()) return;
   if (ev.key === "Escape") {
+    // An open Arrange menu closes first (parity with the Help/Icons drawers, which honour Escape).
+    if (!arrangeMenu.hidden) {
+      ev.preventDefault();
+      closeArrange();
+      arrangeBtn.focus();
+      return;
+    }
     // Escape first disarms a non-default tool (back to Select); a second Escape clears the selection.
     if (activeTool !== "select") {
       ev.preventDefault();
@@ -3504,6 +3522,7 @@ regenBtn.addEventListener("click", () => {
   doc.replaceOverrides(pinnedOverrides(doc.overrides()));
   doc.persist();
   void renderFromText(editor.value());
+  setStatusAndAnnounce("ok", "regenerated layout — pinned nodes kept");
 });
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
