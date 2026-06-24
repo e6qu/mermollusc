@@ -5,6 +5,7 @@ import type {
   ClassEntityId,
   EdgeKind,
   ErEntityId,
+  GitBranchName,
   MindmapAst,
   MindmapNodeId,
   MindmapSource,
@@ -14,6 +15,10 @@ import type {
   StateId,
   SourceMap,
   TextSpan,
+  TimelineAst,
+  TimelineEventId,
+  TimelinePeriodId,
+  TimelineSource,
 } from "@m/contracts";
 
 export interface PatchError {
@@ -206,6 +211,58 @@ export const connectMindmap = (
   const insertAt = (parentLine > blockEnd ? parentLine - blockLen : parentLine) + 1;
   lines.splice(insertAt, 0, ...block);
   return lines.join("\n");
+};
+
+// A git branch name is bare when it's all word/`/`/`-` chars; otherwise it must be quoted to merge it.
+const gitBranchToken = (name: string): string =>
+  /^[A-Za-z0-9_/-]+$/.test(name) ? name : `"${name}"`;
+
+// Connect two gitGraph branch lanes by merging `from` into `into` — `merge` is the only edge a git
+// graph has. Appends `checkout <into>` then `merge <from>` (the checkout makes the merge land on the
+// intended lane regardless of the current branch). A self-merge is a no-op.
+export const connectGitMerge = (text: string, into: GitBranchName, from: GitBranchName): string => {
+  if (into === from) return text;
+  const trimmed = text.replace(/\s+$/, "");
+  // Match the indentation of the last indented statement so the appended commands line up.
+  const indented = [...trimmed.split("\n")].reverse().find((l) => /^\s+\S/.test(l));
+  const indent = indented === undefined ? "  " : (/^\s*/.exec(indented)?.[0] ?? "  ");
+  return `${trimmed}\n${indent}checkout ${gitBranchToken(into)}\n${indent}merge ${gitBranchToken(from)}\n`;
+};
+
+// Re-parent a timeline event under a different period (the timeline analogue of a mindmap re-parent):
+// splice the ` : <event>` segment out of its current line and append it to the destination period's
+// line. A no-op if the event already sits under that period or the source shape is unexpected.
+export const moveTimelineEvent = (
+  text: string,
+  source: TimelineSource,
+  ast: TimelineAst,
+  eventId: TimelineEventId,
+  periodId: TimelinePeriodId,
+): string => {
+  const eventSpan = source.events.get(eventId);
+  const periodSpan = source.periods.get(periodId);
+  const dest = ast.periods.find((p) => p.id === periodId);
+  if (eventSpan === undefined || periodSpan === undefined || dest === undefined) return text;
+  if (dest.events.some((e) => e.id === eventId)) return text; // already there
+  // Remove ` : <event>`: walk back over whitespace to the separating colon (bail if it isn't there, so a
+  // surprising layout fails closed rather than corrupting the line).
+  let removeStart = eventSpan.start;
+  while (removeStart > 0 && /[ \t]/.test(text[removeStart - 1] ?? "")) removeStart--;
+  if (text[removeStart - 1] !== ":") return text;
+  removeStart -= 1; // the separating colon
+  // …and the whitespace before it, so `Alpha : Beta` → `Alpha`, not `Alpha ` with a dangling space.
+  while (removeStart > 0 && /[ \t]/.test(text[removeStart - 1] ?? "")) removeStart--;
+  const eventText = text.slice(eventSpan.start, eventSpan.end);
+  // Append the event to the destination period's line (just before its terminating newline).
+  const nl = text.indexOf("\n", periodSpan.end);
+  const insertPos = nl === -1 ? text.length : nl;
+  const edits = [
+    { start: removeStart, end: eventSpan.end, replace: "" },
+    { start: insertPos, end: insertPos, replace: ` : ${eventText}` },
+  ].sort((a, b) => b.start - a.start); // apply right-to-left so earlier offsets stay valid
+  let out = text;
+  for (const e of edits) out = out.slice(0, e.start) + e.replace + out.slice(e.end);
+  return out;
 };
 
 // Delete a mindmap node and its whole subtree (the contiguous run of deeper nodes after it in pre-order)

@@ -7,6 +7,8 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  connectGitMerge,
+  moveTimelineEvent,
   deleteMindmapNode,
   connectRequirement,
   connectUndirected,
@@ -963,7 +965,11 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
       // indentation, set by where you connect it).
       return { connect: true, iconOverride: false, addNode: false };
     case "gitGraph":
+      // Connect two branch lanes to merge one into the other (git's only edge).
+      return { connect: true, iconOverride: false, addNode: false };
     case "timeline":
+      // Connect re-parents an event under a different period (drag an event onto a period).
+      return { connect: true, iconOverride: false, addNode: false };
     case "pie":
     case "gantt":
       return { connect: false, iconOverride: false, addNode: false };
@@ -3089,6 +3095,11 @@ const connectHint = (kind: DiagramAst["kind"]): string => {
     : ` — added a placeholder ${placeholder} label, double-click to rename`;
 };
 
+// A gitGraph branch lane's scene id is `branch:<name>`; commit nodes carry their commit id instead.
+// Returns the branch name, or null when the id isn't a branch lane (so connect ignores commit picks).
+const branchName = (id: SceneNodeId): string | null =>
+  id.startsWith("branch:") ? id.slice("branch:".length) : null;
+
 const appendEdge = (
   kind: DiagramAst["kind"],
   text: string,
@@ -3155,10 +3166,44 @@ const appendEdge = (
             brand<string, "MindmapNodeId">(second),
           )
         : text;
-    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline grammars would reject a
-    // generic arrow. Connect stays a no-op for these — `familyAffordances` also gates the button.
-    case "gitGraph":
-    case "timeline":
+    // gitGraph connect = merge two branch lanes. The scene ids are `branch:<name>`; if either selected
+    // node isn't a branch (e.g. a commit), there's nothing to merge, so it's a no-op.
+    case "gitGraph": {
+      const a = branchName(first);
+      const b = branchName(second);
+      return a !== null && b !== null
+        ? connectGitMerge(
+            text,
+            brand<string, "GitBranchName">(a),
+            brand<string, "GitBranchName">(b),
+          )
+        : text;
+    }
+    // timeline connect = re-parent an event under a period (drag an event onto a period). Resolve which
+    // selected node is the event and which is the period from the AST; any other pairing is a no-op.
+    case "timeline": {
+      if (ast === null || ast.kind !== "timeline" || timelineSource === null) return text;
+      const tAst = ast; // capture the narrowed AST/source so the closures keep the timeline types
+      const tSource = timelineSource;
+      const isPeriod = (id: SceneNodeId): boolean =>
+        tAst.periods.some((p) => p.id === brand<string, "TimelinePeriodId">(id));
+      const isEvent = (id: SceneNodeId): boolean =>
+        tAst.periods.some((p) =>
+          p.events.some((e) => e.id === brand<string, "TimelineEventId">(id)),
+        );
+      const move = (ev: SceneNodeId, pd: SceneNodeId): string =>
+        moveTimelineEvent(
+          text,
+          tSource,
+          tAst,
+          brand<string, "TimelineEventId">(ev),
+          brand<string, "TimelinePeriodId">(pd),
+        );
+      if (isEvent(first) && isPeriod(second)) return move(first, second);
+      if (isPeriod(first) && isEvent(second)) return move(second, first);
+      return text;
+    }
+    // No edge to draw: gantt/pie have no edge concept.
     case "pie":
     case "gantt":
       return text;
