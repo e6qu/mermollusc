@@ -27,9 +27,20 @@
 - Grow the subset: quoted labels, more link styles. *(stadium `([…])` + circle `((…))` shapes and
   `subgraph id [title] … end` grouping (nestable) all parse, round-trip, and now render — layout
   nests subgraphs via ELK hierarchy and the renderer draws them as `container` boxes.)*
-- Block: grouped `block:id … end`, column spans, and bare-block relabel (wrap into `id["label"]`).
-- Network: subnet/zone grouping; bare-node relabel (wrap into `kind id "label"`).
-- Cloud: bare-leaf relabel (wrap into `kind id "label"`); group/region collapse.
+- *(done)* Bare-node relabel — block/network/cloud parsers now record the id-token span of every
+  label-less node (`*Source.bareNodes`), so the editor relabels one by wrapping its id (`a["…"]` /
+  `kind id "…"`). Was a silent no-op.
+- **Grouping syntax (own PR each — layout rewrites).** These are not parser-only: each needs a
+  hierarchical layout, the risky piece.
+  - Block `block:id … end` + column spans — the block layout is a flat `gridGeometry`; nesting means a
+    new nested-grid layout + boundary-aware edge routing. Block grouping is *medium*; column spans force
+    a grid-algorithm redesign (*high* risk). Reuse the cloud nested-`place()` shape where it fits.
+  - Network subnet/zone grouping — network has **zero** group infrastructure (no AST/layout); a
+    from-scratch nested-box layout (*high* risk). Mirror cloud's AST + layout.
+  - Cloud "group/region collapse" is **not** grammar — cloud groups already parse/AST/layout
+    hierarchically. Collapse is an editor UX feature (per-group visibility state + render skip), separate
+    scope. Group *creation* via the editor (wrap selected nodes into `group "…" { }`) is the smaller
+    adjacent win.
 - *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
   now parses into `C4Element.description` (null when omitted); the layout renders it as a second
   label line. Boundaries stay 2-arg.
