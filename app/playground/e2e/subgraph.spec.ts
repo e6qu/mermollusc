@@ -27,3 +27,37 @@ test("renders a flowchart with a subgraph end to end without errors", async ({ p
   await expect(page.locator("#kind")).toHaveText("flowchart");
   expect(errors).toEqual([]);
 });
+
+// The number of position overrides currently persisted (0 when none).
+const overrideCount = (page: Page) =>
+  page.evaluate(() => {
+    const raw = localStorage.getItem("mermollusc-overlay");
+    return raw === null ? 0 : ((JSON.parse(raw) as { overrides?: unknown[] }).overrides?.length ?? 0);
+  });
+
+test("moving a subgraph carries its nested nodes as one", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(
+    page,
+    "flowchart TD\n  subgraph Backend\n    api[API] --> db[DB]\n  end\n  user[User] --> api\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  // Select the subgraph container in the keyboard navigator (deterministic, no coordinate guessing).
+  await page.locator("#diagram-nav").focus();
+  let label = "";
+  for (let i = 0; i < 12 && !label.includes("Backend"); i++) {
+    label = await page.evaluate(() => {
+      const ad = document.querySelector("#diagram-nav")?.getAttribute("aria-activedescendant");
+      return ad === null || ad === undefined ? "" : (document.getElementById(ad)?.textContent ?? "");
+    });
+    if (!label.includes("Backend")) await page.keyboard.press("ArrowDown");
+  }
+  expect(label).toContain("Backend");
+
+  expect(await overrideCount(page)).toBe(0);
+  for (let i = 0; i < 8; i++) await page.keyboard.press("Alt+ArrowRight");
+  // The container plus both nested nodes (api, db) each get a position override — they moved together.
+  await expect.poll(() => overrideCount(page)).toBe(3);
+});

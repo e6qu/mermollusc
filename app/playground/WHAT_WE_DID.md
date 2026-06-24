@@ -667,3 +667,6 @@
   rows so a large architecture stays compact. Added two BPMN-style swimlane workflows. Per review
   feedback, made every new demo semantically correct (declined-payment cancels rather than refunds;
   CloudFront/WAF/ALB/API-Gateway in the right order). Verified the new on-canvas widgets in dark mode.
+- Subgraph move: dragging or nudging a container (subgraph / c4 boundary / composite state) now carries
+  every node nested inside it (shared `withContents` over `descendantsOf`), and `applyOverrides` re-routes
+  connectors live — interior edges translate rigidly, boundary-crossing edges blend to stay attached. +e2e.
