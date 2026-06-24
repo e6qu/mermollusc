@@ -85,11 +85,15 @@ describe("parseBlockWithSource", () => {
     if (block !== undefined) expect(text.slice(block.start, block.end)).toBe("Plain");
   });
 
-  it("records no span for a bare block", () => {
-    const r = parseBlockWithSource("block-beta\n  a b\n");
+  it("records no label span for a bare block, but a bare-node id span for relabel", () => {
+    const text = "block-beta\n  a b\n";
+    const r = parseBlockWithSource(text);
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.value.source.blocks.get(nid("a"))).toBeUndefined();
+    const bare = r.value.source.bareNodes.get(nid("a"));
+    expect(bare).toBeDefined();
+    if (bare !== undefined) expect(text.slice(bare.start, bare.end)).toBe("a");
   });
 
   it("strips quotes from a quoted pipe edge label (matching node labels + the edge span)", () => {

@@ -111,4 +111,15 @@ describe("parseCloudWithSource", () => {
     expect(at(r.value.source.nodes.get(nid("web")))).toBe("Web");
     expect(at(r.value.source.links.get(eid("l0")))).toBe("query");
   });
+
+  it("records a bare-leaf id span (no label span) so the editor can relabel it", () => {
+    const text = "cloud\n  compute s3\n  database db\n  s3 -- db\n";
+    const r = parseCloudWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.source.nodes.get(nid("s3"))).toBeUndefined();
+    const bare = r.value.source.bareNodes.get(nid("s3"));
+    expect(bare).toBeDefined();
+    if (bare !== undefined) expect(text.slice(bare.start, bare.end)).toBe("s3");
+  });
 });

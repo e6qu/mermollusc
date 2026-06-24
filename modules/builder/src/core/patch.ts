@@ -208,6 +208,34 @@ export const connectMindmap = (
   return lines.join("\n");
 };
 
+// Delete a mindmap node and its whole subtree (the contiguous run of deeper nodes after it in pre-order)
+// — a mindmap node has no in-text id, so line-based `deleteNode` can't find it; the source-map label span
+// locates its line and the AST levels bound the subtree.
+export const deleteMindmapNode = (
+  text: string,
+  source: MindmapSource,
+  ast: MindmapAst,
+  id: MindmapNodeId,
+): string => {
+  const nodes = ast.nodes;
+  const idx = nodes.findIndex((n) => n.id === id);
+  const node = nodes[idx];
+  if (node === undefined) return text;
+  let end = idx + 1;
+  while (end < nodes.length && (nodes[end]?.level ?? -1) > node.level) end++;
+  const lineOf = (nid: MindmapNodeId): number | null => {
+    const span = source.nodes.get(nid);
+    return span === undefined ? null : text.slice(0, span.start).split("\n").length - 1;
+  };
+  const startLine = lineOf(node.id);
+  const lastSub = nodes[end - 1];
+  const endLine = lastSub === undefined ? null : lineOf(lastSub.id);
+  if (startLine === null || endLine === null) return text;
+  const lines = text.split("\n");
+  lines.splice(startLine, endLine - startLine + 1);
+  return lines.join("\n");
+};
+
 // The forward `a - verb -> b` form that `connectRequirement` writes (a→b).
 const REQ_REL = /^\s*(\S+)\s*-\s*\w+\s*->\s*(\S+)/;
 

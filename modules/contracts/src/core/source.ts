@@ -56,17 +56,21 @@ export interface C4Source {
 }
 
 // Editable text spans for a block diagram: the label of each explicitly-labelled block and of
-// each edge that carries a `|label|`. Bare blocks / unlabelled edges have no entry.
+// each edge that carries a `|label|`. `bareNodes` carries the *id-token* span of each label-less
+// block, so the editor can relabel one by wrapping its id into an `id["label"]` declaration.
 export interface BlockSource {
   readonly blocks: ReadonlyMap<NodeId, TextSpan>;
   readonly edges: ReadonlyMap<EdgeId, TextSpan>;
+  readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a network diagram: the inner label of each node that has a quoted label
-// and of each link that carries one. Unlabelled nodes/links have no entry.
+// and of each link that carries one. `bareNodes` carries the id-token span of each label-less node,
+// so the editor can relabel one by appending a `"label"` after its id.
 export interface NetworkSource {
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
+  readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a state diagram: each state's label (from `id : label` or
@@ -126,9 +130,11 @@ export interface GanttSource {
 }
 
 // Editable text spans for a cloud diagram: the inner label of each group, each labelled service
-// leaf, and each labelled link. Keyed by the element/link id.
+// leaf, and each labelled link. `bareNodes` carries the id-token span of each label-less leaf, so the
+// editor can relabel one by appending a `"label"` after its id. Keyed by the element/link id.
 export interface CloudSource {
   readonly groups: ReadonlyMap<NodeId, TextSpan>;
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
+  readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
 }

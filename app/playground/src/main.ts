@@ -7,6 +7,7 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  deleteMindmapNode,
   connectRequirement,
   connectUndirected,
   decodeOverlay,
@@ -951,7 +952,7 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "class":
       return { connect: true, iconOverride: false, addNode: true };
     case "requirement":
-      return { connect: true, iconOverride: false, addNode: false };
+      return { connect: true, iconOverride: false, addNode: true };
     case "mindmap":
       // Connect re-parents a node (drag one node onto another to nest it); no Add (a node's place is its
       // indentation, set by where you connect it).
@@ -2471,6 +2472,26 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       void renderFromText(editor.value());
     },
   });
+  // A bare (label-less) node: open an empty editor and, on commit, wrap its id into a label in the
+  // family's syntax. The label always lands inside quotes, so the "quoted" rules apply.
+  const wrapBareLabel = (
+    idSpan: TextSpan,
+    wrap: (id: string, label: string) => string,
+  ): { readonly text: string; readonly commit: (n: string) => void } => ({
+    text: "",
+    commit: (next) => {
+      if (next.length === 0) return;
+      const checked = validateLabel(next, "quoted");
+      if (!isOk(checked)) {
+        console.error("relabel rejected:", checked.error.message);
+        setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
+        return;
+      }
+      const id = editor.value().slice(idSpan.start, idSpan.end);
+      editor.setValue(patchSpan(editor.value(), idSpan, wrap(id, next)));
+      void renderFromText(editor.value());
+    },
+  });
 
   let pending: { readonly text: string; readonly commit: (n: string) => void } | null = null;
   let anchor: Anchor | null = null;
@@ -2519,24 +2540,38 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         : c4Source.rels.get(brand<string, "C4RelId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "block" && blockSource !== null) {
-    const span =
-      hit.kind === "node"
-        ? blockSource.blocks.get(brand<string, "NodeId">(hit.id))
-        : blockSource.edges.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = blockSource.edges.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = blockSource.blocks.get(id);
+      const bare = blockSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i}["${l}"]`);
+    }
   } else if (hit !== null && ast.kind === "network" && netSource !== null) {
-    const span =
-      hit.kind === "node"
-        ? netSource.nodes.get(brand<string, "NodeId">(hit.id))
-        : netSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = netSource.links.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = netSource.nodes.get(id);
+      const bare = netSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
+    }
   } else if (hit !== null && ast.kind === "cloud" && cloudSource !== null) {
-    const id = brand<string, "NodeId">(hit.id);
-    const span =
-      hit.kind === "node"
-        ? (cloudSource.nodes.get(id) ?? cloudSource.groups.get(id))
-        : cloudSource.links.get(brand<string, "EdgeId">(hit.id));
-    if (span !== undefined) pending = patchAt(span);
+    if (hit.kind === "edge") {
+      const span = cloudSource.links.get(brand<string, "EdgeId">(hit.id));
+      if (span !== undefined) pending = patchAt(span);
+    } else {
+      const id = brand<string, "NodeId">(hit.id);
+      const span = cloudSource.nodes.get(id) ?? cloudSource.groups.get(id);
+      const bare = cloudSource.bareNodes.get(id);
+      if (span !== undefined) pending = patchAt(span);
+      else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
+    }
   } else if (hit !== null && ast.kind === "sequence" && seqSource !== null) {
     const span =
       hit.kind === "node"
@@ -2656,6 +2691,9 @@ const appendNode = (
       return `${body}  class ${id}\n`;
     case "state":
       return `${body}  state ${id}\n`;
+    // A requirement entity, named by its id (the user can retype `requirement` → `element` or add a body).
+    case "requirement":
+      return `${body}  requirement ${id} {\n  }\n`;
     default:
       return text;
   }
@@ -2663,7 +2701,7 @@ const appendNode = (
 
 // Families whose node declaration uses the node's name *as* its id; a new node's id is therefore a
 // unique, identifier-safe version of its label rather than a generic `n1`.
-const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state"]);
+const NAME_AS_ID = new Set<DiagramAst["kind"]>(["er", "class", "state", "requirement"]);
 const sanitizeId = (s: string): string => s.replace(/[^A-Za-z0-9_]/g, "") || "Node";
 const uniqueId = (used: ReadonlySet<string>, base: string): string => {
   if (!used.has(base)) return base;
@@ -2675,6 +2713,7 @@ const ADD_BASE: Partial<Record<DiagramAst["kind"], string>> = {
   er: "Entity",
   class: "Class",
   state: "State",
+  requirement: "Requirement",
 };
 
 // A fresh `{ id, label }` for a new node in `kind`: for name-as-id families both are one unique name;
@@ -2967,8 +3006,13 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
     case "cloud":
     case "gitGraph":
     case "timeline":
-    case "mindmap":
       return deleteNode(text, brand<string, "NodeId">(id));
+    // A mindmap node has no in-text id (synthetic, like a pie slice), so line-based `deleteNode` can't
+    // find it; remove the node and its whole subtree by the source-map span + the AST levels.
+    case "mindmap":
+      return ast !== null && ast.kind === "mindmap" && mindmapSource !== null
+        ? deleteMindmapNode(text, mindmapSource, ast, brand<string, "MindmapNodeId">(id))
+        : text;
     // gantt/pie: the item has no in-text id (auto-numbered task / synthetic slice id), so delete its
     // line by the label span from the source map. Multi-delete is ordered bottom-up so spans stay valid.
     case "gantt": {
