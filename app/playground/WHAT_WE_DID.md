@@ -670,3 +670,7 @@
 - Subgraph move: dragging or nudging a container (subgraph / c4 boundary / composite state) now carries
   every node nested inside it (shared `withContents` over `descendantsOf`), and `applyOverrides` re-routes
   connectors live — interior edges translate rigidly, boundary-crossing edges blend to stay attached. +e2e.
+- Auto-tidy connectors after a move: `shownScene` runs `retidyRoutes` over the overridden scene for the
+  box-and-arrow families (not sequence), so a boundary-crossing edge a move blended into a diagonal snaps
+  back to clean right angles — display-only, `scene`/overrides untouched (undo + persist unaffected),
+  no-op when nothing moved. +`__shownEdges` e2e hook +e2e.

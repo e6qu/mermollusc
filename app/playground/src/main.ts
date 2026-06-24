@@ -71,7 +71,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
-import { layout, layoutDiagram } from "@m/layout";
+import { layout, layoutDiagram, retidyRoutes } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
 import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
@@ -125,6 +125,8 @@ declare global {
     __snapActive?: () => boolean;
     // e2e hook: the armed canvas tool ("select" | "hand" | "connect" | "place").
     __activeTool?: () => string;
+    // e2e hook: the displayed edges' routed waypoints, so a spec can assert connector geometry.
+    __shownEdges?: () => readonly { id: string; waypoints: readonly { x: number; y: number }[] }[];
   }
 }
 
@@ -357,6 +359,13 @@ let snapGuides: { vx: number | null; hy: number | null } = { vx: null, hy: null 
 // `snapAxis` / `snapCandidates` / `SNAP_T` are the pure alignment geometry, homed in `@m/builder`'s
 // core (tested there); the stateful guide tracking below stays in the shell.
 window.__snapActive = () => snapGuides.vx !== null || snapGuides.hy !== null;
+window.__shownEdges = () =>
+  scene === null
+    ? []
+    : shownScene(scene).edges.map((e) => ({
+        id: e.id,
+        waypoints: e.waypoints.map((p) => ({ x: p.x, y: p.y })),
+      }));
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
 // `startX`/`startY` are the *screen* (viewport-px) pointer position when the empty canvas was grabbed;
@@ -516,12 +525,31 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
 let shownCacheResult: Scene | null = null;
+// Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
+// into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
+// their stacked rows, not collapse to box-centre routes); a no-op for the curved/edgeless families.
+const TIDY_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
+  "flowchart",
+  "block",
+  "network",
+  "cloud",
+  "c4",
+  "er",
+  "class",
+  "state",
+  "requirement",
+]);
+
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
   if (shownCacheResult !== null && shownCacheScene === base && shownCacheOverrides === ov) {
     return shownCacheResult;
   }
-  const shown = applyOverrides(base, ov);
+  const moved = applyOverrides(base, ov);
+  // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
+  // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
+  const shown =
+    ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
   shownCacheScene = base;
   shownCacheOverrides = ov;
   shownCacheResult = shown;

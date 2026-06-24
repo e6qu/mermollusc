@@ -228,3 +228,6 @@
   - +fast-check tests: `measure.test.ts` (`widestLine`/`clampedWidth` bounds + many-line totality) and
     `grid.test.ts` (`gridGeometry` order, placement formula, extent containment, empty/multi-row cases).
     Existing block/network grid property tests stay green (geometry unchanged).
+- core: `retidyRoutes(scene)` — re-route every non-orthogonal, non-curved connector as a right-angle
+  path between its endpoints' boxes (reuses `orthogonalRoute`); leaves clean + curved edges (and returns
+  the same scene on a no-op). Lets the app snap a move-blended diagonal back to right angles. 3 unit tests.
