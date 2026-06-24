@@ -12,10 +12,17 @@
     stay flowchart-only; c4/cloud/er/class — typed/nested node decls — remain gated.)
   - *(done)* **B6 — block orthogonal edge routing**, via a shared `core/route.ts orthogonalRoute` (also
     used by cloud).
-  - **Still open:** add-node for **er/class/state** (name-as-id duplication needs a label→id derivation);
-    **c4/cloud** node creation (typed/nested decls). **B4/B5 + provenance (optional):** family-aware
-    connect for gitGraph/timeline/mindmap; signpost the placeholder labels connect inserts; promote the
-    AWS-trademark caveat into `source-icons.mjs`'s header.
+  - *(done)* **add-node now covers all nine graph families** (flowchart/block/network/sequence/er/class/
+    state/c4/cloud); *(done)* provenance caveat in `source-icons.mjs`.
+  - *(done)* **B4 — mindmap connect** re-parents a node (`connectMindmap`).
+  - **B4 — timeline/gitGraph connect: deliberately NOT done — the connect gesture doesn't map cleanly.**
+    *Timeline:* an event lives `:`-delimited on its period's line (`Parser : Flowchart : Sequence`); a
+    "connect event→period" would have to splice the event token out of one line and onto another, and only
+    makes sense event→period (not the symmetric node→node the gesture implies). Viable but niche — would
+    want a dedicated drag-an-event affordance, not generic Connect. *gitGraph:* commits are command-
+    sequential and merges are **branch**-level, so "add commit B as a parent of A" has no faithful
+    single-edit representation. Recommend leaving both `connect:false` rather than bolting on a confusing
+    verb. **B5 (optional):** auto-signpost the placeholder labels connect inserts (sequence/c4/er/req).
 
 - **Miro-like round (landed).** A whiteboard tool model (`select|hand|connect|place`, V/H/C/P +
   Space-pan + Esc→select, tool-aware cursors), a floating tool palette (radiogroup, roving tabindex,
