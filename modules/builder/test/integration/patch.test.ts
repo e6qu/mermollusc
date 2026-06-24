@@ -532,6 +532,16 @@ describe("relabelNode", () => {
     expect(deleteEdge(text, nid("A"), nid("B"))).toBe("flowchart TD\n  A --> B\n");
   });
 
+  it("deleteEdge removes a network/cloud edge carrying a `: label`", () => {
+    expect(deleteEdge('network\n  r1 -- web : "eth0"\n', nid("r1"), nid("web"))).toBe("network\n");
+    expect(deleteEdge('cloud\n  a --> b : "https"\n', nid("a"), nid("b"))).toBe("cloud\n");
+  });
+
+  it("deleteStateEntity removes a special state's `<<fork>>` declaration line", () => {
+    const text = "stateDiagram-v2\n  state fork <<fork>>\n  A --> fork\n  fork --> B\n";
+    expect(deleteStateEntity(text, stid("fork"))).not.toContain("fork"); // decl + transitions gone
+  });
+
   it("deleteGroupBlock ignores braces inside a quoted label", () => {
     const text = 'network\n  group "a{b}c" {\n    server x\n  }\n  server y\n';
     expect(deleteGroupBlock(text, { start: text.indexOf('"a{b') + 1, end: text.indexOf('}c"') + 2 })).toBe(
