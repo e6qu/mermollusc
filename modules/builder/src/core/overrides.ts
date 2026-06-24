@@ -1,5 +1,5 @@
 import type { LayoutOverrides, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
-import { point, rect, twoOrMore, type Point, type Rect, type Size } from "@m/std";
+import { point, rect, twoOrMore, type Point, type Size } from "@m/std";
 
 export const moveNode = (
   overrides: LayoutOverrides,
@@ -31,24 +31,11 @@ export const clearOverride = (overrides: LayoutOverrides, id: SceneNodeId): Layo
   return next;
 };
 
-// The point on `from`'s border along the ray toward `to`'s centre — used to re-anchor an edge whose
-// endpoint node moved, so the connector meets the box edge instead of dangling at the old spot.
-const borderPoint = (from: Rect, to: Rect): Point => {
-  const cx = from.origin.x + from.size.width / 2;
-  const cy = from.origin.y + from.size.height / 2;
-  const dx = to.origin.x + to.size.width / 2 - cx;
-  const dy = to.origin.y + to.size.height / 2 - cy;
-  if (dx === 0 && dy === 0) return point(cx, cy);
-  const sx = dx === 0 ? Number.POSITIVE_INFINITY : from.size.width / 2 / Math.abs(dx);
-  const sy = dy === 0 ? Number.POSITIVE_INFINITY : from.size.height / 2 / Math.abs(dy);
-  const s = Math.min(sx, sy);
-  return point(cx + dx * s, cy + dy * s);
-};
-
 // Repositions overridden node boxes and keeps their connectors attached without a re-layout: an edge
-// whose endpoints both moved by the *same* delta (a group dragged as one) has its route translated
-// so its shape is preserved; an edge crossing the moved set (one endpoint moved, or by a different
-// delta) is re-anchored to a straight line between the two boxes' borders.
+// whose endpoints both moved by the *same* delta (a group dragged as one) has its whole route
+// translated; an edge crossing the moved set (one endpoint moved, or by a different delta) has each
+// waypoint translated by a position-weighted blend of the two endpoints' deltas, so it stays attached
+// to both borders while preserving its shape (and a sequence message its row).
 export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene => {
   if (overrides.size === 0) return scene;
   const delta = new Map<SceneNodeId, { readonly dx: number; readonly dy: number }>();
@@ -66,7 +53,6 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
   });
   if (delta.size === 0) return { ...scene, nodes };
 
-  const boundsById = new Map<SceneNodeId, Rect>(nodes.map((n) => [n.id, n.bounds]));
   const edges = scene.edges.map((edge): SceneEdge => {
     const from = delta.get(edge.from);
     const to = delta.get(edge.to);
@@ -76,10 +62,22 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
       const [w0, w1, ...wr] = edge.waypoints;
       return { ...edge, waypoints: twoOrMore(shift(w0), shift(w1), ...wr.map(shift)) };
     }
-    const a = boundsById.get(edge.from);
-    const b = boundsById.get(edge.to);
-    if (a === undefined || b === undefined) return edge;
-    return { ...edge, waypoints: [borderPoint(a, b), borderPoint(b, a)] };
+    // One endpoint moved (or the two by different deltas): translate each waypoint by a blend of the
+    // endpoints' deltas weighted by its position along the edge (0 at `from`, 1 at `to`). Endpoints land
+    // on the moved node's new border (it moved rigidly), and the in-between shape is preserved — so a
+    // sequence message dragged by one actor keeps its row instead of collapsing onto the actor-header.
+    const fromD = from ?? { dx: 0, dy: 0 };
+    const toD = to ?? { dx: 0, dy: 0 };
+    const last = edge.waypoints.length - 1;
+    const blend = (p: Point, i: number): Point => {
+      const t = last <= 0 ? 0 : i / last;
+      return point(p.x + fromD.dx * (1 - t) + toD.dx * t, p.y + fromD.dy * (1 - t) + toD.dy * t);
+    };
+    const [w0, w1, ...wr] = edge.waypoints;
+    return {
+      ...edge,
+      waypoints: twoOrMore(blend(w0, 0), blend(w1, 1), ...wr.map((p, i) => blend(p, i + 2))),
+    };
   });
 
   // Grow the extent to the true bounds of the overridden scene. A node dragged left/up past the
