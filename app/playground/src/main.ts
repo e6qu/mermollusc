@@ -3900,6 +3900,8 @@ const navController = createNavigator({
   updateGroupButtons,
   setSelection,
   nudgeSelection,
+  groupSelection,
+  ungroupSelection,
   beginRelabel,
   shownScene,
   appendEdge,

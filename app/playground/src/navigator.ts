@@ -29,6 +29,9 @@ export interface NavigatorDeps {
   readonly updateGroupButtons: () => void;
   readonly setSelection: (selection: Selection, order: readonly SceneNodeId[]) => void;
   readonly nudgeSelection: (dx: number, dy: number) => void;
+  // Group / ungroup the current selection (the app announces a no-op below two units / no group).
+  readonly groupSelection: () => void;
+  readonly ungroupSelection: () => void;
   readonly beginRelabel: (shown: Scene, hit: HitTarget | null, group: GroupId | null) => boolean;
   readonly shownScene: (base: Scene) => Scene;
   readonly appendEdge: (
@@ -59,6 +62,9 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   // the node/edge shape the selection and relabel paths already speak, so an item feeds them directly.
   let navItems: HitTarget[] = [];
   let navIndex = -1; // the active option's index into `navItems`, or -1 when nothing is active yet
+  // The accumulated multi-node selection (Shift+Arrow extends it) — so a keyboard user can select two
+  // nodes to Connect or several to Group, mirroring Shift-click on the canvas. Order is insertion order.
+  let navSelectedOrder: SceneNodeId[] = [];
   // The chosen source while a keyboard Connect is in progress (press `c` to pick it, navigate, `c`
   // again to connect to the target). Cleared on connect, cancel, or any re-render.
   let navConnectSource: SceneNodeId | null = null;
@@ -116,6 +122,7 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     diagramNav.replaceChildren();
     diagramNav.removeAttribute("aria-activedescendant");
     navIndex = -1;
+    navSelectedOrder = [];
     navConnectSource = null;
     const scene = deps.getScene();
     if (scene === null) {
@@ -139,32 +146,44 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     });
   };
 
-  const setNavActive = (index: number): void => {
+  // `additive` (Shift+Arrow) extends the multi-node selection instead of replacing it.
+  const setNavActive = (index: number, additive = false): void => {
     if (navItems.length === 0) return;
     const clamped = Math.max(0, Math.min(index, navItems.length - 1));
     const item = navItems[clamped];
     const option = diagramNav.children[clamped];
     if (item === undefined || option === undefined) return;
-    for (const child of Array.from(diagramNav.children))
-      child.setAttribute("aria-selected", "false");
-    option.setAttribute("aria-selected", "true");
     diagramNav.setAttribute("aria-activedescendant", option.id);
     navIndex = clamped;
     const position = `${clamped + 1} of ${navItems.length}`;
     // Drive the canvas selection so the item highlights and the existing Delete handler can remove it.
     if (item.kind === "node") {
-      deps.setSelection({ nodes: new Set([item.id]), edges: new Set() }, [item.id]);
+      if (additive) {
+        if (!navSelectedOrder.includes(item.id)) navSelectedOrder = [...navSelectedOrder, item.id];
+      } else {
+        navSelectedOrder = [item.id];
+      }
+      deps.setSelection({ nodes: new Set(navSelectedOrder), edges: new Set() }, navSelectedOrder);
       deps.paintScene();
       deps.updateGroupButtons();
       centerOnNode(item.id);
-      announce(`${navLabel(item.id)}, ${position}. ${describeConnections(item.id)}`);
+      const count = navSelectedOrder.length > 1 ? ` — ${navSelectedOrder.length} selected` : "";
+      announce(`${navLabel(item.id)}, ${position}${count}. ${describeConnections(item.id)}`);
     } else {
+      navSelectedOrder = [];
       deps.setSelection({ nodes: new Set(), edges: new Set([item.id]) }, []);
       deps.paintScene();
       deps.updateGroupButtons();
       centerOnEdge(item.id);
       announce(`${edgeLabel(item.id)}, edge, ${position}`);
     }
+    // Keep the listbox's aria-selected in sync with the (possibly multi-) node selection.
+    Array.from(diagramNav.children).forEach((child, i) => {
+      const it = navItems[i];
+      const selected =
+        it !== undefined && it.kind === "node" ? navSelectedOrder.includes(it.id) : i === clamped;
+      child.setAttribute("aria-selected", selected ? "true" : "false");
+    });
   };
 
   diagramNav.addEventListener("focus", () => {
@@ -195,10 +214,18 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     }
     if (ev.key === "ArrowDown" || ev.key === "ArrowRight") {
       ev.preventDefault();
-      setNavActive(navIndex + 1);
+      setNavActive(navIndex + 1, ev.shiftKey); // Shift extends the multi-selection
     } else if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") {
       ev.preventDefault();
-      setNavActive(navIndex <= 0 ? 0 : navIndex - 1);
+      setNavActive(navIndex <= 0 ? 0 : navIndex - 1, ev.shiftKey);
+    } else if ((ev.key === "g" || ev.key === "G") && !viewerMode) {
+      // Group the multi-selection (parity with the Group button); a no-op below two units, which the
+      // app's groupSelection announces.
+      ev.preventDefault();
+      deps.groupSelection();
+    } else if ((ev.key === "u" || ev.key === "U") && !viewerMode) {
+      ev.preventDefault();
+      deps.ungroupSelection();
     } else if (ev.key === "Home") {
       ev.preventDefault();
       setNavActive(0);
