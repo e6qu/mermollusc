@@ -19,8 +19,8 @@ export interface NavigatorDeps {
   // Whether the family's grammar can accept a new edge — so keyboard Connect (`c`) doesn't arm a source
   // and walk the user into a two-step gesture that can't commit. Mirrors the palette/button gating.
   readonly canConnect: (kind: DiagramAst["kind"]) => boolean;
-  // A trailing hint for the connect announcement (e.g. "added a placeholder label, …"); "" when none.
-  readonly connectHint: (kind: DiagramAst["kind"]) => string;
+  // A family-accurate confirmation for a completed connect ("merged X into Y", "connected X to Y", …).
+  readonly describeConnect: (kind: DiagramAst["kind"], from: string, to: string) => string;
   readonly isViewerMode: () => boolean;
   readonly editor: Editor;
   readonly scrollToLogical: (logicalX: number, logicalY: number) => void;
@@ -287,7 +287,10 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       deps.toggleCloudCollapse(); // collapse/expand a selected cloud group
     } else if ((ev.key === "s" || ev.key === "S") && item?.kind === "node" && !viewerMode) {
       ev.preventDefault();
-      deps.cycleShape(); // cycle a flowchart node's shape (no-op off flowchart)
+      // Shape cycling is flowchart-only (mirrors the Shape button's gating); say so off flowchart
+      // instead of swallowing the key silently.
+      if (deps.getAst()?.kind === "flowchart") deps.cycleShape();
+      else announce("shape change is only available for flowchart");
     } else if (ev.key === "F2") {
       // Jump to the floating action bar for the current selection (rename/shape/connect/… are there).
       ev.preventDefault();
@@ -304,8 +307,11 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       ev.preventDefault();
       navConnectSource = null;
       const shown = deps.shownScene(scene);
-      if (item.kind === "group") deps.beginRelabel(shown, null, item.id);
-      else deps.beginRelabel(shown, item, null);
+      const opened =
+        item.kind === "group"
+          ? deps.beginRelabel(shown, null, item.id)
+          : deps.beginRelabel(shown, item, null);
+      if (!opened) announce("this item has no editable label");
     } else if (
       (ev.key === "c" || ev.key === "C") &&
       item?.kind === "node" &&
@@ -334,11 +340,11 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
         const text = deps.appendEdge(ast.kind, deps.editor.value(), navConnectSource, item.id);
         navConnectSource = null;
         if (text === deps.editor.value()) {
-          announce("connect isn't available for this diagram");
+          announce("connect made no change");
         } else {
           deps.editor.setValue(text);
           void deps.renderFromText(text);
-          announce(`connected ${from} to ${to}${deps.connectHint(ast.kind)}`);
+          announce(deps.describeConnect(ast.kind, from, to));
         }
       }
     } else if (ev.key === "Escape" && navConnectSource !== null) {

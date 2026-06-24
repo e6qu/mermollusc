@@ -42,10 +42,10 @@
   (DOC/AWARE only); room-name validation at the boundary; throttled viewer-drop log; graceful flush on
   SIGINT/SIGTERM; RBAC fail-closed default. `reconnectingWebSocketTransport` self-heals a dropped socket
   (backoff + jitter + cap, re-exchange on reopen, `ReconnectStatus`). Collision-proof group ids.
-- **App wiring (next):** swap the app's `connectWebSocket` for `reconnectingWebSocketTransport` +
-  `connectTransport`, surface `ReconnectStatus` (reconnecting/reconnected/disconnected) and the session's
-  `onStatusChange` (`overlay-rejected`) as status-bar messages, and pass `consoleLogger` as the session
-  `logger`. (The module exports are ready; this is purely app-side.)
+- **App wiring (*done*):** the app uses `reconnectingWebSocketTransport` + `connectTransport`, surfaces
+  `ReconnectStatus` (reconnecting/reconnected/disconnected) and the session's `onStatusChange`
+  (`overlay-rejected`) as status-bar messages, and passes a console logger — all behind the default-off
+  `?collab` flag (`app/playground/src/main.ts`).
 - **Membership source (next):** with the fail-closed RBAC default, an auth-on deployment needs a real
   per-room roles claim (or a server-side membership store behind `authorizeRoom`) so authenticated users
   aren't all denied. Wire it alongside the browser Auth0 login.

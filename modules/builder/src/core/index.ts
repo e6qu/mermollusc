@@ -29,6 +29,8 @@ export {
   connectEr,
   connectClass,
   connectMindmap,
+  connectGitMerge,
+  moveTimelineEvent,
   deleteMindmapNode,
   connectRequirement,
   deleteNode,

@@ -5,11 +5,13 @@ import {
   parseCloudWithSource,
   parseErWithSource,
   parseGanttWithSource,
+  parseGitGraphWithSource,
   parseRequirementWithSource,
   parseNetworkWithSource,
   parseSequenceWithSource,
   parseStateWithSource,
   parseMindmapWithSource,
+  parseTimelineWithSource,
   parseWithSource,
 } from "@m/parser";
 import { describe, expect, it } from "vitest";
@@ -21,6 +23,8 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  connectGitMerge,
+  moveTimelineEvent,
   deleteMindmapNode,
   connectRequirement,
   connectUndirected,
@@ -530,6 +534,75 @@ describe("relabelNode", () => {
   it("deleteEdge removes only the first of parallel edges", () => {
     const text = "flowchart TD\n  A --> B\n  A --> B\n";
     expect(deleteEdge(text, nid("A"), nid("B"))).toBe("flowchart TD\n  A --> B\n");
+  });
+
+  it("connectGitMerge appends a checkout + merge the git parser accepts", () => {
+    const text = "gitGraph\n  commit\n  branch develop\n  commit\n";
+    const out = connectGitMerge(
+      text,
+      brand<string, "GitBranchName">("main"),
+      brand<string, "GitBranchName">("develop"),
+    );
+    expect(out).toContain("checkout main");
+    expect(out).toContain("merge develop");
+    const r = parseGitGraphWithSource(out);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) expect(r.value.ast.commits.some((c) => c.merge)).toBe(true);
+    // A self-merge is a no-op.
+    expect(
+      connectGitMerge(
+        text,
+        brand<string, "GitBranchName">("main"),
+        brand<string, "GitBranchName">("main"),
+      ),
+    ).toBe(text);
+  });
+
+  it("moveTimelineEvent re-parents an event under another period (round-trips)", () => {
+    const text = "timeline\n  2001 : Alpha : Beta\n  2002 : Gamma\n";
+    const parsed = parseTimelineWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const { ast, source } = parsed.value;
+    const beta = ast.periods.flatMap((p) => p.events).find((e) => e.text === "Beta");
+    const p2002 = ast.periods.find((p) => p.label === "2002");
+    expect(beta).toBeDefined();
+    expect(p2002).toBeDefined();
+    if (beta === undefined || p2002 === undefined) return;
+    const out = moveTimelineEvent(text, source, ast, beta.id, p2002.id);
+    expect(out).toBe("timeline\n  2001 : Alpha\n  2002 : Gamma : Beta\n");
+    const re = parseTimelineWithSource(out);
+    expect(isOk(re)).toBe(true);
+    if (isOk(re)) {
+      const moved = re.value.ast.periods.find((p) => p.label === "2002");
+      expect(moved?.events.map((e) => e.text)).toEqual(["Gamma", "Beta"]);
+    }
+  });
+
+  it("covers git/timeline connect guard + quoting branches", () => {
+    // A branch name with a space must be quoted in the appended merge.
+    const out = connectGitMerge(
+      "gitGraph\n  commit\n",
+      brand<string, "GitBranchName">("main"),
+      brand<string, "GitBranchName">("feature x"),
+    );
+    expect(out).toContain('merge "feature x"');
+
+    const t = "timeline\n  2001 : Alpha\n";
+    const parsed = parseTimelineWithSource(t);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const { ast, source } = parsed.value;
+    const period = ast.periods[0];
+    const event = period?.events[0];
+    expect(period).toBeDefined();
+    expect(event).toBeDefined();
+    if (period === undefined || event === undefined) return;
+    // Already under that period → no-op; unknown event id → no-op.
+    expect(moveTimelineEvent(t, source, ast, event.id, period.id)).toBe(t);
+    expect(
+      moveTimelineEvent(t, source, ast, brand<string, "TimelineEventId">("zz"), period.id),
+    ).toBe(t);
   });
 
   it("deleteEdge removes a network/cloud edge carrying a `: label`", () => {

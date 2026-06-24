@@ -3,8 +3,9 @@
 **State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence, Auth0 OIDC
 verification, **and rooms + RBAC** at the relay. CRDT document, WebSocket transport, live source
 binding, presence, restart-survival, token-verified connections, and server-enforced per-document
-roles + tenant isolation. Remaining Phase 2: the browser login + the production store. The app always
-runs single-user with no relay/persistence/auth.
+roles + tenant isolation. Remaining Phase 2: the browser login + the production store. The app runs
+single-user by default; with `?collab` set it connects to the relay (via `reconnectingWebSocketTransport`)
+and binds the editor to the shared doc.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
   Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/

@@ -131,3 +131,8 @@
 - Grouping patches: `deleteGroupBlock` (brace-balanced, quote-masked — network/cloud), `wrapCloudGroup`
   (gather leaves into a `group "…" { }`), `renameBlockId` (rename a composite id everywhere — opener +
   edge endpoints — keeping edges valid).
+- core: `connectGitMerge(text, into, from)` — the only "connect" a git graph has: append `checkout
+  <into>` + `merge <from>` (self-merge is a no-op), so connecting two branch lanes on the canvas emits a
+  real merge. `moveTimelineEvent(text, source, ast, eventId, periodId)` — re-parent a timeline event
+  under a different period (splice its ` : <event>` segment to the destination period's line), the
+  timeline analogue of a mindmap re-parent. Both round-trip; 2 tests.

@@ -7,6 +7,8 @@ import {
   connectEr,
   connectMessage,
   connectMindmap,
+  connectGitMerge,
+  moveTimelineEvent,
   deleteMindmapNode,
   connectRequirement,
   connectUndirected,
@@ -917,6 +919,7 @@ const movableUnitCount = (): number => {
 // node that shows resize handles. (Resize is single-node; multi-select uses Group/Arrange instead.)
 const singleResizableNodeId = (): SceneNodeId | null => {
   if (selection.nodes.size !== 1) return null;
+  if (ast === null || !familyAffordances(ast.kind).resizable) return null; // not a free-geometry box family
   const [only] = selection.nodes;
   if (only === undefined || pathLocked(doc.groups(), only)) return null;
   return only;
@@ -940,8 +943,13 @@ interface FamilyAffordances {
   readonly connect: boolean;
   readonly iconOverride: boolean;
   // Whether `Add node` / `Duplicate` can append a node in the family's own one-line declaration syntax.
-  // (Families whose node is a typed/nested block — c4/cloud — or has no standalone node decl are off.)
+  // (Off for mindmap/gitGraph/timeline/pie/gantt, whose "node" has no standalone one-line declaration —
+  // a mindmap node's identity is its indentation, a commit needs a branch context, etc.)
   readonly addNode: boolean;
+  // Whether a node is a free-geometry box a size override can meaningfully resize. Off for families laid
+  // out by their own rules (sequence lifelines, gantt bars, pie/timeline/git markers, content-sized
+  // entities) where a corner-drag would leave an inert or distorting override.
+  readonly resizable: boolean;
 }
 const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   switch (kind) {
@@ -949,24 +957,28 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "network":
     case "cloud":
     case "block":
-      return { connect: true, iconOverride: true, addNode: true };
+      return { connect: true, iconOverride: true, addNode: true, resizable: true };
     case "sequence":
     case "state":
     case "c4":
     case "er":
     case "class":
-      return { connect: true, iconOverride: false, addNode: true };
+      return { connect: true, iconOverride: false, addNode: true, resizable: false };
     case "requirement":
-      return { connect: true, iconOverride: false, addNode: true };
+      return { connect: true, iconOverride: false, addNode: true, resizable: false };
     case "mindmap":
       // Connect re-parents a node (drag one node onto another to nest it); no Add (a node's place is its
       // indentation, set by where you connect it).
-      return { connect: true, iconOverride: false, addNode: false };
+      return { connect: true, iconOverride: false, addNode: false, resizable: false };
     case "gitGraph":
+      // Connect two branch lanes to merge one into the other (git's only edge).
+      return { connect: true, iconOverride: false, addNode: false, resizable: false };
     case "timeline":
+      // Connect re-parents an event under a different period (drag an event onto a period).
+      return { connect: true, iconOverride: false, addNode: false, resizable: false };
     case "pie":
     case "gantt":
-      return { connect: false, iconOverride: false, addNode: false };
+      return { connect: false, iconOverride: false, addNode: false, resizable: false };
     default:
       return assertNever(kind);
   }
@@ -986,7 +998,8 @@ const updateTask = (): void => {
     return;
   }
   if (selection.nodes.size === 1) {
-    setTask("drag, rename, or resize with corner handles", "action");
+    const resizable = ast !== null && familyAffordances(ast.kind).resizable;
+    setTask(resizable ? "drag, rename, or resize with corner handles" : "drag or rename", "action");
     return;
   }
   const canConnect =
@@ -1171,12 +1184,13 @@ const computeCapabilities = (): CapabilityState => {
 const updateGroupButtons = (): void => {
   const caps = computeCapabilities();
   groupBtn.disabled = !caps.canGroup;
-  // The verb means different things per family — a source-level labelled group for cloud/network, a
-  // sidecar visual group elsewhere — so the title says which, instead of a generic "Group".
+  // The verb means different things per family — only cloud wraps the selection in a labelled group in
+  // the source text; every other family (network included) makes a sidecar visual group — so the title
+  // says which, instead of a generic "Group".
   const groupKind = ast === null ? null : ast.kind;
   groupBtn.title = !caps.canGroup
     ? "select two or more nodes to group"
-    : groupKind === "cloud" || groupKind === "network"
+    : groupKind === "cloud"
       ? "wrap the selection in a labelled group in the source text"
       : "bundle the selection into a movable visual group";
   ctxGroupBtn.title = groupBtn.title;
@@ -1764,12 +1778,17 @@ const collapsedBranded = (): ReadonlySet<NodeId> =>
 // Toggle the collapse of the single selected cloud group (E). Collapsing hides its contents + re-routes
 // its links to the container; the state persists across reloads.
 const toggleCloudCollapse = (): void => {
-  if (viewerMode || ast === null || ast.kind !== "cloud" || scene === null) return;
-  if (selectionOrder.length !== 1) return;
-  const id = selectionOrder[0];
-  if (id === undefined) return;
-  const node = scene.nodes.find((n) => n.id === id);
-  if (node === undefined || node.shape !== "container") return;
+  if (viewerMode || ast === null || scene === null) return;
+  if (ast.kind !== "cloud") {
+    announce("collapse is only available for cloud groups");
+    return;
+  }
+  const id = selectionOrder.length === 1 ? selectionOrder[0] : null;
+  const node = id === null || id === undefined ? undefined : scene.nodes.find((n) => n.id === id);
+  if (id === null || id === undefined || node === undefined || node.shape !== "container") {
+    announce("select a single cloud group to collapse");
+    return;
+  }
   if (cloudCollapsed.has(id)) cloudCollapsed.delete(id);
   else cloudCollapsed.add(id);
   persistCollapsed();
@@ -2448,12 +2467,14 @@ canvas.addEventListener("pointerup", (ev) => {
       // this also covers a family whose builder declines a specific pair.
       const next = appendEdge(ast.kind, editor.value(), cd.from, target.id);
       if (next !== editor.value()) {
+        const label = (id: SceneNodeId): string =>
+          scene?.nodes.find((n) => n.id === id)?.label ?? "node";
         editor.setValue(next);
         void renderFromText(next);
-        announce(`connected${connectHint(ast.kind)}`);
+        announce(describeConnect(ast.kind, label(cd.from), label(target.id)));
       } else {
         paintScene();
-        announce(`connect isn't available for ${ast.kind}`);
+        announce("connect made no change");
       }
     } else {
       paintScene(); // released on empty space / the same node — clear the rubber-band
@@ -2836,14 +2857,18 @@ canvas.addEventListener("dblclick", (ev) => {
   const at = scenePoint(ev);
   const hit = hitTest(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
-  beginRelabel(shown, hit, groupHit);
+  // If something was hit but it has no editable label (e.g. a gitGraph merge edge, a mindmap spoke, an
+  // auto-id commit), say so instead of letting the double-click do nothing.
+  if (!beginRelabel(shown, hit, groupHit) && (hit !== null || groupHit !== null)) {
+    setStatusAndAnnounce("warning", "this item has no editable label");
+  }
 });
 
 // Add node: append a fresh rect node to the flowchart text (flowchart only for now).
 // Append a new node in the active family's own one-line declaration syntax (the node-creation analogue of
 // `appendEdge`). `id` is a fresh unique identifier; `label` its display text; `shape` only applies to
-// flowchart. Families gated off in `familyAffordances` (c4/cloud/state/er/class/… — typed or nested node
-// decls) return the text unchanged.
+// flowchart. Families gated off in `familyAffordances` (mindmap/gitGraph/timeline/pie/gantt — no
+// standalone node declaration) return the text unchanged.
 const appendNode = (
   kind: DiagramAst["kind"],
   text: string,
@@ -3069,9 +3094,7 @@ connectBtn.addEventListener("click", () => {
   }
   editor.setValue(text);
   void renderFromText(text);
-  flashStatus(
-    `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
-  );
+  flashStatus(connectedMessage(ast.kind, selectionOrder.length - 1));
 });
 
 // Families whose connect writes a *placeholder* label the user will usually want to rename right away;
@@ -3088,6 +3111,39 @@ const connectHint = (kind: DiagramAst["kind"]): string => {
     ? ""
     : ` — added a placeholder ${placeholder} label, double-click to rename`;
 };
+
+// A family-accurate confirmation for a completed connect — "connect" means a merge in gitGraph and a
+// re-parent in timeline/mindmap, so an "N edges" message would misdescribe what just happened. The
+// count form is for the chain-connect button; the labelled form names the two endpoints.
+const connectedMessage = (kind: DiagramAst["kind"], count: number): string => {
+  switch (kind) {
+    case "gitGraph":
+      return "merged branch";
+    case "timeline":
+      return "moved event to period";
+    case "mindmap":
+      return "re-parented node";
+    default:
+      return `connected ${count} edge${count === 1 ? "" : "s"}${connectHint(kind)}`;
+  }
+};
+const describeConnect = (kind: DiagramAst["kind"], from: string, to: string): string => {
+  switch (kind) {
+    case "gitGraph":
+      return `merged ${to} into ${from}`;
+    case "timeline":
+      return "moved event to period"; // role (event vs period) depends on the selection, so don't name
+    case "mindmap":
+      return `nested ${to} under ${from}`;
+    default:
+      return `connected ${from} to ${to}${connectHint(kind)}`;
+  }
+};
+
+// A gitGraph branch lane's scene id is `branch:<name>`; commit nodes carry their commit id instead.
+// Returns the branch name, or null when the id isn't a branch lane (so connect ignores commit picks).
+const branchName = (id: SceneNodeId): string | null =>
+  id.startsWith("branch:") ? id.slice("branch:".length) : null;
 
 const appendEdge = (
   kind: DiagramAst["kind"],
@@ -3155,10 +3211,44 @@ const appendEdge = (
             brand<string, "MindmapNodeId">(second),
           )
         : text;
-    // No edge to draw: gantt/pie have no edge concept, and gitGraph/timeline grammars would reject a
-    // generic arrow. Connect stays a no-op for these — `familyAffordances` also gates the button.
-    case "gitGraph":
-    case "timeline":
+    // gitGraph connect = merge two branch lanes. The scene ids are `branch:<name>`; if either selected
+    // node isn't a branch (e.g. a commit), there's nothing to merge, so it's a no-op.
+    case "gitGraph": {
+      const a = branchName(first);
+      const b = branchName(second);
+      return a !== null && b !== null
+        ? connectGitMerge(
+            text,
+            brand<string, "GitBranchName">(a),
+            brand<string, "GitBranchName">(b),
+          )
+        : text;
+    }
+    // timeline connect = re-parent an event under a period (drag an event onto a period). Resolve which
+    // selected node is the event and which is the period from the AST; any other pairing is a no-op.
+    case "timeline": {
+      if (ast === null || ast.kind !== "timeline" || timelineSource === null) return text;
+      const tAst = ast; // capture the narrowed AST/source so the closures keep the timeline types
+      const tSource = timelineSource;
+      const isPeriod = (id: SceneNodeId): boolean =>
+        tAst.periods.some((p) => p.id === brand<string, "TimelinePeriodId">(id));
+      const isEvent = (id: SceneNodeId): boolean =>
+        tAst.periods.some((p) =>
+          p.events.some((e) => e.id === brand<string, "TimelineEventId">(id)),
+        );
+      const move = (ev: SceneNodeId, pd: SceneNodeId): string =>
+        moveTimelineEvent(
+          text,
+          tSource,
+          tAst,
+          brand<string, "TimelineEventId">(ev),
+          brand<string, "TimelinePeriodId">(pd),
+        );
+      if (isEvent(first) && isPeriod(second)) return move(first, second);
+      if (isPeriod(first) && isEvent(second)) return move(second, first);
+      return text;
+    }
+    // No edge to draw: gantt/pie have no edge concept.
     case "pie":
     case "gantt":
       return text;
@@ -3322,6 +3412,7 @@ const deleteSelection = async (): Promise<void> => {
     .filter((n) => n.shape !== "container" && !isDeleted(n))
     .map((n) => ({ id: n.id, label: n.label, shape: n.shape }));
   let text = editor.value();
+  const before = text;
   // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
   // earlier line's offset, keeping each remaining span valid against the prior edit.
   const order =
@@ -3335,6 +3426,13 @@ const deleteSelection = async (): Promise<void> => {
   for (const edgeId of selection.edges) {
     const edge = scene.edges.find((e) => e.id === edgeId);
     if (edge !== undefined) text = removeEdge(kind, text, edge.from, edge.to);
+  }
+  if (text === before) {
+    // The source didn't change: this item has no removable declaration line — a gitGraph branch lane or
+    // a timeline period/event (synthetic ids absent from the text), or a structural edge. Say so loudly
+    // instead of claiming a delete that didn't happen.
+    setStatusAndAnnounce("warning", "can't delete this from the canvas — remove it in the source");
+    return;
   }
   selection = emptySelection;
   selectionOrder = [];
@@ -3547,7 +3645,9 @@ ctxRelabelBtn.addEventListener("click", () => {
       : nodeId !== undefined
         ? { kind: "node", id: nodeId }
         : null;
-  if (hit !== null) beginRelabel(shownScene(scene), hit, null);
+  if (hit !== null && !beginRelabel(shownScene(scene), hit, null)) {
+    setStatusAndAnnounce("warning", "this item has no editable label");
+  }
 });
 ctxShapeBtn.addEventListener("click", () => void cycleShape());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
@@ -4102,7 +4202,7 @@ const navController = createNavigator({
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
   canConnect: (kind) => familyAffordances(kind).connect,
-  connectHint,
+  describeConnect,
   isViewerMode: () => viewerMode,
   editor,
   scrollToLogical,
@@ -4211,7 +4311,7 @@ if (collabSession !== null) {
     // the user must know they're no longer shared.
     onClose: () => {
       console.error("collab: disconnected from the relay");
-      setStatus("ok", "⚠ disconnected from the collaboration relay — editing locally");
+      setStatus("warning", "disconnected from the collaboration relay — editing locally");
     },
   });
   // Seed the room's source once the initial sync has settled: the first client into an empty room
