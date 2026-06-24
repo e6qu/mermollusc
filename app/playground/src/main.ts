@@ -2643,8 +2643,17 @@ const freshNode = (
 addBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || scene === null || !familyAffordances(ast.kind).addNode) return;
   const used = new Set<string>(scene.nodes.map((n) => n.id));
-  const hint = NAME_AS_ID.has(ast.kind) ? (ADD_BASE[ast.kind] ?? "Node") : `node ${used.size + 1}`;
-  const { id, label } = freshNode(ast.kind, used, hint);
+  let id: string;
+  let label: string;
+  if (NAME_AS_ID.has(ast.kind)) {
+    id = uniqueId(used, ADD_BASE[ast.kind] ?? "Node");
+    label = id;
+  } else {
+    let n = 1;
+    while (used.has(`n${n}`)) n++;
+    id = `n${n}`;
+    label = `node ${n}`; // the display label tracks the id number, as before
+  }
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
   editor.setValue(next);
