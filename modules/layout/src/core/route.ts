@@ -1,4 +1,5 @@
 import { point, twoOrMore, type Point, type TwoOrMore } from "@m/std";
+import type { Scene, SceneEdge } from "@m/contracts";
 
 // Build an edge's waypoints (always ≥ 2) from a routing engine's point list. ELK normally returns a
 // full route (each section carries at least its start + end), but a degenerate/unrouted edge can yield
@@ -49,4 +50,46 @@ export const orthogonalRoute = (
   const by = bcy >= acy ? b.y : b.y + b.h;
   const midY = (ay + by) / 2;
   return [point(acx, ay), point(acx, midY), point(bcx, midY), point(bcx, by)];
+};
+
+// Whether every segment of a route is axis-aligned (horizontal or vertical) within a small tolerance —
+// i.e. already a clean right-angle path. A diagonal segment (the blend a manual move leaves on a
+// boundary-crossing edge) makes this false.
+const ROUTE_EPS = 0.75;
+const isOrthogonalRoute = (waypoints: readonly Point[]): boolean => {
+  for (let i = 1; i < waypoints.length; i++) {
+    const a = waypoints[i - 1];
+    const b = waypoints[i];
+    if (
+      a !== undefined &&
+      b !== undefined &&
+      Math.abs(a.x - b.x) > ROUTE_EPS &&
+      Math.abs(a.y - b.y) > ROUTE_EPS
+    )
+      return false;
+  }
+  return true;
+};
+
+// Re-route every *non-orthogonal, non-curved* connector as a right-angle path between its endpoints'
+// current boxes, leaving already-clean and intentionally-curved (mindmap/gitGraph) edges untouched.
+// Use after a manual move blends a boundary-crossing edge into a long diagonal: the nodes stay exactly
+// where they are and only the messy connectors snap back to clean right angles. Returns the *same* scene
+// object when nothing needed routing, so callers can cheaply detect a no-op.
+export const retidyRoutes = (scene: Scene): Scene => {
+  const boxOf = new Map(scene.nodes.map((n) => [n.id, n.bounds]));
+  let changed = false;
+  const edges = scene.edges.map((edge): SceneEdge => {
+    if (edge.curved || isOrthogonalRoute(edge.waypoints)) return edge;
+    const a = boxOf.get(edge.from);
+    const b = boxOf.get(edge.to);
+    if (a === undefined || b === undefined) return edge;
+    const [w0, w1, w2, w3] = orthogonalRoute(
+      { x: a.origin.x, y: a.origin.y, w: a.size.width, h: a.size.height },
+      { x: b.origin.x, y: b.origin.y, w: b.size.width, h: b.size.height },
+    );
+    changed = true;
+    return { ...edge, waypoints: twoOrMore(w0, w1, w2, w3) };
+  });
+  return changed ? { ...scene, edges } : scene;
 };
