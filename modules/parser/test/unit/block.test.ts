@@ -5,6 +5,17 @@ import { parseBlock, parseBlockWithSource } from "../../src/shell/block-parse.js
 const nid = (s: string) => brand<string, "NodeId">(s);
 const eid = (s: string) => brand<string, "EdgeId">(s);
 
+describe("parseBlock — column spans", () => {
+  it("parses `a:2` leaf spans and `block:id:3` composite spans (default 1)", () => {
+    const r = parseBlock("block-beta\n  columns 3\n  a:2\n  b\n  block:grp:3\n    c\n  end\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.blocks.find((b) => b.id === nid("a"))?.span).toBe(2);
+    expect(r.value.blocks.find((b) => b.id === nid("b"))?.span).toBe(1);
+    expect(r.value.groups.find((g) => g.id === nid("grp"))?.span).toBe(3);
+  });
+});
+
 describe("parseBlock — composite blocks", () => {
   it("parses a `block:id … end` group: nested parent pointers, group columns, cross-boundary edge", () => {
     const text =
@@ -14,7 +25,9 @@ describe("parseBlock — composite blocks", () => {
     if (!isOk(r)) return;
     const { ast, source } = r.value;
     // One composite, its inner `columns 1` honoured, b + c as its ordered children.
-    expect(ast.groups).toEqual([{ id: nid("grp"), label: "grp", columns: 1, children: [nid("b"), nid("c")] }]);
+    expect(ast.groups).toEqual([
+      { id: nid("grp"), label: "grp", columns: 1, children: [nid("b"), nid("c")], span: 1 },
+    ]);
     // Top level is a, the group, then d — in declaration order.
     expect(ast.roots).toEqual([nid("a"), nid("grp"), nid("d")]);
     // An edge can cross the boundary (a → b).

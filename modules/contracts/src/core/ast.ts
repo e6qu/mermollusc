@@ -102,6 +102,8 @@ export interface BlockNode {
   readonly shape: NodeShape;
   // An explicit `icon "<pack>/<name>"` override; null otherwise.
   readonly icon: IconRef | null;
+  // How many grid columns this block spans (`a:2`); 1 when unspecified.
+  readonly span: PositiveInt;
 }
 
 // A `block:id … end` composite block — a container that lays its own children out in a nested grid.
@@ -112,6 +114,8 @@ export interface BlockGroup {
   // The group's own grid width (its inner `columns N`, else one row of its direct children).
   readonly columns: PositiveInt;
   readonly children: readonly NodeId[];
+  // How many grid columns this composite spans in its parent (`block:id:2`); 1 when unspecified.
+  readonly span: PositiveInt;
 }
 
 export interface BlockEdge {

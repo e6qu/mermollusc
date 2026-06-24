@@ -51,11 +51,22 @@ interface Ref {
   // The id-token's own span, so a label-less block can be relabelled by wrapping its id into `id["…"]`.
   readonly idSpan: TextSpan | null;
   readonly icon: IconRef | null;
+  // Column span (`a:2`); ≥ 1.
+  readonly span: number;
 }
+
+// The trailing `:N` column span, if any (a direct `Number` child of the ref/group); ≥ 1.
+const spanOf = (children: Children): number => {
+  const raw = imageOf(children, "Number");
+  if (raw === null) return 1;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+};
 
 const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   const idTok = childTokens(node.children, "Identifier")[0];
   const id = idTok?.image ?? "";
+  const span = spanOf(node.children);
   const idSpan =
     idTok === undefined
       ? null
@@ -71,7 +82,16 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
   }
   const shapeNode = childNodes(node.children, "shape")[0];
   if (shapeNode === undefined) {
-    return ok({ id, label: id, shape: "rect", explicit: false, labelSpan: null, idSpan, icon });
+    return ok({
+      id,
+      label: id,
+      shape: "rect",
+      explicit: false,
+      labelSpan: null,
+      idSpan,
+      span,
+      icon,
+    });
   }
   const sc = shapeNode.children;
   const square = childTokens(sc, "SquareText")[0];
@@ -83,6 +103,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       explicit: true,
       labelSpan: labelSpan(square),
       idSpan,
+      span,
       icon,
     });
   }
@@ -95,6 +116,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
       explicit: true,
       labelSpan: labelSpan(paren),
       idSpan,
+      span,
       icon,
     });
   }
@@ -106,6 +128,7 @@ const readNodeRef = (node: CstNode): Result<Ref, ParseError> => {
     explicit: true,
     labelSpan: curly === undefined ? null : labelSpan(curly),
     idSpan,
+    span,
     icon,
   });
 };
@@ -163,6 +186,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
           label: idTok?.image ?? "",
           columns: gColumns,
           children: inner.children,
+          span: positiveInt(spanOf(group.children)),
         });
         children.push(gid);
         continue;
@@ -186,7 +210,13 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
         const id = brand<string, "NodeId">(ref.id);
         const existing = blockMap.get(ref.id);
         if (existing === undefined) {
-          blockMap.set(ref.id, { id, label: ref.label, shape: ref.shape, icon: ref.icon });
+          blockMap.set(ref.id, {
+            id,
+            label: ref.label,
+            shape: ref.shape,
+            icon: ref.icon,
+            span: positiveInt(ref.span),
+          });
           children.push(id); // first declaration fixes the block's container + grid position
         } else if (ref.explicit) {
           blockMap.set(ref.id, {
@@ -194,6 +224,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
             label: ref.label,
             shape: ref.shape,
             icon: ref.icon,
+            span: existing.span,
           });
         }
         if (ref.labelSpan !== null) blockSpans.set(id, ref.labelSpan);

@@ -13,7 +13,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
-import { variableGrid, type Size } from "./grid.js";
+import type { Size } from "./grid.js";
 import { clampedWidth } from "./measure.js";
 import { orthogonalRoute, type RouteBox } from "./route.js";
 
@@ -45,19 +45,77 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
 
   const nodes: SceneNode[] = [];
   const boxes = new Map<NodeId, RouteBox>();
+  const pitch = cellWidth + GAP; // one column's horizontal stride
 
-  // The intrinsic size of a child id: a uniform leaf cell, or a composite = its (recursively measured)
-  // content plus padding + a title band (and never narrower than its own label).
-  const measureContainer = (childIds: readonly NodeId[], columns: number): Size => {
-    const g = variableGrid(childIds.map(sizeOf), columns, GAP);
-    return { w: g.width, h: g.height };
-  };
-  const sizeOf = (id: NodeId): Size => {
+  interface Item {
+    readonly id: NodeId;
+    readonly span: number; // columns occupied (≥ 1, ≤ the container's columns)
+    readonly size: Size; // rendered box
+  }
+
+  // A child's column span + rendered box. A leaf spans its declared `a:N` (a wider box); a composite
+  // spans `max(block:id:N, the columns its content needs)`, snapped so its box is column-aligned.
+  const itemOf = (id: NodeId, columns: number): Item => {
     const g = groupById.get(id);
-    if (g === undefined) return { w: cellWidth, h: NODE_HEIGHT };
+    if (g === undefined) {
+      const declared = blockById.get(id)?.span ?? 1;
+      const span = Math.max(1, Math.min(declared, columns));
+      return { id, span, size: { w: span * cellWidth + (span - 1) * GAP, h: NODE_HEIGHT } };
+    }
     const inner = measureContainer(g.children, g.columns);
     const labelW = clampedWidth(g.label, measure, 0, LABEL_PADDING);
-    return { w: Math.max(inner.w, labelW) + 2 * GROUP_PAD, h: inner.h + GROUP_HEADER + GROUP_PAD };
+    const natW = Math.max(inner.w, labelW) + 2 * GROUP_PAD;
+    const fit = Math.max(1, Math.ceil((natW + GAP) / pitch));
+    const span = Math.max(1, Math.min(Math.max(g.span, fit), columns));
+    return {
+      id,
+      span,
+      size: { w: span * cellWidth + (span - 1) * GAP, h: inner.h + GROUP_HEADER + GROUP_PAD },
+    };
+  };
+
+  // Auto-place items row-major in `columns`, honouring spans: an item that won't fit the rest of a row
+  // wraps to the next. Returns each item's top-left + the content extent.
+  const autoPlace = (
+    items: readonly Item[],
+    columns: number,
+  ): { cells: { x: number; y: number }[]; width: number; height: number } => {
+    let row = 0;
+    let col = 0;
+    const slots = items.map((it) => {
+      if (col > 0 && col + it.span > columns) {
+        row++;
+        col = 0;
+      }
+      const slot = { col, row };
+      col += it.span;
+      return slot;
+    });
+    const rowH: number[] = [];
+    slots.forEach((s, i) => {
+      rowH[s.row] = Math.max(rowH[s.row] ?? 0, items[i]?.size.h ?? 0);
+    });
+    const rowY: number[] = [];
+    let y = 0;
+    for (let r = 0; r < rowH.length; r++) {
+      rowY.push(y);
+      y += (rowH[r] ?? 0) + GAP;
+    }
+    let width = 0;
+    const cells = slots.map((s, i) => {
+      const cell = { x: s.col * pitch, y: rowY[s.row] ?? 0 };
+      width = Math.max(width, cell.x + (items[i]?.size.w ?? 0));
+      return cell;
+    });
+    return { cells, width, height: Math.max(0, y - GAP) };
+  };
+
+  const measureContainer = (childIds: readonly NodeId[], columns: number): Size => {
+    const ap = autoPlace(
+      childIds.map((id) => itemOf(id, columns)),
+      columns,
+    );
+    return { w: ap.width, h: ap.height };
   };
 
   // Emit SceneNodes for a container's children at content origin (ox, oy); `parent` is the enclosing
@@ -69,23 +127,23 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     oy: number,
     parent: NodeId | null,
   ): void => {
-    const sizes = childIds.map(sizeOf);
-    const grid = variableGrid(sizes, columns, GAP);
+    const items = childIds.map((id) => itemOf(id, columns));
+    const ap = autoPlace(items, columns);
     childIds.forEach((id, i) => {
-      const cell = grid.cells[i];
-      const size = sizes[i];
-      if (cell === undefined || size === undefined) return;
+      const cell = ap.cells[i];
+      const item = items[i];
+      if (cell === undefined || item === undefined) return;
       const cx = ox + cell.x;
       const cy = oy + cell.y;
       const sceneParent = parent === null ? null : sceneNodeId(parent);
       const g = groupById.get(id);
+      boxes.set(id, { x: cx, y: cy, w: item.size.w, h: item.size.h });
       if (g === undefined) {
         const b = blockById.get(id);
         if (b === undefined) return;
-        boxes.set(id, { x: cx, y: cy, w: cellWidth, h: NODE_HEIGHT });
         nodes.push({
           id: sceneNodeId(id),
-          bounds: rect(cx, cy, cellWidth, NODE_HEIGHT),
+          bounds: rect(cx, cy, item.size.w, item.size.h),
           label: b.label,
           shape: b.shape,
           parent: sceneParent,
@@ -98,10 +156,9 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
         });
         return;
       }
-      boxes.set(id, { x: cx, y: cy, w: size.w, h: size.h });
       nodes.push({
         id: sceneNodeId(id),
-        bounds: rect(cx, cy, size.w, size.h),
+        bounds: rect(cx, cy, item.size.w, item.size.h),
         label: g.label,
         shape: "container",
         parent: sceneParent,

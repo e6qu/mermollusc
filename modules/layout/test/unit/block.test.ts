@@ -11,9 +11,9 @@ const ast: BlockAst = {
   kind: "block",
   columns: positiveInt(2),
   blocks: [
-    { id: nid("a"), label: "A", shape: "rect", icon: null },
-    { id: nid("b"), label: "B", shape: "rect", icon: null },
-    { id: nid("c"), label: "C", shape: "rect", icon: null },
+    { id: nid("a"), label: "A", shape: "rect", icon: null, span: positiveInt(1) },
+    { id: nid("b"), label: "B", shape: "rect", icon: null, span: positiveInt(1) },
+    { id: nid("c"), label: "C", shape: "rect", icon: null, span: positiveInt(1) },
   ],
   groups: [],
   roots: [nid("a"), nid("b"), nid("c")],
@@ -30,7 +30,7 @@ describe("layoutBlock", () => {
     const bad: BlockAst = {
       kind: "block",
       columns: positiveInt(1),
-      blocks: [{ id: nid("a"), label: "A", shape: "rect", icon: null }],
+      blocks: [{ id: nid("a"), label: "A", shape: "rect", icon: null, span: positiveInt(1) }],
       groups: [],
       roots: [nid("a")],
       edges: [{ id: eid("e0"), from: nid("a"), to: nid("ghost"), kind: "arrow", label: null }],
