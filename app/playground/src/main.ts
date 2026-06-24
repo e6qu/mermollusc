@@ -1882,12 +1882,19 @@ const relax = async (): Promise<void> => {
   const laid = await layout(ast, seed, measureLabel);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
+    setStatusAndAnnounce("error", `relax failed — ${laid.error.message}`);
     return;
   }
   scene = laid.value;
+  const hadPins = doc.overrides().size > 0;
   doc.clearOverrides();
   doc.persist();
   paintScene();
+  // Relax discards manual positions — say so, since the user can't otherwise tell a re-layout cleared them.
+  setStatusAndAnnounce(
+    "ok",
+    hadPins ? "relaxed layout — manual positions cleared" : "relaxed layout",
+  );
 };
 
 // The displayed extent origin (the offset `paintScene` translates by) — (0,0) until the first render.
@@ -2088,7 +2095,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   paintScene();
   updateGroupButtons();
   setTool("select");
-  announce(`placed ${label}`);
+  setStatusAndAnnounce("ok", `placed ${label}`);
 };
 
 for (const t of TOOL_ORDER) {
@@ -2481,7 +2488,10 @@ const openInlineEditor = (
     inlineEl.onblur = null;
     if (apply) {
       commit(inlineEl.value);
-      if (inlineEl.value !== value) announceCommit(inlineEl.value);
+      // A rejected label sets an error status synchronously (a successful commit only re-renders, which
+      // is async) — so don't also announce "relabel committed" over the "can't rename" the user just got.
+      const rejected = statusEl.getAttribute("data-level") === "error";
+      if (!rejected && inlineEl.value !== value) announceCommit(inlineEl.value);
     }
     // Restore focus only if it would otherwise be lost (Enter/Escape) — not if the user clicked away.
     const active = document.activeElement;
@@ -2861,7 +2871,7 @@ addBtn.addEventListener("click", () => {
   if (next === editor.value()) return;
   editor.setValue(next);
   void renderFromText(next);
-  announce(`added ${label}`);
+  setStatusAndAnnounce("ok", `added ${label}`);
 });
 
 // Duplicate the selected node(s) (⌘D): append a fresh-id copy of each (same label + shape) in the
@@ -2899,7 +2909,7 @@ const duplicateSelection = async (): Promise<void> => {
   selectionOrder = pairs.map((p) => p.to);
   paintScene();
   updateGroupButtons();
-  announce(`duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
+  setStatusAndAnnounce("ok", `duplicated ${pairs.length} node${pairs.length === 1 ? "" : "s"}`);
 };
 
 // In-memory node clipboard for ⌘C/⌘V (flowchart). Each entry is a node's label + shape and its offset
@@ -2984,12 +2994,15 @@ connectBtn.addEventListener("click", () => {
     text = appendEdge(ast.kind, text, from, to);
   }
   if (text === before) {
-    announce("connect isn't available for this diagram");
+    // The button is only enabled when the family supports connect, so an unchanged result means this
+    // particular pairing was a no-op (e.g. a mindmap re-parent onto an existing parent or a cycle).
+    setStatusAndAnnounce("warning", "connect made no change");
     return;
   }
   editor.setValue(text);
   void renderFromText(text);
-  announce(
+  setStatusAndAnnounce(
+    "ok",
     `connected ${selectionOrder.length - 1} edge${selectionOrder.length - 1 === 1 ? "" : "s"}${connectHint(ast.kind)}`,
   );
 });
@@ -3416,7 +3429,8 @@ const cycleShape = async (): Promise<void> => {
   paintScene();
   updateGroupButtons();
   // Announce the outcome — every other mutating action does, so a screen-reader user gets parity.
-  announce(
+  setStatusAndAnnounce(
+    "ok",
     targets.length === 1 ? `shape: ${lastShape}` : `cycled shape of ${targets.length} nodes`,
   );
   canvas.focus({ preventScroll: true });
