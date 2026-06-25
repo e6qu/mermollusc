@@ -144,7 +144,11 @@ declare global {
     // e2e hook: the armed canvas tool ("select" | "hand" | "connect" | "place").
     __activeTool?: () => string;
     // e2e hook: the displayed edges' routed waypoints, so a spec can assert connector geometry.
-    __shownEdges?: () => readonly { id: string; waypoints: readonly { x: number; y: number }[] }[];
+    __shownEdges?: () => readonly {
+      id: string;
+      waypoints: readonly { x: number; y: number }[];
+      curved: boolean;
+    }[];
     // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
     // can click the label and assert it selects the edge.
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
@@ -243,6 +247,7 @@ const stageCol = document.querySelector<HTMLElement>(".stage-col");
 const contextBar = document.querySelector<HTMLElement>("#context-bar");
 const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
 const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
+const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
 const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
@@ -260,6 +265,7 @@ if (
   contextBar === null ||
   ctxRelabelBtn === null ||
   ctxShapeBtn === null ||
+  ctxCurveBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
   ctxGroupBtn === null ||
@@ -408,6 +414,7 @@ window.__shownEdges = () =>
     : shownScene(scene).edges.map((e) => ({
         id: e.id,
         waypoints: e.waypoints.map((p) => ({ x: p.x, y: p.y })),
+        curved: e.curved,
       }));
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
@@ -567,6 +574,7 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 // own — a drag, which legitimately changes the overlay each frame, still recomputes.
 let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
+let shownCacheCurves: ReadonlySet<string> | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -585,16 +593,32 @@ const TIDY_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
 
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
-  if (shownCacheResult !== null && shownCacheScene === base && shownCacheOverrides === ov) {
+  if (
+    shownCacheResult !== null &&
+    shownCacheScene === base &&
+    shownCacheOverrides === ov &&
+    shownCacheCurves === curvedEdges
+  ) {
     return shownCacheResult;
   }
   const moved = applyOverrides(base, ov);
   // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
-  const shown =
+  const tidied =
     ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
+  // The visual-only curve preference: flip `curved` on any edge the user marked (display only).
+  const shown =
+    curvedEdges.size === 0
+      ? tidied
+      : {
+          ...tidied,
+          edges: tidied.edges.map((e) =>
+            !e.curved && curvedEdges.has(e.id) ? { ...e, curved: true } : e,
+          ),
+        };
   shownCacheScene = base;
   shownCacheOverrides = ov;
+  shownCacheCurves = curvedEdges;
   shownCacheResult = shown;
   return shown;
 };
@@ -1151,6 +1175,12 @@ const renderContextBar = (caps: CapabilityState): void => {
   // The Shape button doubles as the edge "Style" control (it cycles a node's shape or an edge's arrow).
   ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
+  // Curve is a visual-only edge preference (all families' edges have waypoints), so it shows whenever
+  // edges — and only edges — are selected.
+  ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
+  ctxCurveBtn.textContent = [...selection.edges].every((id) => curvedEdges.has(id))
+    ? "Straighten"
+    : "Curve";
   ctxConnectBtn.hidden = !caps.canConnect;
   ctxDuplicateBtn.hidden = !caps.canDuplicate;
   ctxGroupBtn.hidden = !caps.canGroup;
@@ -2059,6 +2089,30 @@ const persistCollapsed = (): void => {
     localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...cloudCollapsed]));
   } catch (e) {
     console.error("collapse state persist failed", e);
+  }
+};
+
+// Edges the user set to curved. A *visual-only* overlay: curves have no Mermaid syntax, so they live
+// outside the source (and outside the shared/collab position overlay) — a per-browser presentation
+// preference keyed by edge id, applied to the scene at render time. Stale ids (after a structural edit
+// reindexes edges) simply don't match any edge and are harmless.
+const CURVES_KEY = "mermollusc-curved-edges";
+const loadCurved = (): string[] => {
+  try {
+    const raw = localStorage.getItem(CURVES_KEY);
+    const v: unknown = raw === null ? [] : JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch (e) {
+    console.error("curved-edge state load failed", e);
+    return [];
+  }
+};
+let curvedEdges = new Set<string>(loadCurved());
+const persistCurved = (): void => {
+  try {
+    localStorage.setItem(CURVES_KEY, JSON.stringify([...curvedEdges]));
+  } catch (e) {
+    console.error("curved-edge state persist failed", e);
   }
 };
 const collapsedBranded = (): ReadonlySet<NodeId> =>
@@ -4111,6 +4165,24 @@ const cycleShape = async (): Promise<void> => {
 
 // Cycle the single selected flowchart/block edge's presentational style by rewriting its arrow token.
 const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick"];
+// Toggle the curved/straight presentation of the selected edge(s) — a visual-only preference (no source
+// edit, no re-layout), so just flip the set, persist, and repaint. Curves all if any selected edge is
+// straight, else straightens all.
+const toggleEdgeCurve = (): void => {
+  if (viewerMode || selection.edges.size === 0) return;
+  const next = new Set(curvedEdges);
+  const anyStraight = [...selection.edges].some((id) => !next.has(id));
+  for (const id of selection.edges) {
+    if (anyStraight) next.add(id);
+    else next.delete(id);
+  }
+  curvedEdges = next; // new identity invalidates the shownScene cache
+  persistCurved();
+  paintScene();
+  updateGroupButtons(); // refresh the Curve/Straighten label for the new state
+  setStatusAndAnnounce("ok", anyStraight ? "edge curved" : "edge straightened");
+};
+
 const cycleEdgeStyle = async (): Promise<void> => {
   if (viewerMode || ast === null || selection.edges.size !== 1) return;
   const edgeId = [...selection.edges][0];
@@ -4200,6 +4272,7 @@ ctxShapeBtn.addEventListener(
       ? cycleEdgeStyle()
       : cycleShape()),
 );
+ctxCurveBtn.addEventListener("click", () => toggleEdgeCurve());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());

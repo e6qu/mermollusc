@@ -1,4 +1,4 @@
-import { bezierControls, wedgeColor } from "../core/index.js";
+import { bezierControls, smoothSegments, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { accentFill, bandFill, defaultTheme, type Theme } from "./paint.js";
 
@@ -84,6 +84,17 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
         const [c1, c2] = bezierControls(a, b);
         const d = `M ${num(a.x)} ${num(a.y)} C ${num(c1.x)} ${num(c1.y)}, ${num(c2.x)} ${num(c2.y)}, ${num(b.x)} ${num(b.y)}`;
         return `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
+      }
+      // A curved multi-segment edge — a smooth spline through every waypoint, keeping its markers.
+      if (cmd.curved && cmd.points.length > 2 && a !== undefined) {
+        const d = `M ${num(a.x)} ${num(a.y)} ${smoothSegments(cmd.points)
+          .map(
+            (s) =>
+              `C ${num(s.c1.x)} ${num(s.c1.y)}, ${num(s.c2.x)} ${num(s.c2.y)}, ${num(s.to.x)} ${num(s.to.y)}`,
+          )
+          .join(" ")}`;
+        const path = `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
+        return `${path}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}`;
       }
       const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
       const line = `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;

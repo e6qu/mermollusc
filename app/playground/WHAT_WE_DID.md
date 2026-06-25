@@ -783,3 +783,8 @@
     Gantt fuzz found no source corruption, and its run surfaced this collab highlight crash).
   - Boyscout: stale `zoom.spec.ts` pan test updated for the new marquee semantics; two Biome nits
     (`indexOf`, optional chain) cleaned.
+- Curved edges (styling palette, part 1). A context-bar "Curve"/"Straighten" toggle sets a connector to
+  a smooth spline. Curves have no Mermaid syntax, so per your call this is a *visual-only* overlay: a
+  per-browser preference keyed by edge id (its own localStorage key, NOT the shared/collab position
+  overlay), applied to the scene at render time. Works for every family's edges; survives reload; cleared
+  by the full Reset. +e2e (toggle + persist + straighten); +renderer `smoothSegments` unit tests.

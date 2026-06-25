@@ -1,6 +1,6 @@
 import { assertNever } from "@m/std";
 import type { BandFill, NodeAccent } from "@m/contracts";
-import { bezierControls, wedgeColor } from "../core/index.js";
+import { bezierControls, smoothSegments, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
@@ -331,6 +331,21 @@ export const paint = (
           ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, last.x, last.y);
           ctx.stroke();
           ctx.setLineDash([]);
+          break;
+        }
+        // A curved multi-segment edge (a flowchart connector set to curved): a smooth spline through
+        // every waypoint, keeping its arrowhead. Markers point along the final segment as before.
+        if (cmd.curved && cmd.points.length > 2) {
+          ctx.setLineDash(cmd.dashed ? [6, 4] : []);
+          ctx.beginPath();
+          ctx.moveTo(first.x, first.y);
+          for (const seg of smoothSegments(cmd.points)) {
+            ctx.bezierCurveTo(seg.c1.x, seg.c1.y, seg.c2.x, seg.c2.y, seg.to.x, seg.to.y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          drawMarker(ctx, cmd.fromMarker, theme);
+          drawMarker(ctx, cmd.toMarker, theme);
           break;
         }
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
