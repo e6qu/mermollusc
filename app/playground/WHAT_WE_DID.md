@@ -695,3 +695,10 @@
   shortcuts are suppressed while the inline label editor has focus (a bare `s` no longer cycled the node
   shape mid-rename) and `S` off-flowchart now explains itself instead of a silent no-op; Regenerate is
   disabled on an invalid source like Relax/Add. +e2e (regenerate-disable, modal-inert).
+- Fuzz round 4 + audit fixes. Found+fixed a multi-delete corruption: only gantt sorted a select-all/
+  marquee delete bottom-up by source span, so pie/timeline/mindmap (also span-keyed) deleted top-down
+  and an earlier removal shifted later spans → half-spliced source. Generalised the bottom-up sort to
+  every span-keyed family (`sourceOffset`). +e2e (select-all clears pie/timeline/mindmap) +a 300-run
+  multi-delete fuzzer (arbitrary subsets stay parseable). Contrast: the collab "view only" role badge
+  hardcoded #8a5a00 text with no dark override (~1.85:1 in dark) and a ~1.3:1 light border — added a
+  dark-theme override (text/fill/border ≥4.5:1 / ≥3:1) and a solid light border.

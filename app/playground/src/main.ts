@@ -3413,8 +3413,22 @@ const removeEdge = (kind: DiagramAst["kind"], text: string, from: string, to: st
 };
 
 // The source offset of a Gantt task's label span (−1 if unknown) — orders multi-task deletes bottom-up.
-const ganttLineStart = (id: SceneNodeId): number =>
-  ganttSource?.tasks.get(brand<string, "GanttTaskId">(id))?.start ?? -1;
+// The source-text offset of a span-keyed item's declaration (gantt task / pie slice / timeline
+// event-or-period / mindmap node), or -1 if it has no span. These families delete by span, so a
+// multi-delete must run bottom-up (highest offset first) — see `deleteSelection`.
+const sourceOffset = (id: SceneNodeId): number => {
+  const gantt = ganttSource?.tasks.get(brand<string, "GanttTaskId">(id))?.start;
+  if (gantt !== undefined) return gantt;
+  const pie = pieSource?.slices.get(brand<string, "PieSliceId">(id))?.start;
+  if (pie !== undefined) return pie;
+  const event = timelineSource?.events.get(brand<string, "TimelineEventId">(id))?.start;
+  if (event !== undefined) return event;
+  const period = timelineSource?.periods.get(brand<string, "TimelinePeriodId">(id))?.start;
+  if (period !== undefined) return period;
+  const mindmap = mindmapSource?.nodes.get(brand<string, "MindmapNodeId">(id))?.start;
+  if (mindmap !== undefined) return mindmap;
+  return -1;
+};
 
 // Remove the selected nodes (and their edges) from the source text in the active family's syntax.
 // Shared by the Delete key and the selection context toolbar's Delete button.
@@ -3446,12 +3460,13 @@ const deleteSelection = async (): Promise<void> => {
     .map((n) => ({ id: n.id, label: n.label, shape: n.shape }));
   let text = editor.value();
   const before = text;
-  // gantt deletes by source-line span, so apply them bottom-up: removing a lower line never shifts an
-  // earlier line's offset, keeping each remaining span valid against the prior edit.
-  const order =
-    kind === "gantt" && ganttSource !== null
-      ? [...selectionOrder].sort((a, b) => ganttLineStart(b) - ganttLineStart(a))
-      : selectionOrder;
+  // The span-keyed families (gantt/pie/timeline/mindmap) delete by source span, so apply them bottom-up:
+  // removing a lower line never shifts an earlier span's offset, keeping each remaining span valid
+  // against the prior edit. (Was gantt-only — pie/timeline/mindmap multi-delete corrupted the source.)
+  const spanKeyed = kind === "gantt" || kind === "pie" || kind === "timeline" || kind === "mindmap";
+  const order = spanKeyed
+    ? [...selectionOrder].sort((a, b) => sourceOffset(b) - sourceOffset(a))
+    : selectionOrder;
   // Count every node that actually disappears (a deleted container takes its descendants), not just the
   // top-level selection — so deleting a subnet of 6 doesn't announce "deleted 1 item".
   const removedCount = shown.nodes.filter(isDeleted).length + selection.edges.size;
