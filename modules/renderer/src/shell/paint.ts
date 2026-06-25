@@ -81,11 +81,13 @@ export const bandFill = (fill: BandFill, theme: Theme): string => {
   const dark = isDarkTheme(theme);
   switch (fill) {
     case "section":
-      return dark ? "#1e293b" : "#f1f5f9";
+      return dark ? "#1c2433" : "#eaeff7";
+    // Must differ from `background` (dark `sectionAlt` was identical to it — an invisible band) and from
+    // `section`, so the zebra reads; both stay subtler than a node's fill so the bars stay dominant.
     case "sectionAlt":
-      return dark ? "#0f172a" : "#f8fafc";
+      return dark ? "#141d2c" : "#f6f8fc";
     case "excluded":
-      return dark ? "#334155" : "#e5e7eb";
+      return dark ? "#2c3850" : "#dfe4ee";
     default:
       return assertNever(fill);
   }

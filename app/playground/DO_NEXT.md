@@ -3,6 +3,23 @@
 Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known defects are in
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
+## A11y / UX follow-ups (from the contrast + journey audit)
+- **Overlay reload identity (IO-02 residual).** Loading an example clears the overlay, but manually
+  replacing the whole source with a *different* diagram that reuses ids (`A`,`B`,…) leaves the persisted
+  overlay to apply its positions to the new nodes on reload. A strict source-hash guard would wrongly
+  drop the overlay on legitimate edits (the "survives edits" feature), so this needs a real diagram
+  identity, not a content hash. Bounded; id-reuse only.
+- **Navigator double-announce.** A navigator arrow step writes both `#diagram-live` (via `announce`) and
+  `#task-status` (via `updateTask`) when the selection category changes — two polite regions, two
+  announcements per keypress. Skip the `updateTask` write while the navigator drives selection.
+- **Connect over-chains re-parent/merge families.** The Connect button chains every `connect:true`
+  family at 3+ selections, including gitGraph (merge), mindmap (re-parent), timeline (event→period). Cap
+  those three to 2-node Connect, or report per-pair outcomes.
+- **Add a `prefers-contrast: more` query** that bumps the border tokens further, for users who request
+  more contrast without OS forced-colors.
+- **Arrange popup focus**: move focus into the menu on open and restore to the actual opener (today
+  Escape always returns to the toolbar `#arrange`, even when opened from the on-canvas `#ctx-arrange`).
+
 ## Editing breadth
 - **gitGraph node delete.** Today it's honestly gated ("can't delete this from the canvas"). Implement a
   real commit-span / branch-lane delete in `@m/builder`, then flip the affordance on. Optionally make the

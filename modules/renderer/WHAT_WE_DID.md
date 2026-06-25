@@ -139,3 +139,5 @@
   longer look hollow. +display/paint/svg tests.
 - Donut wedges: the `wedge` display command now carries `innerRadius`; canvas and SVG draw annular
   sectors when it is non-zero while keeping full-circle legend swatches as discs. +display/SVG tests.
+- Contrast: fixed the dark Gantt `sectionAlt` band (was identical to the background → invisible zebra);
+  the three band fills are now mutually distinct and each distinct from the background. +unit test.

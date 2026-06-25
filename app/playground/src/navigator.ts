@@ -89,7 +89,11 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
 
   const navLabel = (id: SceneNodeId): string => {
     const node = deps.getScene()?.nodes.find((n) => n.id === id);
-    return node !== undefined && node.label.length > 0 ? node.label : "node";
+    if (node === undefined) return "node";
+    const base = node.label.length > 0 ? node.label : "node";
+    // A note box is a node too; suffix it like edges/groups so a screen-reader user can tell a
+    // sequence/state note apart from an actor or state box.
+    return node.role === "stateNote" ? `${base} (note)` : base;
   };
 
   // An edge spoken as "Alpha to Beta" plus its own label, if any, readable without the visual arrow.
