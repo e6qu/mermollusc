@@ -32,7 +32,7 @@ test("the context bar is hidden until something is selected, then shows applicab
   await expect(page.locator("#context-bar")).toBeHidden();
 });
 
-test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Delete", async ({
+test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Style/Delete", async ({
   page,
 }) => {
   await ready(page);
@@ -50,14 +50,14 @@ test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Dele
   expect(multi).toContain("arrange");
   expect(multi).toContain("delete");
 
-  // An edge-only selection: just rename + delete.
+  // An edge-only selection: rename, restyle (the Shape button doubles as edge Style), and delete.
   await page.keyboard.press("Escape");
   await page.locator("#diagram-nav").focus();
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown"); // onto an edge item
-  expect(await visibleCtxButtons(page)).toEqual(["relabel", "delete"]);
+  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "delete"]);
 });
 
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({

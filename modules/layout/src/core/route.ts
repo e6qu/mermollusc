@@ -52,6 +52,15 @@ export const orthogonalRoute = (
   return [point(acx, ay), point(acx, midY), point(bcx, midY), point(bcx, by)];
 };
 
+// The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap
+// between the two boxes by construction, so an edge label anchored here stays clear of both endpoints —
+// unlike the whole-route midpoint (`edgeLabelAnchor`), which can land on a box's border row/column.
+export const routeChannelMid = (route: readonly [Point, Point, Point, Point]): Point => {
+  const p1 = route[1];
+  const p2 = route[2];
+  return point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+};
+
 // Whether every segment of a route is axis-aligned (horizontal or vertical) within a small tolerance —
 // i.e. already a clean right-angle path. A diagonal segment (the blend a manual move leaves on a
 // boundary-crossing edge) makes this false.

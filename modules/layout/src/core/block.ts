@@ -15,12 +15,12 @@ import type {
 import type { LayoutError, MeasureText } from "./graph.js";
 import type { Size } from "./grid.js";
 import { clampedWidth } from "./measure.js";
-import { orthogonalRoute, type RouteBox } from "./route.js";
+import { orthogonalRoute, routeChannelMid, type RouteBox } from "./route.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
 const MIN_CELL_WIDTH = 48;
-const GAP = 24;
+const GAP = 44;
 const GROUP_PAD = 14; // inner padding around a composite's content
 const GROUP_HEADER = 24; // composite title band
 const MAX_NEST_DEPTH = 64; // a cyclic tree can't arise from the parser; cap to stay total
@@ -195,17 +195,19 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     if (from === undefined || to === undefined) {
       return err({ kind: "layout", message: `block: edge ${e.id} references an unknown block` });
     }
+    const route = orthogonalRoute(from, to);
     edges.push({
       id: sceneEdgeId(e.id),
       from: sceneNodeId(e.from),
       to: sceneNodeId(e.to),
-      waypoints: orthogonalRoute(from, to),
+      waypoints: route,
       label: e.label,
       fromEnd: "none",
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: null,
+      // Label rides the route's central channel (clear of both boxes), not the whole-route midpoint.
+      labelPos: e.label === null ? null : routeChannelMid(route),
       ...EDGE_STYLE[e.kind],
     });
   }

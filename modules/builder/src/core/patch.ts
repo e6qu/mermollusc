@@ -86,6 +86,27 @@ const withTrailingNewline = (text: string): string => (text.endsWith("\n") ? tex
 export const patchSpan = (text: string, span: TextSpan, replacement: string): string =>
   text.slice(0, span.start) + replacement + text.slice(span.end);
 
+// Add a `|label|` to a bare flowchart/block edge by splicing it right after the arrow token (its span).
+// Rejects a delimiter that would break the pipe, so the result stays parseable. Use `patchSpan` on the
+// existing `|label|` span to *rename* an edge that already has one — this is only the bare-edge case.
+export const addEdgeLabel = (
+  text: string,
+  arrowSpan: TextSpan,
+  label: string,
+): Result<string, PatchError> => {
+  if (label.trim().length === 0) return err({ kind: "patch", message: "label can't be empty" });
+  const bad = forbiddenChar(label, FORBIDDEN.pipe);
+  if (bad !== null) {
+    return err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
+  }
+  return ok(`${text.slice(0, arrowSpan.end)}|${label}|${text.slice(arrowSpan.end)}`);
+};
+
+// Change a flowchart/block edge's presentational style by rewriting its arrow token (`-->`/`---`/`-.->`/
+// `==>`) in place. Any `|label|` after it is untouched (the grammar accepts a label after every kind).
+export const restyleEdge = (text: string, arrowSpan: TextSpan, kind: EdgeKind): string =>
+  patchSpan(text, arrowSpan, ARROW[kind]);
+
 // Structural edits append a line, leaving existing text (formatting/comments) intact.
 export const addNode = (text: string, id: NodeId, label: string, shape: NodeShape): string => {
   const [open, close] = NODE_WRAP[shape];

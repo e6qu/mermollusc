@@ -21,6 +21,8 @@ export {
   relabelNode,
   reshapeNode,
   patchSpan,
+  addEdgeLabel,
+  restyleEdge,
   addNode,
   connect,
   connectUndirected,

@@ -244,3 +244,10 @@
   drawing each as a folded-corner `stateNote` box — centred for `over A` / `over A,B` (spanning both
   lifelines), offset for `left of`/`right of`. A `left of` note on the leftmost actor can land at a
   negative x, so the whole scene shifts right to keep the (0,0)-origin extent every family uses.
+- Edge-label overlap (the "cloud is bunched up" report + its class): the hand-rolled absolute layouts
+  (c4/cloud/network/block) placed edge labels at the routed midpoint, whose opaque plate landed on a
+  node in a tight 24px gap. Bumped `GAP` (c4/cloud/block 24→44, network 40→48) so labels fit the
+  channel, and for the orthogonal layouts (cloud/block) set `labelPos` to the route's central
+  cross-segment (`routeChannelMid`) — clear of both boxes by construction. ELK families already
+  reserve a label box, so they were unaffected. (A label landing on a *skipped-over* node still needs
+  real obstacle avoidance — out of scope.)

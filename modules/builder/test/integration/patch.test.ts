@@ -16,6 +16,8 @@ import {
 } from "@m/parser";
 import { describe, expect, it } from "vitest";
 import {
+  addEdgeLabel,
+  restyleEdge,
   addNode,
   connect,
   connectC4,
@@ -750,5 +752,49 @@ describe("relabelNode", () => {
     );
     // Unknown id is a no-op.
     expect(deleteBlockGroup(text, brand("nope"))).toBe(text);
+  });
+});
+
+describe("edge label + style edits", () => {
+  const arrowSpan = (text: string) => {
+    const parsed = parseWithSource(text);
+    if (!isOk(parsed)) throw new Error("parse");
+    const span = parsed.value.source.arrows.get(brand<string, "EdgeId">("e0"));
+    if (span === undefined) throw new Error("no arrow span");
+    return span;
+  };
+
+  it("adds a label to a bare flowchart edge, and the result re-parses with the label", () => {
+    const text = "flowchart TD\n  A --> B\n";
+    const out = addEdgeLabel(text, arrowSpan(text), "yes");
+    if (!isOk(out)) throw new Error(out.error.message);
+    expect(out.value).toBe("flowchart TD\n  A -->|yes| B\n");
+    const re = parseWithSource(out.value);
+    expect(isOk(re) && re.value.ast.edges[0]?.label).toBe("yes");
+  });
+
+  it("rejects an edge label that would break the pipe (empty or containing |)", () => {
+    const text = "flowchart TD\n  A --> B\n";
+    const span = arrowSpan(text);
+    expect(addEdgeLabel(text, span, "").ok).toBe(false);
+    expect(addEdgeLabel(text, span, "a|b").ok).toBe(false);
+  });
+
+  it("restyles an edge by rewriting the arrow, preserving any label", () => {
+    const labeled = "flowchart TD\n  A -->|go| B\n";
+    const dotted = restyleEdge(labeled, arrowSpan(labeled), "dotted");
+    expect(dotted).toBe("flowchart TD\n  A -.->|go| B\n");
+    const re = parseWithSource(dotted);
+    expect(isOk(re) && re.value.ast.edges[0]?.kind).toBe("dotted");
+    if (isOk(re)) expect(re.value.ast.edges[0]?.label).toBe("go");
+  });
+
+  it("cycles through every flowchart edge kind and stays parseable", () => {
+    let text = "flowchart TD\n  A --> B\n";
+    for (const kind of ["open", "dotted", "thick", "arrow"] as const) {
+      text = restyleEdge(text, arrowSpan(text), kind);
+      const re = parseWithSource(text);
+      expect(isOk(re) && re.value.ast.edges[0]?.kind).toBe(kind);
+    }
   });
 });

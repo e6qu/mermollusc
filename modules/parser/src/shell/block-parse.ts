@@ -140,6 +140,18 @@ const linkKind = (c: Children): EdgeKind => {
   return "thick";
 };
 
+// The arrow token's span — for restyle and for inserting a `|label|` on a bare edge.
+const arrowSpanOf = (c: Children): TextSpan | null => {
+  const tok =
+    childTokens(c, "Arrow")[0] ??
+    childTokens(c, "OpenLink")[0] ??
+    childTokens(c, "DottedArrow")[0] ??
+    childTokens(c, "ThickArrow")[0];
+  return tok === undefined
+    ? null
+    : { start: tok.startOffset, end: tok.startOffset + tok.image.length };
+};
+
 const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const root = cst.children;
   const blockMap = new Map<string, BlockNode>();
@@ -147,6 +159,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   // First id-token span seen per block, kept only for blocks that never carry a label (below).
   const firstIdSpan = new Map<string, TextSpan>();
   const edgeSpans = new Map<EdgeId, TextSpan>();
+  const arrowSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
   const groups: BlockGroup[] = [];
   const groupSpans = new Map<NodeId, TextSpan>();
@@ -265,6 +278,8 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
           label: pipe === undefined ? null : cleanLabel(pipe.image),
         });
         if (pipe !== undefined) edgeSpans.set(edgeId, labelSpan(pipe));
+        const arrowSpan = arrowSpanOf(link.children);
+        if (arrowSpan !== null) arrowSpans.set(edgeId, arrowSpan);
       }
     }
     return { columns: levelColumns, children };
@@ -297,7 +312,13 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const resolved = positiveInt(Math.max(1, Math.trunc(requested)));
   return ok({
     ast: { kind: "block", columns: resolved, blocks, groups, roots: top.children, edges },
-    source: { blocks: blockSpans, edges: edgeSpans, bareNodes: bareSpans, groups: groupSpans },
+    source: {
+      blocks: blockSpans,
+      edges: edgeSpans,
+      arrows: arrowSpans,
+      bareNodes: bareSpans,
+      groups: groupSpans,
+    },
   });
 };
 

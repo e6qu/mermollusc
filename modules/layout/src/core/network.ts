@@ -17,7 +17,7 @@ import { clampedWidth } from "./measure.js";
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 48;
 const MIN_CELL_WIDTH = 64;
-const GAP = 40;
+const GAP = 48;
 const GROUP_PAD = 16; // inner padding around a subnet/zone's content
 const GROUP_HEADER = 26; // subnet/zone title band
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
