@@ -1712,6 +1712,10 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
   const isFlowchart = currentRenderValid && kind === "flowchart";
   relaxBtn.disabled = !isFlowchart;
   relaxBtn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
+  // Regenerate re-lays-out any family (clearing unpinned overrides), so it's enabled whenever the
+  // source is valid — but disabled on a broken parse, matching Relax/Add (was the lone exception).
+  regenBtn.disabled = !currentRenderValid;
+  regenBtn.title = currentRenderValid ? "" : "fix source first";
   const canAdd = currentRenderValid && familyAffordances(kind).addNode && !isDotImport;
   addBtn.disabled = !canAdd;
   addBtn.title = canAdd
@@ -3691,7 +3695,9 @@ ctxArrangeBtn.addEventListener("click", (ev) => {
 ctxDeleteBtn.addEventListener("click", () => void deleteSelection());
 
 window.addEventListener("keydown", (ev) => {
-  if (editor.hasFocus()) return;
+  // Suppress canvas shortcuts while either text editor has focus — otherwise a bare letter like `s`
+  // typed into the inline label editor would also fire its canvas action (e.g. cycle the node shape).
+  if (editor.hasFocus() || (inlineEl !== null && document.activeElement === inlineEl)) return;
   if (ev.key === "Escape") {
     // An open Arrange menu closes first (parity with the Help/Icons drawers, which honour Escape).
     if (!arrangeMenu.hidden) {
@@ -3778,15 +3784,16 @@ window.addEventListener("keydown", (ev) => {
       break;
     case "s":
     case "S":
-      // `isDotImport` parses to a flowchart AST but with an empty source map, so `cycleShape` would
-      // silently no-op — gate it off like every other DOT-import affordance (matching the ⌘D path).
-      if (
-        viewerMode ||
-        ast === null ||
-        ast.kind !== "flowchart" ||
-        isDotImport ||
-        selectionOrder.length === 0
-      ) {
+      if (viewerMode || ast === null || selectionOrder.length === 0) return;
+      // With a selection, explain why nothing happens off-flowchart instead of a silent no-op (parity
+      // with the navigator's S handler). `isDotImport` parses to flowchart but with an empty source map.
+      if (ast.kind !== "flowchart" || isDotImport) {
+        ev.preventDefault();
+        flashStatus(
+          isDotImport
+            ? "DOT import is read-only — edit the source text"
+            : "shape change is only available for flowchart",
+        );
         return;
       }
       ev.preventDefault();
@@ -4028,6 +4035,16 @@ const trapTab = (root: HTMLElement, ev: KeyboardEvent): void => {
 const activeElement = (): HTMLElement | null =>
   document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
+// Mark the page chrome inert while a modal dialog is open: `aria-modal` alone is advisory, so without
+// this a screen-reader virtual cursor can still browse the toolbar/canvas behind the dialog. The modals
+// are siblings of these regions, so they stay interactive.
+const setChromeInert = (inert: boolean): void => {
+  for (const sel of [".topbar", ".workbench", ".statusbar"]) {
+    const el = document.querySelector(sel);
+    if (el instanceof HTMLElement) el.inert = inert;
+  }
+};
+
 let pickerOpen = false;
 let pickerReturnFocus: HTMLElement | null = null;
 const setPickerOpen = (open: boolean): void => {
@@ -4040,7 +4057,10 @@ const setPickerOpen = (open: boolean): void => {
     pickerReturnFocus = activeElement();
     buildIconGrid(iconFilter.value);
     iconFilter.focus();
+    setChromeInert(true);
   } else {
+    // Clear inert before restoring focus — the trigger lives in the (until now) inert chrome.
+    setChromeInert(false);
     const focusBack = pickerReturnFocus;
     pickerReturnFocus = null;
     if (focusBack !== null) focusBack.focus();
@@ -4072,7 +4092,9 @@ const setHelpOpen = (open: boolean): void => {
   if (open) {
     helpReturnFocus = activeElement();
     helpClose.focus();
+    setChromeInert(true);
   } else {
+    setChromeInert(false);
     const focusBack = helpReturnFocus;
     helpReturnFocus = null;
     if (focusBack !== null) focusBack.focus();

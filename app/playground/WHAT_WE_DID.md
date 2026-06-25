@@ -687,3 +687,11 @@
   three boy-scout a11y fixes: tool-rejection feedback uses `flashStatus` (no longer clobbers the canvas
   aria-label), the `S` shape-cycle shortcut is gated off DOT imports, and the visual `#stage-hud` lost
   its duplicate `aria-live` (the task hint was announced twice).
+- Fuzz round 3 + UX/contrast audit fixes. Added an 800-run sequence-note layout fuzzer (interleave +
+  negative-x shift + `over A,B` span stay total with finite, non-negative geometry). Contrast: raised
+  the chrome border tokens (`--line`/`--line-strong`/light `--hud-line`) to ≥3:1 against their surfaces
+  so interactive-control boundaries meet WCAG 1.4.11 in both themes. A11y/UX: modal dialogs now mark the
+  page chrome `inert` (not just `aria-modal`); the navigator suffixes note boxes with "(note)"; canvas
+  shortcuts are suppressed while the inline label editor has focus (a bare `s` no longer cycled the node
+  shape mid-rename) and `S` off-flowchart now explains itself instead of a silent no-op; Regenerate is
+  disabled on an invalid source like Relax/Add. +e2e (regenerate-disable, modal-inert).
