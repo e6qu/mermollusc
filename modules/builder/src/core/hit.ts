@@ -6,7 +6,7 @@ export type HitTarget =
   | { readonly kind: "node"; readonly id: SceneNodeId }
   | { readonly kind: "edge"; readonly id: SceneEdgeId };
 
-const EDGE_TOLERANCE = 6;
+const EDGE_TOLERANCE = 9;
 
 const distanceToSegment = (p: Point, a: Point, b: Point): number => {
   const dx = b.x - a.x;
