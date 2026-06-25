@@ -190,9 +190,13 @@ const highlightField = StateField.define<DecorationSet>({
     let next = deco.map(tr.changes);
     for (const e of tr.effects) {
       if (e.is(setHighlightsEffect)) {
+        // Clamp to the *new* doc length: a stale canvas-selection span can outrun the source when the
+        // doc shrinks (an undo) or hasn't synced yet (collab starts empty) — an out-of-range decoration
+        // makes CodeMirror throw on the next dispatch.
+        const len = tr.newDoc.length;
         next = Decoration.set(
           e.value
-            .filter((r) => r.from < r.to)
+            .filter((r) => r.from >= 0 && r.to <= len && r.from < r.to)
             .sort((a, b) => a.from - b.from)
             .map((r) => highlightMark.range(r.from, r.to)),
           true,
@@ -285,7 +289,9 @@ export const createEditor = (
       return { from: r.from, to: r.to };
     },
     setHighlights: (ranges) => {
-      view.dispatch({ effects: setHighlightsEffect.of(ranges) });
+      const len = view.state.doc.length;
+      const safe = ranges.filter((r) => r.from >= 0 && r.to <= len && r.from < r.to);
+      view.dispatch({ effects: setHighlightsEffect.of(safe) });
     },
     highlightedRanges: () => {
       const out: { from: number; to: number }[] = [];

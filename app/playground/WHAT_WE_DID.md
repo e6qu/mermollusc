@@ -770,3 +770,16 @@
   **Audit:** Gantt was the only real violation — for every other family a node's position/size is pure
   layout (correctly the overlay), since nothing in their source encodes geometry. Pie slice *values* are
   source-semantic but aren't drag-manipulated (radial wedges, not draggable boxes), so no violation there.
+- UX-review + QA-agent follow-ups (two specialized agents reviewed the branch):
+  - Marquee: the Select-tool empty-canvas cursor is now a crosshair (was a misleading grab/pan cursor);
+    touch keeps one-finger empty-drag as a pan (the marquee is a mouse/pen gesture, so it never fights
+    native scroll); the area selector now also catches edges (their source highlights with the nodes).
+  - Gantt: a bar resize is locked to the horizontal (width=duration) and a drag is locked to its row, so
+    the live preview no longer distorts height / floats off the calendar before the snap-back; an
+    `after`-chain bar that can't reschedule snaps back with a "scheduled by its dependency" hint instead
+    of leaving a free-float overlay.
+  - Hardened the selection-highlight decoration against out-of-range spans (a stale span on a shrunk/
+    empty doc — an undo, or collab before first sync — threw a CodeMirror RangeError; the QA agent's
+    Gantt fuzz found no source corruption, and its run surfaced this collab highlight crash).
+  - Boyscout: stale `zoom.spec.ts` pan test updated for the new marquee semantics; two Biome nits
+    (`indexOf`, optional chain) cleaned.

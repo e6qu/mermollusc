@@ -1839,7 +1839,8 @@ moreToggle.addEventListener("click", (ev) => {
 });
 moreMenu.addEventListener("keydown", (ev) => {
   const items = moreItems();
-  const i = items.findIndex((el) => el === document.activeElement);
+  const active = document.activeElement;
+  const i = active instanceof HTMLElement ? items.indexOf(active) : -1;
   if (ev.key === "Escape") {
     ev.preventDefault();
     closeMore();
@@ -2456,7 +2457,8 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   ) {
     canvas.style.cursor = "pointer";
   } else {
-    canvas.style.cursor = "grab";
+    // Empty canvas: the Select tool rubber-bands an area selection (crosshair), the Hand tool pans (grab).
+    canvas.style.cursor = effectiveTool() === "select" && !viewerMode ? "crosshair" : "grab";
   }
 };
 
@@ -2679,8 +2681,9 @@ canvas.addEventListener("pointerdown", (ev) => {
   } else if (hit === null) {
     // Select tool: a drag on empty canvas rubber-bands a selection box (the area selector) — clearing
     // first so it replaces (a ⇧-drag adds instead, handled above). Pan stays on the hand tool and
-    // space-drag, so both gestures remain reachable.
-    if (effectiveTool() === "select" && !viewerMode) {
+    // space-drag, so both gestures remain reachable. Touch keeps the one-finger drag as a pan (native
+    // scroll feel); the marquee is a mouse/pen gesture, so it never fights touch scrolling.
+    if (effectiveTool() === "select" && !viewerMode && ev.pointerType !== "touch") {
       selection = emptySelection;
       selectionOrder = [];
       marquee = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
@@ -2737,11 +2740,17 @@ canvas.addEventListener("pointermove", (ev) => {
       vx: vx !== null && Math.abs(cornerX - vx) <= 0.5 ? vx : null,
       hy: hy !== null && Math.abs(cornerY - hy) <= 0.5 ? hy : null,
     };
-    doc.resizeNode(
-      resize.id,
-      point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
-      size(w, h),
-    );
+    // A gantt bar resizes horizontally only — its width is the duration, its height is the fixed row.
+    // Lock y + height to the bar's base (pre-overlay) bounds so the live preview doesn't distort the row.
+    const resizeId = resize.id;
+    const ganttBase =
+      ast?.kind === "gantt" && scene !== null
+        ? scene.nodes.find((n) => n.id === resizeId)
+        : undefined;
+    const oy =
+      ganttBase !== undefined ? ganttBase.bounds.origin.y : Math.min(resize.anchorY, cornerY);
+    const oh = ganttBase !== undefined ? ganttBase.bounds.size.height : h;
+    doc.resizeNode(resize.id, point(Math.min(resize.anchorX, cornerX), oy), size(w, oh));
     requestPaint();
     return;
   }
@@ -2762,7 +2771,9 @@ canvas.addEventListener("pointermove", (ev) => {
   }
   const at = scenePoint(ev);
   let dx = at.x - drag.pointerX;
-  let dy = at.y - drag.pointerY;
+  // A gantt bar is locked to its calendar row — only its x (the start date) is editable, so the drag
+  // preview tracks the date axis instead of floating the bar off its row until the release snap-back.
+  let dy = ast?.kind === "gantt" ? 0 : at.y - drag.pointerY;
   if (!dragRecorded && (dx !== 0 || dy !== 0)) {
     doc.record();
     dragRecorded = true;
@@ -2898,7 +2909,15 @@ canvas.addEventListener("pointerup", (ev) => {
           selectionOrder = [...selectionOrder, node.id];
         }
       }
-      selection = { nodes, edges: selection.edges };
+      // Edges count too (so an area-select lights up its connectors in the source like everything else):
+      // any waypoint inside the box selects the edge.
+      const edges = new Set(selection.edges);
+      for (const edge of shown.edges) {
+        if (edge.waypoints.some((w) => w.x >= minX && w.x <= maxX && w.y >= minY && w.y <= maxY)) {
+          edges.add(edge.id);
+        }
+      }
+      selection = { nodes, edges };
     }
     paintScene();
     updateGroupButtons();
@@ -2922,6 +2941,16 @@ canvas.addEventListener("pointerup", (ev) => {
         ? 0
         : Math.round((scenePoint(ev).x - finished.pointerX) / GANTT_DAY_WIDTH);
     if (taskId !== undefined && ganttRescheduleDrag(taskId, deltaDays)) return;
+    // A gantt bar that actually MOVED but couldn't reschedule (an `after`-chain task has no calendar
+    // anchor to slide) must not keep a raw 2D overlay that floats it off the grid — snap it back and
+    // explain why. A zero-delta "drag" is just a click/select, so it falls through normally (otherwise it
+    // would re-render on every click and clobber the double-click relabel).
+    if (taskId !== undefined && ast?.kind === "gantt" && deltaDays !== 0) {
+      doc.replaceOverrides(clearOverride(doc.overrides(), taskId));
+      flashStatus("this task is scheduled by its dependency — edit the `after` chain");
+      void renderFromText(editor.value());
+      return;
+    }
     doc.persist();
     requestPaint(); // clear any guides + refresh the minimap (deferred during the drag)
   }

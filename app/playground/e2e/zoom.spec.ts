@@ -59,6 +59,8 @@ test("dragging the empty canvas pans the (overflowing) stage", async ({ page }) 
   const scrollTopOf = () => wrap.evaluate((el) => el.scrollTop);
   expect(await scrollTopOf()).toBe(0);
 
+  // Panning lives on the Hand tool now (a plain Select-tool drag area-selects); switch to it first.
+  await page.locator("#tool-hand").click();
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();
   if (box === null) return;

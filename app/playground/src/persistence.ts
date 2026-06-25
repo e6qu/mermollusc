@@ -30,7 +30,7 @@ export const clearPersisted = (): void => {
   const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k !== null && k.startsWith(NAMESPACE)) keys.push(k);
+    if (k?.startsWith(NAMESPACE)) keys.push(k);
   }
   for (const k of keys) localStorage.removeItem(k);
 };
