@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExportMenu } from "./support/menu.js";
 import { setSource, sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -51,6 +52,7 @@ test("manual layout survives a text edit and rides along in the share link", asy
   await expect.poll(() => sourceValue(page)).toContain("Gamma");
 
   // Share encodes the surviving overlay in the hash.
+  await openExportMenu(page);
   await page.locator("#share-link").click();
   await expect.poll(() => page.evaluate(() => location.hash)).toContain("overlay=");
 
