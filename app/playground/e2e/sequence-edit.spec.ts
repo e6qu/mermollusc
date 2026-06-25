@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectSourceMatches, setSource } from "./support/source.js";
+import { expectSourceMatches, expectSourceNotMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -24,4 +24,33 @@ test("double-click a sequence actor relabels it in the source text", async ({ pa
   await editor.press("Enter");
 
   await expectSourceMatches(page, /as Renamed/);
+});
+
+test("a sequence note renders and is stripped when its target actor is deleted", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  const canvas = page.locator("#stage");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  await setSource(
+    page,
+    "sequenceDiagram\n  participant A\n  participant B\n  A->>B: hi\n  note over A,B: shared state\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  // The note is a real scene node, so its text appears in the canvas's screen-reader description.
+  await expect(canvas).toHaveAttribute("aria-label", /shared state/);
+
+  // Deleting actor A removes the note anchored to it (the formerly-unreachable `SEQ_NOTE` branch).
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  if (box === null) return;
+  await page.mouse.click(box.x + 54, box.y + 42);
+  await page.keyboard.press("Delete");
+
+  await expectSourceNotMatches(page, /note over/);
+  await expectSourceNotMatches(page, /participant A\b/);
+  expect(errors).toEqual([]);
 });

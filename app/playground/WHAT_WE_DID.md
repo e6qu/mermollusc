@@ -681,3 +681,9 @@
   (descriptions on every container), block (a `block:id … end` composite + spans), network (DMZ/app/data
   subnet groups + firewall/LB), gitGraph (three lanes, two merges, a HIGHLIGHT commit), mindmap (real
   subject + alternate node shapes). Screenshot-verified each.
+- Sequence notes end-to-end: the example shows an `over` and a `left of` note; a note box is a real
+  scene node — selectable, relabel via its text span, delete via `deleteLineAt`, and deleting an actor
+  strips the notes anchored to it (the formerly-dead `deleteActor` `SEQ_NOTE` branch is now live). Plus
+  three boy-scout a11y fixes: tool-rejection feedback uses `flashStatus` (no longer clobbers the canvas
+  aria-label), the `S` shape-cycle shortcut is gated off DOT imports, and the visual `#stage-hud` lost
+  its duplicate `aria-live` (the task hint was announced twice).
