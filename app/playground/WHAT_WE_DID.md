@@ -719,3 +719,7 @@
   touch-sized, so every canvas action works on a phone. Together these reclaim canvas surface on every
   viewport. +e2e (collapse/persist, parse-error reveal, overflow menu open/run/Escape/outside-click,
   mobile palette touch target). The ~11 export/share/reset specs open the menu first via a shared helper.
+- Edges are now fully editable from the canvas (flowchart + block): double-click a BARE edge to add a
+  label (spliced after its arrow), and the Shape button / `S` key doubles as an edge "Style" control
+  that cycles the arrow (`-->`/`---`/`-.->`/`==>`) on a selected edge. Plus the edge-label overlap fix
+  in @m/layout (cloud/c4/network/block breathe; labels ride the clear channel). +builder units, +e2e.

@@ -136,3 +136,5 @@
   real merge. `moveTimelineEvent(text, source, ast, eventId, periodId)` — re-parent a timeline event
   under a different period (splice its ` : <event>` segment to the destination period's line), the
   timeline analogue of a mindmap re-parent. Both round-trip; 2 tests.
+- `addEdgeLabel` (splice a `|label|` after a bare edge's arrow, validated) + `restyleEdge` (rewrite the
+  arrow token to a new `EdgeKind`, preserving any label) — the core of UI edge rename/restyle.

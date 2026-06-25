@@ -38,6 +38,8 @@ import {
   emptySelection,
   hitTest,
   leafNodes,
+  addEdgeLabel,
+  restyleEdge,
   patchSpan,
   pathLocked,
   relabelNode,
@@ -59,6 +61,7 @@ import type {
   ErSource,
   ReqSource,
   DiagramAst,
+  EdgeKind,
   FlowDirection,
   GitGraphSource,
   TimelineSource,
@@ -1069,6 +1072,7 @@ interface CapabilityState {
   readonly canArrange: boolean;
   readonly canDistribute: boolean;
   readonly canShape: boolean;
+  readonly canStyleEdge: boolean;
   readonly canDuplicate: boolean;
   readonly canRelabel: boolean;
   readonly canDelete: boolean;
@@ -1125,7 +1129,9 @@ const syncToolPalette = (): void => {
 // controls use (so they can't disagree). Geometry/visibility of the bar itself is `positionContextBar`.
 const renderContextBar = (caps: CapabilityState): void => {
   ctxRelabelBtn.hidden = !caps.canRelabel;
-  ctxShapeBtn.hidden = !caps.canShape;
+  // The Shape button doubles as the edge "Style" control (it cycles a node's shape or an edge's arrow).
+  ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
+  ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
   ctxConnectBtn.hidden = !caps.canConnect;
   ctxDuplicateBtn.hidden = !caps.canDuplicate;
   ctxGroupBtn.hidden = !caps.canGroup;
@@ -1152,6 +1158,7 @@ const computeCapabilities = (): CapabilityState => {
       canArrange: false,
       canDistribute: false,
       canShape: false,
+      canStyleEdge: false,
       canDuplicate: false,
       canRelabel: false,
       canDelete: false,
@@ -1190,6 +1197,13 @@ const computeCapabilities = (): CapabilityState => {
     canArrange: movable >= 2,
     canDistribute: movable >= 3,
     canShape: isFlowchart && selectionOrder.length >= 1,
+    // Restyle the arrow of a single selected flowchart/block edge (presentational kinds only).
+    canStyleEdge:
+      editable &&
+      ast !== null &&
+      (ast.kind === "flowchart" || ast.kind === "block") &&
+      selectionOrder.length === 0 &&
+      selection.edges.size === 1,
     canDuplicate:
       editable && ast !== null && familyAffordances(ast.kind).addNode && selectionOrder.length >= 1,
     canRelabel: editable && totalSelected === 1,
@@ -2780,6 +2794,24 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       void renderFromText(editor.value());
     },
   });
+  // A bare (label-less) flowchart/block edge: open an empty editor and, on commit, splice a `|label|`
+  // after its arrow token so the previously-unlabelled connector gets a name.
+  const wrapBareEdge = (
+    arrowSpan: TextSpan,
+  ): { readonly text: string; readonly commit: (n: string) => void } => ({
+    text: "",
+    commit: (next) => {
+      if (next.length === 0) return;
+      const out = addEdgeLabel(editor.value(), arrowSpan, next);
+      if (!isOk(out)) {
+        console.error("edge label rejected:", out.error.message);
+        setStatusAndAnnounce("error", `can't label edge — ${out.error.message}`);
+        return;
+      }
+      editor.setValue(out.value);
+      void renderFromText(editor.value());
+    },
+  });
 
   let pending: { readonly text: string; readonly commit: (n: string) => void } | null = null;
   let anchor: Anchor | null = null;
@@ -2804,8 +2836,12 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
   } else if (hit !== null && ast.kind === "flowchart" && source !== null) {
     const src = source;
     if (hit.kind === "edge") {
-      const span = src.edges.get(brand<string, "EdgeId">(hit.id));
+      const edgeId = brand<string, "EdgeId">(hit.id);
+      const span = src.edges.get(edgeId);
+      const arrow = src.arrows.get(edgeId);
+      // A labelled edge renames its `|label|`; a bare edge gets a new label spliced after its arrow.
       if (span !== undefined) pending = patchAt(span);
+      else if (arrow !== undefined) pending = wrapBareEdge(arrow);
     } else {
       const nodeId = brand<string, "NodeId">(hit.id);
       pending = {
@@ -2830,8 +2866,11 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "block" && blockSource !== null) {
     if (hit.kind === "edge") {
-      const span = blockSource.edges.get(brand<string, "EdgeId">(hit.id));
+      const edgeId = brand<string, "EdgeId">(hit.id);
+      const span = blockSource.edges.get(edgeId);
+      const arrow = blockSource.arrows.get(edgeId);
       if (span !== undefined) pending = patchAt(span);
+      else if (arrow !== undefined) pending = wrapBareEdge(arrow);
     } else {
       const id = brand<string, "NodeId">(hit.id);
       const labelSpan = blockSource.blocks.get(id);
@@ -3738,6 +3777,37 @@ const cycleShape = async (): Promise<void> => {
   canvas.focus({ preventScroll: true });
 };
 
+// Cycle the single selected flowchart/block edge's presentational style by rewriting its arrow token.
+const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick"];
+const cycleEdgeStyle = async (): Promise<void> => {
+  if (viewerMode || ast === null || selection.edges.size !== 1) return;
+  const edgeId = [...selection.edges][0];
+  if (edgeId === undefined) return;
+  const eid = brand<string, "EdgeId">(edgeId);
+  let arrowSpan: TextSpan | undefined;
+  let currentKind: EdgeKind | undefined;
+  if (ast.kind === "flowchart" && source !== null) {
+    arrowSpan = source.arrows.get(eid);
+    currentKind = ast.edges.find((e) => e.id === eid)?.kind;
+  } else if (ast.kind === "block" && blockSource !== null) {
+    arrowSpan = blockSource.arrows.get(eid);
+    currentKind = ast.edges.find((e) => e.id === eid)?.kind;
+  }
+  if (arrowSpan === undefined || currentKind === undefined) return;
+  const idx = EDGE_STYLE_CYCLE.indexOf(currentKind);
+  const next = EDGE_STYLE_CYCLE[(idx + 1) % EDGE_STYLE_CYCLE.length] ?? "arrow";
+  const text = restyleEdge(editor.value(), arrowSpan, next);
+  editor.setValue(text);
+  await renderFromText(text);
+  // Keep the edge selected so a repeated press keeps cycling it.
+  selection = { nodes: new Set(), edges: new Set([brand<string, "SceneEdgeId">(edgeId)]) };
+  selectionOrder = [];
+  paintScene();
+  updateGroupButtons();
+  flashStatus(`edge style: ${next}`);
+  canvas.focus({ preventScroll: true });
+};
+
 const ctxButtons = (): HTMLButtonElement[] =>
   Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
     (b) => !b.hidden && !b.disabled,
@@ -3787,7 +3857,13 @@ ctxRelabelBtn.addEventListener("click", () => {
     setStatusAndAnnounce("warning", "this item has no editable label");
   }
 });
-ctxShapeBtn.addEventListener("click", () => void cycleShape());
+ctxShapeBtn.addEventListener(
+  "click",
+  () =>
+    void (selection.edges.size === 1 && selectionOrder.length === 0
+      ? cycleEdgeStyle()
+      : cycleShape()),
+);
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());
@@ -3889,9 +3965,16 @@ window.addEventListener("keydown", (ev) => {
       break;
     case "s":
     case "S":
-      if (viewerMode || ast === null || selectionOrder.length === 0) return;
-      // With a selection, explain why nothing happens off-flowchart instead of a silent no-op (parity
-      // with the navigator's S handler). `isDotImport` parses to flowchart but with an empty source map.
+      if (viewerMode || ast === null) return;
+      // A single selected edge cycles its arrow style (flowchart/block); a node cycles its shape.
+      if (selection.edges.size === 1 && selectionOrder.length === 0) {
+        ev.preventDefault();
+        void cycleEdgeStyle();
+        break;
+      }
+      if (selectionOrder.length === 0) return;
+      // With a node selection, explain why nothing happens off-flowchart instead of a silent no-op
+      // (parity with the navigator). `isDotImport` parses to flowchart but with an empty source map.
       if (ast.kind !== "flowchart" || isDotImport) {
         ev.preventDefault();
         flashStatus(

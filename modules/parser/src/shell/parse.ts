@@ -188,6 +188,18 @@ const linkKind = (c: Children): EdgeKind => {
   return "thick";
 };
 
+// The arrow token's source span — restyle rewrites it and a bare-edge label is inserted right after it.
+const arrowSpanOf = (c: Children): TextSpan | null => {
+  const tok =
+    childTokens(c, "Arrow")[0] ??
+    childTokens(c, "OpenLink")[0] ??
+    childTokens(c, "DottedArrow")[0] ??
+    childTokens(c, "ThickArrow")[0];
+  return tok === undefined
+    ? null
+    : { start: tok.startOffset, end: tok.startOffset + tok.image.length };
+};
+
 // A subgraph's title is its optional `[label]` (any shape bracket), else its id.
 const subgraphLabel = (blockChildren: Children, fallback: string): string => {
   const shapeNode = childNodes(blockChildren, "shape")[0];
@@ -214,6 +226,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const nodeMap = new Map<string, FlowNode>();
   const nodeSpans = new Map<NodeId, NodeSpans>();
   const edgeSpans = new Map<EdgeId, TextSpan>();
+  const arrowSpans = new Map<EdgeId, TextSpan>();
   const edges: FlowEdge[] = [];
   const subgraphs: FlowSubgraph[] = [];
   const claimed = new Set<string>();
@@ -283,6 +296,8 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
         label: pipe === undefined ? null : pipe.image.trim(),
       });
       if (pipe !== undefined) edgeSpans.set(edgeId, trimmedSpan(pipe));
+      const arrowSpan = arrowSpanOf(link.children);
+      if (arrowSpan !== null) arrowSpans.set(edgeId, arrowSpan);
     }
     return refs.map((r) => r.id);
   };
@@ -368,7 +383,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
     .filter((n): n is FlowNode => n !== undefined);
 
   const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs };
-  return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans } });
+  return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans } });
 };
 
 export const parseWithSource = (text: string): Result<ParsedSource, ParseError> => {

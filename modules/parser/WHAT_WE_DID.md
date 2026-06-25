@@ -262,3 +262,5 @@
   the message text mode; `over A,B` spans two actors). Each note records `after` = messages seen so far
   (its interleave position) and a text span for two-way editing. Actors referenced only by a note are
   inferred like message endpoints.
+- Capture each flowchart/block edge's arrow-token span in the source map (`arrows`), enabling edge
+  restyle + bare-edge labelling.

@@ -42,6 +42,9 @@ export interface SourceMap {
   readonly nodes: ReadonlyMap<NodeId, NodeSpans>;
   // Inner `|label|` span for each edge that carries one (for two-way edge-label editing).
   readonly edges: ReadonlyMap<EdgeId, TextSpan>;
+  // The arrow-token span (`-->`/`---`/`-.->`/`==>`) of every edge — for restyling the arrow and for
+  // inserting a `|label|` on a bare edge (after the token).
+  readonly arrows: ReadonlyMap<EdgeId, TextSpan>;
 }
 
 // Editable text spans for a sequence diagram: each actor's label and each message's text.
@@ -63,6 +66,8 @@ export interface C4Source {
 export interface BlockSource {
   readonly blocks: ReadonlyMap<NodeId, TextSpan>;
   readonly edges: ReadonlyMap<EdgeId, TextSpan>;
+  // The arrow-token span of every edge — for restyle + inserting a `|label|` on a bare edge.
+  readonly arrows: ReadonlyMap<EdgeId, TextSpan>;
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
   // Label span of each `block:id … end` composite — its `["label"]` if present, else the id token.
   readonly groups: ReadonlyMap<NodeId, TextSpan>;

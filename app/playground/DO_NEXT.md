@@ -21,6 +21,15 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   Escape always returns to the toolbar `#arrange`, even when opened from the on-canvas `#ctx-arrange`).
 
 ## Editing breadth
+- **Edge rename + restyle for the remaining families.** Flowchart + block now support adding a label to
+  a bare edge and cycling the arrow style (`-->`/`---`/`-.->`/`==>`). **Sequence** is the other purely
+  presentational family (message kinds `->>`/`-->>`/`->`/`-->`) — extend restyle there with its own
+  arrow-span capture + token map. The **semantic-arrow** families (er crow's-foot, class UML relation,
+  state/c4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator encodes
+  meaning; they want a typed cardinality/relation picker instead (a separate feature).
+- **Edge labels on skipped-over nodes.** The cloud/c4/network gap+`labelPos` fix clears labels between
+  adjacent boxes, but a center-to-center edge that passes *over* a third node can still place its label
+  on it — needs real obstacle-avoiding routing.
 - **gitGraph node delete.** Today it's honestly gated ("can't delete this from the canvas"). Implement a
   real commit-span / branch-lane delete in `@m/builder`, then flip the affordance on. Optionally make the
   navigator visually distinguish inert vs. actionable gitGraph/timeline items.

@@ -120,7 +120,7 @@ export type ParsedWithSource =
   | { readonly family: "pie"; readonly ast: PieAst; readonly source: PieSource }
   | { readonly family: "gantt"; readonly ast: GanttAst; readonly source: GanttSource };
 
-const EMPTY_SOURCE_MAP: SourceMap = { nodes: new Map(), edges: new Map() };
+const EMPTY_SOURCE_MAP: SourceMap = { nodes: new Map(), edges: new Map(), arrows: new Map() };
 
 // Same header sniff as `parseDiagram`, but routes to each family's source-capturing parser so a single
 // pass yields both the AST and the editable spans — the app no longer parses each family twice (once to
