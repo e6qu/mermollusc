@@ -1151,6 +1151,18 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxLockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
   ctxArrangeBtn.hidden = !caps.canArrange;
   ctxDeleteBtn.hidden = !caps.canDelete;
+  // Roving tabindex (the ARIA toolbar pattern): exactly one button is a tab stop, arrows move within —
+  // so Tab doesn't have to step through all nine. The first visible/enabled button holds the stop.
+  setCtxRoving(null);
+};
+
+// Make `focused` (or the first visible+enabled button) the lone tab stop; the rest are -1.
+const setCtxRoving = (focused: HTMLButtonElement | null): void => {
+  const btns = Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
+    (b) => !b.hidden && !b.disabled,
+  );
+  const stop = focused !== null && btns.includes(focused) ? focused : (btns[0] ?? null);
+  for (const b of btns) b.tabIndex = b === stop ? 0 : -1;
 };
 
 const computeCapabilities = (): CapabilityState => {
@@ -1892,6 +1904,15 @@ const setStatus = (
   statusEl.textContent = message;
   statusEl.setAttribute("data-level", level);
   statusEl.setAttribute("data-locatable", range === null ? "false" : "true");
+  // When the status points at a source location, expose it as a real button so keyboard/AT users get the
+  // same "jump to error" the mouse affordance offers; otherwise it's a plain (non-focusable) status line.
+  if (range === null) {
+    statusEl.removeAttribute("role");
+    statusEl.removeAttribute("tabindex");
+  } else {
+    statusEl.setAttribute("role", "button");
+    statusEl.setAttribute("tabindex", "0");
+  }
   stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
   stageEmpty.hidden = !(level === "error" && scene === null);
   errorRange = range;
@@ -1931,10 +1952,17 @@ const flashStatus = (message: string): void => {
   announce(message);
 };
 
-statusEl.addEventListener("click", () => {
+const jumpToError = (): void => {
   if (errorRange === null) return;
   editor.focus();
   editor.select(errorRange.offset, errorRange.offset + errorRange.length);
+};
+statusEl.addEventListener("click", jumpToError);
+statusEl.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === " ") {
+    ev.preventDefault();
+    jumpToError();
+  }
 });
 
 // Relax seeds ELK (flowchart specifically). Add-node now works for every family with a one-line node
@@ -1942,15 +1970,18 @@ statusEl.addEventListener("click", () => {
 // dead click. Connect and Delete already work for every family.
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
+  // A collaborative viewer is read-only: these mutate the diagram, so they must be truly `disabled`
+  // (not just CSS-dimmed) or a keyboard / screen-reader user can still reach and "press" them.
   const isFlowchart = currentRenderValid && kind === "flowchart";
-  relaxBtn.disabled = !isFlowchart;
+  relaxBtn.disabled = !isFlowchart || viewerMode;
   relaxBtn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
   // Regenerate re-lays-out any family (clearing unpinned overrides), so it's enabled whenever the
   // source is valid — but disabled on a broken parse, matching Relax/Add (was the lone exception).
-  regenBtn.disabled = !currentRenderValid;
+  regenBtn.disabled = !currentRenderValid || viewerMode;
   regenBtn.title = currentRenderValid ? "" : "fix source first";
-  resetPosBtn.disabled = !currentRenderValid;
-  const canAdd = currentRenderValid && familyAffordances(kind).addNode && !isDotImport;
+  resetPosBtn.disabled = !currentRenderValid || viewerMode;
+  const canAdd =
+    currentRenderValid && familyAffordances(kind).addNode && !isDotImport && !viewerMode;
   addBtn.disabled = !canAdd;
   addBtn.title = canAdd
     ? ""
@@ -2836,9 +2867,21 @@ const openInlineEditor = (
   // re-derived the transform inline and a dropped `* viewScale` made it drift off the element.
   // Recomputed on scroll/resize while open, since the stage scrolls and the canvas rect is viewport-relative.
   const place = (): void => {
-    positionOverlay(inlineEl, sceneToScreen(point(anchor.x, anchor.y)));
-    inlineEl.style.width = `${Math.max(64, anchor.w * viewScale)}px`;
-    inlineEl.style.height = `${Math.max(24, anchor.h * viewScale)}px`;
+    const w = Math.max(64, anchor.w * viewScale);
+    const h = Math.max(24, anchor.h * viewScale);
+    inlineEl.style.width = `${w}px`;
+    inlineEl.style.height = `${h}px`;
+    // Clamp into the viewport so the editor for a node near the right/bottom edge (or on a narrow phone)
+    // stays fully visible instead of spilling off-screen.
+    const s = sceneToScreen(point(anchor.x, anchor.y));
+    const M = 4;
+    positionOverlay(
+      inlineEl,
+      screenPoint(
+        Math.min(Math.max(M, s.x), Math.max(M, window.innerWidth - w - M)),
+        Math.min(Math.max(M, s.y), Math.max(M, window.innerHeight - h - M)),
+      ),
+    );
   };
   place();
   // Where focus was before the editor grabbed it (the navigator/canvas), to return it on close so a
@@ -2922,6 +2965,9 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
     if (opener === "|") return "pipe";
     if (opener === '"') return "quoted";
     if (opener === "[" || opener === "(" || opener === "{") return "flowchartBracket";
+    // Timeline period/event and gantt task labels are colon-delimited free text — a `:` in the new
+    // label would silently split it into a second event / meta field, corrupting the diagram.
+    if (ast !== null && (ast.kind === "timeline" || ast.kind === "gantt")) return "colon";
     return "plain";
   };
   const patchAt = (
@@ -3765,6 +3811,18 @@ const deleteSelection = async (): Promise<void> => {
   // Count every node that actually disappears (a deleted container takes its descendants), not just the
   // top-level selection — so deleting a subnet of 6 doesn't announce "deleted 1 item".
   const removedCount = shown.nodes.filter(isDeleted).length + selection.edges.size;
+  // Deleting a container takes all its descendants. When that cascade removes more than what was
+  // directly selected, confirm first — like example-load and Reset — so a stray Delete on a boundary/
+  // subgraph doesn't silently wipe its contents.
+  const nestedRemoved = removedCount - (selectionOrder.length + selection.edges.size);
+  if (
+    nestedRemoved > 0 &&
+    !window.confirm(
+      `Delete this container and its ${nestedRemoved} nested item${nestedRemoved === 1 ? "" : "s"}?`,
+    )
+  ) {
+    return;
+  }
   for (const id of order) text = removeNode(kind, text, id);
   for (const edgeId of selection.edges) {
     const edge = scene.edges.find((e) => e.id === edgeId);
@@ -4000,10 +4058,14 @@ contextBar.addEventListener("keydown", (ev) => {
   const here = active instanceof HTMLButtonElement ? btns.indexOf(active) : -1;
   if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
     ev.preventDefault();
-    btns[(here + 1) % btns.length]?.focus();
+    const next = btns[(here + 1) % btns.length] ?? null;
+    setCtxRoving(next);
+    next?.focus();
   } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
     ev.preventDefault();
-    btns[(here - 1 + btns.length) % btns.length]?.focus();
+    const prev = btns[(here - 1 + btns.length) % btns.length] ?? null;
+    setCtxRoving(prev);
+    prev?.focus();
   }
 });
 
@@ -4549,9 +4611,21 @@ const shareUrl = (): string => {
   return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups))}`;
 };
 
+// Past this the URL risks silent truncation when pasted into chat/email clients (the `#src=` hash isn't
+// sent to servers, but messengers clip long links). Warn loudly rather than report a confident "copied"
+// on a link the recipient can't open.
+const SHARE_URL_MAX = 8000;
+
 shareBtn.addEventListener("click", () => {
   const url = shareUrl();
   history.replaceState(null, "", url);
+  if (url.length > SHARE_URL_MAX) {
+    setStatusAndAnnounce(
+      "warning",
+      `diagram is large — share link is ${url.length} chars and may be truncated when pasted (it's in the address bar)`,
+    );
+    return;
+  }
   const clip = navigator.clipboard;
   if (clip === undefined) {
     setStatusAndAnnounce("ok", "shareable link is in the address bar");
@@ -4732,6 +4806,9 @@ if (collabSession !== null) {
       roleBadge.setAttribute("data-role", role);
       roleBadge.hidden = false;
     }
+    // The relax/regenerate/reset/add buttons gate on `viewerMode`, but they're set in `applyKind`
+    // (render-time), so re-apply the current kind here — a role flip alone doesn't re-render.
+    if (ast !== null) applyKind(ast.kind);
     updateGroupButtons();
   };
   // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies

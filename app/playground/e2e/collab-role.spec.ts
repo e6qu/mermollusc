@@ -39,6 +39,12 @@ test("a viewer role makes the editor + tools read-only; editor restores it", asy
   await expect(page.locator("#role-badge")).toBeVisible();
   await expect(page.locator("#role-badge")).toHaveText("view only");
   expect(await page.evaluate(() => document.body.dataset["role"])).toBe("viewer");
+
+  // The mutating editor-tools must be truly `disabled` (not just CSS-dimmed) so a keyboard/AT viewer
+  // can't reach and "press" them.
+  for (const id of ["#relax", "#regenerate", "#reset-positions", "#add-node"]) {
+    await expect(page.locator(id)).toBeDisabled();
+  }
   await page.screenshot({ path: "shots/collab-role-viewer.png" });
 
   // a viewer's edits are actually rejected, not just visually dimmed: a drag makes no override, and

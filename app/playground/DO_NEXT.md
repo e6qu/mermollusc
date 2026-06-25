@@ -3,6 +3,22 @@
 Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known defects are in
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
+## Sweep-round audit backlog (deferred from the multi-agent review)
+- **Undo desync (J1/J2, high).** Structural canvas edits write *text* (CodeMirror history) AND an overlay
+  pin (overlay history) as two separate undoable units, and an editor-undo of a programmatic structural
+  edit doesn't re-render the canvas. Needs a single command history capturing both as one step — a real
+  refactor, not a patch.
+- **Node colour/fill restyle (J4).** Only shape + arrow-kind cycling exist; colour is the most-expected
+  styling control. Add a swatch writing a `style`/`classDef` patch (flowchart first), or mark as source-only.
+- **Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)
+  rather than shown disabled-with-tooltip; navigator has no Duplicate key. Prefer disabled-with-reason.
+- **Examples framing (E1).** Two flowcharts are menu-labelled "BPMN" (a family the parser doesn't model)
+  while "Flowchart" loads a toy. Promote a richer flowchart as default; relabel/trim BPMN. (Will churn
+  golden snapshots — do with `-u`.)
+- **Share-link overwrite (J8) + icon-pack discoverability (J9).** Smaller, independent polish items.
+- **Self-relations (P5, layout).** c4/network render a self-link as a degenerate dot; cloud silently
+  drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
+
 ## A11y / UX follow-ups (from the contrast + journey audit)
 - **Overlay reload identity (IO-02 residual).** Loading an example clears the overlay, but manually
   replacing the whole source with a *different* diagram that reuses ids (`A`,`B`,…) leaves the persisted

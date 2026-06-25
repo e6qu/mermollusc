@@ -25,6 +25,7 @@ test("renders a block-beta diagram (grid + edge) from the textarea", async ({ pa
 
 test("renders a `block:id … end` composite and deletes it whole", async ({ page }) => {
   const errors = watchPipelineErrors(page);
+  page.on("dialog", (d) => void d.accept()); // confirm the container-delete cascade
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 

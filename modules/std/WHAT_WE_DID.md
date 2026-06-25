@@ -51,3 +51,5 @@
   it surfaces, not swallows. Replaces the hand-rolled `e instanceof Error ? e.message : String(e)` at
   the layout ELK catch sites. +test (Error/string/non-error). Also backfilled the missing `oneOrMore`
   shell test, restoring the 100% coverage ratchet (38 unit tests).
+- `coordinate()`/`screenCoord()` now reject non-finite values (negatives stay legal) — a NaN/Infinity
+  coordinate fails loudly at its source instead of flowing silently into the painter as a vanished glyph.

@@ -1,4 +1,4 @@
-import { ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   MindmapAst,
@@ -17,6 +17,7 @@ const NODE_H = 34;
 const PAD = 22; // horizontal label padding
 const MIN_W = 44;
 const MARGIN = 24;
+const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
 const SHAPE: Record<MindmapShape, NodeShape> = {
   default: "round",
@@ -61,13 +62,22 @@ export const layoutMindmap = (
       else siblings.push(node);
     }
   }
+  // Every node has a parent → no root to anchor the radial layout (an orphan set or a parent cycle).
+  // Can't arise from the parser (its first node is always a root), but the core must stay total.
+  if (roots.length === 0) {
+    return err({
+      kind: "layout",
+      message: "mindmap: no root node (orphaned nodes or a parent cycle)",
+    });
+  }
 
   const leafMemo = new Map<string, number>();
-  const leaves = (node: MindmapNode): number => {
+  const leaves = (node: MindmapNode, depth: number): number => {
+    if (depth > MAX_NEST_DEPTH) return 1; // break a root→…→cycle reachable from a real root
     const cached = leafMemo.get(node.id);
     if (cached !== undefined) return cached;
     const kids = byParent.get(node.id) ?? [];
-    const count = kids.length === 0 ? 1 : kids.reduce((sum, k) => sum + leaves(k), 0);
+    const count = kids.length === 0 ? 1 : kids.reduce((sum, k) => sum + leaves(k, depth + 1), 0);
     leafMemo.set(node.id, count);
     return count;
   };
@@ -76,33 +86,34 @@ export const layoutMindmap = (
   const pos = new Map<string, XY>();
   // Places `node` at the centre of its angular sector [start, end); recurses into children, splitting
   // the sector by leaf weight. `forest` shifts every node out one ring so the roots ring a virtual hub.
-  const place = (node: MindmapNode, start: number, end: number): void => {
+  const place = (node: MindmapNode, start: number, end: number, recur: number): void => {
+    if (recur > MAX_NEST_DEPTH) return; // break a root→…→cycle reachable from a real root
     const mid = (start + end) / 2;
-    const depth = node.level + (forest ? 1 : 0);
-    const r = depth * RING;
+    const ring = node.level + (forest ? 1 : 0);
+    const r = ring * RING;
     pos.set(node.id, { x: r * Math.cos(mid), y: r * Math.sin(mid) });
     const kids = byParent.get(node.id) ?? [];
-    const totalLeaves = kids.reduce((sum, k) => sum + leaves(k), 0) || 1;
+    const totalLeaves = kids.reduce((sum, k) => sum + leaves(k, 0), 0) || 1;
     let a = start;
     for (const kid of kids) {
-      const span = (end - start) * (leaves(kid) / totalLeaves);
-      place(kid, a, a + span);
+      const span = (end - start) * (leaves(kid, 0) / totalLeaves);
+      place(kid, a, a + span, recur + 1);
       a += span;
     }
   };
 
   const TWO_PI = Math.PI * 2;
   if (forest) {
-    const totalLeaves = roots.reduce((sum, r) => sum + leaves(r), 0) || 1;
+    const totalLeaves = roots.reduce((sum, r) => sum + leaves(r, 0), 0) || 1;
     let a = 0;
     for (const root of roots) {
-      const span = TWO_PI * (leaves(root) / totalLeaves);
-      place(root, a, a + span);
+      const span = TWO_PI * (leaves(root, 0) / totalLeaves);
+      place(root, a, a + span, 0);
       a += span;
     }
   } else {
     const root = roots[0];
-    if (root !== undefined) place(root, 0, TWO_PI);
+    if (root !== undefined) place(root, 0, TWO_PI, 0);
   }
 
   const sizeOf = (node: MindmapNode): { readonly w: number; readonly h: number } => ({

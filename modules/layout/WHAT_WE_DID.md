@@ -251,3 +251,6 @@
   cross-segment (`routeChannelMid`) — clear of both boxes by construction. ELK families already
   reserve a label box, so they were unaffected. (A label landing on a *skipped-over* node still needs
   real obstacle avoidance — out of scope.)
+- Mindmap layout is now total on an internally-inconsistent AST: a rootless node set (orphans / a parent
+  cycle) returns a clean layout error instead of throwing on an ±Infinity extent, and a depth cap breaks
+  a root→…→cycle recursion (matching the other nested layouts' MAX_NEST_DEPTH guard).

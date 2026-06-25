@@ -27,10 +27,14 @@ const tokenSpan = (t: IToken): TextSpan => ({
   start: t.startOffset,
   end: t.startOffset + t.image.length,
 });
-const trimmedSpan = (t: IToken): TextSpan => {
-  const lead = t.image.length - t.image.trimStart().length;
-  const start = t.startOffset + lead;
-  return { start, end: start + t.image.trim().length };
+// A relationship label captures the whole post-`:` text, possibly quoted; strip the quotes and point
+// the edit span at the inner text (the class multiplicities are already unquoted two lines below).
+const relLabel = (t: IToken): { readonly text: string; readonly span: TextSpan } => {
+  const trimmed = t.image.trim();
+  const start = t.startOffset + (t.image.length - t.image.trimStart().length);
+  return trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')
+    ? { text: trimmed.slice(1, -1), span: { start: start + 1, end: start + trimmed.length - 1 } }
+    : { text: trimmed, span: { start, end: start + trimmed.length } };
 };
 
 const visOf = (ch: string): ClassVisibility | null => {
@@ -146,6 +150,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
     if (left === undefined) continue;
     see(left.image, tokenSpan(left));
     const label = childTokens(rm.children, "ClassLabelText")[0];
+    const labelInfo = label === undefined ? null : relLabel(label);
     const relTok = childTokens(rm.children, "ClassRelationship")[0];
     if (relTok === undefined) {
       // `Foo : +member` shorthand — the label text is one member of Foo.
@@ -173,11 +178,11 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
       fromArrow: leftArrow(leftSym),
       toArrow: rightArrow(rightSym),
       dashed: line === "..",
-      label: label === undefined ? "" : label.image.trim(),
+      label: labelInfo === null ? "" : labelInfo.text,
       fromMult: fromMultTok === undefined ? "" : fromMultTok.image.slice(1, -1),
       toMult: toMultTok === undefined ? "" : toMultTok.image.slice(1, -1),
     });
-    if (label !== undefined) relSpans.set(id, trimmedSpan(label));
+    if (labelInfo !== null) relSpans.set(id, labelInfo.span);
   }
 
   const entities: ClassEntity[] = [...labels].map(([id, label]) => ({

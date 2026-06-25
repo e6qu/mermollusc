@@ -87,6 +87,7 @@ test("Connect adds a sequence message between two actors", async ({ page }) => {
 test("Delete removes a C4 boundary block and relations to nested elements", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("dialog", (d) => void d.accept()); // confirm the container-delete cascade
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

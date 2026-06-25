@@ -33,7 +33,15 @@ export const positiveInt = (n: number): PositiveInt => {
   return brand<number, "PositiveInt">(n);
 };
 
-export const coordinate = (n: number): Coordinate => brand<number, "Coordinate">(n);
+// A coordinate may be negative (scene origins and overlays sit off-screen), but it must be FINITE — a
+// NaN/Infinity here would flow silently into the canvas/SVG painter as an un-drawable draw coordinate
+// (a vanished or mis-placed glyph) instead of a loud failure at its source.
+export const coordinate = (n: number): Coordinate => {
+  if (!Number.isFinite(n)) {
+    throw new RangeError(`coordinate must be a finite number, got ${n}`);
+  }
+  return brand<number, "Coordinate">(n);
+};
 
 // A length is finite and non-negative by construction — fail loud otherwise, so a bad size surfaces
 // at its source rather than silently producing an inverted (or NaN) box downstream. The guard is
@@ -60,7 +68,12 @@ export const oneOrMore = <T>(first: T, ...rest: readonly T[]): OneOrMore<T> => [
 
 // Screen-space (viewport CSS px) — unvalidated like `coordinate` (an overlay can sit off-screen, so
 // negatives are legal), but a distinct brand so it can't be confused with a scene coordinate.
-export const screenCoord = (n: number): ScreenCoord => brand<number, "ScreenCoord">(n);
+export const screenCoord = (n: number): ScreenCoord => {
+  if (!Number.isFinite(n)) {
+    throw new RangeError(`screen coordinate must be a finite number, got ${n}`);
+  }
+  return brand<number, "ScreenCoord">(n);
+};
 export const screenPoint = (x: number, y: number): ScreenPoint => ({
   x: screenCoord(x),
   y: screenCoord(y),
