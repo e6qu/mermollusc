@@ -31,9 +31,35 @@ class SequenceParser extends CstParser {
   private readonly statement = this.RULE("seqStatement", () =>
     this.OR([
       { ALT: () => this.SUBRULE(this.participantDecl) },
+      { ALT: () => this.SUBRULE(this.note) },
       { ALT: () => this.SUBRULE(this.message) },
     ]),
   );
+
+  // `note over A[,B] : text` / `note left of A : text` / `note right of A : text`. The `:` enters the
+  // shared message lexer mode, so the note text is captured as `MsgText` like a message's.
+  private readonly note = this.RULE("note", () => {
+    this.CONSUME(SeqTok.Note);
+    this.OR([
+      { ALT: () => this.CONSUME(SeqTok.Over) },
+      {
+        ALT: () => {
+          this.OR2([
+            { ALT: () => this.CONSUME(SeqTok.Left) },
+            { ALT: () => this.CONSUME(SeqTok.Right) },
+          ]);
+          this.CONSUME(SeqTok.Of);
+        },
+      },
+    ]);
+    this.CONSUME(SeqTok.Identifier);
+    this.MANY(() => {
+      this.CONSUME(SeqTok.Comma);
+      this.CONSUME2(SeqTok.Identifier);
+    });
+    this.CONSUME(SeqTok.Colon);
+    this.CONSUME(SeqTok.MsgText);
+  });
 
   private readonly participantDecl = this.RULE("participantDecl", () => {
     this.CONSUME(SeqTok.Participant);

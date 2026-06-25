@@ -2149,18 +2149,14 @@ const refreshCursor = (): void => {
 // Arm a tool. Connect/place are clamped to the families that support them and rejected *loudly*
 // (announced) rather than silently switching; a viewer may only select/hand. Repaints palette + cursor.
 const setTool = (t: Tool): void => {
+  // `flashStatus`, not `setStatusAndAnnounce`: a tool rejection is transient feedback, so it must not
+  // overwrite the canvas's diagram aria-label — same reasoning the success path below cites.
   if (t === "connect" && !(ast !== null && familyAffordances(ast.kind).connect)) {
-    setStatusAndAnnounce(
-      "ok",
-      `the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`,
-    );
+    flashStatus(`the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`);
     return;
   }
   if (t === "place" && !(!isDotImport && ast !== null && familyAffordances(ast.kind).addNode)) {
-    setStatusAndAnnounce(
-      "ok",
-      `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
-    );
+    flashStatus(`placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`);
     return;
   }
   if (viewerMode && t !== "select" && t !== "hand") return;
@@ -2791,9 +2787,11 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       else if (bare !== undefined) pending = wrapBareLabel(bare, (i, l) => `${i} "${l}"`);
     }
   } else if (hit !== null && ast.kind === "sequence" && seqSource !== null) {
+    // A node hit is either an actor box or a note box (notes carry their own text span).
     const span =
       hit.kind === "node"
-        ? seqSource.actors.get(brand<string, "ActorId">(hit.id))
+        ? (seqSource.actors.get(brand<string, "ActorId">(hit.id)) ??
+          seqSource.notes.get(brand<string, "SequenceNoteId">(hit.id)))
         : seqSource.messages.get(brand<string, "MessageId">(hit.id));
     if (span !== undefined) pending = patchAt(span);
   } else if (hit !== null && ast.kind === "state" && stateSource !== null) {
@@ -3275,8 +3273,13 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
   switch (kind) {
     case "c4":
       return deleteC4(text, brand<string, "C4ElementId">(id));
-    case "sequence":
+    case "sequence": {
+      // A note has no leading id in the text, so it deletes by its captured line span; an actor box
+      // deletes by id (which also strips the messages + notes anchored to it).
+      const noteSpan = seqSource?.notes.get(brand<string, "SequenceNoteId">(id));
+      if (noteSpan !== undefined) return deleteLineAt(text, noteSpan);
       return deleteActor(text, brand<string, "ActorId">(id));
+    }
     // Compartment families have `id { … }` bodies; line-based `deleteNode` would orphan the body +
     // closing brace, so each removes its whole block + incident relationships.
     case "er":
@@ -3775,7 +3778,15 @@ window.addEventListener("keydown", (ev) => {
       break;
     case "s":
     case "S":
-      if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0) {
+      // `isDotImport` parses to a flowchart AST but with an empty source map, so `cycleShape` would
+      // silently no-op — gate it off like every other DOT-import affordance (matching the ⌘D path).
+      if (
+        viewerMode ||
+        ast === null ||
+        ast.kind !== "flowchart" ||
+        isDotImport ||
+        selectionOrder.length === 0
+      ) {
         return;
       }
       ev.preventDefault();

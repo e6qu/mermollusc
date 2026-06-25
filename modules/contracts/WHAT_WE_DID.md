@@ -127,3 +127,6 @@
 - Grouping AST: `BlockGroup` (+ `BlockNode.span`, `BlockAst.roots`/`groups` membership tree),
   `NetworkGroup` (+ `NetworkNode.parent`, `NetworkAst.groups`); `*Source.groups`/`bareNodes` spans for
   relabel. Supports block composites (`block:id…end`, column spans) and network subnet/zone groups.
+- Added `SequenceNote` (id, side `left|right|over`, `targets` actors, text, `after` interleave index)
+  + `SequenceNoteId`/`SequenceNoteSide`, a `notes` field on `SequenceAst`, and note text spans on
+  `SequenceSource` — the contract half of real sequence-diagram notes.

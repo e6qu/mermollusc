@@ -129,7 +129,7 @@ export const EXAMPLES = new Map<string, string>([
   ["bpmn-incident", BPMN_INCIDENT],
   [
     "sequence",
-    "sequenceDiagram\n  participant U as User\n  participant W as WebApp\n  participant A as API\n  participant D as Database\n  U->>W: submit order\n  W->>A: POST /orders\n  A->>D: insert order\n  D-->>A: id\n  A-->>W: created\n  W-->>U: confirmation\n",
+    "sequenceDiagram\n  participant U as User\n  participant W as WebApp\n  participant A as API\n  participant D as Database\n  U->>W: submit order\n  W->>A: POST /orders\n  note over A,D: write in a transaction\n  A->>D: insert order\n  D-->>A: id\n  A-->>W: created\n  note left of U: sees confirmation\n  W-->>U: confirmation\n",
   ],
   [
     "c4",
