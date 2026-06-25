@@ -723,3 +723,11 @@
   label (spliced after its arrow), and the Shape button / `S` key doubles as an edge "Style" control
   that cycles the arrow (`-->`/`---`/`-.->`/`==>`) on a selected edge. Plus the edge-label overlap fix
   in @m/layout (cloud/c4/network/block breathe; labels ride the clear channel). +builder units, +e2e.
+- Fuzz round 6 + a11y audit fixes. Added an edge-edit fuzzer (random restyle/add-label/rename sequences
+  over flowchart + block, re-parsed each step — always parseable). A focused audit confirmed the recent
+  edge-editing/layout/new-UI work is otherwise clean (contrast of the Export menu / collapse handle /
+  Style button all pass). Fixed two keyboard-a11y defects it found in the Export overflow menu: the
+  "Load icons" `<label role=menuitem>` was unfocusable (no tabindex → arrow-roving stalled and it was
+  unactivatable) — now `tabindex=-1` + Enter/Space opens its file input; and activating an item by
+  keyboard dropped focus to <body> — `closeMore` now returns focus to the trigger when focus was inside
+  the menu. +e2e (menu keyboard roving + focus return).

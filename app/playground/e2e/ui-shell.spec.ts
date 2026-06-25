@@ -74,6 +74,31 @@ test("the Export overflow menu opens, runs an action, and closes on Escape / out
   await expect(menu).toBeHidden();
 });
 
+test("the Export menu is keyboard-operable: roving reaches every item and focus returns on activate", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  const trigger = page.locator("#more-toggle");
+
+  // Open: focus lands on the first item; ArrowUp wraps to the last (Reset).
+  await trigger.click();
+  await expect(page.locator("#copy-png")).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#reset-cache")).toBeFocused();
+
+  // ArrowUp again reaches the non-button "Load icons" item (a <label>) — it must be focusable.
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#more-menu label.filebtn")).toBeFocused();
+
+  // Activating an item by keyboard returns focus to the trigger (not <body>).
+  await page.keyboard.press("ArrowDown"); // back onto Reset's neighbour
+  await page.locator("#copy-png").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#more-menu")).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
 test("the tool palette is reachable and touch-sized on a phone-width viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");

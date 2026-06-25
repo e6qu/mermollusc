@@ -1670,9 +1670,13 @@ const moreItems = (): HTMLElement[] =>
   );
 const closeMore = (): void => {
   if (moreMenu.hidden) return;
+  // If focus is inside the menu (keyboard activation / Escape), return it to the trigger so it doesn't
+  // fall to <body> when the menu hides. An outside pointer-dismiss leaves focus where the user clicked.
+  const restore = moreMenu.contains(document.activeElement);
   moreMenu.hidden = true;
   moreMenu.style.cssText = ""; // drop the fixed placement so the next open recomputes it
   moreToggle.setAttribute("aria-expanded", "false");
+  if (restore) moreToggle.focus();
 };
 const openMore = (): void => {
   moreMenu.hidden = false;
@@ -1705,6 +1709,14 @@ moreMenu.addEventListener("keydown", (ev) => {
   } else if (ev.key === "ArrowUp" && items.length > 0) {
     ev.preventDefault();
     items[(i - 1 + items.length) % items.length]?.focus();
+  } else if (
+    (ev.key === "Enter" || ev.key === " ") &&
+    document.activeElement instanceof HTMLLabelElement
+  ) {
+    // The "Load icons" item is a <label> (not a button) — Enter/Space don't natively activate it, so
+    // open its file input explicitly. (Real <button> items activate natively and bubble to the closer.)
+    ev.preventDefault();
+    document.activeElement.click();
   }
 });
 // Activating any item dismisses the menu (export runs, Reset reloads, Load-icons opens a file dialog).
