@@ -1,6 +1,13 @@
 import { ok, point, rect, twoOrMore, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
-import type { Scene, SceneEdge, SceneNode, TimelineAst, TimelinePeriod } from "@m/contracts";
+import type {
+  Decoration,
+  Scene,
+  SceneEdge,
+  SceneNode,
+  TimelineAst,
+  TimelinePeriod,
+} from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { widestLine } from "./measure.js";
 
@@ -42,6 +49,7 @@ export const layoutTimeline = (
 
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
+  const decorations: Decoration[] = [];
   const centers: { readonly x: number; readonly y: number }[] = [];
   const colX: number[] = [];
   const colW: number[] = [];
@@ -73,8 +81,10 @@ export const layoutTimeline = (
     });
     // Spine passes through the period row at a fixed height, so multi-line periods grow downward
     // without tilting the axis.
-    centers.push({ x: cursor + w / 2, y: periodY + PERIOD_H / 2 });
+    const colCenterX = cursor + w / 2;
+    centers.push({ x: colCenterX, y: periodY + PERIOD_H / 2 });
     let ey = Math.max(eventsY0, periodY + pH + ROW_GAP);
+    let lastEventCenterY: number | null = null;
     for (const event of period.events) {
       const eH = boxHeight(event.text, EVENT_H);
       nodes.push({
@@ -90,8 +100,18 @@ export const layoutTimeline = (
         accent: "none",
         role: "normal",
       });
+      lastEventCenterY = ey + eH / 2;
       grow(cursor + w, ey + eH);
       ey += eH + ROW_GAP;
+    }
+    // A vertical connector strings a period to its event stack (drawn behind the boxes, so it shows in
+    // the gaps) — otherwise the events float free below the spine and the timeline looks disconnected.
+    if (lastEventCenterY !== null) {
+      decorations.push({
+        kind: "rule",
+        from: point(colCenterX, periodY + pH),
+        to: point(colCenterX, lastEventCenterY),
+      });
     }
     grow(cursor + w, periodY + pH);
     cursor += w + COL_GAP;
@@ -153,7 +173,7 @@ export const layoutTimeline = (
     nodes,
     edges,
     wedges: [],
-    decorations: [],
+    decorations,
     extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
   });
 };

@@ -32,3 +32,28 @@ test("selecting an edge highlights its connector token in the source text", asyn
   await page.mouse.click(pos.x, pos.y);
   await expect.poll(() => highlight(page)).toBe("go");
 });
+
+test("clicking a node on the CANVAS (not just the navigator) highlights its source", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart TB\n  A[Top] --> B[Bottom]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + 40); // the top node
+  await expect.poll(() => highlight(page)).toBe("A[Top]");
+});
+
+test("a multi-selection highlights every selected element's source", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart TB\n  A[Top] --> B[Bottom]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#stage").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+a"); // select all
+  // Both node declarations are highlighted (order-independent).
+  await expect.poll(() => highlight(page)).toMatch(/A\[Top\]/);
+  await expect.poll(() => highlight(page)).toMatch(/B\[Bottom\]/);
+});

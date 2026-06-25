@@ -291,6 +291,9 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
 
 exports[`pipeline goldens > lays out timeline to a stable display list 1`] = `
 [
+  "polyline 62,88 62,116 dashed=true from=l0p0c0 to=l0p0c0",
+  "polyline 172,88 172,160 dashed=true from=l0p0c0 to=l0p0c0",
+  "polyline 282,88 282,116 dashed=true from=l0p0c0 to=l0p0c0",
   "box 16,16 202x26 r4",
   "label "Early" 117,28 center",
   "box 236,16 92x26 r4",

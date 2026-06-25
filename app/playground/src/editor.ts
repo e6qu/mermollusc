@@ -1,8 +1,17 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
 import { type Diagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
-import { Annotation, Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
+  Annotation,
+  Compartment,
+  EditorState,
+  type Extension,
+  StateEffect,
+  StateField,
+} from "@codemirror/state";
+import {
+  Decoration,
+  type DecorationSet,
   drawSelection,
   EditorView,
   highlightActiveLine,
@@ -27,6 +36,9 @@ export interface Editor {
   cursor(): number;
   select(from: number, to: number): void;
   selectedRange(): { readonly from: number; readonly to: number };
+  // Echo the canvas selection as background-highlighted source ranges (replaces any previous set).
+  setHighlights(ranges: readonly { from: number; to: number }[]): void;
+  highlightedRanges(): readonly { from: number; to: number }[];
   focus(): void;
   hasFocus(): boolean;
   // Re-measure after the container's size changes while hidden (e.g. expanding the collapsed source
@@ -156,11 +168,41 @@ const appTheme = EditorView.theme({
   ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--primary) 6%, transparent)" },
   ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
   ".cm-cursor": { borderLeftColor: "var(--primary)" },
+  // The canvas-selection echo: a tinted band on the source of whatever is selected on the canvas.
+  ".cm-sel-highlight": {
+    backgroundColor: "color-mix(in srgb, var(--primary) 24%, transparent)",
+    borderRadius: "2px",
+  },
 });
 
 // Marks a transaction as programmatic (a structural edit, an example load, a share-link), so the
 // change listener can tell it apart from the user typing and not re-fire the render-from-text path.
 const programmatic = Annotation.define<boolean>();
+
+// A set of background-highlighted ranges echoing the canvas selection into the source. A decoration
+// (not the text selection) so it stays visible while the editor is unfocused and can mark many ranges
+// at once (a multi-select / a group + its members), without moving the user's cursor.
+const setHighlightsEffect = StateEffect.define<readonly { from: number; to: number }[]>();
+const highlightMark = Decoration.mark({ class: "cm-sel-highlight" });
+const highlightField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    let next = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(setHighlightsEffect)) {
+        next = Decoration.set(
+          e.value
+            .filter((r) => r.from < r.to)
+            .sort((a, b) => a.from - b.from)
+            .map((r) => highlightMark.range(r.from, r.to)),
+          true,
+        );
+      }
+    }
+    return next;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
 
 declare global {
   interface Window {
@@ -196,6 +238,7 @@ export const createEditor = (
         keymap.of([...defaultKeymap, ...(textHistory ? historyKeymap : [])]),
         syntaxHighlighting(highlight),
         mermaidLanguage,
+        highlightField,
         lintGutter(),
         appTheme,
         // Name the editable surface for screen readers — without this the CodeMirror content is an
@@ -240,6 +283,18 @@ export const createEditor = (
     selectedRange: () => {
       const r = view.state.selection.main;
       return { from: r.from, to: r.to };
+    },
+    setHighlights: (ranges) => {
+      view.dispatch({ effects: setHighlightsEffect.of(ranges) });
+    },
+    highlightedRanges: () => {
+      const out: { from: number; to: number }[] = [];
+      const it = view.state.field(highlightField).iter();
+      while (it.value !== null) {
+        out.push({ from: it.from, to: it.to });
+        it.next();
+      }
+      return out;
     },
     focus: () => view.focus(),
     hasFocus: () => view.hasFocus,

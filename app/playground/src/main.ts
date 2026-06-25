@@ -177,6 +177,7 @@ if (
 // every handler that touches the source goes through this instead of a raw element. The definite-
 // assignment assertion reflects that ordering — handlers only fire after init has run.
 let editor!: Editor;
+let editorReady = false;
 const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
@@ -1319,28 +1320,29 @@ const highlightSpanOf = (hit: {
 // Echo a single-item canvas selection as a text-editor highlight (`editor.select` selects + scrolls but
 // doesn't steal focus). Guarded against fighting the typist (editor focused) and churning mid-gesture;
 // memoised so a re-render with an unchanged selection doesn't re-scroll the editor.
+// Echo the whole canvas selection into the source as background highlights — every selected node and
+// edge (a selected group selects its member nodes, so it lights up too), across all families. Uses a
+// decoration (not the text selection), so it's visible while the editor is unfocused, covers many
+// ranges at once, and never moves the user's cursor. Memoised so an unchanged selection is a no-op.
 let lastHighlightKey = "";
 const highlightSelection = (): void => {
-  // Compute the selection target *before* touching `editor` — this runs from `updateGroupButtons`,
-  // which fires during early init before the editor is mounted; at that point nothing is selected.
-  let hit: { readonly kind: "node" | "edge"; readonly id: string } | null = null;
-  if (selection.nodes.size === 1 && selection.edges.size === 0) {
-    const nid = [...selection.nodes][0];
-    if (nid !== undefined) hit = { kind: "node", id: nid };
-  } else if (selection.edges.size === 1 && selection.nodes.size === 0) {
-    const eid = [...selection.edges][0];
-    if (eid !== undefined) hit = { kind: "edge", id: eid };
+  if (!editorReady) return; // `updateGroupButtons` fires during init before the editor mounts
+  const spans: { from: number; to: number }[] = [];
+  for (const id of selection.nodes) {
+    const s = highlightSpanOf({ kind: "node", id });
+    if (s !== null) spans.push({ from: s.start, to: s.end });
   }
-  if (hit === null) {
-    lastHighlightKey = "";
-    return;
+  for (const id of selection.edges) {
+    const s = highlightSpanOf({ kind: "edge", id });
+    if (s !== null) spans.push({ from: s.start, to: s.end });
   }
-  if (editor.hasFocus() || isInteracting()) return; // don't fight the typist or churn mid-gesture
-  const span = highlightSpanOf(hit);
-  const key = span === null ? "" : `${span.start}:${span.end}`;
+  const key = spans
+    .map((s) => `${s.from}:${s.to}`)
+    .sort()
+    .join(",");
   if (key === lastHighlightKey) return;
   lastHighlightKey = key;
-  if (span !== null) editor.select(span.start, span.end);
+  editor.setHighlights(spans);
 };
 
 // Reflect the current selection in the workbench controls (enabled state + Lock/Unlock label).
@@ -4287,8 +4289,11 @@ window.__resetPositions = () => void resetPositions();
 window.__overrideCount = () => doc.overrides().size;
 // e2e hook: the text currently highlighted in the source editor (the canvas-selection echo).
 window.__editorHighlight = () => {
-  const r = editor.selectedRange();
-  return editor.value().slice(r.from, r.to);
+  const src = editor.value();
+  return editor
+    .highlightedRanges()
+    .map((r) => src.slice(r.from, r.to))
+    .join("|");
 };
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
@@ -4701,6 +4706,7 @@ editor =
         textHistory: false,
       })
     : createEditor(editorMount, initialSource, onTextChange);
+editorReady = true;
 
 // The keyboard diagram navigator (a focusable listbox over the scene's nodes/edges) lives in
 // `./navigator.ts`; it drives the canvas selection and the relabel/connect/nudge commands through this
