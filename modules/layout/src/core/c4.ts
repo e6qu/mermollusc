@@ -15,7 +15,7 @@ import { clampedWidth } from "./measure.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
-const GAP = 24;
+const GAP = 44;
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;

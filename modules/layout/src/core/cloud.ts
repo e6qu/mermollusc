@@ -1,6 +1,6 @@
 import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
-import { orthogonalRoute } from "./route.js";
+import { orthogonalRoute, routeChannelMid } from "./route.js";
 import type {
   CloudAst,
   CloudNodeKind,
@@ -25,7 +25,7 @@ const KIND_ICON: Record<CloudNodeKind, IconRef> = {
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
-const GAP = 24;
+const GAP = 44;
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
@@ -192,11 +192,12 @@ export const layoutCloud = (
     if (from === undefined || to === undefined) {
       return err({ kind: "layout", message: `cloud: link ${link.id} references an unknown node` });
     }
+    const route = orthogonalRoute(from, to);
     edges.push({
       id: sceneEdgeId(link.id),
       from: sceneNodeId(fromId),
       to: sceneNodeId(toId),
-      waypoints: orthogonalRoute(from, to),
+      waypoints: route,
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
@@ -204,7 +205,9 @@ export const layoutCloud = (
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: null,
+      // Anchor the label in the route's central channel (between the boxes), not the whole-route
+      // midpoint that can land on a node.
+      labelPos: link.label === null ? null : routeChannelMid(route),
     });
   }
 
