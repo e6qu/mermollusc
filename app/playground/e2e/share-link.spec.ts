@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExportMenu } from "./support/menu.js";
 import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -19,6 +20,7 @@ test("Share encodes the current source into the URL hash", async ({ page }) => {
   await setSource(page, edited);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  await openExportMenu(page);
   await page.locator("#share-link").click();
 
   const hash = await page.evaluate(() => location.hash);

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExportMenu } from "./support/menu.js";
 import { setSource, sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -14,6 +15,7 @@ test("Reset clears saved state and reloads the sample", async ({ page }) => {
   await expect.poll(() => sourceValue(page)).toContain("my work");
 
   page.once("dialog", (d) => void d.accept());
+  await openExportMenu(page);
   await page.locator("#reset-cache").click();
 
   // The page reloads to the clean URL; the persisted source is gone, so it comes back on the sample.
@@ -30,6 +32,7 @@ test("Reset cancelled keeps the current diagram", async ({ page }) => {
   await expect.poll(() => sourceValue(page)).toContain("keep me");
 
   page.once("dialog", (d) => void d.dismiss());
+  await openExportMenu(page);
   await page.locator("#reset-cache").click();
   await page.waitForTimeout(150);
   expect(await sourceValue(page)).toContain("keep me");

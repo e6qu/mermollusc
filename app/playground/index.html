@@ -310,6 +310,27 @@
       }
       .editor-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
       .editor-head .grow { flex: 1; }
+      .head-btn {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--ink-soft);
+        font-size: 15px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .head-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+      /* Collapsed source panel: hide the editor body + tools and shrink the column to a thin handle so
+         the canvas claims the freed space. The head stays as the always-visible expand affordance. */
+      .workbench[data-source-collapsed] { grid-template-columns: min-content minmax(0, 1fr); }
+      .workbench[data-source-collapsed] #editor,
+      .workbench[data-source-collapsed] .editor-tools,
+      .workbench[data-source-collapsed] .editor-head .kind-badge,
+      .workbench[data-source-collapsed] .editor-head .role-badge { display: none; }
+      .workbench[data-source-collapsed] .editor-head { border-bottom: none; }
       .kind-badge {
         font-family: var(--font-mono);
         font-size: 10.5px;
@@ -381,6 +402,33 @@
       }
       .arrange-menu[hidden] { display: none; }
       .arrange-menu button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+
+      /* Overflow menu: export/share/load/reset moved off the topbar so they don't hold permanent
+         real estate. A non-modal popover (the Arrange pattern), opened from the "Export ▾" trigger. */
+      .overflow { position: relative; display: inline-flex; }
+      .more-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 168px;
+        max-width: min(280px, calc(100vw - 24px));
+        padding: 6px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      .more-menu[hidden] { display: none; }
+      .more-menu > button,
+      .more-menu > .filebtn {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+      }
 
       /* Visually hidden but exposed to assistive tech + focusable (the keyboard diagram navigator). */
       .sr-only {
@@ -851,11 +899,16 @@
 
       @media (max-width: 760px) {
         .app { grid-template-rows: auto minmax(0, 1fr) auto; }
-        /* The tool palette + context bar are pointer-precision affordances; hide on phone-width where
-           the stage is small and the source editor + keyboard nav are the primary surfaces. */
-        .tool-palette,
-        .context-bar { display: none; }
+        /* The tool palette + context bar stay reachable on touch, sized to a 44px target (WCAG 2.5.5).
+           The palette sits top-left of the stage (clear of the top-right zoom cluster and the
+           bottom corners' HUD/minimap); the context bar is JS-positioned near the selection. */
+        .tool-palette { top: 48px; left: 12px; gap: 4px; }
+        .tool-palette button { width: 44px; height: 44px; }
+        .tool-palette button svg { width: 20px; height: 20px; }
+        .context-bar { gap: 4px; }
+        .context-bar button { padding: 9px 12px; font-size: 13px; }
         .stage-zoom { top: 12px; right: 12px; }
+        .stage-zoom button { min-height: 40px; }
         .topbar {
           grid-template-columns: minmax(0, 1fr);
           align-items: flex-start;
@@ -878,6 +931,9 @@
           flex-wrap: wrap;
           overflow: hidden;
         }
+        /* The overflow group hosts an absolutely-positioned popover; it must not clip it. */
+        .toolbar-group.overflow { overflow: visible; }
+        .more-menu { right: auto; left: 0; }
         .toolbar-group > button,
         .toolbar-group > .filebtn,
         .toolbar-group > .select-field {
@@ -895,6 +951,11 @@
           gap: 10px;
           padding: 10px;
           overflow: auto;
+        }
+        /* Collapsed on phone-width: the source becomes a thin top bar so the stage claims the column. */
+        .workbench[data-source-collapsed] {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto minmax(320px, 1fr);
         }
         .editor,
         .stage-col {
@@ -979,26 +1040,30 @@
               title="Browse icon packs and insert an icon &quot;pack/name&quot; override at the cursor">Icons</button>
             <button id="help-toggle" type="button" aria-expanded="false"
               title="Keyboard &amp; mouse shortcuts (?)">?</button>
-            <button id="reset-cache" type="button"
-              title="Clear the saved diagram, layout, and preferences and reload a fresh demo">Reset</button>
           </div>
-          <div class="toolbar-group">
-            <button id="copy-png" type="button"
-              title="Copy the diagram to the clipboard as an image (paste into docs, chat, issues)">Copy</button>
-            <button id="export-png" type="button"
-              title="Download the current diagram as a PNG (at the screen's pixel density)">PNG</button>
-            <button id="export-pdf" type="button"
-              title="Download the current diagram as a one-page PDF">PDF</button>
-            <button id="export-svg" type="button"
-              title="Download the current diagram as a vector SVG">SVG</button>
-            <button id="export-dot" type="button"
-              title="Download the current diagram as a Graphviz DOT file">DOT</button>
-            <button id="share-link" type="button"
-              title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
-            <label class="filebtn"
-              title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
-              <input id="load-pack" type="file" accept="application/json" />
-            </label>
+          <div class="toolbar-group overflow">
+            <button id="more-toggle" type="button" aria-expanded="false" aria-haspopup="menu"
+              aria-controls="more-menu" title="Export, share, and more actions">Export ▾</button>
+            <div id="more-menu" class="more-menu" role="menu" aria-label="Export and more actions" hidden>
+              <button id="copy-png" type="button" role="menuitem"
+                title="Copy the diagram to the clipboard as an image (paste into docs, chat, issues)">Copy</button>
+              <button id="export-png" type="button" role="menuitem"
+                title="Download the current diagram as a PNG (at the screen's pixel density)">PNG</button>
+              <button id="export-pdf" type="button" role="menuitem"
+                title="Download the current diagram as a one-page PDF">PDF</button>
+              <button id="export-svg" type="button" role="menuitem"
+                title="Download the current diagram as a vector SVG">SVG</button>
+              <button id="export-dot" type="button" role="menuitem"
+                title="Download the current diagram as a Graphviz DOT file">DOT</button>
+              <button id="share-link" type="button" role="menuitem"
+                title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
+              <label class="filebtn" role="menuitem"
+                title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
+                <input id="load-pack" type="file" accept="application/json" />
+              </label>
+              <button id="reset-cache" type="button" role="menuitem"
+                title="Clear the saved diagram, layout, and preferences and reload a fresh demo">Reset</button>
+            </div>
           </div>
         </div>
       </header>
@@ -1011,6 +1076,8 @@
             <span class="grow"></span>
             <span id="role-badge" class="role-badge" hidden></span>
             <span id="kind" class="kind-badge">flowchart</span>
+            <button id="source-collapse" class="head-btn" type="button" aria-expanded="true"
+              aria-controls="editor" title="Collapse the source panel">‹</button>
           </div>
           <div id="editor"></div>
           <div class="editor-tools">

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExportMenu } from "./support/menu.js";
 import { setSource, sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -288,6 +289,7 @@ test("canvas actions announce their outcomes in the diagram live region", async 
   await page.locator("#lock").click();
   await expect(live).toHaveText("locked group");
 
+  await openExportMenu(page);
   await page.locator("#share-link").click();
   await expect(live).toHaveText(/shareable link/);
 });

@@ -708,3 +708,14 @@
   reach an idempotent serialisation) plus deterministic pie-empty / cluster-stable regression tests.
   Agent audit confirmed export/share-link/PDF/SVG, collab RBAC+transport+sync, icons, and @m/std are
   otherwise clean.
+- UI shell restructure for screen real estate + mobile (specialized UI/UX design pass). (1) The export
+  cluster (Copy/PNG/PDF/SVG/DOT/Share/Load icons) + Reset moved off the topbar into an "Export ▾"
+  overflow menu — a non-modal popover (the Arrange pattern) fixed-positioned under the trigger so it
+  escapes the topbar's clipping; ids/handlers/gating unchanged, so capability state still drives the
+  items. (2) The source editor is collapsible/expandable (`#source-collapse`), persisted, with the head
+  as the always-visible handle; a parse error force-reveals it (without overwriting the preference) so
+  the lint/click-to-locate stay reachable; `editor.refresh()` re-measures CodeMirror on expand. (3) The
+  tool palette + selection context bar are no longer hidden under 760px — they're reachable and 44px
+  touch-sized, so every canvas action works on a phone. Together these reclaim canvas surface on every
+  viewport. +e2e (collapse/persist, parse-error reveal, overflow menu open/run/Escape/outside-click,
+  mobile palette touch target). The ~11 export/share/reset specs open the menu first via a shared helper.

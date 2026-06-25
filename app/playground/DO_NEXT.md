@@ -46,9 +46,10 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   perf trace first — not structural evidence.
 
 ## Accessibility / UX
-- **Mobile / touch.** The palette + context bar are hidden under 760px deliberately. A real touch variant
-  (larger targets, pinch-zoom vs. pan, reflow) needs real-device testing — its own focused pass, not a
-  CSS un-hide.
+- **Mobile / touch (partly done).** The palette + context bar are now reachable and 44px touch-sized at
+  phone width, the export cluster is behind an "Export ▾" menu, and the source panel collapses to free
+  the canvas. Still wanted, ideally with real-device testing: gesture handling (pinch-zoom vs. pan), a
+  bottom-sheet for the editing verbs on very small screens, and a verification pass on physical devices.
 - **Surface "why-disabled" reasons.** Connect/Add/Relax disabled-reasons live on hover titles + the
   capability record; also surface them in the always-visible task status for touch/keyboard.
 - **Keyboard resize.** The task hint promises corner handles a keyboard user can't operate — add a

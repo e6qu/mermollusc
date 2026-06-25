@@ -116,8 +116,10 @@ import {
   hashValue,
   loadOverlay,
   loadSource,
+  loadSourceCollapsed,
   saveOverlay,
   saveSource,
+  saveSourceCollapsed,
 } from "./persistence.js";
 import { createThemeController } from "./theme.js";
 import { applyPlatformModifiers } from "./platform.js";
@@ -205,6 +207,10 @@ const ungroupBtn = document.querySelector<HTMLButtonElement>("#ungroup");
 const lockBtn = document.querySelector<HTMLButtonElement>("#lock");
 const arrangeBtn = document.querySelector<HTMLButtonElement>("#arrange");
 const arrangeMenu = document.querySelector<HTMLDivElement>("#arrange-menu");
+const workbench = document.querySelector<HTMLElement>(".workbench");
+const sourceCollapseBtn = document.querySelector<HTMLButtonElement>("#source-collapse");
+const moreToggle = document.querySelector<HTMLButtonElement>("#more-toggle");
+const moreMenu = document.querySelector<HTMLDivElement>("#more-menu");
 // Distribute needs ≥3 units; kept as refs so the popover can disable them at <3 (the align buttons
 // are wired by id without refs).
 const distHBtn = document.querySelector<HTMLButtonElement>("#dist-h");
@@ -247,6 +253,10 @@ if (
   lockBtn === null ||
   arrangeBtn === null ||
   arrangeMenu === null ||
+  workbench === null ||
+  sourceCollapseBtn === null ||
+  moreToggle === null ||
+  moreMenu === null ||
   zoomInBtn === null ||
   zoomOutBtn === null ||
   zoomResetBtn === null ||
@@ -1615,6 +1625,83 @@ const announce = (message: string): void => {
   diagramLive.textContent = message;
 };
 
+// Collapse / expand the source editor so the canvas can use the freed space. The head stays as the
+// always-visible expand handle. `persist` is false for the auto-expand on a parse error (so a forced
+// reveal doesn't overwrite the user's saved preference).
+const setSourceCollapsed = (collapsed: boolean, persist = true): void => {
+  if (collapsed && editor.hasFocus()) sourceCollapseBtn.focus(); // don't trap focus in the hidden body
+  if (collapsed) workbench.setAttribute("data-source-collapsed", "");
+  else workbench.removeAttribute("data-source-collapsed");
+  sourceCollapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  sourceCollapseBtn.textContent = collapsed ? "›" : "‹";
+  sourceCollapseBtn.title = collapsed ? "Show the source panel" : "Collapse the source panel";
+  if (persist) saveSourceCollapsed(collapsed);
+  if (!collapsed) editor.refresh(); // CodeMirror renders zero-height until it re-measures
+  // The stage column resized — repaint against the new geometry and re-anchor the context bar.
+  paintScene();
+  positionContextBar();
+};
+sourceCollapseBtn.addEventListener("click", () => {
+  const collapsed = workbench.hasAttribute("data-source-collapsed");
+  setSourceCollapsed(!collapsed);
+  announce(collapsed ? "source panel expanded" : "source panel collapsed");
+});
+
+// The overflow ("Export ▾") menu holds the export/share/load/reset actions moved off the topbar. A
+// non-modal popover (the Arrange pattern) so it doesn't inert the topbar it lives in; the moved
+// buttons keep their ids, so their existing handlers and capability gating are unchanged.
+const moreItems = (): HTMLElement[] =>
+  [...moreMenu.querySelectorAll<HTMLElement>('[role="menuitem"]')].filter(
+    (el) => !(el instanceof HTMLButtonElement && el.disabled),
+  );
+const closeMore = (): void => {
+  if (moreMenu.hidden) return;
+  moreMenu.hidden = true;
+  moreMenu.style.cssText = ""; // drop the fixed placement so the next open recomputes it
+  moreToggle.setAttribute("aria-expanded", "false");
+};
+const openMore = (): void => {
+  moreMenu.hidden = false;
+  // Position with fixed coords anchored under the trigger so the popover escapes the topbar's clipping
+  // and stacking (an absolutely-positioned descendant was painted behind the topbar buttons).
+  const r = moreToggle.getBoundingClientRect();
+  const mw = moreMenu.offsetWidth;
+  moreMenu.style.position = "fixed";
+  moreMenu.style.top = `${r.bottom + 6}px`;
+  moreMenu.style.left = `${Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8))}px`;
+  moreMenu.style.right = "auto";
+  moreToggle.setAttribute("aria-expanded", "true");
+  moreItems()[0]?.focus();
+};
+moreToggle.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  if (moreMenu.hidden) openMore();
+  else closeMore();
+});
+moreMenu.addEventListener("keydown", (ev) => {
+  const items = moreItems();
+  const i = items.findIndex((el) => el === document.activeElement);
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    closeMore();
+    moreToggle.focus();
+  } else if (ev.key === "ArrowDown" && items.length > 0) {
+    ev.preventDefault();
+    items[(i + 1) % items.length]?.focus();
+  } else if (ev.key === "ArrowUp" && items.length > 0) {
+    ev.preventDefault();
+    items[(i - 1 + items.length) % items.length]?.focus();
+  }
+});
+// Activating any item dismisses the menu (export runs, Reset reloads, Load-icons opens a file dialog).
+moreMenu.addEventListener("click", () => closeMore());
+document.addEventListener("pointerdown", (ev) => {
+  if (moreMenu.hidden) return;
+  const t = ev.target;
+  if (t instanceof Node && (moreMenu.contains(t) || t === moreToggle)) return;
+  closeMore();
+});
+
 // Surface the pipeline's health to the status bar — the canvas alone can't tell the user that the
 // current text failed to parse (it would just keep showing the last good render). On error we also
 // mark the stage stale so the dimmed sheet signals "this no longer matches your text". The shell
@@ -1820,6 +1907,9 @@ const renderFromText = async (text: string): Promise<void> => {
   // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
   const parsed = parseDiagramWithSource(text);
   if (!isOk(parsed)) {
+    // The source is the only place to fix a parse error, so never leave it hidden — reveal it (without
+    // overwriting the saved preference) so the lint marker + click-to-locate are reachable.
+    if (workbench.hasAttribute("data-source-collapsed")) setSourceCollapsed(false, false);
     const detail = parsed.error.errors.join("; ");
     console.error("parse failed:", detail);
     const pos = parsed.error.positions[0];
@@ -4303,6 +4393,10 @@ const navController = createNavigator({
 });
 // Now that the navigator exists, let the (earlier-defined) group handlers refresh its group list.
 refreshNavigatorGroups = () => navController.rebuild();
+
+// Restore the saved source-panel collapse preference before the first render so the canvas is sized
+// right from the start (no flash of the expanded layout).
+setSourceCollapsed(loadSourceCollapsed(), false);
 
 // Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
 // itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
