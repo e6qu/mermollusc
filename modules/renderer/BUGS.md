@@ -2,6 +2,13 @@
 
 _None known._
 
+## Resolved
+
+- ~~**Dark Gantt `sectionAlt` band was invisible.**~~ Fixed (contrast audit) — `bandFill` returned the
+  dark background colour (`#0f172a`) for `sectionAlt`, so alternating zebra stripes and the section
+  banding conveyed nothing in dark mode. The three band fills are now mutually distinct and each differs
+  from the background (still subtler than a node fill so the bars stay dominant). Guarded by a unit test.
+
 Checked while exporting routed edge-label anchor geometry for host overlays.
 
 Checked while adding the optional C4 element description.
