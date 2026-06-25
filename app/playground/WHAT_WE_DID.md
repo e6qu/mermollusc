@@ -759,3 +759,6 @@
     keyboard-operable button (role=button/tabindex + Enter/Space → jump to the error); the inline label
     editor is clamped into the viewport so an edge-of-canvas / phone-width node doesn't spill off-screen.
   +e2e (status-line keyboard jump, context-bar single tab stop).
+- Area selector ("cowboy selector"): a plain drag on empty canvas with the Select tool now rubber-bands
+  a marquee selection (was Shift-drag only); pan stays on the Hand tool / space-drag. Powers multi-select
+  → the multi-range source highlight.

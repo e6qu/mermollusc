@@ -32,3 +32,41 @@ test("shift-drag box-selects the enclosed nodes (enabling Group)", async ({ page
 
   expect(errors).toEqual([]);
 });
+
+test("plain drag on empty canvas (no Shift) area-selects, replacing the selection", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) return;
+
+  await expect(page.locator("#group")).toBeDisabled();
+
+  // No modifier: a drag from empty canvas over the top two nodes rubber-bands a selection.
+  await page.mouse.move(box.x + 30, box.y + 24);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + 185, { steps: 10 });
+  await page.mouse.up();
+
+  await expect(page.locator("#group")).toBeEnabled(); // two nodes selected
+  expect(errors).toEqual([]);
+});
+
+test("the hand tool still pans on an empty-canvas drag (marquee is select-tool only)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await page.locator("#tool-hand").click();
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) return;
+  // Dragging with the hand tool must not select anything (it pans).
+  await page.mouse.move(box.x + 30, box.y + 24);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 200, box.y + 185, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator("#group")).toBeDisabled(); // nothing got selected
+});

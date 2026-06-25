@@ -2658,14 +2658,24 @@ canvas.addEventListener("pointerdown", (ev) => {
     }
     canvas.setPointerCapture(ev.pointerId);
   } else if (hit === null) {
-    pan = {
-      startX: screenCoord(ev.clientX),
-      startY: screenCoord(ev.clientY),
-      scrollLeft: stageWrap.scrollLeft,
-      scrollTop: stageWrap.scrollTop,
-    };
-    canvas.setPointerCapture(ev.pointerId);
-    canvas.style.cursor = "grabbing";
+    // Select tool: a drag on empty canvas rubber-bands a selection box (the area selector) — clearing
+    // first so it replaces (a ⇧-drag adds instead, handled above). Pan stays on the hand tool and
+    // space-drag, so both gestures remain reachable.
+    if (effectiveTool() === "select" && !viewerMode) {
+      selection = emptySelection;
+      selectionOrder = [];
+      marquee = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
+      canvas.setPointerCapture(ev.pointerId);
+    } else {
+      pan = {
+        startX: screenCoord(ev.clientX),
+        startY: screenCoord(ev.clientY),
+        scrollLeft: stageWrap.scrollLeft,
+        scrollTop: stageWrap.scrollTop,
+      };
+      canvas.setPointerCapture(ev.pointerId);
+      canvas.style.cursor = "grabbing";
+    }
   }
   paintScene();
   updateGroupButtons();
