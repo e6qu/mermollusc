@@ -9,6 +9,8 @@ import {
   connectMindmap,
   connectGitMerge,
   moveTimelineEvent,
+  deleteTimelineEvent,
+  deleteTimelinePeriod,
   deleteMindmapNode,
   connectRequirement,
   connectUndirected,
@@ -304,6 +306,9 @@ let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
 let pieSource: PieSource | null = null;
 let ganttSource: GanttSource | null = null;
+// A DOT import parses into a flowchart AST but has no editable source spans (no `parseDotWithSource`), so
+// canvas edits can't patch it. Track it to gate those affordances off rather than let them fail post-click.
+let isDotImport = false;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
 // On-screen zoom of the diagram sheet. 1 = the canvas is drawn at scene scale (the identity the
@@ -1076,7 +1081,7 @@ const syncToolPalette = (): void => {
     select: true,
     hand: true,
     connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
-    place: !viewerMode && ast !== null && familyAffordances(ast.kind).addNode,
+    place: !viewerMode && !isDotImport && ast !== null && familyAffordances(ast.kind).addNode,
   };
   if (!available[activeTool]) {
     activeTool = "select";
@@ -1143,10 +1148,12 @@ const computeCapabilities = (): CapabilityState => {
       isEdgeOnly: false,
     };
   }
-  const kindLabel = ast === null ? "this diagram" : ast.kind;
-  const connectable = ast !== null && familyAffordances(ast.kind).connect;
-  const iconCapable = ast !== null && familyAffordances(ast.kind).iconOverride;
-  const isFlowchart = ast !== null && ast.kind === "flowchart";
+  const kindLabel = isDotImport ? "DOT import" : ast === null ? "this diagram" : ast.kind;
+  // A DOT import has no editable source spans, so every text-patching action is off for it.
+  const editable = !isDotImport;
+  const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
+  const iconCapable = editable && ast !== null && familyAffordances(ast.kind).iconOverride;
+  const isFlowchart = editable && ast !== null && ast.kind === "flowchart";
   const units = new Set<string>();
   for (const id of selection.nodes) {
     const top = topGroupOfNode(doc.groups(), id);
@@ -1173,8 +1180,9 @@ const computeCapabilities = (): CapabilityState => {
     canArrange: movable >= 2,
     canDistribute: movable >= 3,
     canShape: isFlowchart && selectionOrder.length >= 1,
-    canDuplicate: ast !== null && familyAffordances(ast.kind).addNode && selectionOrder.length >= 1,
-    canRelabel: totalSelected === 1,
+    canDuplicate:
+      editable && ast !== null && familyAffordances(ast.kind).addNode && selectionOrder.length >= 1,
+    canRelabel: editable && totalSelected === 1,
     canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
     isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
   };
@@ -1704,13 +1712,15 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
   const isFlowchart = currentRenderValid && kind === "flowchart";
   relaxBtn.disabled = !isFlowchart;
   relaxBtn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
-  const canAdd = currentRenderValid && familyAffordances(kind).addNode;
+  const canAdd = currentRenderValid && familyAffordances(kind).addNode && !isDotImport;
   addBtn.disabled = !canAdd;
   addBtn.title = canAdd
     ? ""
-    : currentRenderValid
-      ? `adding nodes isn't available for ${kind}`
-      : "fix source first";
+    : isDotImport
+      ? "DOT import is read-only — edit the source text"
+      : currentRenderValid
+        ? `adding nodes isn't available for ${kind}`
+        : "fix source first";
 };
 
 const reconcileSelection = (rendered: Scene): void => {
@@ -1824,6 +1834,9 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   const result = parsed.value;
   const diagram = result.ast;
+  // A DOT import parses to a flowchart AST but has no editable spans — set this before applyKind, which
+  // gates the Add button on it.
+  isDotImport = result.family === "dot";
   lastDirection = "direction" in diagram ? diagram.direction : null;
   const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded());
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
@@ -2143,7 +2156,7 @@ const setTool = (t: Tool): void => {
     );
     return;
   }
-  if (t === "place" && !(ast !== null && familyAffordances(ast.kind).addNode)) {
+  if (t === "place" && !(!isDotImport && ast !== null && familyAffordances(ast.kind).addNode)) {
     setStatusAndAnnounce(
       "ok",
       `placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`,
@@ -3308,10 +3321,23 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       }
       return deleteNode(text, flowId);
     }
-    // Families whose nodes are single declaration lines: the line-based removal is correct.
+    // gitGraph commits are single declaration lines; branch lanes / synthetic ids aren't removable here
+    // (deleteSelection reports that honestly).
     case "gitGraph":
-    case "timeline":
       return deleteNode(text, brand<string, "NodeId">(id));
+    // A timeline period/event has a synthetic id, so dispatch by the source spans: an event drops its
+    // `: <event>` segment, a period drops its line + its `:`-continuation lines (and its events).
+    case "timeline": {
+      if (timelineSource === null) return text;
+      const eventId = brand<string, "TimelineEventId">(id);
+      if (timelineSource.events.has(eventId)) {
+        return deleteTimelineEvent(text, timelineSource, eventId);
+      }
+      const periodId = brand<string, "TimelinePeriodId">(id);
+      return timelineSource.periods.has(periodId)
+        ? deleteTimelinePeriod(text, timelineSource, periodId)
+        : text;
+    }
     // A mindmap node has no in-text id (synthetic, like a pie slice), so line-based `deleteNode` can't
     // find it; remove the node and its whole subtree by the source-map span + the AST levels.
     case "mindmap":
@@ -3505,7 +3531,7 @@ window.addEventListener("keydown", (ev) => {
     // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
     // can add a node, else we'd swallow the keystroke and silently do nothing.
     if (viewerMode || selectionOrder.length === 0) return;
-    if (ast === null || !familyAffordances(ast.kind).addNode) return;
+    if (ast === null || isDotImport || !familyAffordances(ast.kind).addNode) return;
     ev.preventDefault();
     void duplicateSelection();
   } else if (key === "c") {
@@ -3865,6 +3891,9 @@ exampleEl.addEventListener("change", () => {
 sketchBtn.addEventListener("click", () => {
   themeCtl.toggleSketch();
   sketchBtn.textContent = themeCtl.isSketch() ? "Crisp" : "Sketch";
+  // Line-art glyphs bake the active foreground (the glyph-cache key is theme-agnostic), so drop the cache
+  // here too — otherwise crisp-baked glyphs persist into sketch mode (matches the theme toggle above).
+  iconImages.clear();
   void renderFromText(editor.value());
   announce(themeCtl.isSketch() ? "sketch mode" : "crisp mode");
 });
@@ -4201,7 +4230,7 @@ const navController = createNavigator({
   getScene: () => scene,
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
-  canConnect: (kind) => familyAffordances(kind).connect,
+  canConnect: (kind) => familyAffordances(kind).connect && !isDotImport,
   describeConnect,
   isViewerMode: () => viewerMode,
   editor,

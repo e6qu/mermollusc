@@ -31,6 +31,8 @@ export {
   connectMindmap,
   connectGitMerge,
   moveTimelineEvent,
+  deleteTimelineEvent,
+  deleteTimelinePeriod,
   deleteMindmapNode,
   connectRequirement,
   deleteNode,

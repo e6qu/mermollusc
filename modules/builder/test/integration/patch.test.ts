@@ -25,6 +25,8 @@ import {
   connectMindmap,
   connectGitMerge,
   moveTimelineEvent,
+  deleteTimelineEvent,
+  deleteTimelinePeriod,
   deleteMindmapNode,
   connectRequirement,
   connectUndirected,
@@ -91,6 +93,17 @@ describe("relabelNode", () => {
   it("fails loudly for an unknown node", () => {
     const text = "flowchart TD\n  A --> B\n";
     expect(relabelNode(text, sourceOf(text), nid("Z"), "x").ok).toBe(false);
+  });
+
+  it("rejects empty and bracket labels so a relabel/reshape can't write `A[]` or `A([)` (fuzz-found)", () => {
+    const text = "flowchart TD\n  A[Start] --> B(Mid)\n";
+    const src = sourceOf(text);
+    expect(relabelNode(text, src, nid("A"), "").ok).toBe(false); // empty → would be `A[]`
+    expect(relabelNode(text, src, nid("A"), "   ").ok).toBe(false); // whitespace-only
+    expect(relabelNode(text, src, nid("B"), "[").ok).toBe(false); // opener → would be `B([)`
+    expect(relabelNode(text, src, nid("A"), "x]").ok).toBe(false); // closer
+    expect(reshapeNode(text, src, nid("A"), "", "round").ok).toBe(false); // empty reshape
+    expect(reshapeNode(text, src, nid("A"), "a(b", "round").ok).toBe(false); // opener reshape
   });
 
   it("reshapeNode rewrites a node's shape brackets across every shape, keeping the label", () => {
@@ -603,6 +616,81 @@ describe("relabelNode", () => {
     expect(
       moveTimelineEvent(t, source, ast, brand<string, "TimelineEventId">("zz"), period.id),
     ).toBe(t);
+  });
+
+  it("timeline delete: an event drops its `: <event>` segment; a period drops its line + events", () => {
+    const text = "timeline\n  2001 : Alpha : Beta\n  2002 : Gamma\n";
+    const parsed = parseTimelineWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const { ast, source } = parsed.value;
+    const beta = ast.periods.flatMap((p) => p.events).find((e) => e.text === "Beta");
+    const p2002 = ast.periods.find((p) => p.label === "2002");
+    if (beta === undefined || p2002 === undefined) return;
+    expect(deleteTimelineEvent(text, source, beta.id)).toBe(
+      "timeline\n  2001 : Alpha\n  2002 : Gamma\n",
+    );
+    expect(deleteTimelinePeriod(text, source, p2002.id)).toBe("timeline\n  2001 : Alpha : Beta\n");
+    // A period with `:`-continuation lines takes them (and their events) with it.
+    const cont = "timeline\n  2001 : A\n    : B\n  2002 : C\n";
+    const cp = parseTimelineWithSource(cont);
+    if (isOk(cp)) {
+      const first = cp.value.ast.periods.find((p) => p.label === "2001");
+      if (first !== undefined) {
+        expect(deleteTimelinePeriod(cont, cp.value.source, first.id)).toBe("timeline\n  2002 : C\n");
+      }
+    }
+  });
+
+  it("moveTimelineEvent re-parents to an earlier period too (reverse edit order)", () => {
+    const text = "timeline\n  2001 : Alpha\n  2002 : Beta : Gamma\n";
+    const parsed = parseTimelineWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const { ast, source } = parsed.value;
+    const gamma = ast.periods.flatMap((p) => p.events).find((e) => e.text === "Gamma");
+    const p2001 = ast.periods.find((p) => p.label === "2001");
+    if (gamma === undefined || p2001 === undefined) return;
+    expect(moveTimelineEvent(text, source, ast, gamma.id, p2001.id)).toBe(
+      "timeline\n  2001 : Alpha : Gamma\n  2002 : Beta\n",
+    );
+  });
+
+  it("relabelNode wraps a bare node but still rejects an empty label", () => {
+    const text = "flowchart TD\n  A --> B\n";
+    const src = sourceOf(text);
+    const ok = relabelNode(text, src, nid("A"), "Renamed");
+    expect(isOk(ok)).toBe(true);
+    if (isOk(ok)) expect(ok.value).toContain("A[Renamed]");
+    expect(relabelNode(text, src, nid("A"), "").ok).toBe(false); // bare + empty → still rejected
+  });
+
+  it("timeline edits fail closed on a malformed span (the parser never emits one)", () => {
+    // An event span not preceded by `:` — `eventSegmentStart`/`moveTimelineEvent` must bail, not corrupt.
+    const text = "Alpha Beta";
+    const ev = brand<string, "TimelineEventId">("e0");
+    const pd = brand<string, "TimelinePeriodId">("p0");
+    const source = {
+      periods: new Map([[pd, { start: 0, end: 5 }]]),
+      events: new Map([[ev, { start: 6, end: 10 }]]),
+    };
+    expect(deleteTimelineEvent(text, source, ev)).toBe(text);
+    const ast = {
+      kind: "timeline" as const,
+      title: null,
+      periods: [{ id: pd, label: "Alpha", section: null, events: [] }],
+    };
+    expect(moveTimelineEvent(text, source, ast, ev, pd)).toBe(text);
+  });
+
+  it("timeline delete is a no-op for an unknown id (guard branch)", () => {
+    const text = "timeline\n  2001 : Alpha\n";
+    const parsed = parseTimelineWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const { source } = parsed.value;
+    expect(deleteTimelineEvent(text, source, brand<string, "TimelineEventId">("zz"))).toBe(text);
+    expect(deleteTimelinePeriod(text, source, brand<string, "TimelinePeriodId">("zz"))).toBe(text);
   });
 
   it("deleteEdge removes a network/cloud edge carrying a `: label`", () => {

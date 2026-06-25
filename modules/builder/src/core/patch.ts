@@ -53,7 +53,10 @@ const ARROW: Record<EdgeKind, string> = {
 export type LabelContext = "flowchartBracket" | "pipe" | "quoted" | "plain";
 
 const FORBIDDEN: Record<LabelContext, readonly string[]> = {
-  flowchartBracket: ["\n", "]", ")", "}"],
+  // Both bracket *openers* and *closers* are forbidden: a closer ends the shape early, and an opener
+  // (`A(Mid)` relabelled to `[`) is also taken as a shape token and corrupts the line. This grammar
+  // has no quoting for flowchart labels, so brackets simply can't appear in one.
+  flowchartBracket: ["\n", "[", "]", "(", ")", "{", "}"],
   pipe: ["\n", "|"],
   quoted: ["\n", '"'],
   plain: ["\n"],
@@ -76,13 +79,6 @@ export const validateLabel = (label: string, context: LabelContext): Result<stri
     ? ok(label)
     : err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
 };
-
-// The closing delimiter of a node shape's wrapper (`]` / `)` / `}`), used to reject a relabel/reshape
-// whose text would terminate the bracket early.
-const shapeCloser = (shape: NodeShape): string => NODE_WRAP[shape][1].slice(-1);
-
-const forbiddenForNode = (label: string, closer: string): string | null =>
-  forbiddenChar(label, ["\n", closer]);
 
 const withTrailingNewline = (text: string): string => (text.endsWith("\n") ? text : `${text}\n`);
 
@@ -263,6 +259,47 @@ export const moveTimelineEvent = (
   let out = text;
   for (const e of edits) out = out.slice(0, e.start) + e.replace + out.slice(e.end);
   return out;
+};
+
+// The start offset of an event's ` : <event>` segment (the separating colon plus the whitespace around
+// it), so removing [start, eventEnd) leaves the line clean. null if the colon isn't where expected.
+const eventSegmentStart = (text: string, eventStart: number): number | null => {
+  let s = eventStart;
+  while (s > 0 && /[ \t]/.test(text[s - 1] ?? "")) s--;
+  if (text[s - 1] !== ":") return null;
+  s -= 1;
+  while (s > 0 && /[ \t]/.test(text[s - 1] ?? "")) s--;
+  return s;
+};
+
+// Delete a timeline event by splicing its ` : <event>` segment out of its line — leaving the period
+// (and any sibling events) intact. A no-op if the event has no span.
+export const deleteTimelineEvent = (
+  text: string,
+  source: TimelineSource,
+  eventId: TimelineEventId,
+): string => {
+  const span = source.events.get(eventId);
+  if (span === undefined) return text;
+  const start = eventSegmentStart(text, span.start);
+  return start === null ? text : text.slice(0, start) + text.slice(span.end);
+};
+
+// Delete a timeline period: remove its declaration line plus any following `:`-continuation lines (its
+// events live on those), so the whole time point and its events go together.
+export const deleteTimelinePeriod = (
+  text: string,
+  source: TimelineSource,
+  periodId: TimelinePeriodId,
+): string => {
+  const span = source.periods.get(periodId);
+  if (span === undefined) return text;
+  const lines = text.split("\n");
+  const start = text.slice(0, span.start).split("\n").length - 1;
+  let end = start;
+  while (end + 1 < lines.length && /^\s*:/.test(lines[end + 1] ?? "")) end++;
+  lines.splice(start, end - start + 1);
+  return lines.join("\n");
 };
 
 // Delete a mindmap node and its whole subtree (the contiguous run of deeper nodes after it in pre-order)
@@ -731,6 +768,9 @@ export const relabelNode = (
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
+  // An empty label would write `A[]`, which the grammar rejects — clearing a label must fail loudly, not
+  // silently break the diagram (delete the node to remove it instead).
+  if (label.trim().length === 0) return err({ kind: "patch", message: "label can't be empty" });
   // The existing wrapper could be any flowchart shape (the span doesn't record which), so reject every
   // bracket closer — any one would terminate some shape's bracket early and corrupt the source.
   const bad = forbiddenChar(label, FORBIDDEN.flowchartBracket);
@@ -772,9 +812,10 @@ export const reshapeNode = (
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
-  // Reject a label that contains the *target* shape's own closer (or a newline), which would terminate
-  // its bracket early and write un-parseable source.
-  const bad = forbiddenForNode(label, shapeCloser(shape));
+  if (label.trim().length === 0) return err({ kind: "patch", message: "label can't be empty" });
+  // The label is re-wrapped in the target shape's brackets, so reject any bracket (opener or closer) or
+  // newline — any of them would terminate the wrapper early and write un-parseable source.
+  const bad = forbiddenChar(label, FORBIDDEN.flowchartBracket);
   if (bad !== null)
     return err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
   return ok(patchSpan(text, spans.decl, `${id}${wrapShape(shape, label)}`));
