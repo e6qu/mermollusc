@@ -78,4 +78,26 @@ describe("layoutMindmap", () => {
     expect(empty.value.nodes).toHaveLength(0);
     expect(empty.value.extent.size.width).toBeGreaterThan(0);
   });
+
+  it("fails loudly (not an Infinity-extent crash) when every node has a parent — no root", () => {
+    // A 2-cycle / orphan set: nodes exist but none is a root. Previously the empty `pos` left the
+    // extent at ±Infinity and `length()` threw a RangeError; now it returns a clean layout error.
+    const rootless: MindmapAst = {
+      kind: "mindmap",
+      nodes: [mk("a", "b", 1), mk("b", "a", 1)],
+    };
+    const out = layoutMindmap(rootless, heuristicMeasure);
+    expect(out.ok).toBe(false);
+  });
+
+  it("terminates (no stack overflow) on a cycle reachable from a real root", () => {
+    // root → x → y → x …  The depth cap breaks the recursion and the extent stays finite.
+    const cyclic: MindmapAst = {
+      kind: "mindmap",
+      nodes: [mk("root", null, 0), mk("x", "root", 1), mk("y", "x", 2), mk("x", "y", 1)],
+    };
+    const out = layoutMindmap(cyclic, heuristicMeasure);
+    if (!out.ok) throw new Error(out.error.message);
+    expect(Number.isFinite(out.value.extent.size.width)).toBe(true);
+  });
 });

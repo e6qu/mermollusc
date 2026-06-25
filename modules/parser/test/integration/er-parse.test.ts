@@ -52,6 +52,19 @@ describe("parseEr", () => {
     expect(r.value.source.entities.get(eid("A"))).toBeDefined();
   });
 
+  it("strips surrounding quotes from a relationship label (text and edit span exclude the quotes)", () => {
+    const text = 'erDiagram\n  A ||--o{ B : "places many"\n';
+    const r = parseErWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    // The stored label has no quote glyphs (mermaid's erDiagram strips them) …
+    expect(r.value.ast.relationships[0]?.label).toBe("places many");
+    // … and the relabel span points at the inner text, not the `"…"`.
+    const span = r.value.source.relationships.get(rid("r0"));
+    expect(span).toBeDefined();
+    if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("places many");
+  });
+
   it("parses an entity attribute block: types, names, keys, and comments", () => {
     const text = `erDiagram
   CUSTOMER {

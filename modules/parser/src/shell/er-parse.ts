@@ -25,15 +25,20 @@ export interface ParsedEr {
 
 const unquote = (s: string): string => s.slice(1, -1);
 
-const trimmedSpan = (t: IToken): TextSpan => {
-  const lead = t.image.length - t.image.trimStart().length;
-  const start = t.startOffset + lead;
-  return { start, end: start + t.image.trim().length };
-};
 const innerSpan = (t: IToken): TextSpan => ({
   start: t.startOffset + 1,
   end: t.startOffset + t.image.length - 1,
 });
+// A relationship label token captures the whole post-`:` text (`/[^\n]+/`), possibly with leading
+// whitespace and surrounding quotes. Strip the quotes (as the endpoint labels already do) and point the
+// edit span at the inner text, so the rendered label and the inline-relabel span both exclude the `"`.
+const relLabel = (t: IToken): { readonly text: string; readonly span: TextSpan } => {
+  const trimmed = t.image.trim();
+  const start = t.startOffset + (t.image.length - t.image.trimStart().length);
+  return trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')
+    ? { text: unquote(trimmed), span: { start: start + 1, end: start + trimmed.length - 1 } }
+    : { text: trimmed, span: { start, end: start + trimmed.length } };
+};
 
 const LEFT_CARD: Record<string, ErCardinality> = {
   "||": "one",
@@ -132,6 +137,7 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
     const [, leftSym = "", line = "", rightSym = ""] = m;
     const id = brand<string, "ErRelId">(`r${relationships.length}`);
     const label = childTokens(stmt.children, "ErLabelText")[0];
+    const labelInfo = label === undefined ? null : relLabel(label);
     relationships.push({
       id,
       from: brand<string, "ErEntityId">(left.id),
@@ -139,9 +145,9 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
       fromCard: LEFT_CARD[leftSym] ?? "one",
       toCard: RIGHT_CARD[rightSym] ?? "one",
       identifying: line === "--",
-      label: label === undefined ? "" : label.image.trim(),
+      label: labelInfo === null ? "" : labelInfo.text,
     });
-    if (label !== undefined) relSpans.set(id, trimmedSpan(label));
+    if (labelInfo !== null) relSpans.set(id, labelInfo.span);
   }
 
   const entities: ErEntity[] = [...labels].map(([id, label]) => ({

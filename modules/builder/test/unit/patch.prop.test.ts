@@ -1,9 +1,9 @@
 import fc from "fast-check";
-import { brand, point, rect } from "@m/std";
+import { brand, isErr, isOk, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { applyOverrides, clearOverride, moveNode } from "../../src/core/overrides.js";
-import { addNode, deleteNode, patchSpan } from "../../src/core/patch.js";
+import { addNode, deleteNode, patchSpan, validateLabel } from "../../src/core/patch.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -105,5 +105,25 @@ describe("addNode / deleteNode — text invariants (property-based)", () => {
         for (const id of ids) if (id !== victim) expect(lines).toContain(id);
       }),
     );
+  });
+});
+
+describe("validateLabel — the colon context guards timeline/gantt against `:` splitting the line", () => {
+  it("rejects a `:` in the colon context but allows it in plain (sequence/state) context", () => {
+    expect(isErr(validateLabel("Phase: one", "colon"))).toBe(true);
+    expect(isOk(validateLabel("Phase one", "colon"))).toBe(true);
+    // sequence/state labels legitimately run past a `:` (their lexer pushes a rest-of-line mode).
+    expect(isOk(validateLabel("a: b", "plain"))).toBe(true);
+  });
+  it("colon allows commas (a gantt task name may contain them) but never a newline", () => {
+    expect(isOk(validateLabel("Design, build, ship", "colon"))).toBe(true);
+    expect(isErr(validateLabel("two\nlines", "colon"))).toBe(true);
+  });
+  it("rejects the `%%` comment marker in every context (it would comment out the line)", () => {
+    for (const ctx of ["plain", "colon", "pipe", "quoted", "flowchartBracket"] as const) {
+      expect(isErr(validateLabel("oops %% gone", ctx))).toBe(true);
+      expect(isErr(validateLabel("%%", ctx))).toBe(true);
+    }
+    expect(isOk(validateLabel("100% sure", "plain"))).toBe(true); // a single `%` is fine
   });
 });

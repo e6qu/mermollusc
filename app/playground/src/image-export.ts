@@ -188,7 +188,15 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       setStatus("error", "nothing to export yet");
       return;
     }
-    const dot = toDot(deps.shownScene(scene), deps.getDirection());
+    const shown = deps.shownScene(scene);
+    // Marker-only families (pie/timeline/gantt) carry no graph nodes, so `toDot` would emit an empty
+    // `digraph {}` — warn instead of silently "exporting" a blank file the user can't use.
+    const hasGraph = shown.nodes.some((n) => n.role !== "marker") || shown.edges.length > 0;
+    if (!hasGraph) {
+      setStatus("warning", "this diagram has no graph nodes to export as DOT");
+      return;
+    }
+    const dot = toDot(shown, deps.getDirection());
     downloadBlob(new Blob([dot], { type: "text/vnd.graphviz" }), "mermollusc.dot");
     setStatus("ok", "exported mermollusc.dot");
   });

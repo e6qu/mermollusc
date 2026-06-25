@@ -742,3 +742,20 @@
     span in the source editor (`editor.select`, no focus steal), across every family. Memoised + guarded
     so it never fights the typist or churns mid-drag.
   +e2e (label-click rename, reset-positions UI+API, selection highlight node+edge).
+- Sweep round (audit-driven fixes, fuzz, monkey coverage):
+  - Source-corruption fixes wired through the app: timeline/gantt relabel now uses the `colon` context
+    (no `:`-splitting); ER/class quoted relationship labels round-trip cleanly.
+  - Viewer mode (collab): the relax/regenerate/reset-positions/add-node buttons are now truly `disabled`
+    (re-applied on role change), not just CSS-dimmed — keyboard/AT can no longer "press" them.
+  - Share link: warns loudly when the encoded URL exceeds ~8000 chars (would be truncated when pasted)
+    instead of reporting a confident "copied".
+  - DOT export: marker-only families (pie/timeline/gantt) warn ("no graph nodes") instead of silently
+    downloading an empty `digraph {}` with an "ok" status.
+  - Delete: deleting a container now confirms before cascading to its nested children (count shown).
+  +tests: label-edit fuzz (timeline/gantt/er), a deterministic UI "monkey" (60 random clicks/keys/
+   toggles, asserts no uncaught error), plus e2e for each fix above.
+  - a11y polish (audit follow-ups): the selection context-bar now uses roving tabindex (one tab stop,
+    arrows move within — the ARIA toolbar pattern it claimed); a locatable error status is exposed as a
+    keyboard-operable button (role=button/tabindex + Enter/Space → jump to the error); the inline label
+    editor is clamped into the viewport so an edge-of-canvas / phone-width node doesn't spill off-screen.
+  +e2e (status-line keyboard jump, context-bar single tab stop).

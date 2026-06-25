@@ -139,3 +139,8 @@
 - `addEdgeLabel` (splice a `|label|` after a bare edge's arrow, validated) + `restyleEdge` (rewrite the
   arrow token to a new `EdgeKind`, preserving any label) — the core of UI edge rename/restyle.
 - Bumped the edge hit tolerance (6→9px) so edges are easier to click (the line is thin).
+- Added a `colon` label context: timeline period/event and gantt task labels are colon-delimited free
+  text (`/[^:\n]+/`), so a `:` in a relabel used to silently split one event/task into two. The new
+  context forbids `:` for those families (sequence/state `:` labels stay `plain` — their lexer is safe).
+- `validateLabel` now rejects the `%%` comment marker in every context — a relabel containing `%%` would
+  comment out the rest of the statement and silently delete the element (found by the label-edit fuzzer).

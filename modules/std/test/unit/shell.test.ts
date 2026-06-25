@@ -89,6 +89,16 @@ describe("branded geometry constructors", () => {
     expect(() => length(Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 
+  it("coordinate/screenCoord allow negatives but reject non-finite (fail loud at the source)", () => {
+    expect(coordinate(-1000)).toBe(-1000);
+    expect(screenCoord(-12)).toBe(-12);
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(() => coordinate(bad)).toThrow(RangeError);
+      expect(() => screenCoord(bad)).toThrow(RangeError);
+    }
+    expect(() => point(Number.NaN, 0)).toThrow(RangeError);
+  });
+
   it("positive accepts > 0 (incl. fractions) and rejects zero/negative/non-finite", () => {
     expect(positive(0.5)).toBe(0.5);
     expect(positive(386)).toBe(386);

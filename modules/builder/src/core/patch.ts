@@ -48,9 +48,11 @@ const ARROW: Record<EdgeKind, string> = {
 //   - `flowchartBracket` — a flowchart node label inside `[ ]` / `( )` / `{ }` (any bracket closer breaks it);
 //   - `pipe` — a `|…|` edge/element label (flowchart/network/cloud/block) terminated by `|`;
 //   - `quoted` — a C4 `"…"` label terminated by `"`;
-//   - `plain` — sequence/state/er/class/requirement/gitGraph/timeline/mindmap/gantt labels run to end of
-//     line, so only `\n` is forbidden.
-export type LabelContext = "flowchartBracket" | "pipe" | "quoted" | "plain";
+//   - `colon` — a timeline period/event or gantt task label, whose tokenizer splits the line on `:`
+//     (`/[^:\n]+/`), so a `:` in the text would silently start a new event/meta field;
+//   - `plain` — sequence/state/er/class/requirement/gitGraph/mindmap labels run to end of line (their
+//     lexer pushes a rest-of-line mode after the leading `:`), so only `\n` is forbidden.
+export type LabelContext = "flowchartBracket" | "pipe" | "quoted" | "colon" | "plain";
 
 const FORBIDDEN: Record<LabelContext, readonly string[]> = {
   // Both bracket *openers* and *closers* are forbidden: a closer ends the shape early, and an opener
@@ -59,6 +61,7 @@ const FORBIDDEN: Record<LabelContext, readonly string[]> = {
   flowchartBracket: ["\n", "[", "]", "(", ")", "{", "}"],
   pipe: ["\n", "|"],
   quoted: ["\n", '"'],
+  colon: ["\n", ":"],
   plain: ["\n"],
 };
 
@@ -74,6 +77,11 @@ const forbiddenChar = (label: string, forbidden: readonly string[]): string | nu
 // committing an inline edge/element/node-label edit. Returns the unchanged label on success so callers
 // can chain it; on a forbidden char returns a loud `PatchError`.
 export const validateLabel = (label: string, context: LabelContext): Result<string, PatchError> => {
+  // `%%` starts a comment to end-of-line in every family, so a label containing it would comment out the
+  // rest of the statement — silently deleting the element. Forbidden in all contexts.
+  if (label.includes("%%")) {
+    return err({ kind: "patch", message: "label may not contain '%%' (it starts a comment)" });
+  }
   const bad = forbiddenChar(label, FORBIDDEN[context]);
   return bad === null
     ? ok(label)

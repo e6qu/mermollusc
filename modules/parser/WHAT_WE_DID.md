@@ -264,3 +264,6 @@
   inferred like message endpoints.
 - Capture each flowchart/block edge's arrow-token span in the source map (`arrows`), enabling edge
   restyle + bare-edge labelling.
+- ER/class relationship labels now strip surrounding quotes (like their endpoint labels already did) and
+  point the relabel span at the inner text — `A ||--o{ B : "places many"` stored/edited as `places many`,
+  not `"places many"`.
