@@ -52,6 +52,30 @@ describe("DOT export ↔ import round trip", () => {
     expect(members).toContain(brand<string, "NodeId">("a"));
   });
 
+  it("exports a pie as an empty graph — its slices are invisible markers, not nodes", async () => {
+    const dot = await sceneToDot('pie\n  title T\n  "Cats" : 40\n  "Dogs" : 60\n');
+    expect(dot).not.toContain("Cats"); // no orphan slice boxes
+    const back = parseDot(dot);
+    expect(isOk(back)).toBe(true);
+    if (!isOk(back)) return;
+    expect(back.value.nodes).toHaveLength(0);
+  });
+
+  it("keeps a cluster id stable across repeated export → import (no cluster_ growth)", async () => {
+    const reExport = async (dot: string): Promise<string> => {
+      const back = parseDot(dot);
+      if (!isOk(back)) throw new Error("reparse failed");
+      const laid = await layoutDiagram(back.value, heuristicMeasure);
+      if (!isOk(laid)) throw new Error("relayout failed");
+      return toDot(laid.value, back.value.direction);
+    };
+    const dot1 = await sceneToDot("flowchart TD\n  subgraph S [Core]\n    a --> b\n  end\n  b --> c\n");
+    const dot2 = await reExport(dot1);
+    const dot3 = await reExport(dot2);
+    expect(dot2).not.toContain("cluster_cluster");
+    expect(dot3).toBe(dot2); // a fixed point — the id doesn't grow another prefix each round
+  });
+
   it("exports a node/edge family that isn't a flowchart (ER) as a DOT graph", async () => {
     const dot = await sceneToDot(
       "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ ITEM : has\n",
