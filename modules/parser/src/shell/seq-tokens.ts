@@ -13,6 +13,12 @@ const Participant = createToken({
   longer_alt: Identifier,
 });
 const As = createToken({ name: "As", pattern: /as/, longer_alt: Identifier });
+const Note = createToken({ name: "Note", pattern: /note/, longer_alt: Identifier });
+const Over = createToken({ name: "Over", pattern: /over/, longer_alt: Identifier });
+const Left = createToken({ name: "Left", pattern: /left/, longer_alt: Identifier });
+const Right = createToken({ name: "Right", pattern: /right/, longer_alt: Identifier });
+const Of = createToken({ name: "Of", pattern: /of/, longer_alt: Identifier });
+const Comma = createToken({ name: "SeqComma", pattern: /,/ });
 const NewLine = createToken({ name: "SeqNewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "SeqSemicolon", pattern: /;/ });
 const WhiteSpace = createToken({ name: "SeqWhiteSpace", pattern: /[ \t]+/, group: Lexer.SKIPPED });
@@ -37,6 +43,12 @@ export const seqLexer = new Lexer({
       SequenceDiagram,
       Participant,
       As,
+      Note,
+      Over,
+      Left,
+      Right,
+      Of,
+      Comma,
       DashedArrow,
       SolidArrow,
       DashedOpen,
@@ -54,6 +66,12 @@ export const SeqTok = {
   SequenceDiagram,
   Participant,
   As,
+  Note,
+  Over,
+  Left,
+  Right,
+  Of,
+  Comma,
   NewLine,
   Semicolon,
   DashedArrow,
@@ -73,6 +91,12 @@ export const seqAllTokens: TokenType[] = [
   SequenceDiagram,
   Participant,
   As,
+  Note,
+  Over,
+  Left,
+  Right,
+  Of,
+  Comma,
   DashedArrow,
   SolidArrow,
   DashedOpen,

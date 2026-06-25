@@ -18,6 +18,7 @@ import type {
   ErEntityId,
   ErRelId,
   MessageId,
+  SequenceNoteId,
   NodeId,
   GanttTaskId,
   StateId,
@@ -47,6 +48,7 @@ export interface SourceMap {
 export interface SequenceSource {
   readonly actors: ReadonlyMap<ActorId, TextSpan>;
   readonly messages: ReadonlyMap<MessageId, TextSpan>;
+  readonly notes: ReadonlyMap<SequenceNoteId, TextSpan>;
 }
 
 // Editable text spans for a C4 diagram: the inner (unquoted) label of each element and relation.

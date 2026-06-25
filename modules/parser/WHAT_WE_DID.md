@@ -258,3 +258,7 @@
 - Totality: the flowchart `walk` that emits canonical node order recursed forever on two `subgraph X`
   blocks sharing an id (one nested in the other) — added an on-path visited guard so a malformed
   duplicate is emitted once, not infinitely. Found by the parse→layout→render fuzz.
+- Sequence notes: lexer/grammar/AST for `note (left of|right of|over) <actors> : text` (the `:` reuses
+  the message text mode; `over A,B` spans two actors). Each note records `after` = messages seen so far
+  (its interleave position) and a text span for two-way editing. Actors referenced only by a note are
+  inferred like message endpoints.

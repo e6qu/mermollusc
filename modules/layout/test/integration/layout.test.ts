@@ -175,6 +175,7 @@ describe("layout", () => {
         { id: aid("Y"), label: "Y" },
       ],
       messages: [{ id: mid("m0"), from: aid("X"), to: aid("Y"), text: "hi", kind: "solid" }],
+      notes: [],
     };
     const sequence = await layoutDiagram(seq, heuristicMeasure);
     expect(isOk(sequence)).toBe(true);

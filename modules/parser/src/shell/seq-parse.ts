@@ -9,6 +9,9 @@ import type {
   SequenceActor,
   SequenceAst,
   SequenceMessage,
+  SequenceNote,
+  SequenceNoteId,
+  SequenceNoteSide,
   SequenceSource,
   TextSpan,
 } from "@m/contracts";
@@ -48,8 +51,33 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
   };
 
   const messages: SequenceMessage[] = [];
+  const notes: SequenceNote[] = [];
+  const noteSpans = new Map<SequenceNoteId, TextSpan>();
 
   for (const stmt of childNodes(root, "seqStatement")) {
+    const noteNode = childNodes(stmt.children, "note")[0];
+    if (noteNode !== undefined) {
+      const targets = childTokens(noteNode.children, "SeqIdentifier");
+      const side: SequenceNoteSide =
+        childTokens(noteNode.children, "Over").length > 0
+          ? "over"
+          : childTokens(noteNode.children, "Left").length > 0
+            ? "left"
+            : "right";
+      for (const t of targets) seeActor(t.image, null);
+      const noteId = brand<string, "SequenceNoteId">(`note${notes.length}`);
+      notes.push({
+        id: noteId,
+        side,
+        targets: targets.map((t) => brand<string, "ActorId">(t.image)),
+        text: (imageOf(noteNode.children, "MsgText") ?? "").trim(),
+        after: messages.length,
+      });
+      const textToken = childTokens(noteNode.children, "MsgText")[0];
+      if (textToken !== undefined) noteSpans.set(noteId, trimmedSpan(textToken));
+      continue;
+    }
+
     const decl = childNodes(stmt.children, "participantDecl")[0];
     if (decl !== undefined) {
       const ids = childTokens(decl.children, "SeqIdentifier");
@@ -89,8 +117,8 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
     label,
   }));
   return ok({
-    ast: { kind: "sequence", actors, messages },
-    source: { actors: actorSpans, messages: messageSpans },
+    ast: { kind: "sequence", actors, messages, notes },
+    source: { actors: actorSpans, messages: messageSpans, notes: noteSpans },
   });
 };
 

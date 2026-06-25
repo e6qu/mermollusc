@@ -32,6 +32,27 @@ describe("parseSequence", () => {
     expect(isErr(parseSequence("sequenceDiagram\n  A->>\n"))).toBe(true);
   });
 
+  it("parses notes (over single, over span, left/right of) with interleave positions", () => {
+    const r = parseSequence(
+      "sequenceDiagram\n  A->>B: one\n  note over A: think\n  note over A,B: chat\n  B-->>A: two\n  note left of A: aside\n",
+    );
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(
+      r.value.notes.map((n) => `${n.side}|${n.targets.join(",")}|${n.text}|${n.after}`),
+    ).toEqual(["over|A|think|1", "over|A,B|chat|1", "left|A|aside|2"]);
+  });
+
+  it("captures a note's text span for two-way editing", () => {
+    const text = "sequenceDiagram\n  A->>B: hi\n  note over A,B: shared state\n";
+    const r = parseSequenceWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const span = r.value.source.notes.get(brand<string, "SequenceNoteId">("note0"));
+    expect(span).toBeDefined();
+    if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("shared state");
+  });
+
   it("captures message text and actor label spans", () => {
     const text = "sequenceDiagram\n  participant A as Alice\n  A->>B: Hello\n";
     const r = parseSequenceWithSource(text);

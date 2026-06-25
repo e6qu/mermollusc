@@ -240,3 +240,7 @@
   element ids; `toElkGraph`'s subgraph `container` carries an on-path visited guard; `cloud`'s nested
   `place` gained a `MAX_NEST_DEPTH` cap matching `network`/`block`. All four nested-container layouts are
   now guarded.
+- Sequence notes: `layoutSequence` interleaves notes with messages by source order (shared row stack),
+  drawing each as a folded-corner `stateNote` box — centred for `over A` / `over A,B` (spanning both
+  lifelines), offset for `left of`/`right of`. A `left of` note on the leftmost actor can land at a
+  negative x, so the whole scene shifts right to keep the (0,0)-origin extent every family uses.

@@ -47,6 +47,8 @@ export interface FlowchartAst {
 
 export type ActorId = Brand<string, "ActorId">;
 export type MessageId = Brand<string, "MessageId">;
+export type SequenceNoteId = Brand<string, "SequenceNoteId">;
+export type SequenceNoteSide = "left" | "right" | "over";
 
 // Mermaid sequence arrows: ->> (solid), -->> (dashed), -> (solidOpen), --> (dashedOpen).
 export type MessageKind = "solid" | "dashed" | "solidOpen" | "dashedOpen";
@@ -64,10 +66,22 @@ export interface SequenceMessage {
   readonly kind: MessageKind;
 }
 
+// A `note (left of|right of|over) <actors> : text` annotation. `targets` is one actor for
+// `left of`/`right of`, one or two for `over` (`over A,B` spans both). `after` is the number of
+// messages that precede it in source order — the interleave position the layout stacks it at.
+export interface SequenceNote {
+  readonly id: SequenceNoteId;
+  readonly side: SequenceNoteSide;
+  readonly targets: readonly ActorId[];
+  readonly text: string;
+  readonly after: number;
+}
+
 export interface SequenceAst {
   readonly kind: "sequence";
   readonly actors: readonly SequenceActor[];
   readonly messages: readonly SequenceMessage[];
+  readonly notes: readonly SequenceNote[];
 }
 
 export type C4ElementId = Brand<string, "C4ElementId">;

@@ -1,15 +1,15 @@
 # @m/builder — bugs
 
-Known:
+_None known._
 
-- **`deleteActor`'s `SEQ_NOTE` branch is currently unreachable.** `deleteActor` strips
-  `note (left|right) of <actor>` / `note over <actors>` lines so removing an actor can't orphan a note,
-  but the sequence parser has no `note` token — a `note` line makes the whole diagram fail to parse, so a
-  rendered (hence editable) sequence never contains one. The handler is dead until sequence notes are a
-  real feature. The genuine fix is to add note support across parser→layout→renderer (then this branch
-  becomes live and the sequence example can show a `note over`); deleting the branch is the alternative if
-  notes stay unsupported. Not silently removed pending that decision. (State notes _are_ supported and
-  `STATE_NOTE` is reachable — this asymmetry is the tell.)
+## Resolved
+
+- ~~**`deleteActor`'s `SEQ_NOTE` branch was unreachable.**~~ Fixed by making sequence notes real: the
+  parser now lexes/parses `note (left of|right of|over) <actors> : text` into `SequenceAst.notes`, the
+  layout stacks them as `stateNote` boxes interleaved by source order, and the renderer draws them. So a
+  rendered sequence can now contain a `note` line, deleting an actor strips the notes anchored to it
+  (`SEQ_NOTE` is live), and a note box is itself selectable → relabel (its text span) / delete
+  (`deleteLineAt`). The sequence example shows an `over` and a `left of` note.
 
 Resolved (external review, codex `gpt-5.5`, 2026-06-19):
 

@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Point, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   ActorId,
@@ -9,6 +9,7 @@ import type {
   SceneEdge,
   SceneNode,
   SequenceAst,
+  SequenceNote,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { clampedWidth } from "./measure.js";
@@ -20,6 +21,9 @@ const MIN_ACTOR_WIDTH = 60;
 const HEADER_GAP = 40;
 const MESSAGE_GAP = 40;
 const BOTTOM_PADDING = 30;
+const NOTE_HEIGHT = 30;
+const NOTE_PADDING = 20; // horizontal text padding inside a note box
+const NOTE_GAP = 16; // distance from a lifeline to a `left of` / `right of` note box
 
 const actorWidth = (label: string, measure: MeasureText): number =>
   clampedWidth(label, measure, MIN_ACTOR_WIDTH, LABEL_PADDING);
@@ -39,7 +43,11 @@ export const layoutSequence = (
   ast: SequenceAst,
   measure: MeasureText,
 ): Result<Scene, LayoutError> => {
-  const bottomY = ACTOR_HEIGHT + HEADER_GAP + ast.messages.length * MESSAGE_GAP + BOTTOM_PADDING;
+  // Notes share the vertical stack with messages: each occupies one row at its source position. The
+  // combined row count drives the diagram height and every message/note row index.
+  const totalRows = ast.messages.length + ast.notes.length;
+  const rowY = (row: number): number => ACTOR_HEIGHT + HEADER_GAP + (row + 1) * MESSAGE_GAP;
+  const bottomY = ACTOR_HEIGHT + HEADER_GAP + totalRows * MESSAGE_GAP + BOTTOM_PADDING;
   const centerX = new Map<ActorId, number>();
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
@@ -80,10 +88,73 @@ export const layoutSequence = (
     cursor += width + ACTOR_GAP;
   }
 
-  const width = Math.max(0, cursor - ACTOR_GAP);
+  const actorsRight = Math.max(0, cursor - ACTOR_GAP);
+  // A `left of` note on the leftmost actor can land at a negative x; track the bounds and shift the
+  // whole scene right at the end so the layout keeps the (0,0)-origin extent every other family uses.
+  let minX = 0;
+  let maxX = actorsRight;
 
-  for (const [index, message] of ast.messages.entries()) {
-    const y = ACTOR_HEIGHT + HEADER_GAP + (index + 1) * MESSAGE_GAP;
+  const emitNote = (note: SequenceNote, r: number): LayoutError | null => {
+    const centers: number[] = [];
+    for (const t of note.targets) {
+      const c = centerX.get(t);
+      if (c === undefined) {
+        return {
+          kind: "layout",
+          message: `sequence: note ${note.id} references an undeclared actor`,
+        };
+      }
+      centers.push(c);
+    }
+    const first = centers[0];
+    if (first === undefined) {
+      return { kind: "layout", message: `sequence: note ${note.id} has no target` };
+    }
+    const left = centers.reduce((a, b) => Math.min(a, b), first);
+    const right = centers.reduce((a, b) => Math.max(a, b), first);
+    const textW = clampedWidth(note.text, measure, MIN_ACTOR_WIDTH, NOTE_PADDING);
+    const w = note.side === "over" ? Math.max(textW, right - left + NOTE_PADDING * 2) : textW;
+    const x =
+      note.side === "over"
+        ? (left + right) / 2 - w / 2
+        : note.side === "left"
+          ? left - NOTE_GAP - w
+          : right + NOTE_GAP;
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x + w);
+    nodes.push({
+      id: sceneNodeId(note.id),
+      bounds: rect(x, rowY(r) - NOTE_HEIGHT / 2, w, NOTE_HEIGHT),
+      label: note.text,
+      shape: "rect",
+      parent: null,
+      icon: null,
+      rows: null,
+      rowDivider: null,
+      subtitle: null,
+      accent: "none",
+      role: "stateNote",
+    });
+    return null;
+  };
+
+  // Interleave messages and notes by source order. `after` is non-decreasing, so one sweep over the
+  // message indices emits each note anchored after a given message (and trailing notes at the end).
+  let ni = 0;
+  let row = 0;
+  for (let mi = 0; mi <= ast.messages.length; mi++) {
+    while (ni < ast.notes.length) {
+      const note = ast.notes[ni];
+      if (note === undefined || note.after !== mi) break;
+      const noteErr = emitNote(note, row);
+      if (noteErr !== null) return err(noteErr);
+      row++;
+      ni++;
+    }
+    if (mi >= ast.messages.length) break;
+    const message = ast.messages[mi];
+    if (message === undefined) continue;
+    const y = rowY(row);
     // Parser output always declares an actor for every message endpoint; a miss means the AST is
     // internally inconsistent, so fail loudly rather than place the arrow at a phantom x=0.
     const fromX = centerX.get(message.from);
@@ -109,7 +180,43 @@ export const layoutSequence = (
       toLabel: null,
       labelPos: null,
     });
+    row++;
+  }
+  // Defensive: a hand-built AST whose note `after` exceeds the message count still gets placed (the
+  // parser caps it, so this is just totality insurance).
+  while (ni < ast.notes.length) {
+    const note = ast.notes[ni];
+    if (note !== undefined) {
+      const noteErr = emitNote(note, row);
+      if (noteErr !== null) return err(noteErr);
+      row++;
+    }
+    ni++;
   }
 
-  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, bottomY) });
+  const dx = minX < 0 ? -minX : 0;
+  const extent = rect(0, 0, maxX + dx, bottomY);
+  if (dx === 0) {
+    return ok({ nodes, edges, wedges: [], decorations: [], extent });
+  }
+  const shift = (p: Point): Point => point(p.x + dx, p.y);
+  return ok({
+    nodes: nodes.map((n) => ({
+      ...n,
+      bounds: rect(
+        n.bounds.origin.x + dx,
+        n.bounds.origin.y,
+        n.bounds.size.width,
+        n.bounds.size.height,
+      ),
+    })),
+    edges: edges.map((e) => {
+      // Keep the non-empty-tuple shape of `waypoints` by destructuring its two required head points.
+      const [a, b, ...rest] = e.waypoints;
+      return { ...e, waypoints: [shift(a), shift(b), ...rest.map(shift)] };
+    }),
+    wedges: [],
+    decorations: [],
+    extent,
+  });
 };
