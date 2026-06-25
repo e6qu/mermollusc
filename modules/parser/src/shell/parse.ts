@@ -346,12 +346,20 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
     else bucket.push(s);
   }
   const orderedIds: NodeId[] = [...topLevel];
+  // Path guard: a source with two `subgraph X` blocks sharing an id, one nested in the other, makes
+  // `byParent.get("X")` contain a subgraph whose own id is "X" — recursing into it would re-enter the
+  // same bucket forever (a stack overflow). Skip an id already on the current path so the walk stays
+  // total; the malformed duplicate is emitted once, not infinitely.
+  const onPath = new Set<NodeId>();
   const walk = (parentId: NodeId | null): void => {
     for (const s of byParent.get(parentId) ?? []) {
       // A loop, not `push(...)`: a spread of a very large subgraph's nodes would exceed the
       // argument-count limit and throw.
       for (const n of s.nodes) orderedIds.push(n);
+      if (onPath.has(s.id)) continue;
+      onPath.add(s.id);
       walk(s.id);
+      onPath.delete(s.id);
     }
   };
   walk(null);

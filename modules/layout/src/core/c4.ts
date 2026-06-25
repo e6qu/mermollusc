@@ -41,6 +41,17 @@ const shapeOf = (kind: C4ElementKind): NodeShape =>
 // Pure recursive nested-box layout: boundaries wrap their children (sized to fit), siblings sit
 // in a row, relations are straight centre-to-centre edges. No ELK — coordinates are absolute.
 export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, LayoutError> => {
+  // Ids must be unique: a SceneNodeId keys selection and the box map, and a duplicate that nests
+  // inside its twin makes the `childrenOf`-keyed `place` recursion re-enter the same bucket forever
+  // (a stack overflow). Reject loudly instead of letting the recursion blow the stack.
+  const ids = new Set<C4ElementId>();
+  for (const el of ast.elements) {
+    if (ids.has(el.id)) {
+      return err({ kind: "layout", message: `c4: duplicate element id ${el.id}` });
+    }
+    ids.add(el.id);
+  }
+
   const childrenOf = new Map<C4ElementId, C4Element[]>();
   const roots: C4Element[] = [];
   for (const el of ast.elements) {

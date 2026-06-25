@@ -44,6 +44,20 @@ describe("layoutC4", () => {
     expect(layoutC4(bad, heuristicMeasure).ok).toBe(false);
   });
 
+  it("fails loud (no stack overflow) on a duplicate id nested in its twin", () => {
+    // Two boundaries sharing an id, one parented to the other — `place`'s id-keyed recursion would
+    // re-enter the same children bucket forever without the duplicate-id reject.
+    const dup: C4Ast = {
+      kind: "c4",
+      elements: [
+        { id: cid("shop"), label: "Shop", description: null, kind: "boundary", parent: null },
+        { id: cid("shop"), label: "Shop", description: null, kind: "boundary", parent: cid("shop") },
+      ],
+      rels: [],
+    };
+    expect(layoutC4(dup, heuristicMeasure).ok).toBe(false);
+  });
+
   it("nests children fully inside the boundary box", () => {
     const backend = byId.get("backend");
     const api = byId.get("api");

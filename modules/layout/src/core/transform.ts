@@ -89,18 +89,28 @@ export const toElkGraph = (
   }
 
   // A subgraph becomes a container whose children are its member leaves plus nested subgraph
-  // containers; ELK sizes it to fit them.
-  const container = (sg: FlowSubgraph): ContainerNode => ({
-    kind: "container",
-    id: sg.id,
-    children: [
-      ...sg.nodes.flatMap((id) => {
-        const n = nodeById.get(id);
-        return n === undefined ? [] : [leaf(n)];
-      }),
-      ...(childSubgraphs.get(sg.id) ?? []).map(container),
-    ],
-  });
+  // containers; ELK sizes it to fit them. The on-path guard mirrors the parser's: two `subgraph X`
+  // blocks sharing an id, one nested in the other, would make `childSubgraphs.get("X")` contain a
+  // subgraph keyed back to "X" and recurse forever — skip an id already on the path so it stays total.
+  const onPath = new Set<NodeId>();
+  const container = (sg: FlowSubgraph): ContainerNode => {
+    onPath.add(sg.id);
+    const nested = (childSubgraphs.get(sg.id) ?? [])
+      .filter((c) => !onPath.has(c.id))
+      .map(container);
+    onPath.delete(sg.id);
+    return {
+      kind: "container",
+      id: sg.id,
+      children: [
+        ...sg.nodes.flatMap((id) => {
+          const n = nodeById.get(id);
+          return n === undefined ? [] : [leaf(n)];
+        }),
+        ...nested,
+      ],
+    };
+  };
 
   const memberIds = new Set<NodeId>(ast.subgraphs.flatMap((s) => [...s.nodes]));
   return {

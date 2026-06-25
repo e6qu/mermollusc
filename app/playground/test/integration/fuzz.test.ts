@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { heuristicMeasure, layoutDiagram } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
+import { darkTheme, defaultTheme, toDisplayList, toSvg } from "@m/renderer";
 import { isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../src/examples.js";
@@ -84,6 +85,44 @@ describe("pipeline fuzz — parse → layout totality over mutated examples", ()
         },
       ),
       { numRuns: 600 },
+    );
+  });
+});
+
+describe("render fuzz — layout → display list → SVG totality over mutated examples", () => {
+  it("the renderer never throws and never leaks NaN/Infinity into the SVG", async () => {
+    const examples = [...EXAMPLES.values()];
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom(...examples),
+        fc.array(mutArb, { minLength: 0, maxLength: 6 }),
+        fc.boolean(),
+        async (base, muts, dark) => {
+          const text = muts.reduce(applyMut, base);
+          const parsed = parseDiagramWithSource(text);
+          if (!isOk(parsed)) return;
+          const laid = await layoutDiagram(parsed.value.ast, heuristicMeasure);
+          if (!isOk(laid)) return;
+          const scene = laid.value;
+          // The pure display-list builder must be total over any laid-out scene.
+          const cmds = toDisplayList(scene);
+          expect(Array.isArray(cmds)).toBe(true);
+          // The shell SVG serializer must produce a well-formed document with no non-finite numbers —
+          // a single NaN/Infinity in a coordinate would corrupt the whole export silently in a viewer.
+          const svg = toSvg(cmds, {
+            width: Math.ceil(scene.extent.size.width) + 16,
+            height: Math.ceil(scene.extent.size.height) + 16,
+            origin: scene.extent.origin,
+            margin: 8,
+            theme: dark ? darkTheme : defaultTheme,
+            icons: new Map(),
+          });
+          expect(svg.startsWith("<svg")).toBe(true);
+          expect(svg).not.toContain("NaN");
+          expect(svg).not.toContain("Infinity");
+        },
+      ),
+      { numRuns: 500 },
     );
   });
 });

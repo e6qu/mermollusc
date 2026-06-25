@@ -1,5 +1,16 @@
 # @m/builder — bugs
 
+Known:
+
+- **`deleteActor`'s `SEQ_NOTE` branch is currently unreachable.** `deleteActor` strips
+  `note (left|right) of <actor>` / `note over <actors>` lines so removing an actor can't orphan a note,
+  but the sequence parser has no `note` token — a `note` line makes the whole diagram fail to parse, so a
+  rendered (hence editable) sequence never contains one. The handler is dead until sequence notes are a
+  real feature. The genuine fix is to add note support across parser→layout→renderer (then this branch
+  becomes live and the sequence example can show a `note over`); deleting the branch is the alternative if
+  notes stay unsupported. Not silently removed pending that decision. (State notes _are_ supported and
+  `STATE_NOTE` is reachable — this asymmetry is the tell.)
+
 Resolved (external review, codex `gpt-5.5`, 2026-06-19):
 
 - ~~**Deleting a brace-bodied entity orphans its body.**~~ Fixed — the app's `removeNode` routed
