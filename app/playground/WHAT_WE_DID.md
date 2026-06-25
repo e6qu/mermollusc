@@ -788,3 +788,7 @@
   per-browser preference keyed by edge id (its own localStorage key, NOT the shared/collab position
   overlay), applied to the scene at render time. Works for every family's edges; survives reload; cleared
   by the full Reset. +e2e (toggle + persist + straighten); +renderer `smoothSegments` unit tests.
+- Node colour (styling palette, part 2). A context-bar "Colour" control cycles a node through the accent
+  palette (none → blue → grey → red). Our renderer fills from a closed accent set (not arbitrary hex), so
+  like curves this is a visual-only overlay — per-browser, keyed by node id, applied at render time —
+  rather than a source `style` line the pipeline can't render. +e2e (cycle + persist).

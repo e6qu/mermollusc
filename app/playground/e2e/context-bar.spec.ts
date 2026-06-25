@@ -25,8 +25,14 @@ test("the context bar is hidden until something is selected, then shows applicab
   if (box === null) throw new Error("no canvas box");
   await page.mouse.click(box.x + box.width / 2, box.y + 40); // select the Start node
   await expect(page.locator("#context-bar")).toBeVisible();
-  // single flowchart node: rename/shape/duplicate/delete — but not connect/group/arrange.
-  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "duplicate", "delete"]);
+  // single flowchart node: rename/shape/colour/duplicate/delete — but not connect/group/arrange.
+  expect(await visibleCtxButtons(page)).toEqual([
+    "relabel",
+    "shape",
+    "colour",
+    "duplicate",
+    "delete",
+  ]);
 
   await page.keyboard.press("Escape"); // clear selection
   await expect(page.locator("#context-bar")).toBeHidden();

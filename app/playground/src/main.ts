@@ -75,6 +75,7 @@ import type {
   GroupMember,
   LayoutOverrides,
   NetworkSource,
+  NodeAccent,
   NodeId,
   NodeShape,
   OverlayDoc,
@@ -154,6 +155,8 @@ declare global {
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
     // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
     __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
+    // e2e hook: a node's currently-shown accent (the visual-only colour preference).
+    __nodeAccent?: (nodeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
     __resetPositions?: () => void;
     // e2e hook: how many manual position/resize overrides are currently in the overlay.
@@ -247,6 +250,7 @@ const stageCol = document.querySelector<HTMLElement>(".stage-col");
 const contextBar = document.querySelector<HTMLElement>("#context-bar");
 const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
 const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
+const ctxColourBtn = document.querySelector<HTMLButtonElement>("#ctx-colour");
 const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
@@ -265,6 +269,7 @@ if (
   contextBar === null ||
   ctxRelabelBtn === null ||
   ctxShapeBtn === null ||
+  ctxColourBtn === null ||
   ctxCurveBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
@@ -575,6 +580,7 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
 let shownCacheCurves: ReadonlySet<string> | null = null;
+let shownCacheAccents: ReadonlyMap<string, NodeAccent> | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -597,7 +603,8 @@ const shownScene = (base: Scene): Scene => {
     shownCacheResult !== null &&
     shownCacheScene === base &&
     shownCacheOverrides === ov &&
-    shownCacheCurves === curvedEdges
+    shownCacheCurves === curvedEdges &&
+    shownCacheAccents === nodeAccents
   ) {
     return shownCacheResult;
   }
@@ -606,19 +613,23 @@ const shownScene = (base: Scene): Scene => {
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
   const tidied =
     ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
-  // The visual-only curve preference: flip `curved` on any edge the user marked (display only).
-  const shown =
+  // The visual-only presentation preferences (display only): curved edges + node accents.
+  const edges =
     curvedEdges.size === 0
-      ? tidied
-      : {
-          ...tidied,
-          edges: tidied.edges.map((e) =>
-            !e.curved && curvedEdges.has(e.id) ? { ...e, curved: true } : e,
-          ),
-        };
+      ? tidied.edges
+      : tidied.edges.map((e) => (!e.curved && curvedEdges.has(e.id) ? { ...e, curved: true } : e));
+  const nodes =
+    nodeAccents.size === 0
+      ? tidied.nodes
+      : tidied.nodes.map((n) => {
+          const a = nodeAccents.get(n.id);
+          return a !== undefined && a !== n.accent ? { ...n, accent: a } : n;
+        });
+  const shown = { ...tidied, nodes, edges };
   shownCacheScene = base;
   shownCacheOverrides = ov;
   shownCacheCurves = curvedEdges;
+  shownCacheAccents = nodeAccents;
   shownCacheResult = shown;
   return shown;
 };
@@ -1175,6 +1186,8 @@ const renderContextBar = (caps: CapabilityState): void => {
   // The Shape button doubles as the edge "Style" control (it cycles a node's shape or an edge's arrow).
   ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
+  // Colour is a visual-only node preference; show it whenever nodes — and only nodes — are selected.
+  ctxColourBtn.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
   // Curve is a visual-only edge preference (all families' edges have waypoints), so it shows whenever
   // edges — and only edges — are selected.
   ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
@@ -2115,6 +2128,36 @@ const persistCurved = (): void => {
     console.error("curved-edge state persist failed", e);
   }
 };
+
+// Node colour: a *visual-only* accent the user cycles from the palette (none → blue → grey → red). Our
+// renderer fills from a closed accent set (not arbitrary hex), so this rides the same overlay channel as
+// curves — per-browser, keyed by node id, applied at render time — rather than a source `style` line our
+// pipeline can't yet render. Only non-`none` accents are stored, keeping the map sparse.
+const ACCENTS_KEY = "mermollusc-node-accents";
+const ACCENT_CYCLE: readonly NodeAccent[] = ["none", "active", "muted", "danger"];
+const loadAccents = (): [string, NodeAccent][] => {
+  try {
+    const raw = localStorage.getItem(ACCENTS_KEY);
+    const v: unknown = raw === null ? [] : JSON.parse(raw);
+    if (!Array.isArray(v)) return [];
+    return v.flatMap((e): [string, NodeAccent][] =>
+      Array.isArray(e) && typeof e[0] === "string" && ACCENT_CYCLE.includes(e[1] as NodeAccent)
+        ? [[e[0], e[1] as NodeAccent]]
+        : [],
+    );
+  } catch (e) {
+    console.error("node-accent state load failed", e);
+    return [];
+  }
+};
+let nodeAccents = new Map<string, NodeAccent>(loadAccents());
+const persistAccents = (): void => {
+  try {
+    localStorage.setItem(ACCENTS_KEY, JSON.stringify([...nodeAccents]));
+  } catch (e) {
+    console.error("node-accent state persist failed", e);
+  }
+};
 const collapsedBranded = (): ReadonlySet<NodeId> =>
   new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
 
@@ -2393,6 +2436,10 @@ window.__edgeLabelPos = (edgeId) => {
   const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
   const s = sceneToScreen(point(anchor.x, anchor.y));
   return { x: s.x, y: s.y };
+};
+window.__nodeAccent = (nodeId) => {
+  if (scene === null) return null;
+  return shownScene(scene).nodes.find((n) => n.id === nodeId)?.accent ?? null;
 };
 window.__nodeRect = (nodeId) => {
   if (scene === null) return null;
@@ -4183,6 +4230,24 @@ const toggleEdgeCurve = (): void => {
   setStatusAndAnnounce("ok", anyStraight ? "edge curved" : "edge straightened");
 };
 
+// Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
+// curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
+const cycleNodeColour = (): void => {
+  if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
+  const next = new Map(nodeAccents);
+  const firstId = selectionOrder[0];
+  const cur = firstId === undefined ? "none" : (next.get(firstId) ?? "none");
+  const adv = ACCENT_CYCLE[(ACCENT_CYCLE.indexOf(cur) + 1) % ACCENT_CYCLE.length] ?? "none";
+  for (const id of selectionOrder) {
+    if (adv === "none") next.delete(id);
+    else next.set(id, adv);
+  }
+  nodeAccents = next; // new identity invalidates the shownScene cache
+  persistAccents();
+  paintScene();
+  setStatusAndAnnounce("ok", adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
 const cycleEdgeStyle = async (): Promise<void> => {
   if (viewerMode || ast === null || selection.edges.size !== 1) return;
   const edgeId = [...selection.edges][0];
@@ -4272,6 +4337,7 @@ ctxShapeBtn.addEventListener(
       ? cycleEdgeStyle()
       : cycleShape()),
 );
+ctxColourBtn.addEventListener("click", () => cycleNodeColour());
 ctxCurveBtn.addEventListener("click", () => toggleEdgeCurve());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
