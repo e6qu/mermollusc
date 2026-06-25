@@ -26,6 +26,7 @@ export interface Editor {
   insertAtCursor(text: string): void;
   cursor(): number;
   select(from: number, to: number): void;
+  selectedRange(): { readonly from: number; readonly to: number };
   focus(): void;
   hasFocus(): boolean;
   // Re-measure after the container's size changes while hidden (e.g. expanding the collapsed source
@@ -235,6 +236,10 @@ export const createEditor = (
     cursor: () => view.state.selection.main.head,
     select: (from, to) => {
       view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true });
+    },
+    selectedRange: () => {
+      const r = view.state.selection.main;
+      return { from: r.from, to: r.to };
     },
     focus: () => view.focus(),
     hasFocus: () => view.hasFocus,

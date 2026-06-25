@@ -731,3 +731,14 @@
   unactivatable) — now `tabindex=-1` + Enter/Space opens its file input; and activating an item by
   keyboard dropped focus to <body> — `closeMore` now returns focus to the trigger when focus was inside
   the menu. +e2e (menu keyboard roving + focus return).
+- Edge-rename bug fix + reset-positions + selection→source highlight.
+  - **Edge rename "seemed bugged":** the hit-test only checked the edge *line* (6px) but the label is
+    drawn ~11px off it, so double-clicking the visible label missed the edge. Added app-level
+    edge-LABEL hit-testing (a click on the label selects its edge) + bumped the line tolerance to 9px.
+    This makes rename (double-click + context-bar) and restyle reliably reachable.
+  - **Reset positions:** a new editor-tools button + `window.__resetPositions()` API hook clears every
+    manual position/resize (keeps groups), returning the diagram to its from-text default layout. Undoable.
+  - **Selection→text highlight:** selecting a node/edge on the canvas now highlights its declaration
+    span in the source editor (`editor.select`, no focus steal), across every family. Memoised + guarded
+    so it never fights the typist or churns mid-drag.
+  +e2e (label-click rename, reset-positions UI+API, selection highlight node+edge).

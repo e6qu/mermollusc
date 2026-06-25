@@ -138,3 +138,4 @@
   timeline analogue of a mindmap re-parent. Both round-trip; 2 tests.
 - `addEdgeLabel` (splice a `|label|` after a bare edge's arrow, validated) + `restyleEdge` (rewrite the
   arrow token to a new `EdgeKind`, preserving any label) — the core of UI edge rename/restyle.
+- Bumped the edge hit tolerance (6→9px) so edges are easier to click (the line is thin).

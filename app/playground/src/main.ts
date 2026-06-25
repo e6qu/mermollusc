@@ -142,6 +142,15 @@ declare global {
     __activeTool?: () => string;
     // e2e hook: the displayed edges' routed waypoints, so a spec can assert connector geometry.
     __shownEdges?: () => readonly { id: string; waypoints: readonly { x: number; y: number }[] }[];
+    // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
+    // can click the label and assert it selects the edge.
+    __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
+    // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
+    __resetPositions?: () => void;
+    // e2e hook: how many manual position/resize overrides are currently in the overlay.
+    __overrideCount?: () => number;
+    // e2e hook: the text currently highlighted in the editor (echoing the canvas selection).
+    __editorHighlight?: () => string;
   }
 }
 
@@ -172,6 +181,7 @@ const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
+const resetPosBtn = document.querySelector<HTMLButtonElement>("#reset-positions");
 const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
@@ -267,6 +277,7 @@ if (
   minimap === null ||
   relaxBtn === null ||
   regenBtn === null ||
+  resetPosBtn === null ||
   addBtn === null ||
   connectBtn === null ||
   themeBtn === null ||
@@ -1212,8 +1223,117 @@ const computeCapabilities = (): CapabilityState => {
   };
 };
 
+// The source span of a selected node/edge, so a canvas selection can be echoed as a text highlight.
+// Read-only — mirrors the per-family source maps the inline editor patches. Null for items with no
+// source span (sidecar groups, DOT imports, a merge/marker without a declaration).
+const highlightSpanOf = (hit: {
+  readonly kind: "node" | "edge";
+  readonly id: string;
+}): TextSpan | null => {
+  if (ast === null) return null;
+  const id = hit.id;
+  const isNode = hit.kind === "node";
+  const E = brand<string, "EdgeId">(id);
+  const N = brand<string, "NodeId">(id);
+  switch (ast.kind) {
+    case "flowchart":
+      return isNode
+        ? (source?.nodes.get(N)?.decl ?? null)
+        : (source?.edges.get(E) ?? source?.arrows.get(E) ?? null);
+    case "sequence":
+      return isNode
+        ? (seqSource?.actors.get(brand<string, "ActorId">(id)) ??
+            seqSource?.notes.get(brand<string, "SequenceNoteId">(id)) ??
+            null)
+        : (seqSource?.messages.get(brand<string, "MessageId">(id)) ?? null);
+    case "c4":
+      return isNode
+        ? (c4Source?.elements.get(brand<string, "C4ElementId">(id)) ?? null)
+        : (c4Source?.rels.get(brand<string, "C4RelId">(id)) ?? null);
+    case "block":
+      return isNode
+        ? (blockSource?.blocks.get(N) ??
+            blockSource?.bareNodes.get(N) ??
+            blockSource?.groups.get(N) ??
+            null)
+        : (blockSource?.edges.get(E) ?? blockSource?.arrows.get(E) ?? null);
+    case "network":
+      return isNode
+        ? (netSource?.nodes.get(N) ??
+            netSource?.bareNodes.get(N) ??
+            netSource?.groups.get(N) ??
+            null)
+        : (netSource?.links.get(E) ?? null);
+    case "cloud":
+      return isNode
+        ? (cloudSource?.nodes.get(N) ??
+            cloudSource?.bareNodes.get(N) ??
+            cloudSource?.groups.get(N) ??
+            null)
+        : (cloudSource?.links.get(E) ?? null);
+    case "state":
+      return isNode
+        ? (stateSource?.states.get(brand<string, "StateId">(id)) ?? null)
+        : (stateSource?.transitions.get(brand<string, "StateTransitionId">(id)) ?? null);
+    case "er":
+      return isNode
+        ? (erSource?.entities.get(brand<string, "ErEntityId">(id)) ?? null)
+        : (erSource?.relationships.get(brand<string, "ErRelId">(id)) ?? null);
+    case "class":
+      return isNode
+        ? (classSource?.entities.get(brand<string, "ClassEntityId">(id)) ?? null)
+        : (classSource?.relationships.get(brand<string, "ClassRelId">(id)) ?? null);
+    case "requirement":
+      return isNode ? (reqSource?.entities.get(brand<string, "ReqEntityId">(id)) ?? null) : null;
+    case "gitGraph":
+      return isNode ? (gitSource?.commits.get(brand<string, "GitCommitId">(id)) ?? null) : null;
+    case "timeline":
+      return isNode
+        ? (timelineSource?.events.get(brand<string, "TimelineEventId">(id)) ??
+            timelineSource?.periods.get(brand<string, "TimelinePeriodId">(id)) ??
+            null)
+        : null;
+    case "mindmap":
+      return isNode ? (mindmapSource?.nodes.get(brand<string, "MindmapNodeId">(id)) ?? null) : null;
+    case "pie":
+      return isNode ? (pieSource?.slices.get(brand<string, "PieSliceId">(id)) ?? null) : null;
+    case "gantt":
+      return isNode ? (ganttSource?.tasks.get(brand<string, "GanttTaskId">(id)) ?? null) : null;
+    default:
+      return assertNever(ast);
+  }
+};
+
+// Echo a single-item canvas selection as a text-editor highlight (`editor.select` selects + scrolls but
+// doesn't steal focus). Guarded against fighting the typist (editor focused) and churning mid-gesture;
+// memoised so a re-render with an unchanged selection doesn't re-scroll the editor.
+let lastHighlightKey = "";
+const highlightSelection = (): void => {
+  // Compute the selection target *before* touching `editor` — this runs from `updateGroupButtons`,
+  // which fires during early init before the editor is mounted; at that point nothing is selected.
+  let hit: { readonly kind: "node" | "edge"; readonly id: string } | null = null;
+  if (selection.nodes.size === 1 && selection.edges.size === 0) {
+    const nid = [...selection.nodes][0];
+    if (nid !== undefined) hit = { kind: "node", id: nid };
+  } else if (selection.edges.size === 1 && selection.nodes.size === 0) {
+    const eid = [...selection.edges][0];
+    if (eid !== undefined) hit = { kind: "edge", id: eid };
+  }
+  if (hit === null) {
+    lastHighlightKey = "";
+    return;
+  }
+  if (editor.hasFocus() || isInteracting()) return; // don't fight the typist or churn mid-gesture
+  const span = highlightSpanOf(hit);
+  const key = span === null ? "" : `${span.start}:${span.end}`;
+  if (key === lastHighlightKey) return;
+  lastHighlightKey = key;
+  if (span !== null) editor.select(span.start, span.end);
+};
+
 // Reflect the current selection in the workbench controls (enabled state + Lock/Unlock label).
 const updateGroupButtons = (): void => {
+  highlightSelection();
   const caps = computeCapabilities();
   groupBtn.disabled = !caps.canGroup;
   // The verb means different things per family — only cloud wraps the selection in a labelled group in
@@ -1829,6 +1949,7 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
   // source is valid — but disabled on a broken parse, matching Relax/Add (was the lone exception).
   regenBtn.disabled = !currentRenderValid;
   regenBtn.title = currentRenderValid ? "" : "fix source first";
+  resetPosBtn.disabled = !currentRenderValid;
   const canAdd = currentRenderValid && familyAffordances(kind).addNode && !isDotImport;
   addBtn.disabled = !canAdd;
   addBtn.title = canAdd
@@ -2135,6 +2256,30 @@ const scenePoint = (ev: MouseEvent): Point => {
   );
 };
 
+// Hit-testing that also catches an edge's *label*: the label is drawn offset from the edge line (beyond
+// the line's hit tolerance), so a click on the visible label text would otherwise miss the edge (the
+// "edge rename seems bugged" report). A NODE still owns its own pixels — only an empty/edge-line region
+// falls through to the label boxes — so clicking/dragging a node (or dropping a connect on it) is never
+// stolen by a label that happens to overlap it.
+const EDGE_LABEL_HIT_PAD = 7;
+const EDGE_LABEL_LINE_H = 16;
+const hitScene = (shown: Scene, at: Point): HitTarget | null => {
+  const base = hitTest(shown, at);
+  if (base !== null && base.kind === "node") return base;
+  for (const edge of shown.edges) {
+    if (edge.label === null) continue;
+    const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
+    // Mirror the painter's multi-line box: widest line for width, line count for height.
+    const lines = edge.label.split("\n");
+    const halfW = lines.reduce((w, l) => Math.max(w, measureLabel(l)), 0) / 2 + EDGE_LABEL_HIT_PAD;
+    const halfH = (lines.length * EDGE_LABEL_LINE_H) / 2 + EDGE_LABEL_HIT_PAD;
+    if (Math.abs(at.x - anchor.x) <= halfW && Math.abs(at.y - anchor.y) <= halfH) {
+      return { kind: "edge", id: edge.id };
+    }
+  }
+  return base; // an edge-line hit, or null
+};
+
 // scene → viewport CSS px (left/top). Inverse of `scenePoint`. Returns a `ScreenPoint`, so its result
 // can't be fed back into a scene API (`moveNode`, `hitTest`, …) without an obvious second conversion.
 const sceneToScreen = (p: Point): ScreenPoint => {
@@ -2144,6 +2289,15 @@ const sceneToScreen = (p: Point): ScreenPoint => {
     r.left + (MARGIN - o.x + p.x) * viewScale,
     r.top + (MARGIN - o.y + p.y) * viewScale,
   );
+};
+
+window.__edgeLabelPos = (edgeId) => {
+  if (scene === null) return null;
+  const edge = shownScene(scene).edges.find((e) => e.id === edgeId);
+  if (edge === undefined || edge.label === null) return null;
+  const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
+  const s = sceneToScreen(point(anchor.x, anchor.y));
+  return { x: s.x, y: s.y };
 };
 
 // Position a DOM overlay at a screen point. Typed to require a `ScreenPoint`, so a raw scene `Point`
@@ -2215,7 +2369,7 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   }
   const shown = shownScene(scene);
   const at = scenePoint(ev);
-  const hit = hitTest(shown, at);
+  const hit = hitScene(shown, at);
   // Non-select tools own the cursor outright; select keeps the rich hit-aware feedback below.
   const tool = effectiveTool();
   if (tool === "hand") {
@@ -2340,7 +2494,7 @@ canvas.addEventListener("pointerdown", (ev) => {
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
   const shown = shownScene(scene);
   const at = scenePoint(ev);
-  const hit = hitTest(shown, at);
+  const hit = hitScene(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
   const tool = effectiveTool();
   // Place tool: a click drops a new node at the pointer (flowchart only), then snaps back to select.
@@ -2589,7 +2743,7 @@ canvas.addEventListener("pointerup", (ev) => {
     canvas.releasePointerCapture(ev.pointerId);
     const cd = connectDrag;
     connectDrag = null;
-    const target = scene === null ? null : hitTest(shownScene(scene), scenePoint(ev));
+    const target = scene === null ? null : hitScene(shownScene(scene), scenePoint(ev));
     if (ast !== null && target !== null && target.kind === "node" && target.id !== cd.from) {
       // Only commit when the family's `appendEdge` actually changes the text — otherwise a full re-layout
       // (and a nav reset) would run for nothing. The arming guard already blocks non-connectable families;
@@ -3011,7 +3165,7 @@ canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
   const shown = shownScene(scene);
   const at = scenePoint(ev);
-  const hit = hitTest(shown, at);
+  const hit = hitScene(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
   // If something was hit but it has no editable label (e.g. a gitGraph merge edge, a mindmap spoke, an
   // auto-id commit), say so instead of letting the double-click do nothing.
@@ -4048,6 +4202,32 @@ regenBtn.addEventListener("click", () => {
   void renderFromText(editor.value());
   setStatusAndAnnounce("ok", "regenerated layout — pinned nodes kept");
 });
+
+// Reset positions: clear EVERY manual position/resize (pinned included) so the diagram returns to its
+// from-text default layout. Groups are kept (they're structural, not positional). Undoable.
+const resetPositions = async (): Promise<void> => {
+  if (viewerMode || isInteracting()) return; // the `window.__resetPositions` hook can fire mid-gesture
+  if (doc.overrides().size === 0) {
+    flashStatus("already at the default layout");
+    return;
+  }
+  doc.record();
+  doc.clearOverrides();
+  doc.persist();
+  // Await the re-render before announcing — `renderFromText` writes the diagram summary to the status
+  // bar, so setting our message after it (not before) is what the user actually sees.
+  await renderFromText(editor.value());
+  setStatusAndAnnounce("ok", "reset to default positions");
+};
+resetPosBtn.addEventListener("click", () => void resetPositions());
+// API hook: clear the overlay's manual positions from script/console.
+window.__resetPositions = () => void resetPositions();
+window.__overrideCount = () => doc.overrides().size;
+// e2e hook: the text currently highlighted in the source editor (the canvas-selection echo).
+window.__editorHighlight = () => {
+  const r = editor.selectedRange();
+  return editor.value().slice(r.from, r.to);
+};
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
 // `data-theme` attribute drives the page chrome so it stays cohesive with the canvas surface.

@@ -41,6 +41,17 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   across parser → layout → renderer to make it real — then the sequence example can show a `note over`.
 - **Class diagram, parser-led.** Stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
 
+## Connectors (scoped next phase — sequenced)
+The renderer already supports curved edges (bezier) and `labelPos`. Build in this order:
+1. **Per-edge style from the editor/canvas:** let an edge be straight / orthogonal / curved, chosen
+   per-edge. Curve/route is a render/overlay property (flowchart syntax has no curve token), so store
+   the per-edge preference in the overlay (like positions) and offer it on the edge "Style" control.
+2. **Junction dots + crossing cues (renderer):** a discreet dot where edges merge (with the arrowhead
+   at the dot if the edge is directed); a discreet hop/gap where two non-joining edges cross. Both are
+   display-list/paint additions over the existing routed waypoints.
+3. **Smart auto-routing (largest, approximate):** obstacle-avoiding routing with a few re-route options.
+   Research-grade; deliver as a best-effort pass, not exact.
+
 ## Layout / rendering
 - **c4 + network edge labels overlap node labels on busy diagrams.** Both use a simple absolute layout
   with a fixed ~24px inter-node gap, so a wide edge label on a short segment bleeds into neighbouring
