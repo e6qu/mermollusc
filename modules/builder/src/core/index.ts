@@ -2,7 +2,7 @@ export { hitTest, descendantsOf } from "./hit.js";
 export type { HitTarget } from "./hit.js";
 export { emptySelection, selectOnly, toggle, isSelected } from "./selection.js";
 export type { Selection } from "./selection.js";
-export { moveNode, resizeNode, clearOverride, applyOverrides } from "./overrides.js";
+export { moveNode, resizeNode, clearOverride, applyOverrides, applyStyles } from "./overrides.js";
 export {
   group,
   ungroup,

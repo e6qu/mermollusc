@@ -32,11 +32,25 @@ describe("overlay codec", () => {
       ],
     ]);
 
-    const decoded = decodeOverlay(JSON.parse(serializeOverlay(overrides, groups)));
+    const edgeStyles = new Map([[brand<string, "SceneEdgeId">("e0"), { curved: true }]]);
+    const nodeStyles = new Map([[snid("A"), { accent: "active" as const }]]);
+    const decoded = decodeOverlay(
+      JSON.parse(serializeOverlay(overrides, groups, edgeStyles, nodeStyles)),
+    );
     expect(isOk(decoded)).toBe(true);
     if (!isOk(decoded)) return;
     expect(decoded.value.overrides).toEqual(overrides);
     expect(decoded.value.groups).toEqual(groups);
+    expect(decoded.value.edgeStyles).toEqual(edgeStyles);
+    expect(decoded.value.nodeStyles).toEqual(nodeStyles);
+  });
+
+  it("decodes a legacy overlay with no styling (defaults to empty style maps)", () => {
+    const decoded = decodeOverlay({ overrides: [], groups: [] });
+    expect(isOk(decoded)).toBe(true);
+    if (!isOk(decoded)) return;
+    expect(decoded.value.edgeStyles.size).toBe(0);
+    expect(decoded.value.nodeStyles.size).toBe(0);
   });
 
   it("fails loudly on a malformed payload (no silent fallback)", () => {

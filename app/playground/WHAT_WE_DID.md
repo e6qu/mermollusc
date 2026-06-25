@@ -792,3 +792,11 @@
   palette (none → blue → grey → red). Our renderer fills from a closed accent set (not arbitrary hex), so
   like curves this is a visual-only overlay — per-browser, keyed by node id, applied at render time —
   rather than a source `style` line the pipeline can't render. +e2e (cycle + persist).
+- Styling moved into the overlay document (follow-up: "source stays vanilla Mermaid, styling in the
+  overlay"). The curve/colour prefs were promoted from app-local localStorage into the real `OverlayDoc`
+  (new `edgeStyles`/`nodeStyles` layers): so styling now persists, **serialises into share links**, is
+  **undoable** like positions, and the Mermaid source stays untouched. Cross-cutting: contracts (overlay
+  model + port + serialization schema, back-compat default for legacy overlays), `applyStyles` in
+  @m/builder, the local document-model, and the collab session (styling is per-client in-session for now
+  — positions/groups still sync; sharing styling across peers is the noted follow-up). +e2e (share-link
+  round-trip + undo).

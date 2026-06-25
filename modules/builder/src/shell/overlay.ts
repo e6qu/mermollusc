@@ -3,12 +3,24 @@
 // `decode()` and leaves as branded `LayoutOverrides` / `Groups`, or a loud error.
 
 import { brand, decode, type DecodeError, map, point, type Result, size } from "@m/std";
-import type { Group, GroupMember, Groups, LayoutOverrides, NodeOverride } from "@m/contracts";
+import type {
+  EdgeStyle,
+  EdgeStyles,
+  Group,
+  GroupMember,
+  Groups,
+  LayoutOverrides,
+  NodeOverride,
+  NodeStyle,
+  NodeStyles,
+} from "@m/contracts";
 import { z } from "zod";
 
 export interface Overlay {
   readonly overrides: LayoutOverrides;
   readonly groups: Groups;
+  readonly edgeStyles: EdgeStyles;
+  readonly nodeStyles: NodeStyles;
 }
 
 // `z.number()` already rejects NaN/Infinity; a size must additionally be non-negative — otherwise
@@ -24,9 +36,14 @@ const GroupZ = z.object({
   members: z.array(MemberZ),
   locked: z.boolean(),
 });
+const EdgeStyleZ = z.object({ curved: z.boolean() });
+const NodeStyleZ = z.object({ accent: z.enum(["none", "muted", "active", "danger"]) });
 const OverlayZ = z.object({
   overrides: z.array(z.tuple([z.string(), OverrideZ])),
   groups: z.array(z.tuple([z.string(), GroupZ])),
+  // Optional on the wire so older share-links / persisted overlays (no styling) still decode.
+  edgeStyles: z.array(z.tuple([z.string(), EdgeStyleZ])).default([]),
+  nodeStyles: z.array(z.tuple([z.string(), NodeStyleZ])).default([]),
 });
 
 // Per-entry wire encoders, branded values flattened to plain numbers/strings. The
@@ -49,11 +66,23 @@ export const encodeGroupEntry = (g: Group) =>
     locked: g.locked,
   }) satisfies Record<keyof Group, unknown>;
 
+export const encodeEdgeStyleEntry = (s: EdgeStyle) =>
+  ({ curved: s.curved }) satisfies Record<keyof EdgeStyle, unknown>;
+export const encodeNodeStyleEntry = (s: NodeStyle) =>
+  ({ accent: s.accent }) satisfies Record<keyof NodeStyle, unknown>;
+
 // Serialise the overlay to a JSON string — branded values are plain numbers/strings on the wire.
-export const serializeOverlay = (overrides: LayoutOverrides, groups: Groups): string =>
+export const serializeOverlay = (
+  overrides: LayoutOverrides,
+  groups: Groups,
+  edgeStyles: EdgeStyles,
+  nodeStyles: NodeStyles,
+): string =>
   JSON.stringify({
     overrides: [...overrides].map(([id, o]) => [id, encodeOverrideEntry(o)]),
     groups: [...groups].map(([id, g]) => [id, encodeGroupEntry(g)]),
+    edgeStyles: [...edgeStyles].map(([id, s]) => [id, encodeEdgeStyleEntry(s)]),
+    nodeStyles: [...nodeStyles].map(([id, s]) => [id, encodeNodeStyleEntry(s)]),
   });
 
 // Decode an untyped overlay payload (e.g. `JSON.parse(localStorage…)`) back into branded maps.
@@ -84,5 +113,11 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
           locked: g.locked,
         },
       ]),
+    ),
+    edgeStyles: new Map(
+      j.edgeStyles.map(([id, s]) => [brand<string, "SceneEdgeId">(id), { curved: s.curved }]),
+    ),
+    nodeStyles: new Map(
+      j.nodeStyles.map(([id, s]) => [brand<string, "SceneNodeId">(id), { accent: s.accent }]),
     ),
   }));

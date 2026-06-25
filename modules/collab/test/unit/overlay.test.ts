@@ -111,6 +111,8 @@ describe("collab session — overlay (single client)", () => {
     s.overlay.replace(
       new Map([[n("x"), { position: point(9, 9), size: null, pinned: true }]]),
       new Map(),
+      new Map(),
+      new Map(),
     );
     expect(s.overlay.overrides().has(n("a"))).toBe(false);
     expect(s.overlay.overrides().get(n("x"))?.position).toEqual(point(9, 9));

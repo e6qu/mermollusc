@@ -37,6 +37,7 @@ import {
   descendantsOf,
   emptySelection,
   hitTest,
+  applyStyles,
   clearOverride,
   leafNodes,
   addEdgeLabel,
@@ -75,9 +76,11 @@ import type {
   GroupMember,
   LayoutOverrides,
   NetworkSource,
+  EdgeStyles,
   NodeAccent,
   NodeId,
   NodeShape,
+  NodeStyles,
   OverlayDoc,
   Scene,
   SceneNode,
@@ -498,6 +501,8 @@ if (useCollab) {
   doc = createLocalDocument({
     initialOverrides: new Map(),
     initialGroups: new Map(),
+    initialEdgeStyles: new Map(),
+    initialNodeStyles: new Map(),
     save: saveOverlay,
   });
 }
@@ -579,8 +584,8 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 // own — a drag, which legitimately changes the overlay each frame, still recomputes.
 let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
-let shownCacheCurves: ReadonlySet<string> | null = null;
-let shownCacheAccents: ReadonlyMap<string, NodeAccent> | null = null;
+let shownCacheEdgeStyles: EdgeStyles | null = null;
+let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -599,12 +604,14 @@ const TIDY_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
 
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
+  const es = doc.edgeStyles();
+  const ns = doc.nodeStyles();
   if (
     shownCacheResult !== null &&
     shownCacheScene === base &&
     shownCacheOverrides === ov &&
-    shownCacheCurves === curvedEdges &&
-    shownCacheAccents === nodeAccents
+    shownCacheEdgeStyles === es &&
+    shownCacheNodeStyles === ns
   ) {
     return shownCacheResult;
   }
@@ -613,23 +620,12 @@ const shownScene = (base: Scene): Scene => {
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
   const tidied =
     ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
-  // The visual-only presentation preferences (display only): curved edges + node accents.
-  const edges =
-    curvedEdges.size === 0
-      ? tidied.edges
-      : tidied.edges.map((e) => (!e.curved && curvedEdges.has(e.id) ? { ...e, curved: true } : e));
-  const nodes =
-    nodeAccents.size === 0
-      ? tidied.nodes
-      : tidied.nodes.map((n) => {
-          const a = nodeAccents.get(n.id);
-          return a !== undefined && a !== n.accent ? { ...n, accent: a } : n;
-        });
-  const shown = { ...tidied, nodes, edges };
+  // The presentation-only overlay (display only): curved edges + node accents from the document.
+  const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
   shownCacheOverrides = ov;
-  shownCacheCurves = curvedEdges;
-  shownCacheAccents = nodeAccents;
+  shownCacheEdgeStyles = es;
+  shownCacheNodeStyles = ns;
   shownCacheResult = shown;
   return shown;
 };
@@ -1191,9 +1187,11 @@ const renderContextBar = (caps: CapabilityState): void => {
   // Curve is a visual-only edge preference (all families' edges have waypoints), so it shows whenever
   // edges — and only edges — are selected.
   ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
-  ctxCurveBtn.textContent = [...selection.edges].every((id) => curvedEdges.has(id))
-    ? "Straighten"
-    : "Curve";
+  ctxCurveBtn.textContent =
+    selection.edges.size > 0 &&
+    [...selection.edges].every((id) => doc.edgeStyles().get(id)?.curved === true)
+      ? "Straighten"
+      : "Curve";
   ctxConnectBtn.hidden = !caps.canConnect;
   ctxDuplicateBtn.hidden = !caps.canDuplicate;
   ctxGroupBtn.hidden = !caps.canGroup;
@@ -2105,59 +2103,10 @@ const persistCollapsed = (): void => {
   }
 };
 
-// Edges the user set to curved. A *visual-only* overlay: curves have no Mermaid syntax, so they live
-// outside the source (and outside the shared/collab position overlay) — a per-browser presentation
-// preference keyed by edge id, applied to the scene at render time. Stale ids (after a structural edit
-// reindexes edges) simply don't match any edge and are harmless.
-const CURVES_KEY = "mermollusc-curved-edges";
-const loadCurved = (): string[] => {
-  try {
-    const raw = localStorage.getItem(CURVES_KEY);
-    const v: unknown = raw === null ? [] : JSON.parse(raw);
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch (e) {
-    console.error("curved-edge state load failed", e);
-    return [];
-  }
-};
-let curvedEdges = new Set<string>(loadCurved());
-const persistCurved = (): void => {
-  try {
-    localStorage.setItem(CURVES_KEY, JSON.stringify([...curvedEdges]));
-  } catch (e) {
-    console.error("curved-edge state persist failed", e);
-  }
-};
-
-// Node colour: a *visual-only* accent the user cycles from the palette (none → blue → grey → red). Our
-// renderer fills from a closed accent set (not arbitrary hex), so this rides the same overlay channel as
-// curves — per-browser, keyed by node id, applied at render time — rather than a source `style` line our
-// pipeline can't yet render. Only non-`none` accents are stored, keeping the map sparse.
-const ACCENTS_KEY = "mermollusc-node-accents";
+// Node colour cycles through this accent palette (none → blue → grey → red). The styling itself lives in
+// the overlay document (curved edges + node accents), so it persists, serialises into share links, and
+// is undoable like positions — while the Mermaid source stays vanilla (these have no Mermaid syntax).
 const ACCENT_CYCLE: readonly NodeAccent[] = ["none", "active", "muted", "danger"];
-const loadAccents = (): [string, NodeAccent][] => {
-  try {
-    const raw = localStorage.getItem(ACCENTS_KEY);
-    const v: unknown = raw === null ? [] : JSON.parse(raw);
-    if (!Array.isArray(v)) return [];
-    return v.flatMap((e): [string, NodeAccent][] =>
-      Array.isArray(e) && typeof e[0] === "string" && ACCENT_CYCLE.includes(e[1] as NodeAccent)
-        ? [[e[0], e[1] as NodeAccent]]
-        : [],
-    );
-  } catch (e) {
-    console.error("node-accent state load failed", e);
-    return [];
-  }
-};
-let nodeAccents = new Map<string, NodeAccent>(loadAccents());
-const persistAccents = (): void => {
-  try {
-    localStorage.setItem(ACCENTS_KEY, JSON.stringify([...nodeAccents]));
-  } catch (e) {
-    console.error("node-accent state persist failed", e);
-  }
-};
 const collapsedBranded = (): ReadonlySet<NodeId> =>
   new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
 
@@ -4217,14 +4166,12 @@ const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick
 // straight, else straightens all.
 const toggleEdgeCurve = (): void => {
   if (viewerMode || selection.edges.size === 0) return;
-  const next = new Set(curvedEdges);
-  const anyStraight = [...selection.edges].some((id) => !next.has(id));
-  for (const id of selection.edges) {
-    if (anyStraight) next.add(id);
-    else next.delete(id);
-  }
-  curvedEdges = next; // new identity invalidates the shownScene cache
-  persistCurved();
+  const anyStraight = [...selection.edges].some(
+    (id) => !(doc.edgeStyles().get(id)?.curved ?? false),
+  );
+  doc.record();
+  for (const id of selection.edges) doc.setEdgeStyle(id, anyStraight ? { curved: true } : null);
+  doc.persist();
   paintScene();
   updateGroupButtons(); // refresh the Curve/Straighten label for the new state
   setStatusAndAnnounce("ok", anyStraight ? "edge curved" : "edge straightened");
@@ -4234,17 +4181,14 @@ const toggleEdgeCurve = (): void => {
 // curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
 const cycleNodeColour = (): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
-  const next = new Map(nodeAccents);
   const firstId = selectionOrder[0];
-  const cur = firstId === undefined ? "none" : (next.get(firstId) ?? "none");
+  const cur = firstId === undefined ? "none" : (doc.nodeStyles().get(firstId)?.accent ?? "none");
   const adv = ACCENT_CYCLE[(ACCENT_CYCLE.indexOf(cur) + 1) % ACCENT_CYCLE.length] ?? "none";
-  for (const id of selectionOrder) {
-    if (adv === "none") next.delete(id);
-    else next.set(id, adv);
-  }
-  nodeAccents = next; // new identity invalidates the shownScene cache
-  persistAccents();
+  doc.record();
+  for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
+  doc.persist();
   paintScene();
+  updateGroupButtons();
   setStatusAndAnnounce("ok", adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
@@ -4857,8 +4801,12 @@ const shareUrl = (): string => {
   if (useCollab) return base;
   const overrides = doc.overrides();
   const groups = doc.groups();
-  if (overrides.size === 0 && groups.size === 0) return base;
-  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups))}`;
+  const edgeStyles = doc.edgeStyles();
+  const nodeStyles = doc.nodeStyles();
+  if (overrides.size === 0 && groups.size === 0 && edgeStyles.size === 0 && nodeStyles.size === 0) {
+    return base;
+  }
+  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups, edgeStyles, nodeStyles))}`;
 };
 
 // Past this the URL risks silent truncation when pasted into chat/email clients (the `#src=` hash isn't
@@ -4912,7 +4860,13 @@ const initialSource = fromHash ?? loadSource() ?? SAMPLE;
 const applyOverlayJson = (raw: string, whence: string): void => {
   try {
     const decoded = decodeOverlay(JSON.parse(raw));
-    if (isOk(decoded)) doc.replace(decoded.value.overrides, decoded.value.groups);
+    if (isOk(decoded))
+      doc.replace(
+        decoded.value.overrides,
+        decoded.value.groups,
+        decoded.value.edgeStyles,
+        decoded.value.nodeStyles,
+      );
     else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
   } catch (e) {
     console.error("ignoring corrupt overlay from", whence, messageOf(e));

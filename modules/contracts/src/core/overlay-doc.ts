@@ -1,7 +1,7 @@
 import type { Point, Size } from "@m/std";
 import type { GroupId, GroupMember, Groups } from "./groups.js";
-import type { LayoutOverrides } from "./overrides.js";
-import type { SceneNodeId } from "./scene.js";
+import type { EdgeStyle, EdgeStyles, LayoutOverrides, NodeStyle, NodeStyles } from "./overrides.js";
+import type { SceneEdgeId, SceneNodeId } from "./scene.js";
 
 // The port the app drives the sidecar overlay through: manual node positions/sizes (`overrides`) plus
 // element groups (`groups`), with undo/redo history and persistence. It is the single owner of that
@@ -17,8 +17,13 @@ import type { SceneNodeId } from "./scene.js";
 export interface OverlayDoc {
   overrides(): LayoutOverrides;
   groups(): Groups;
+  edgeStyles(): EdgeStyles;
+  nodeStyles(): NodeStyles;
 
   moveNode(id: SceneNodeId, to: Point): void;
+  // Set a presentation-only style (null clears it). Visual overlay layers — no source edit.
+  setEdgeStyle(id: SceneEdgeId, style: EdgeStyle | null): void;
+  setNodeStyle(id: SceneNodeId, style: NodeStyle | null): void;
   resizeNode(id: SceneNodeId, origin: Point, dim: Size): void;
   clearOverrides(): void;
   replaceOverrides(overrides: LayoutOverrides): void;
@@ -28,7 +33,12 @@ export interface OverlayDoc {
   setGroupLabel(id: GroupId, label: string): void;
   // Drop groups whose member nodes the edited text removed; returns whether anything changed.
   pruneGroupsTo(liveNodeIds: ReadonlySet<SceneNodeId>): boolean;
-  replace(overrides: LayoutOverrides, groups: Groups): void;
+  replace(
+    overrides: LayoutOverrides,
+    groups: Groups,
+    edgeStyles: EdgeStyles,
+    nodeStyles: NodeStyles,
+  ): void;
 
   record(): void;
   undo(): boolean;

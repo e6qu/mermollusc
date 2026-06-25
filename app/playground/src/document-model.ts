@@ -8,7 +8,7 @@ import {
   setLocked,
   ungroup,
 } from "@m/builder";
-import type { Groups, LayoutOverrides, OverlayDoc } from "@m/contracts";
+import type { EdgeStyles, Groups, LayoutOverrides, NodeStyles, OverlayDoc } from "@m/contracts";
 import { brand } from "@m/std";
 
 // The local, single-user implementation of the `OverlayDoc` port (defined in `@m/contracts` so the
@@ -20,6 +20,8 @@ import { brand } from "@m/std";
 interface OverlaySnapshot {
   readonly overrides: LayoutOverrides;
   readonly groups: Groups;
+  readonly edgeStyles: EdgeStyles;
+  readonly nodeStyles: NodeStyles;
 }
 
 const HISTORY_LIMIT = 100;
@@ -43,10 +45,14 @@ const nextGroupSeqFrom = (groups: Groups): number => {
 export const createLocalDocument = (opts: {
   readonly initialOverrides: LayoutOverrides;
   readonly initialGroups: Groups;
+  readonly initialEdgeStyles: EdgeStyles;
+  readonly initialNodeStyles: NodeStyles;
   readonly save: (serialized: string) => void;
 }): OverlayDoc => {
   let overrides: LayoutOverrides = opts.initialOverrides;
   let groups: Groups = opts.initialGroups;
+  let edgeStyles: EdgeStyles = opts.initialEdgeStyles;
+  let nodeStyles: NodeStyles = opts.initialNodeStyles;
   // Mints fresh group ids; monotonic for the document's lifetime, seeded past any pre-existing ids.
   let groupSeq = nextGroupSeqFrom(opts.initialGroups);
   let undoStack: OverlaySnapshot[] = [];
@@ -55,11 +61,27 @@ export const createLocalDocument = (opts: {
   const snapshot = (): OverlaySnapshot => ({
     overrides: new Map(overrides),
     groups: new Map(groups),
+    edgeStyles: new Map(edgeStyles),
+    nodeStyles: new Map(nodeStyles),
   });
 
   return {
     overrides: () => overrides,
     groups: () => groups,
+    edgeStyles: () => edgeStyles,
+    nodeStyles: () => nodeStyles,
+    setEdgeStyle: (id, style) => {
+      const next = new Map(edgeStyles);
+      if (style === null) next.delete(id);
+      else next.set(id, style);
+      edgeStyles = next;
+    },
+    setNodeStyle: (id, style) => {
+      const next = new Map(nodeStyles);
+      if (style === null) next.delete(id);
+      else next.set(id, style);
+      nodeStyles = next;
+    },
     moveNode: (id, to) => {
       overrides = moveNode(overrides, id, to);
     },
@@ -90,9 +112,11 @@ export const createLocalDocument = (opts: {
       groups = pruned;
       return true;
     },
-    replace: (nextOverrides, nextGroups) => {
+    replace: (nextOverrides, nextGroups, nextEdgeStyles, nextNodeStyles) => {
       overrides = nextOverrides;
       groups = nextGroups;
+      edgeStyles = nextEdgeStyles;
+      nodeStyles = nextNodeStyles;
       groupSeq = Math.max(groupSeq, nextGroupSeqFrom(nextGroups));
     },
     record: () => {
@@ -106,6 +130,8 @@ export const createLocalDocument = (opts: {
       redoStack.push(snapshot());
       overrides = new Map(prev.overrides);
       groups = new Map(prev.groups);
+      edgeStyles = new Map(prev.edgeStyles);
+      nodeStyles = new Map(prev.nodeStyles);
       return true;
     },
     redo: () => {
@@ -114,6 +140,8 @@ export const createLocalDocument = (opts: {
       undoStack.push(snapshot());
       overrides = new Map(next.overrides);
       groups = new Map(next.groups);
+      edgeStyles = new Map(next.edgeStyles);
+      nodeStyles = new Map(next.nodeStyles);
       return true;
     },
     clearHistory: () => {
@@ -121,7 +149,7 @@ export const createLocalDocument = (opts: {
       redoStack = [];
     },
     persist: () => {
-      opts.save(serializeOverlay(overrides, groups));
+      opts.save(serializeOverlay(overrides, groups, edgeStyles, nodeStyles));
     },
   };
 };
