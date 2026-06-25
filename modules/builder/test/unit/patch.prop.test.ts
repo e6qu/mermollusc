@@ -3,7 +3,14 @@ import { brand, isErr, isOk, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { applyOverrides, clearOverride, moveNode } from "../../src/core/overrides.js";
-import { addNode, deleteNode, patchSpan, validateLabel } from "../../src/core/patch.js";
+import {
+  addNode,
+  deleteNode,
+  patchSpan,
+  setGanttDuration,
+  shiftGanttStart,
+  validateLabel,
+} from "../../src/core/patch.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const nid = (s: string) => brand<string, "NodeId">(s);
@@ -125,5 +132,31 @@ describe("validateLabel — the colon context guards timeline/gantt against `:` 
       expect(isErr(validateLabel("%%", ctx))).toBe(true);
     }
     expect(isOk(validateLabel("100% sure", "plain"))).toBe(true); // a single `%` is fine
+  });
+});
+
+describe("gantt two-way editing — shiftGanttStart / setGanttDuration", () => {
+  const span = (text: string, sub: string) => {
+    const i = text.indexOf(sub);
+    return { start: i, end: i + sub.length };
+  };
+  it("slides an explicit start date by whole calendar days (UTC, with month/year rollover)", () => {
+    const t = "gantt\n  Task : a, 2014-01-06, 3d\n";
+    expect(shiftGanttStart(t, span(t, "2014-01-06"), "2014-01-06", 3)).toContain("2014-01-09");
+    expect(shiftGanttStart(t, span(t, "2014-01-06"), "2014-01-06", -1)).toContain("2014-01-05");
+    // month + year boundaries
+    const m = "x 2014-01-30 y";
+    expect(shiftGanttStart(m, span(m, "2014-01-30"), "2014-01-30", 5)).toBe("x 2014-02-04 y");
+    const y = "x 2014-12-30 y";
+    expect(shiftGanttStart(y, span(y, "2014-12-30"), "2014-12-30", 3)).toBe("x 2015-01-02 y");
+  });
+  it("a zero-day shift leaves the text byte-identical", () => {
+    const t = "gantt\n  Task : a, 2014-01-06, 3d\n";
+    expect(shiftGanttStart(t, span(t, "2014-01-06"), "2014-01-06", 0)).toBe(t);
+  });
+  it("rewrites the duration to Nd, clamped to at least one day", () => {
+    const t = "gantt\n  Task : a, 2014-01-06, 3d\n";
+    expect(setGanttDuration(t, span(t, "3d"), 5)).toContain("2014-01-06, 5d");
+    expect(setGanttDuration(t, span(t, "3d"), 0)).toContain("2014-01-06, 1d"); // never a 0d collapse
   });
 });

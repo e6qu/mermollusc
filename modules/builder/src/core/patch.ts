@@ -115,6 +115,33 @@ export const addEdgeLabel = (
 export const restyleEdge = (text: string, arrowSpan: TextSpan, kind: EdgeKind): string =>
   patchSpan(text, arrowSpan, ARROW[kind]);
 
+// Gantt two-way editing: a bar drag rewrites its start date, a resize rewrites its duration, directly in
+// the source (positions/sizes are semantic here, not layout overlay). Date math is pure (UTC, no clock).
+const GANTT_DAY_MS = 86_400_000;
+const ganttDayOf = (iso: string): number =>
+  Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) /
+  GANTT_DAY_MS;
+const ganttISOofDay = (day: number): string => {
+  const dt = new Date(day * GANTT_DAY_MS);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+};
+
+// Slide an explicit `YYYY-MM-DD` start by whole calendar days (a no-op shift returns the text unchanged).
+export const shiftGanttStart = (
+  text: string,
+  startSpan: TextSpan,
+  oldISO: string,
+  deltaDays: number,
+): string =>
+  deltaDays === 0
+    ? text
+    : patchSpan(text, startSpan, ganttISOofDay(ganttDayOf(oldISO) + deltaDays));
+
+// Rewrite a task's duration field to `Nd` (at least 1 day, so a task never collapses to a milestone).
+export const setGanttDuration = (text: string, durationSpan: TextSpan, days: number): string =>
+  patchSpan(text, durationSpan, `${Math.max(1, Math.round(days))}d`);
+
 // Structural edits append a line, leaving existing text (formatting/comments) intact.
 export const addNode = (text: string, id: NodeId, label: string, shape: NodeShape): string => {
   const [open, close] = NODE_WRAP[shape];

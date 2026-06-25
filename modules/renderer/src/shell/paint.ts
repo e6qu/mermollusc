@@ -169,11 +169,17 @@ const sketchRect = (ctx: Canvas2D, x: number, y: number, w: number, h: number, s
 const sketchFillRect = (
   ctx: Canvas2D,
   fill: string,
+  bg: string,
   x: number,
   y: number,
   w: number,
   h: number,
 ): void => {
+  // Lay an opaque background fill first so an edge routed *under* this node is occluded — then the
+  // translucent accent on top keeps the hand-drawn look. Without the opaque base the 0.62-alpha colour
+  // lets the edge show through and it reads as drawn *over* the node.
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
   ctx.fillStyle = fill;
   ctx.globalAlpha = 0.62;
   ctx.fillRect(x, y, w, h);
@@ -236,7 +242,7 @@ export const paint = (
         ctx.strokeStyle = theme.stroke;
         const fill = accentFill(cmd.accent, theme);
         if (theme.sketch) {
-          sketchFillRect(ctx, fill, cmd.x, cmd.y, cmd.width, cmd.height);
+          sketchFillRect(ctx, fill, theme.background, cmd.x, cmd.y, cmd.width, cmd.height);
           sketchRect(ctx, cmd.x, cmd.y, cmd.width, cmd.height, seedOf(cmd.x, cmd.y, cmd.width));
           break;
         }
@@ -280,6 +286,20 @@ export const paint = (
         ctx.strokeStyle = theme.stroke;
         if (theme.sketch) {
           const s = seedOf(cmd.cx, cmd.cy, cmd.width);
+          // Opaque base + translucent accent so an edge routed under the diamond is occluded (the sketch
+          // outline alone left it see-through, so the edge read as drawn over the node).
+          ctx.beginPath();
+          ctx.moveTo(cmd.cx, cmd.cy - hh);
+          ctx.lineTo(cmd.cx + hw, cmd.cy);
+          ctx.lineTo(cmd.cx, cmd.cy + hh);
+          ctx.lineTo(cmd.cx - hw, cmd.cy);
+          ctx.closePath();
+          ctx.fillStyle = theme.background;
+          ctx.fill();
+          ctx.fillStyle = theme.nodeFill;
+          ctx.globalAlpha = 0.62;
+          ctx.fill();
+          ctx.globalAlpha = 1;
           sketchLine(ctx, cmd.cx, cmd.cy - hh, cmd.cx + hw, cmd.cy, s);
           sketchLine(ctx, cmd.cx + hw, cmd.cy, cmd.cx, cmd.cy + hh, s + 1);
           sketchLine(ctx, cmd.cx, cmd.cy + hh, cmd.cx - hw, cmd.cy, s + 2);

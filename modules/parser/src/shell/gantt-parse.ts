@@ -72,6 +72,8 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   const excludeDates: GanttDate[] = [];
   const tasks: GanttTask[] = [];
   const taskSpans = new Map<GanttTaskId, TextSpan>();
+  const startSpans = new Map<GanttTaskId, TextSpan>();
+  const durationSpans = new Map<GanttTaskId, TextSpan>();
 
   for (const stmt of childNodes(root, "ganttStatement")) {
     const sc = stmt.children;
@@ -149,9 +151,10 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       const label = labelTok.image.trim();
       const labelLen = labelTok.image.trimEnd().length;
       // Comma-separated meta fields, in order: [status…][id], start, duration.
-      const fields = childTokens(taskLine.children, "BodyText")
-        .map((t) => t.image.trim())
-        .filter((s) => s !== "");
+      const fieldToks = childTokens(taskLine.children, "BodyText").filter(
+        (t) => t.image.trim() !== "",
+      );
+      const fields = fieldToks.map((t) => t.image.trim());
       if (fields.length < 2) {
         return err(
           parseErrorAt(
@@ -230,6 +233,13 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
         durationDays: milestone ? 0 : dur,
       });
       taskSpans.set(id, trimmedSpan(labelTok));
+      // Spans of the start + duration fields, so a bar drag/resize can rewrite them. Start is recorded
+      // only for an explicit date (an `after` chain has no calendar position to slide).
+      const durTok = fieldToks[fieldToks.length - 1];
+      const startTok = fieldToks[fieldToks.length - 2];
+      if (durTok !== undefined) durationSpans.set(id, trimmedSpan(durTok));
+      if (start.kind === "date" && startTok !== undefined)
+        startSpans.set(id, trimmedSpan(startTok));
     }
   }
 
@@ -243,7 +253,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       excludeDates,
       tasks,
     },
-    source: { tasks: taskSpans },
+    source: { tasks: taskSpans, taskStart: startSpans, taskDuration: durationSpans },
   });
 };
 

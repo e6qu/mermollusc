@@ -20,7 +20,7 @@ const STATUS_ACCENT: Record<GanttStatus, NodeAccent> = {
   crit: "danger",
 };
 
-const DAY_WIDTH = 16; // px per day on the time axis
+export const DAY_WIDTH = 16; // px per day on the time axis (exported so a bar drag can map px↔days)
 const ROW_HEIGHT = 30;
 const BAR_HEIGHT = 22;
 const LABEL_PAD = 12;

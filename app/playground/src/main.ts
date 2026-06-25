@@ -37,10 +37,13 @@ import {
   descendantsOf,
   emptySelection,
   hitTest,
+  clearOverride,
   leafNodes,
   addEdgeLabel,
   restyleEdge,
   patchSpan,
+  shiftGanttStart,
+  setGanttDuration,
   pathLocked,
   relabelNode,
   reshapeNode,
@@ -84,7 +87,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
-import { layout, layoutDiagram, retidyRoutes } from "@m/layout";
+import { GANTT_DAY_WIDTH, layout, layoutDiagram, retidyRoutes } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
 import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
@@ -145,6 +148,8 @@ declare global {
     // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
     // can click the label and assert it selects the edge.
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
+    // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
+    __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
     __resetPositions?: () => void;
     // e2e hook: how many manual position/resize overrides are currently in the overlay.
@@ -177,6 +182,7 @@ if (
 // every handler that touches the source goes through this instead of a raw element. The definite-
 // assignment assertion reflects that ordering — handlers only fire after init has run.
 let editor!: Editor;
+let editorReady = false;
 const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
@@ -1005,8 +1011,10 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "timeline":
       // Connect re-parents an event under a different period (drag an event onto a period).
       return { connect: true, iconOverride: false, addNode: false, resizable: false };
-    case "pie":
     case "gantt":
+      // A bar is resizable: dragging its width rewrites the task duration in the source (two-way).
+      return { connect: false, iconOverride: false, addNode: false, resizable: true };
+    case "pie":
       return { connect: false, iconOverride: false, addNode: false, resizable: false };
     default:
       return assertNever(kind);
@@ -1319,28 +1327,29 @@ const highlightSpanOf = (hit: {
 // Echo a single-item canvas selection as a text-editor highlight (`editor.select` selects + scrolls but
 // doesn't steal focus). Guarded against fighting the typist (editor focused) and churning mid-gesture;
 // memoised so a re-render with an unchanged selection doesn't re-scroll the editor.
+// Echo the whole canvas selection into the source as background highlights — every selected node and
+// edge (a selected group selects its member nodes, so it lights up too), across all families. Uses a
+// decoration (not the text selection), so it's visible while the editor is unfocused, covers many
+// ranges at once, and never moves the user's cursor. Memoised so an unchanged selection is a no-op.
 let lastHighlightKey = "";
 const highlightSelection = (): void => {
-  // Compute the selection target *before* touching `editor` — this runs from `updateGroupButtons`,
-  // which fires during early init before the editor is mounted; at that point nothing is selected.
-  let hit: { readonly kind: "node" | "edge"; readonly id: string } | null = null;
-  if (selection.nodes.size === 1 && selection.edges.size === 0) {
-    const nid = [...selection.nodes][0];
-    if (nid !== undefined) hit = { kind: "node", id: nid };
-  } else if (selection.edges.size === 1 && selection.nodes.size === 0) {
-    const eid = [...selection.edges][0];
-    if (eid !== undefined) hit = { kind: "edge", id: eid };
+  if (!editorReady) return; // `updateGroupButtons` fires during init before the editor mounts
+  const spans: { from: number; to: number }[] = [];
+  for (const id of selection.nodes) {
+    const s = highlightSpanOf({ kind: "node", id });
+    if (s !== null) spans.push({ from: s.start, to: s.end });
   }
-  if (hit === null) {
-    lastHighlightKey = "";
-    return;
+  for (const id of selection.edges) {
+    const s = highlightSpanOf({ kind: "edge", id });
+    if (s !== null) spans.push({ from: s.start, to: s.end });
   }
-  if (editor.hasFocus() || isInteracting()) return; // don't fight the typist or churn mid-gesture
-  const span = highlightSpanOf(hit);
-  const key = span === null ? "" : `${span.start}:${span.end}`;
+  const key = spans
+    .map((s) => `${s.from}:${s.to}`)
+    .sort()
+    .join(",");
   if (key === lastHighlightKey) return;
   lastHighlightKey = key;
-  if (span !== null) editor.select(span.start, span.end);
+  editor.setHighlights(spans);
 };
 
 // Reflect the current selection in the workbench controls (enabled state + Lock/Unlock label).
@@ -1830,7 +1839,8 @@ moreToggle.addEventListener("click", (ev) => {
 });
 moreMenu.addEventListener("keydown", (ev) => {
   const items = moreItems();
-  const i = items.findIndex((el) => el === document.activeElement);
+  const active = document.activeElement;
+  const i = active instanceof HTMLElement ? items.indexOf(active) : -1;
   if (ev.key === "Escape") {
     ev.preventDefault();
     closeMore();
@@ -2330,6 +2340,18 @@ window.__edgeLabelPos = (edgeId) => {
   const s = sceneToScreen(point(anchor.x, anchor.y));
   return { x: s.x, y: s.y };
 };
+window.__nodeRect = (nodeId) => {
+  if (scene === null) return null;
+  const node = shownScene(scene).nodes.find((n) => n.id === nodeId);
+  if (node === undefined) return null;
+  const tl = sceneToScreen(point(node.bounds.origin.x, node.bounds.origin.y));
+  return {
+    x: tl.x,
+    y: tl.y,
+    w: node.bounds.size.width * viewScale,
+    h: node.bounds.size.height * viewScale,
+  };
+};
 
 // Position a DOM overlay at a screen point. Typed to require a `ScreenPoint`, so a raw scene `Point`
 // (or a value off the canvas's scene coordinates) can't be used to place an element by mistake.
@@ -2435,7 +2457,8 @@ const updateCanvasCursor = (ev: PointerEvent): void => {
   ) {
     canvas.style.cursor = "pointer";
   } else {
-    canvas.style.cursor = "grab";
+    // Empty canvas: the Select tool rubber-bands an area selection (crosshair), the Hand tool pans (grab).
+    canvas.style.cursor = effectiveTool() === "select" && !viewerMode ? "crosshair" : "grab";
   }
 };
 
@@ -2656,14 +2679,25 @@ canvas.addEventListener("pointerdown", (ev) => {
     }
     canvas.setPointerCapture(ev.pointerId);
   } else if (hit === null) {
-    pan = {
-      startX: screenCoord(ev.clientX),
-      startY: screenCoord(ev.clientY),
-      scrollLeft: stageWrap.scrollLeft,
-      scrollTop: stageWrap.scrollTop,
-    };
-    canvas.setPointerCapture(ev.pointerId);
-    canvas.style.cursor = "grabbing";
+    // Select tool: a drag on empty canvas rubber-bands a selection box (the area selector) — clearing
+    // first so it replaces (a ⇧-drag adds instead, handled above). Pan stays on the hand tool and
+    // space-drag, so both gestures remain reachable. Touch keeps the one-finger drag as a pan (native
+    // scroll feel); the marquee is a mouse/pen gesture, so it never fights touch scrolling.
+    if (effectiveTool() === "select" && !viewerMode && ev.pointerType !== "touch") {
+      selection = emptySelection;
+      selectionOrder = [];
+      marquee = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
+      canvas.setPointerCapture(ev.pointerId);
+    } else {
+      pan = {
+        startX: screenCoord(ev.clientX),
+        startY: screenCoord(ev.clientY),
+        scrollLeft: stageWrap.scrollLeft,
+        scrollTop: stageWrap.scrollTop,
+      };
+      canvas.setPointerCapture(ev.pointerId);
+      canvas.style.cursor = "grabbing";
+    }
   }
   paintScene();
   updateGroupButtons();
@@ -2706,11 +2740,17 @@ canvas.addEventListener("pointermove", (ev) => {
       vx: vx !== null && Math.abs(cornerX - vx) <= 0.5 ? vx : null,
       hy: hy !== null && Math.abs(cornerY - hy) <= 0.5 ? hy : null,
     };
-    doc.resizeNode(
-      resize.id,
-      point(Math.min(resize.anchorX, cornerX), Math.min(resize.anchorY, cornerY)),
-      size(w, h),
-    );
+    // A gantt bar resizes horizontally only — its width is the duration, its height is the fixed row.
+    // Lock y + height to the bar's base (pre-overlay) bounds so the live preview doesn't distort the row.
+    const resizeId = resize.id;
+    const ganttBase =
+      ast?.kind === "gantt" && scene !== null
+        ? scene.nodes.find((n) => n.id === resizeId)
+        : undefined;
+    const oy =
+      ganttBase !== undefined ? ganttBase.bounds.origin.y : Math.min(resize.anchorY, cornerY);
+    const oh = ganttBase !== undefined ? ganttBase.bounds.size.height : h;
+    doc.resizeNode(resize.id, point(Math.min(resize.anchorX, cornerX), oy), size(w, oh));
     requestPaint();
     return;
   }
@@ -2731,7 +2771,9 @@ canvas.addEventListener("pointermove", (ev) => {
   }
   const at = scenePoint(ev);
   let dx = at.x - drag.pointerX;
-  let dy = at.y - drag.pointerY;
+  // A gantt bar is locked to its calendar row — only its x (the start date) is editable, so the drag
+  // preview tracks the date axis instead of floating the bar off its row until the release snap-back.
+  let dy = ast?.kind === "gantt" ? 0 : at.y - drag.pointerY;
   if (!dragRecorded && (dx !== 0 || dy !== 0)) {
     doc.record();
     dragRecorded = true;
@@ -2769,6 +2811,41 @@ canvas.addEventListener("pointerleave", () => {
   }
 });
 
+// Gantt two-way editing: a bar's x-position is its start date and its width is its duration, both in the
+// source — so a drag/resize rewrites the text instead of leaving a layout overlay. Returns true when it
+// handled the gesture (caller then skips the overlay persist). Only explicit-date tasks reschedule; an
+// `after`-chain task has no calendar anchor to slide, so it falls back to the overlay.
+const ganttRescheduleDrag = (id: SceneNodeId, deltaDays: number): boolean => {
+  if (ast === null || ast.kind !== "gantt" || ganttSource === null || deltaDays === 0) return false;
+  const gid = brand<string, "GanttTaskId">(id);
+  const span = ganttSource.taskStart.get(gid);
+  const task = ast.tasks.find((t) => t.id === gid);
+  if (span === undefined || task === undefined || task.start.kind !== "date") return false;
+  doc.record();
+  doc.replaceOverrides(clearOverride(doc.overrides(), id)); // the source move supersedes the drag preview
+  const next = shiftGanttStart(editor.value(), span, task.start.date, deltaDays);
+  doc.persist();
+  editor.setValue(next);
+  void renderFromText(next);
+  setStatusAndAnnounce("ok", `rescheduled ${deltaDays > 0 ? "+" : ""}${deltaDays}d`);
+  return true;
+};
+const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
+  if (ast === null || ast.kind !== "gantt" || ganttSource === null) return false;
+  const gid = brand<string, "GanttTaskId">(id);
+  const span = ganttSource.taskDuration.get(gid);
+  if (span === undefined) return false;
+  const days = Math.max(1, Math.round(widthPx / GANTT_DAY_WIDTH));
+  doc.record();
+  doc.replaceOverrides(clearOverride(doc.overrides(), id));
+  const next = setGanttDuration(editor.value(), span, days);
+  doc.persist();
+  editor.setValue(next);
+  void renderFromText(next);
+  setStatusAndAnnounce("ok", `duration ${days}d`);
+  return true;
+};
+
 canvas.addEventListener("pointerup", (ev) => {
   if (connectDrag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
@@ -2797,9 +2874,14 @@ canvas.addEventListener("pointerup", (ev) => {
   }
   if (resize !== null) {
     canvas.releasePointerCapture(ev.pointerId);
+    const resizedId = resize.id;
     resize = null;
     snapTargets = null;
     snapGuides = { vx: null, hy: null };
+    // Resizing a gantt bar rewrites its duration in the source (width → days), not the overlay.
+    const resized =
+      scene === null ? undefined : shownScene(scene).nodes.find((n) => n.id === resizedId);
+    if (resized !== undefined && ganttResizeWidth(resizedId, resized.bounds.size.width)) return;
     doc.persist();
     requestPaint(); // clear any guides + refresh the minimap (deferred during the resize)
     return;
@@ -2827,7 +2909,15 @@ canvas.addEventListener("pointerup", (ev) => {
           selectionOrder = [...selectionOrder, node.id];
         }
       }
-      selection = { nodes, edges: selection.edges };
+      // Edges count too (so an area-select lights up its connectors in the source like everything else):
+      // any waypoint inside the box selects the edge.
+      const edges = new Set(selection.edges);
+      for (const edge of shown.edges) {
+        if (edge.waypoints.some((w) => w.x >= minX && w.x <= maxX && w.y >= minY && w.y <= maxY)) {
+          edges.add(edge.id);
+        }
+      }
+      selection = { nodes, edges };
     }
     paintScene();
     updateGroupButtons();
@@ -2840,9 +2930,27 @@ canvas.addEventListener("pointerup", (ev) => {
   }
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
+    const finished = drag;
     drag = null;
     snapTargets = null;
     snapGuides = { vx: null, hy: null };
+    // A single gantt-bar drag reschedules the task in the source (its x is a start date), not the overlay.
+    const taskId = finished.ids.length === 1 ? finished.ids[0] : undefined;
+    const deltaDays =
+      taskId === undefined
+        ? 0
+        : Math.round((scenePoint(ev).x - finished.pointerX) / GANTT_DAY_WIDTH);
+    if (taskId !== undefined && ganttRescheduleDrag(taskId, deltaDays)) return;
+    // A gantt bar that actually MOVED but couldn't reschedule (an `after`-chain task has no calendar
+    // anchor to slide) must not keep a raw 2D overlay that floats it off the grid — snap it back and
+    // explain why. A zero-delta "drag" is just a click/select, so it falls through normally (otherwise it
+    // would re-render on every click and clobber the double-click relabel).
+    if (taskId !== undefined && ast?.kind === "gantt" && deltaDays !== 0) {
+      doc.replaceOverrides(clearOverride(doc.overrides(), taskId));
+      flashStatus("this task is scheduled by its dependency — edit the `after` chain");
+      void renderFromText(editor.value());
+      return;
+    }
     doc.persist();
     requestPaint(); // clear any guides + refresh the minimap (deferred during the drag)
   }
@@ -4287,8 +4395,11 @@ window.__resetPositions = () => void resetPositions();
 window.__overrideCount = () => doc.overrides().size;
 // e2e hook: the text currently highlighted in the source editor (the canvas-selection echo).
 window.__editorHighlight = () => {
-  const r = editor.selectedRange();
-  return editor.value().slice(r.from, r.to);
+  const src = editor.value();
+  return editor
+    .highlightedRanges()
+    .map((r) => src.slice(r.from, r.to))
+    .join("|");
 };
 
 // Theme toggle: switch the palette, persist the explicit choice, and repaint (colours only). The
@@ -4701,6 +4812,7 @@ editor =
         textHistory: false,
       })
     : createEditor(editorMount, initialSource, onTextChange);
+editorReady = true;
 
 // The keyboard diagram navigator (a focusable listbox over the scene's nodes/edges) lives in
 // `./navigator.ts`; it drives the canvas selection and the relabel/connect/nudge commands through this

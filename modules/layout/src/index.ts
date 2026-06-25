@@ -6,5 +6,6 @@ export {
   layoutC4,
   heuristicMeasure,
   retidyRoutes,
+  GANTT_DAY_WIDTH,
 } from "./core/index.js";
 export type { LayoutGraph, PositionedGraph, LayoutError, MeasureText } from "./core/index.js";

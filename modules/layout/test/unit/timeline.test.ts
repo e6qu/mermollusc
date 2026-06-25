@@ -48,6 +48,17 @@ describe("layoutTimeline", () => {
     expect(ox("p2")).toBeGreaterThan(ox("p1"));
   });
 
+  it("draws a vertical connector (rule decoration) from each period with events down its column", () => {
+    const rules = scene.decorations.filter((d) => d.kind === "rule");
+    // p0, p1, p2 all have events → three column connectors, each vertical (from.x === to.x).
+    expect(rules).toHaveLength(3);
+    for (const r of rules) {
+      if (r.kind !== "rule") continue;
+      expect(r.from.x).toBe(r.to.x);
+      expect(r.to.y).toBeGreaterThan(r.from.y); // runs downward into the event stack
+    }
+  });
+
   it("stacks a period's events below it in the same column", () => {
     const p1x = ox("p1");
     // both events of p1 share its column x and sit below the period row

@@ -23,6 +23,8 @@ export {
   patchSpan,
   addEdgeLabel,
   restyleEdge,
+  shiftGanttStart,
+  setGanttDuration,
   addNode,
   connect,
   connectUndirected,

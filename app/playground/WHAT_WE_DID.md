@@ -759,3 +759,27 @@
     keyboard-operable button (role=button/tabindex + Enter/Space → jump to the error); the inline label
     editor is clamped into the viewport so an edge-of-canvas / phone-width node doesn't spill off-screen.
   +e2e (status-line keyboard jump, context-bar single tab stop).
+- Area selector ("cowboy selector"): a plain drag on empty canvas with the Select tool now rubber-bands
+  a marquee selection (was Shift-drag only); pan stays on the Hand tool / space-drag. Powers multi-select
+  → the multi-range source highlight.
+- Two-way editing for Gantt + audit. Dragging a bar now rewrites its start date and resizing rewrites its
+  duration *in the source* (a bar's x/width are semantic — dates/durations — not layout overlay). New
+  gantt date/duration source spans (@m/parser), pure `shiftGanttStart`/`setGanttDuration` (@m/builder,
+  UTC date math), and drag/resize-end interception that patches the text + clears the preview override.
+  Explicit-date tasks reschedule; `after`-chain tasks (no calendar anchor) fall back to the overlay.
+  **Audit:** Gantt was the only real violation — for every other family a node's position/size is pure
+  layout (correctly the overlay), since nothing in their source encodes geometry. Pie slice *values* are
+  source-semantic but aren't drag-manipulated (radial wedges, not draggable boxes), so no violation there.
+- UX-review + QA-agent follow-ups (two specialized agents reviewed the branch):
+  - Marquee: the Select-tool empty-canvas cursor is now a crosshair (was a misleading grab/pan cursor);
+    touch keeps one-finger empty-drag as a pan (the marquee is a mouse/pen gesture, so it never fights
+    native scroll); the area selector now also catches edges (their source highlights with the nodes).
+  - Gantt: a bar resize is locked to the horizontal (width=duration) and a drag is locked to its row, so
+    the live preview no longer distorts height / floats off the calendar before the snap-back; an
+    `after`-chain bar that can't reschedule snaps back with a "scheduled by its dependency" hint instead
+    of leaving a free-float overlay.
+  - Hardened the selection-highlight decoration against out-of-range spans (a stale span on a shrunk/
+    empty doc — an undo, or collab before first sync — threw a CodeMirror RangeError; the QA agent's
+    Gantt fuzz found no source corruption, and its run surfaced this collab highlight crash).
+  - Boyscout: stale `zoom.spec.ts` pan test updated for the new marquee semantics; two Biome nits
+    (`indexOf`, optional chain) cleaned.

@@ -41,3 +41,9 @@
   rides through `PositionedEdge.labelPos` → `SceneEdge.labelPos`; the renderer uses it when present and
   falls back to the routed midpoint otherwise. Flowchart/state/class/ER/requirement labels now clear
   the nodes (the BPMN gateway overlaps are gone).
+
+## Layout-algorithm direction (see LAYOUT_RESEARCH.md)
+Spike done. Recommendation: NO bespoke force/annealing engine (breaks determinism + two-way stability).
+Sequenced, deterministic wins instead: (1) port assignment in route.ts to fix edge overlap at branch
+nodes; (2) expose `elk.layered.edgeRouting` + edge spacing; (3) per-family `elk.algorithm` selector
+(layered/stress/mrtree/radial) reusing elkjs's built-in algorithms.
