@@ -178,8 +178,9 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     setStatus("ok", "exported mermollusc.svg");
   });
 
-  // DOT export: the Scene is the universal graph IR, so any family exports to Graphviz DOT (a pie,
-  // having no nodes, exports as an empty graph). The reverse of the DOT import path.
+  // DOT export: the Scene is the universal graph IR, so any family exports to Graphviz DOT (a pie's
+  // slices are invisible markers, skipped by `toDot`, so it exports as an empty graph). The reverse of
+  // the DOT import path.
   buttons.dot.addEventListener("click", () => {
     if (blockStaleExport("DOT export")) return;
     const scene = deps.getScene();

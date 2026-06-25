@@ -702,3 +702,9 @@
   multi-delete fuzzer (arbitrary subsets stay parseable). Contrast: the collab "view only" role badge
   hardcoded #8a5a00 text with no dark override (~1.85:1 in dark) and a ~1.3:1 light border — added a
   dark-theme override (text/fill/border ≥4.5:1 / ≥3:1) and a solid light border.
+- Fuzz round 5 + export/IO audit. Found+fixed two DOT-export bugs in @m/renderer (pie markers exported
+  as orphan boxes; cluster ids growing a prefix each round-trip) and corrected the wrong "pie exports as
+  empty" comments. Added a DOT export→import→export **fixed-point fuzzer** (every example + mutations
+  reach an idempotent serialisation) plus deterministic pie-empty / cluster-stable regression tests.
+  Agent audit confirmed export/share-link/PDF/SVG, collab RBAC+transport+sync, icons, and @m/std are
+  otherwise clean.

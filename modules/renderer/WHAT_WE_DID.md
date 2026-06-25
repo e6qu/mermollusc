@@ -141,3 +141,6 @@
   sectors when it is non-zero while keeping full-circle legend swatches as discs. +display/SVG tests.
 - Contrast: fixed the dark Gantt `sectionAlt` band (was identical to the background → invisible zebra);
   the three band fills are now mutually distinct and each distinct from the background. +unit test.
+- `toDot` correctness: skip invisible `marker` nodes (a pie now exports as an empty graph instead of
+  orphan slice boxes) and stop double-prefixing a container id with `cluster_` (a re-exported DOT import
+  grew `cluster_cluster_…` each round-trip). Corrected the now-accurate comments.

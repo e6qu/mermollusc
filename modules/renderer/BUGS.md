@@ -4,6 +4,13 @@ _None known._
 
 ## Resolved
 
+- ~~**`toDot` exported pie markers as orphan boxes and grew `cluster_` on every round-trip.**~~ Fixed
+  (export/IO audit) — `toDot` emitted pie slices (invisible `marker` nodes) as disconnected boxes (the
+  comments even claimed a pie "exports as an empty graph", which was false), and prefixed a container id
+  with `cluster_` unconditionally, so a re-exported DOT import grew `cluster_cluster_…` each round. Now
+  marker nodes are skipped and the prefix isn't doubled when the id already starts with `cluster`.
+  Guarded by a DOT export→import→export fixed-point fuzzer + deterministic pie/cluster tests.
+
 - ~~**Dark Gantt `sectionAlt` band was invisible.**~~ Fixed (contrast audit) — `bandFill` returned the
   dark background colour (`#0f172a`) for `sectionAlt`, so alternating zebra stripes and the section
   banding conveyed nothing in dark mode. The three band fills are now mutually distinct and each differs
