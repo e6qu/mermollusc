@@ -37,10 +37,13 @@ import {
   descendantsOf,
   emptySelection,
   hitTest,
+  clearOverride,
   leafNodes,
   addEdgeLabel,
   restyleEdge,
   patchSpan,
+  shiftGanttStart,
+  setGanttDuration,
   pathLocked,
   relabelNode,
   reshapeNode,
@@ -84,7 +87,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
-import { layout, layoutDiagram, retidyRoutes } from "@m/layout";
+import { GANTT_DAY_WIDTH, layout, layoutDiagram, retidyRoutes } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
 import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
@@ -145,6 +148,8 @@ declare global {
     // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
     // can click the label and assert it selects the edge.
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
+    // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
+    __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
     __resetPositions?: () => void;
     // e2e hook: how many manual position/resize overrides are currently in the overlay.
@@ -1006,8 +1011,10 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "timeline":
       // Connect re-parents an event under a different period (drag an event onto a period).
       return { connect: true, iconOverride: false, addNode: false, resizable: false };
-    case "pie":
     case "gantt":
+      // A bar is resizable: dragging its width rewrites the task duration in the source (two-way).
+      return { connect: false, iconOverride: false, addNode: false, resizable: true };
+    case "pie":
       return { connect: false, iconOverride: false, addNode: false, resizable: false };
     default:
       return assertNever(kind);
@@ -2332,6 +2339,18 @@ window.__edgeLabelPos = (edgeId) => {
   const s = sceneToScreen(point(anchor.x, anchor.y));
   return { x: s.x, y: s.y };
 };
+window.__nodeRect = (nodeId) => {
+  if (scene === null) return null;
+  const node = shownScene(scene).nodes.find((n) => n.id === nodeId);
+  if (node === undefined) return null;
+  const tl = sceneToScreen(point(node.bounds.origin.x, node.bounds.origin.y));
+  return {
+    x: tl.x,
+    y: tl.y,
+    w: node.bounds.size.width * viewScale,
+    h: node.bounds.size.height * viewScale,
+  };
+};
 
 // Position a DOM overlay at a screen point. Typed to require a `ScreenPoint`, so a raw scene `Point`
 // (or a value off the canvas's scene coordinates) can't be used to place an element by mistake.
@@ -2781,6 +2800,41 @@ canvas.addEventListener("pointerleave", () => {
   }
 });
 
+// Gantt two-way editing: a bar's x-position is its start date and its width is its duration, both in the
+// source — so a drag/resize rewrites the text instead of leaving a layout overlay. Returns true when it
+// handled the gesture (caller then skips the overlay persist). Only explicit-date tasks reschedule; an
+// `after`-chain task has no calendar anchor to slide, so it falls back to the overlay.
+const ganttRescheduleDrag = (id: SceneNodeId, deltaDays: number): boolean => {
+  if (ast === null || ast.kind !== "gantt" || ganttSource === null || deltaDays === 0) return false;
+  const gid = brand<string, "GanttTaskId">(id);
+  const span = ganttSource.taskStart.get(gid);
+  const task = ast.tasks.find((t) => t.id === gid);
+  if (span === undefined || task === undefined || task.start.kind !== "date") return false;
+  doc.record();
+  doc.replaceOverrides(clearOverride(doc.overrides(), id)); // the source move supersedes the drag preview
+  const next = shiftGanttStart(editor.value(), span, task.start.date, deltaDays);
+  doc.persist();
+  editor.setValue(next);
+  void renderFromText(next);
+  setStatusAndAnnounce("ok", `rescheduled ${deltaDays > 0 ? "+" : ""}${deltaDays}d`);
+  return true;
+};
+const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
+  if (ast === null || ast.kind !== "gantt" || ganttSource === null) return false;
+  const gid = brand<string, "GanttTaskId">(id);
+  const span = ganttSource.taskDuration.get(gid);
+  if (span === undefined) return false;
+  const days = Math.max(1, Math.round(widthPx / GANTT_DAY_WIDTH));
+  doc.record();
+  doc.replaceOverrides(clearOverride(doc.overrides(), id));
+  const next = setGanttDuration(editor.value(), span, days);
+  doc.persist();
+  editor.setValue(next);
+  void renderFromText(next);
+  setStatusAndAnnounce("ok", `duration ${days}d`);
+  return true;
+};
+
 canvas.addEventListener("pointerup", (ev) => {
   if (connectDrag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
@@ -2809,9 +2863,14 @@ canvas.addEventListener("pointerup", (ev) => {
   }
   if (resize !== null) {
     canvas.releasePointerCapture(ev.pointerId);
+    const resizedId = resize.id;
     resize = null;
     snapTargets = null;
     snapGuides = { vx: null, hy: null };
+    // Resizing a gantt bar rewrites its duration in the source (width → days), not the overlay.
+    const resized =
+      scene === null ? undefined : shownScene(scene).nodes.find((n) => n.id === resizedId);
+    if (resized !== undefined && ganttResizeWidth(resizedId, resized.bounds.size.width)) return;
     doc.persist();
     requestPaint(); // clear any guides + refresh the minimap (deferred during the resize)
     return;
@@ -2852,9 +2911,17 @@ canvas.addEventListener("pointerup", (ev) => {
   }
   if (drag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
+    const finished = drag;
     drag = null;
     snapTargets = null;
     snapGuides = { vx: null, hy: null };
+    // A single gantt-bar drag reschedules the task in the source (its x is a start date), not the overlay.
+    const taskId = finished.ids.length === 1 ? finished.ids[0] : undefined;
+    const deltaDays =
+      taskId === undefined
+        ? 0
+        : Math.round((scenePoint(ev).x - finished.pointerX) / GANTT_DAY_WIDTH);
+    if (taskId !== undefined && ganttRescheduleDrag(taskId, deltaDays)) return;
     doc.persist();
     requestPaint(); // clear any guides + refresh the minimap (deferred during the drag)
   }

@@ -762,3 +762,11 @@
 - Area selector ("cowboy selector"): a plain drag on empty canvas with the Select tool now rubber-bands
   a marquee selection (was Shift-drag only); pan stays on the Hand tool / space-drag. Powers multi-select
   → the multi-range source highlight.
+- Two-way editing for Gantt + audit. Dragging a bar now rewrites its start date and resizing rewrites its
+  duration *in the source* (a bar's x/width are semantic — dates/durations — not layout overlay). New
+  gantt date/duration source spans (@m/parser), pure `shiftGanttStart`/`setGanttDuration` (@m/builder,
+  UTC date math), and drag/resize-end interception that patches the text + clears the preview override.
+  Explicit-date tasks reschedule; `after`-chain tasks (no calendar anchor) fall back to the overlay.
+  **Audit:** Gantt was the only real violation — for every other family a node's position/size is pure
+  layout (correctly the overlay), since nothing in their source encodes geometry. Pie slice *values* are
+  source-semantic but aren't drag-manipulated (radial wedges, not draggable boxes), so no violation there.
