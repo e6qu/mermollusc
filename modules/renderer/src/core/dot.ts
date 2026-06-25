@@ -1,9 +1,10 @@
 import type { EdgeEnd, FlowDirection, NodeShape, Scene, SceneNode } from "@m/contracts";
 
 // Serialises a Scene to Graphviz DOT. The Scene is the universal graph IR, so this exports *any*
-// node/edge family (flowchart, state, ER, class, …) to DOT; a pie chart (wedges, no nodes) exports as
-// an empty graph. The reverse of `parseDot`. Geometry (waypoints, positions) is dropped — DOT is
-// abstract — but labels, shapes, dashed strokes, and arrow ends are preserved.
+// node/edge family (flowchart, state, ER, class, …) to DOT. A pie chart's slices are invisible
+// `marker` nodes (its visual lives in `wedges`), so they're skipped and a pie exports as an empty
+// graph. The reverse of `parseDot`. Geometry (waypoints, positions) is dropped — DOT is abstract —
+// but labels, shapes, dashed strokes, and arrow ends are preserved.
 
 // `"`, `\`, and newlines must be escaped inside a DOT quoted id/label.
 const esc = (s: string): string =>
@@ -53,8 +54,16 @@ export const toDot = (scene: Scene, rankdir: FlowDirection | null): string => {
     else siblings.push(node);
   }
   const emitNode = (node: SceneNode, indent: string): void => {
+    // Invisible markers (pie slices, …) carry no graph meaning — skip so a pie exports as an empty
+    // graph instead of orphan boxes, mirroring how the renderer draws nothing for them.
+    if (node.role === "marker") return;
     if (node.shape === "container") {
-      lines.push(`${indent}subgraph "cluster_${esc(node.id)}" {`);
+      // Don't double-prefix an id that's already `cluster_…` (a re-exported DOT import) — the parser
+      // keeps the `cluster_` prefix on import, so re-prepending would grow it on every round-trip.
+      const clusterId = node.id.toLowerCase().startsWith("cluster")
+        ? node.id
+        : `cluster_${node.id}`;
+      lines.push(`${indent}subgraph "${esc(clusterId)}" {`);
       lines.push(`${indent}  label="${esc(node.label)}";`);
       for (const child of childrenOf.get(node.id) ?? []) emitNode(child, `${indent}  `);
       lines.push(`${indent}}`);
