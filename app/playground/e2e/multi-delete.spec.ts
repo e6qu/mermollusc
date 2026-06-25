@@ -26,6 +26,44 @@ test("select-all then Delete removes every node and edge from the source", async
   expect(errors).toEqual([]);
 });
 
+// Span-keyed families (pie/timeline/mindmap) also delete by source span, so select-all + Delete must
+// remove every item without an earlier removal shifting a later span (was gantt-only ordering).
+for (const family of [
+  {
+    name: "pie",
+    src: 'pie\n  title Coverage\n  "Alpha" : 30\n  "Beta" : 45\n  "Gamma" : 25\n',
+    gone: ["Alpha", "Beta", "Gamma"],
+  },
+  {
+    name: "timeline",
+    src: "timeline\n  title Roadmap\n  Q1 : Alpha : Beta\n  Q2 : Gamma\n",
+    gone: ["Alpha", "Beta", "Gamma"],
+  },
+  {
+    name: "mindmap",
+    src: "mindmap\n  root((Root))\n    Alpha\n    Beta\n    Gamma\n",
+    gone: ["Alpha", "Beta", "Gamma"],
+  },
+]) {
+  test(`select-all then Delete clears every ${family.name} item`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+
+    await page.goto("/");
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+    await setSource(page, family.src);
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+    await page.locator("#stage").click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("Delete");
+
+    const src = await sourceValue(page);
+    for (const label of family.gone) expect(src).not.toContain(label);
+    expect(errors).toEqual([]);
+  });
+}
+
 // Deleting two non-adjacent Gantt tasks leaves the middle task intact — exercises the bottom-up
 // source-line ordering so an earlier removal can't shift a later span.
 test("deleting two non-adjacent Gantt tasks keeps the one between them", async ({ page }) => {
