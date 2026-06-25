@@ -133,12 +133,15 @@ export const EXAMPLES = new Map<string, string>([
   ],
   [
     "c4",
-    'C4Context\n  Person(alice, "Alice", "A customer")\n  Boundary(b, "Backend") {\n    Container(api, "API", "Handles requests")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n  Rel(api, db, "reads/writes")\n',
+    'C4Context\n  Person(customer, "Customer", "A registered shopper")\n  Boundary(shop, "Online Shop") {\n    Container(web, "Web app", "React SPA")\n    Container(api, "API", "Spring Boot")\n    Container(db, "Order DB", "PostgreSQL")\n  }\n  Rel(customer, web, "uses")\n  Rel(web, api, "calls")\n  Rel(api, db, "reads")\n',
   ],
-  ["block", 'block-beta\n  columns 2\n  a["Web"]\n  b["API"]\n  c["DB"]\n  a --> b\n  b --> c\n'],
+  [
+    "block",
+    'block-beta\n  columns 3\n  lb["Load balancer"]:3\n  block:app:3\n    columns 3\n    web1["web-1"]\n    web2["web-2"]\n    web3["web-3"]\n  end\n  api["API gateway"]:3\n  cache["Redis cache"]\n  db["Postgres"]\n  store["Object store"]\n  lb --> web1\n  web1 --> api\n  api --> cache\n  api --> db\n  api --> store\n',
+  ],
   [
     "network",
-    'network\n  cloud net "Internet"\n  router r1 "Edge"\n  server web "Web"\n  net -- r1\n  r1 -- web : "eth0"\n',
+    'network\n  cloud net "Internet"\n  group "DMZ" {\n    firewall fw "Edge firewall"\n    server lb "Load balancer"\n  }\n  group "App tier" {\n    server web1 "web-01"\n    server web2 "web-02"\n  }\n  group "Data tier" {\n    database db "Postgres primary"\n    database replica "Postgres replica"\n  }\n  net -- fw : "WAN"\n  fw -- lb : "443/tcp"\n  lb -- web1\n  lb -- web2\n  web1 -- db\n  web2 -- db\n  db -- replica : "streaming"\n',
   ],
   ["cloud", CLOUD_AWS],
   [
@@ -159,7 +162,7 @@ export const EXAMPLES = new Map<string, string>([
   ],
   [
     "gitGraph",
-    'gitGraph\n  commit id: "init"\n  commit id: "setup"\n  branch develop\n  commit id: "feature-a"\n  commit id: "feature-b"\n  checkout main\n  commit id: "hotfix"\n  merge develop tag: "v1.0"\n  commit id: "release"\n',
+    'gitGraph\n  commit id: "init"\n  commit id: "setup"\n  branch develop\n  commit id: "db-schema"\n  branch feature\n  commit id: "login-ui"\n  commit id: "login-api"\n  checkout develop\n  merge feature tag: "login"\n  commit id: "search"\n  checkout main\n  commit id: "hotfix" type: HIGHLIGHT\n  merge develop tag: "v1.0"\n  commit id: "release"\n',
   ],
   [
     "timeline",
@@ -167,7 +170,7 @@ export const EXAMPLES = new Map<string, string>([
   ],
   [
     "mindmap",
-    "mindmap\n  root((mermollusc))\n    Origins\n      Mermaid\n      PlantUML\n    Families\n      Flowchart\n      Sequence\n      Timeline\n    Output\n      Canvas\n      SVG\n",
+    "mindmap\n  root((Trip to Japan))\n    Transport\n      [JR Pass]\n      (Domestic flights)\n    Cities\n      Tokyo\n        Shibuya\n        Akihabara\n      Kyoto\n        Temples\n      Osaka\n    Food\n      {{Ramen}}\n      (Sushi)\n      Street food\n",
   ],
   [
     "pie",

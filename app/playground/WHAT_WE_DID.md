@@ -674,3 +674,10 @@
   box-and-arrow families (not sequence), so a boundary-crossing edge a move blended into a diagonal snaps
   back to clean right angles — display-only, `scene`/overrides untouched (undo + persist unaffected),
   no-op when nothing moved. +`__shownEdges` e2e hook +e2e.
+- Fuzz round 2 + example polish: extended the pipeline fuzz to render (layout → display list → SVG over
+  mutated examples, both themes; asserts no throw and no NaN/Infinity in the SVG) — it found a c4/
+  subgraph stack-overflow class fixed in @m/layout + @m/parser. Added a deterministic overflow-guard
+  regression test. Reworked five menu examples to exercise the features their stories promise: c4
+  (descriptions on every container), block (a `block:id … end` composite + spans), network (DMZ/app/data
+  subnet groups + firewall/LB), gitGraph (three lanes, two merges, a HIGHLIGHT commit), mindmap (real
+  subject + alternate node shapes). Screenshot-verified each.
