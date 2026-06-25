@@ -28,6 +28,9 @@ export interface Editor {
   select(from: number, to: number): void;
   focus(): void;
   hasFocus(): boolean;
+  // Re-measure after the container's size changes while hidden (e.g. expanding the collapsed source
+  // panel) — CodeMirror renders zero-height until it re-measures a display:none → visible transition.
+  refresh(): void;
   setError(range: SourceRange | null, message: string): void;
   // Make the buffer non-editable (a collaborative viewer). Programmatic changes — incl. the remote
   // sync — still apply; only user keystrokes are blocked.
@@ -235,6 +238,7 @@ export const createEditor = (
     },
     focus: () => view.focus(),
     hasFocus: () => view.hasFocus,
+    refresh: () => view.requestMeasure(),
     setError: (range, message) => {
       // Clamp to a non-empty span strictly inside the doc — `from ∈ [0, len-1]`, `to ∈ [from+1, len]`.
       // A diagnostic range that's empty, out of bounds, or non-finite makes CodeMirror's lint throw,

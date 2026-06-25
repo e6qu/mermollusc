@@ -6,6 +6,7 @@ import { messageOf } from "@m/std";
 const SOURCE_KEY = "mermollusc-source";
 const OVERLAY_KEY = "mermollusc-overlay";
 const THEME_KEY = "mermollusc-theme";
+const COLLAPSE_KEY = "mermollusc-source-collapsed";
 const NAMESPACE = "mermollusc-";
 
 export const loadSource = (): string | null => localStorage.getItem(SOURCE_KEY);
@@ -18,6 +19,10 @@ export const saveOverlay = (serialized: string): void =>
 export const loadThemeChoice = (): string | null => localStorage.getItem(THEME_KEY);
 export const saveThemeChoice = (mode: "dark" | "light"): void =>
   localStorage.setItem(THEME_KEY, mode);
+
+export const loadSourceCollapsed = (): boolean => localStorage.getItem(COLLAPSE_KEY) === "1";
+export const saveSourceCollapsed = (collapsed: boolean): void =>
+  localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
 
 // Drop everything the app persists — every namespaced key — so the demo comes back fresh. Collected
 // first because removing during iteration shifts `localStorage.key(i)`.
