@@ -33,6 +33,26 @@ describe("layoutCloud", () => {
     expect(layoutCloud(bad, heuristicMeasure).ok).toBe(false);
   });
 
+  it("fails loud (no stack overflow) on group nesting deeper than the cap", () => {
+    // A linear chain deeper than MAX_NEST_DEPTH (which a cyclic parent would also produce) must hit the
+    // depth cap and return an error rather than blow the stack in the `childrenOf`-keyed recursion.
+    const deep = 70;
+    const groups = Array.from({ length: deep }, (_, i) => ({
+      id: nid(`g${i}`),
+      label: `g${i}`,
+      parent: i === 0 ? null : nid(`g${i - 1}`),
+    }));
+    const bad: CloudAst = {
+      kind: "cloud",
+      groups,
+      nodes: [
+        { id: nid("leaf"), label: "Leaf", kind: "compute", parent: nid(`g${deep - 1}`), icon: null },
+      ],
+      links: [],
+    };
+    expect(layoutCloud(bad, heuristicMeasure).ok).toBe(false);
+  });
+
   it("fails loudly when a link references an unknown node", () => {
     const bad: CloudAst = {
       kind: "cloud",

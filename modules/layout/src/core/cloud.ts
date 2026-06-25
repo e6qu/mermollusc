@@ -32,6 +32,7 @@ const MIN_LEAF_WIDTH = 80;
 // Soft width budget for a row of top-level boxes before wrapping to the next row (keeps a large
 // architecture roughly square rather than one very wide strip).
 const MAX_ROW_WIDTH = 900;
+const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
 interface Box {
   readonly x: number;
@@ -105,10 +106,14 @@ export const layoutCloud = (
   }
 
   const boxes = new Map<NodeId, Box>();
-  const place = (el: Elem, x: number, y: number): Box => {
+  // A branded AST whose `parent` chain is cyclic (e.g. a duplicate id nested in its twin) would make
+  // this `childrenOf`-keyed recursion re-enter the same bucket forever; cap the depth and fail loud.
+  let overflow = false;
+  const place = (el: Elem, x: number, y: number, depth: number): Box => {
     const kids = childrenOf.get(el.id) ?? [];
     // A collapsed group is drawn as a header-only box and its descendants aren't placed at all.
-    if (kids.length === 0 || collapsed.has(el.id)) {
+    if (kids.length === 0 || collapsed.has(el.id) || depth > MAX_NEST_DEPTH) {
+      if (depth > MAX_NEST_DEPTH) overflow = true;
       const box: Box = { x, y, w: leafWidth(el.label, measure), h: LEAF_HEIGHT };
       boxes.set(el.id, box);
       return box;
@@ -116,7 +121,7 @@ export const layoutCloud = (
     let cursor = x + PADDING;
     let maxHeight = 0;
     for (const kid of kids) {
-      const kidBox = place(kid, cursor, y + HEADER);
+      const kidBox = place(kid, cursor, y + HEADER, depth + 1);
       cursor += kidBox.w + GAP;
       maxHeight = Math.max(maxHeight, kidBox.h);
     }
@@ -133,15 +138,18 @@ export const layoutCloud = (
   let cy = 0;
   let rowHeight = 0;
   for (const root of roots) {
-    let b = place(root, cx, cy);
+    let b = place(root, cx, cy, 0);
     if (cx > 0 && cx + b.w > MAX_ROW_WIDTH) {
       cy += rowHeight + GAP;
       cx = 0;
       rowHeight = 0;
-      b = place(root, cx, cy);
+      b = place(root, cx, cy, 0);
     }
     cx += b.w + GAP;
     rowHeight = Math.max(rowHeight, b.h);
+  }
+  if (overflow) {
+    return err({ kind: "layout", message: "cloud: group nesting too deep (cyclic parent?)" });
   }
 
   // Every element is reached from a root through `place`; an unplaced one means its `parent` points

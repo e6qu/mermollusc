@@ -255,3 +255,6 @@
 - Grouping grammar: block `block:id … end` composites + column spans (`a:N`/`block:id:N`); network
   `group "…" { }` subnet/zone groups (recursive, synthetic `group:N` ids). Block composite-id collisions
   (with a leaf or another composite) fail loud. Bare-node relabel + group label spans recorded.
+- Totality: the flowchart `walk` that emits canonical node order recursed forever on two `subgraph X`
+  blocks sharing an id (one nested in the other) — added an on-path visited guard so a malformed
+  duplicate is emitted once, not infinitely. Found by the parse→layout→render fuzz.

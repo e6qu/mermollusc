@@ -4,6 +4,15 @@ _None known._
 
 ## Resolved
 
+- ~~**Stack overflow on a duplicate id nested in its twin.**~~ Fixed (pipeline-fuzz find) — `layoutC4`'s
+  `place` and `toElkGraph`'s `container` recurse over an id-keyed children map. A source with two
+  `Boundary(x)`/`subgraph X` blocks sharing an id, one nested in the other, made the bucket key back into
+  itself and recurse forever (`RangeError: Maximum call stack size exceeded`) — a core-totality
+  violation. `layoutC4` now rejects duplicate element ids loudly; `container` carries an on-path visited
+  guard. `cloud.layout`'s `place` (the lone remaining unguarded nested-container layout) gained a
+  `MAX_NEST_DEPTH` cap matching `network`/`block`. Covered by a deterministic app regression test plus
+  the parse→layout→render fuzz that found it.
+
 - ~~**ELK edge route truncated to `sections[0]`.**~~ Fixed (audit sweep, 2026-06-20) — the adapter now
   concatenates all of an edge's `sections`, so a container-crossing edge keeps its full route.
 

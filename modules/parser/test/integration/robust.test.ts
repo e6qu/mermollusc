@@ -25,6 +25,10 @@ const ODD_INPUTS: readonly string[] = [
   "digraph { a -> b",
   "graph { a -- }",
   "digraph { subgraph cluster { a } }",
+  // Two subgraphs sharing an id, one nested in the other: the canonical-order `walk` recurses over an
+  // id-keyed bucket and would loop forever without the on-path guard.
+  "flowchart TD\n  subgraph X\n    subgraph X\n      a\n    end\n  end\n",
+  "digraph G { subgraph cluster_x { subgraph cluster_x { a } } }",
   "stateDiagram-v2\n  note right of\n",
   "stateDiagram-v2\n  state x <<bogus>>\n",
   'classDiagram\n  A "1" -->\n',

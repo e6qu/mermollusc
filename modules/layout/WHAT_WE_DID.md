@@ -235,3 +235,8 @@
   its widest item, each row its tallest, so a `block:id … end` container (laid out from its own
   `children`/`columns`) fits as one larger cell; uniform leaves degenerate to the prior fixed grid.
   Containers render via the shared `container` shape; edges route orthogonally across boundaries.
+- Totality: closed two id-keyed-recursion stack-overflows a pipeline fuzz surfaced (a duplicate id
+  nested in its twin re-enters the same children bucket forever). `layoutC4` now rejects duplicate
+  element ids; `toElkGraph`'s subgraph `container` carries an on-path visited guard; `cloud`'s nested
+  `place` gained a `MAX_NEST_DEPTH` cap matching `network`/`block`. All four nested-container layouts are
+  now guarded.
