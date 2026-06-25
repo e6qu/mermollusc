@@ -132,3 +132,6 @@
   `SequenceSource` — the contract half of real sequence-diagram notes.
 - Added an `arrows` span map to `SourceMap` and `BlockSource` (the arrow-token span of every edge) so
   the UI can restyle an edge's arrow and add a `|label|` to a bare edge.
+- Overlay gains presentation layers: `EdgeStyle{curved}` / `NodeStyle{accent}` maps on the `OverlayDoc`
+  port + serialization, so visual styling (curved edges, coloured nodes) lives in the sidecar overlay
+  (persisted, shared, undoable) and keeps the Mermaid source vanilla.

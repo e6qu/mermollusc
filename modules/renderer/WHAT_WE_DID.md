@@ -144,3 +144,6 @@
 - `toDot` correctness: skip invisible `marker` nodes (a pie now exports as an empty graph instead of
   orphan slice boxes) and stop double-prefixing a container id with `cluster_` (a re-exported DOT import
   grew `cluster_cluster_…` each round-trip). Corrected the now-accurate comments.
+- `smoothSegments`: a Catmull-Rom→bezier spline through every edge waypoint, so a multi-segment routed
+  edge can render as one flowing curve (keeping its arrowhead). Canvas + SVG backends both use it for a
+  curved edge with >2 points; the existing 2-point bezier (mindmap/gitGraph) is unchanged.

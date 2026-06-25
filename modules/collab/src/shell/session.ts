@@ -26,7 +26,7 @@ import {
   setLocked,
   ungroup,
 } from "@m/builder";
-import type { Groups, LayoutOverrides, OverlayDoc } from "@m/contracts";
+import type { EdgeStyles, Groups, LayoutOverrides, NodeStyles, OverlayDoc } from "@m/contracts";
 import {
   brand,
   type DecodeError,
@@ -235,9 +235,31 @@ export const createCollabSession = (opts: {
   yText.observe(onTextChange);
   doc.on("update", onDocUpdate);
 
+  // Presentation styling (curved edges, coloured nodes) is a per-client visual preference held in
+  // session memory here — not yet a synced Y.Map, so it doesn't propagate to peers (positions/groups
+  // do). Satisfies the port and keeps collab working; sharing styling across peers is a follow-up.
+  let cacheEdgeStyles: EdgeStyles = new Map();
+  let cacheNodeStyles: NodeStyles = new Map();
+
   const overlay: OverlayDoc = {
     overrides: () => cache.overrides,
     groups: () => cache.groups,
+    edgeStyles: () => cacheEdgeStyles,
+    nodeStyles: () => cacheNodeStyles,
+    setEdgeStyle: (id, style) => {
+      const next = new Map(cacheEdgeStyles);
+      if (style === null) next.delete(id);
+      else next.set(id, style);
+      cacheEdgeStyles = next;
+      notifyOverlay();
+    },
+    setNodeStyle: (id, style) => {
+      const next = new Map(cacheNodeStyles);
+      if (style === null) next.delete(id);
+      else next.set(id, style);
+      cacheNodeStyles = next;
+      notifyOverlay();
+    },
     moveNode: (id, to: Point) => {
       const next = moveNode(cache.overrides, id, to);
       writeOverrides(next);
@@ -292,9 +314,11 @@ export const createCollabSession = (opts: {
       cache = { overrides: cache.overrides, groups: next };
       return true;
     },
-    replace: (overrides, groups) => {
+    replace: (overrides, groups, edgeStyles, nodeStyles) => {
       writeOverrides(overrides);
       writeGroups(groups);
+      cacheEdgeStyles = edgeStyles;
+      cacheNodeStyles = nodeStyles;
       cache = { overrides, groups };
     },
     record: () => undoManager.stopCapturing(),
@@ -309,7 +333,8 @@ export const createCollabSession = (opts: {
       return true;
     },
     clearHistory: () => undoManager.clear(),
-    persist: () => opts.save(serializeOverlay(cache.overrides, cache.groups)),
+    persist: () =>
+      opts.save(serializeOverlay(cache.overrides, cache.groups, cacheEdgeStyles, cacheNodeStyles)),
   };
 
   return {

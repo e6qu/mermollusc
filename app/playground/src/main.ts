@@ -37,6 +37,7 @@ import {
   descendantsOf,
   emptySelection,
   hitTest,
+  applyStyles,
   clearOverride,
   leafNodes,
   addEdgeLabel,
@@ -75,8 +76,11 @@ import type {
   GroupMember,
   LayoutOverrides,
   NetworkSource,
+  EdgeStyles,
+  NodeAccent,
   NodeId,
   NodeShape,
+  NodeStyles,
   OverlayDoc,
   Scene,
   SceneNode,
@@ -144,12 +148,18 @@ declare global {
     // e2e hook: the armed canvas tool ("select" | "hand" | "connect" | "place").
     __activeTool?: () => string;
     // e2e hook: the displayed edges' routed waypoints, so a spec can assert connector geometry.
-    __shownEdges?: () => readonly { id: string; waypoints: readonly { x: number; y: number }[] }[];
+    __shownEdges?: () => readonly {
+      id: string;
+      waypoints: readonly { x: number; y: number }[];
+      curved: boolean;
+    }[];
     // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
     // can click the label and assert it selects the edge.
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
     // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
     __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
+    // e2e hook: a node's currently-shown accent (the visual-only colour preference).
+    __nodeAccent?: (nodeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
     __resetPositions?: () => void;
     // e2e hook: how many manual position/resize overrides are currently in the overlay.
@@ -243,6 +253,8 @@ const stageCol = document.querySelector<HTMLElement>(".stage-col");
 const contextBar = document.querySelector<HTMLElement>("#context-bar");
 const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
 const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
+const ctxColourBtn = document.querySelector<HTMLButtonElement>("#ctx-colour");
+const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
 const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
@@ -260,6 +272,8 @@ if (
   contextBar === null ||
   ctxRelabelBtn === null ||
   ctxShapeBtn === null ||
+  ctxColourBtn === null ||
+  ctxCurveBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
   ctxGroupBtn === null ||
@@ -408,6 +422,7 @@ window.__shownEdges = () =>
     : shownScene(scene).edges.map((e) => ({
         id: e.id,
         waypoints: e.waypoints.map((p) => ({ x: p.x, y: p.y })),
+        curved: e.curved,
       }));
 // Background-drag panning of the (scrollable) stage: the pointer position and scroll offsets at the
 // moment the empty canvas was grabbed.
@@ -486,6 +501,8 @@ if (useCollab) {
   doc = createLocalDocument({
     initialOverrides: new Map(),
     initialGroups: new Map(),
+    initialEdgeStyles: new Map(),
+    initialNodeStyles: new Map(),
     save: saveOverlay,
   });
 }
@@ -567,6 +584,8 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
 // own — a drag, which legitimately changes the overlay each frame, still recomputes.
 let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
+let shownCacheEdgeStyles: EdgeStyles | null = null;
+let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -585,16 +604,28 @@ const TIDY_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
 
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
-  if (shownCacheResult !== null && shownCacheScene === base && shownCacheOverrides === ov) {
+  const es = doc.edgeStyles();
+  const ns = doc.nodeStyles();
+  if (
+    shownCacheResult !== null &&
+    shownCacheScene === base &&
+    shownCacheOverrides === ov &&
+    shownCacheEdgeStyles === es &&
+    shownCacheNodeStyles === ns
+  ) {
     return shownCacheResult;
   }
   const moved = applyOverrides(base, ov);
   // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
-  const shown =
+  const tidied =
     ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
+  // The presentation-only overlay (display only): curved edges + node accents from the document.
+  const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
   shownCacheOverrides = ov;
+  shownCacheEdgeStyles = es;
+  shownCacheNodeStyles = ns;
   shownCacheResult = shown;
   return shown;
 };
@@ -1151,6 +1182,16 @@ const renderContextBar = (caps: CapabilityState): void => {
   // The Shape button doubles as the edge "Style" control (it cycles a node's shape or an edge's arrow).
   ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
+  // Colour is a visual-only node preference; show it whenever nodes — and only nodes — are selected.
+  ctxColourBtn.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
+  // Curve is a visual-only edge preference (all families' edges have waypoints), so it shows whenever
+  // edges — and only edges — are selected.
+  ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
+  ctxCurveBtn.textContent =
+    selection.edges.size > 0 &&
+    [...selection.edges].every((id) => doc.edgeStyles().get(id)?.curved === true)
+      ? "Straighten"
+      : "Curve";
   ctxConnectBtn.hidden = !caps.canConnect;
   ctxDuplicateBtn.hidden = !caps.canDuplicate;
   ctxGroupBtn.hidden = !caps.canGroup;
@@ -2061,6 +2102,11 @@ const persistCollapsed = (): void => {
     console.error("collapse state persist failed", e);
   }
 };
+
+// Node colour cycles through this accent palette (none → blue → grey → red). The styling itself lives in
+// the overlay document (curved edges + node accents), so it persists, serialises into share links, and
+// is undoable like positions — while the Mermaid source stays vanilla (these have no Mermaid syntax).
+const ACCENT_CYCLE: readonly NodeAccent[] = ["none", "active", "muted", "danger"];
 const collapsedBranded = (): ReadonlySet<NodeId> =>
   new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
 
@@ -2339,6 +2385,10 @@ window.__edgeLabelPos = (edgeId) => {
   const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
   const s = sceneToScreen(point(anchor.x, anchor.y));
   return { x: s.x, y: s.y };
+};
+window.__nodeAccent = (nodeId) => {
+  if (scene === null) return null;
+  return shownScene(scene).nodes.find((n) => n.id === nodeId)?.accent ?? null;
 };
 window.__nodeRect = (nodeId) => {
   if (scene === null) return null;
@@ -4111,6 +4161,37 @@ const cycleShape = async (): Promise<void> => {
 
 // Cycle the single selected flowchart/block edge's presentational style by rewriting its arrow token.
 const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick"];
+// Toggle the curved/straight presentation of the selected edge(s) — a visual-only preference (no source
+// edit, no re-layout), so just flip the set, persist, and repaint. Curves all if any selected edge is
+// straight, else straightens all.
+const toggleEdgeCurve = (): void => {
+  if (viewerMode || selection.edges.size === 0) return;
+  const anyStraight = [...selection.edges].some(
+    (id) => !(doc.edgeStyles().get(id)?.curved ?? false),
+  );
+  doc.record();
+  for (const id of selection.edges) doc.setEdgeStyle(id, anyStraight ? { curved: true } : null);
+  doc.persist();
+  paintScene();
+  updateGroupButtons(); // refresh the Curve/Straighten label for the new state
+  setStatusAndAnnounce("ok", anyStraight ? "edge curved" : "edge straightened");
+};
+
+// Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
+// curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
+const cycleNodeColour = (): void => {
+  if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
+  const firstId = selectionOrder[0];
+  const cur = firstId === undefined ? "none" : (doc.nodeStyles().get(firstId)?.accent ?? "none");
+  const adv = ACCENT_CYCLE[(ACCENT_CYCLE.indexOf(cur) + 1) % ACCENT_CYCLE.length] ?? "none";
+  doc.record();
+  for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
+  doc.persist();
+  paintScene();
+  updateGroupButtons();
+  setStatusAndAnnounce("ok", adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
 const cycleEdgeStyle = async (): Promise<void> => {
   if (viewerMode || ast === null || selection.edges.size !== 1) return;
   const edgeId = [...selection.edges][0];
@@ -4200,6 +4281,8 @@ ctxShapeBtn.addEventListener(
       ? cycleEdgeStyle()
       : cycleShape()),
 );
+ctxColourBtn.addEventListener("click", () => cycleNodeColour());
+ctxCurveBtn.addEventListener("click", () => toggleEdgeCurve());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());
@@ -4718,8 +4801,12 @@ const shareUrl = (): string => {
   if (useCollab) return base;
   const overrides = doc.overrides();
   const groups = doc.groups();
-  if (overrides.size === 0 && groups.size === 0) return base;
-  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups))}`;
+  const edgeStyles = doc.edgeStyles();
+  const nodeStyles = doc.nodeStyles();
+  if (overrides.size === 0 && groups.size === 0 && edgeStyles.size === 0 && nodeStyles.size === 0) {
+    return base;
+  }
+  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups, edgeStyles, nodeStyles))}`;
 };
 
 // Past this the URL risks silent truncation when pasted into chat/email clients (the `#src=` hash isn't
@@ -4773,7 +4860,13 @@ const initialSource = fromHash ?? loadSource() ?? SAMPLE;
 const applyOverlayJson = (raw: string, whence: string): void => {
   try {
     const decoded = decodeOverlay(JSON.parse(raw));
-    if (isOk(decoded)) doc.replace(decoded.value.overrides, decoded.value.groups);
+    if (isOk(decoded))
+      doc.replace(
+        decoded.value.overrides,
+        decoded.value.groups,
+        decoded.value.edgeStyles,
+        decoded.value.nodeStyles,
+      );
     else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
   } catch (e) {
     console.error("ignoring corrupt overlay from", whence, messageOf(e));

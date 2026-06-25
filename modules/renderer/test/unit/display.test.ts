@@ -1,7 +1,12 @@
 import { brand, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { bezierControls, edgeLabelAnchor, toDisplayList } from "../../src/core/display.js";
+import {
+  bezierControls,
+  edgeLabelAnchor,
+  smoothSegments,
+  toDisplayList,
+} from "../../src/core/display.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
@@ -552,5 +557,26 @@ describe("bezierControls", () => {
     const [c1, c2] = bezierControls(point(0, 0), point(20, 100));
     expect(c1).toEqual(point(0, 50));
     expect(c2).toEqual(point(20, 50));
+  });
+});
+
+describe("smoothSegments", () => {
+  it("yields one bezier segment per gap, each ending exactly on its waypoint", () => {
+    const pts = [point(0, 0), point(10, 10), point(20, 0)];
+    const segs = smoothSegments(pts);
+    expect(segs).toHaveLength(2);
+    expect(segs[0]?.to).toEqual(point(10, 10));
+    expect(segs[1]?.to).toEqual(point(20, 0)); // ends on the last waypoint → arrowhead stays put
+  });
+  it("keeps a straight collinear run straight (control points stay on the line)", () => {
+    const segs = smoothSegments([point(0, 0), point(10, 0), point(20, 0)]);
+    for (const s of segs) {
+      expect(s.c1.y).toBe(0);
+      expect(s.c2.y).toBe(0);
+    }
+  });
+  it("is empty for a single point and one segment for a pair", () => {
+    expect(smoothSegments([point(0, 0)])).toHaveLength(0);
+    expect(smoothSegments([point(0, 0), point(5, 5)])).toHaveLength(1);
   });
 });

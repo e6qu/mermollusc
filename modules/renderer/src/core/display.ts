@@ -247,6 +247,32 @@ export const bezierControls = (a: Point, b: Point): readonly [Point, Point] => {
   return [point(a.x, a.y + dy * 0.5), point(b.x, b.y - dy * 0.5)];
 };
 
+// A smooth cubic-bezier spline through every waypoint (Catmull-Rom → bezier), so a multi-segment routed
+// edge can render as one flowing curve instead of straight dog-legs, while still ending exactly on the
+// last waypoint (the arrowhead stays put). Each segment carries the two control points + its endpoint;
+// the path starts at `points[0]`. Endpoints are duplicated so the curve doesn't overshoot at the ends.
+export interface CurveSegment {
+  readonly c1: Point;
+  readonly c2: Point;
+  readonly to: Point;
+}
+export const smoothSegments = (points: readonly Point[]): readonly CurveSegment[] => {
+  const segs: CurveSegment[] = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? points[i + 1];
+    if (p0 === undefined || p1 === undefined || p2 === undefined || p3 === undefined) continue;
+    segs.push({
+      c1: point(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6),
+      c2: point(p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6),
+      to: point(p2.x, p2.y),
+    });
+  }
+  return segs;
+};
+
 // Unit vector from `b` toward `a`; falls back to +x for a degenerate (zero-length) segment so a
 // collapsed waypoint pair never yields NaN coordinates.
 const awayUnit = (a: Point, b: Point): Point => {

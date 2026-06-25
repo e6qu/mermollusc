@@ -25,14 +25,20 @@ test("the context bar is hidden until something is selected, then shows applicab
   if (box === null) throw new Error("no canvas box");
   await page.mouse.click(box.x + box.width / 2, box.y + 40); // select the Start node
   await expect(page.locator("#context-bar")).toBeVisible();
-  // single flowchart node: rename/shape/duplicate/delete — but not connect/group/arrange.
-  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "duplicate", "delete"]);
+  // single flowchart node: rename/shape/colour/duplicate/delete — but not connect/group/arrange.
+  expect(await visibleCtxButtons(page)).toEqual([
+    "relabel",
+    "shape",
+    "colour",
+    "duplicate",
+    "delete",
+  ]);
 
   await page.keyboard.press("Escape"); // clear selection
   await expect(page.locator("#context-bar")).toBeHidden();
 });
 
-test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Style/Delete", async ({
+test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Style/Curve/Delete", async ({
   page,
 }) => {
   await ready(page);
@@ -50,14 +56,14 @@ test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Styl
   expect(multi).toContain("arrange");
   expect(multi).toContain("delete");
 
-  // An edge-only selection: rename, restyle (the Shape button doubles as edge Style), and delete.
+  // An edge-only selection: rename, restyle (the Shape button doubles as edge Style), curve, and delete.
   await page.keyboard.press("Escape");
   await page.locator("#diagram-nav").focus();
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown"); // onto an edge item
-  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "delete"]);
+  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "curve", "delete"]);
 });
 
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({

@@ -1,5 +1,38 @@
-import type { LayoutOverrides, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
+import type {
+  EdgeStyles,
+  LayoutOverrides,
+  NodeStyles,
+  Scene,
+  SceneEdge,
+  SceneNode,
+  SceneNodeId,
+} from "@m/contracts";
 import { point, rect, twoOrMore, type Point, type Size } from "@m/std";
+
+// Apply the presentation-only overlay (curved edges, coloured nodes) to a laid-out scene — display only,
+// like `applyOverrides`. Kept separate so it composes after geometry without changing that signature.
+export const applyStyles = (
+  scene: Scene,
+  edgeStyles: EdgeStyles,
+  nodeStyles: NodeStyles,
+): Scene => {
+  if (edgeStyles.size === 0 && nodeStyles.size === 0) return scene;
+  const edges =
+    edgeStyles.size === 0
+      ? scene.edges
+      : scene.edges.map((e): SceneEdge => {
+          const s = edgeStyles.get(e.id);
+          return s !== undefined && s.curved !== e.curved ? { ...e, curved: s.curved } : e;
+        });
+  const nodes =
+    nodeStyles.size === 0
+      ? scene.nodes
+      : scene.nodes.map((n): SceneNode => {
+          const s = nodeStyles.get(n.id);
+          return s !== undefined && s.accent !== n.accent ? { ...n, accent: s.accent } : n;
+        });
+  return { ...scene, nodes, edges };
+};
 
 export const moveNode = (
   overrides: LayoutOverrides,
