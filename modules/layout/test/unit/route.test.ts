@@ -246,6 +246,27 @@ describe("spreadPorts", () => {
     expect(totalCrossings(out)).toBe(0); // the greedy pass found mount points with no crossing
   });
 
+  it("reduces multiple crossings and is deterministic (iterated local search)", () => {
+    // One horizontal edge crossing TWO separate vertical edges → 2 crossings to clear.
+    const build = () => ({
+      nodes: [
+        node("a", 0, 100), node("b", 320, 100),
+        node("c", 95, -60), node("d", 95, 250),
+        node("e", 195, -60), node("f", 195, 250),
+      ],
+      edges: [edge("ab", "a", "b"), edge("cd", "c", "d"), edge("ef", "e", "f")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 380, 320),
+    });
+    const out = spreadPorts(build());
+    expect(totalCrossings(out)).toBeLessThan(2); // at least one crossing removed (ideally all)
+    // Deterministic: the same scene routes to byte-identical waypoints every time.
+    const a = spreadPorts(build());
+    const b = spreadPorts(build());
+    expect(a.edges.map((e) => e.waypoints)).toEqual(b.edges.map((e) => e.waypoints));
+  });
+
   it("leaves a self-loop / dangling edge untouched", () => {
     const scene = {
       nodes: [node("a", 0, 0)],

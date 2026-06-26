@@ -394,91 +394,166 @@ const crossingsBetween = (
   return n;
 };
 const MAX_CROSS_SWEEPS = 3;
+const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
 
-// Global edge–edge crossing reduction (a tendency, greedy local search): repeatedly try re-routing each
-// CROSSING edge from each of its endpoints' four mount-points, keeping whichever orthogonal route crosses
-// the fewest OTHER edges — without adding any node/group crossing, then shortest. Only edges that already
-// cross another are touched, so a crossing-free diagram is returned byte-identical. Bounded sweeps +
-// strict improvement guarantee it terminates and never makes the picture worse.
-const minimizeCrossings = (scene: Scene): Scene => {
-  const segsByEdge = scene.edges.map((e) => segmentsOf(e.waypoints));
-  let total = 0;
-  for (let i = 0; i < segsByEdge.length; i++) {
-    for (let j = i + 1; j < segsByEdge.length; j++) {
-      const si = segsByEdge[i];
-      const sj = segsByEdge[j];
+const totalCrossings = (edges: readonly SceneEdge[]): number => {
+  const segs = edges.map((e) => segmentsOf(e.waypoints));
+  let n = 0;
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const si = segs[i];
+      const sj = segs[j];
       if (si === undefined || sj === undefined) continue;
-      for (const [a, b] of si) for (const [c, d] of sj) if (orthSegmentsCross(a, b, c, d)) total++;
+      for (const [a, b] of si) for (const [c, d] of sj) if (orthSegmentsCross(a, b, c, d)) n++;
     }
   }
-  if (total === 0) return scene; // already crossing-free — no work, no change
+  return n;
+};
+const sameRoute = (a: readonly Point[], b: readonly Point[]): boolean =>
+  a.length === b.length && a.every((p, i) => p.x === b[i]?.x && p.y === b[i]?.y);
+const applyRoute = (e: SceneEdge, wp: readonly Point[]): SceneEdge => {
+  const [w0, w1, ...wr] = wp;
+  if (w0 === undefined || w1 === undefined) return e;
+  return {
+    ...e,
+    waypoints: twoOrMore(w0, w1, ...wr),
+    labelPos: e.labelPos === null ? null : pathMidpoint(wp),
+  };
+};
 
-  const obstacleBoxes = obstaclesForEdges(scene);
-  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
-  const edges = [...scene.edges];
+interface RouteCand {
+  readonly wp: readonly Point[];
+  readonly hits: number;
+  readonly cross: number;
+  readonly len: number;
+}
+const segBox = (c: Point, d: Point): RouteBox =>
+  c.y === d.y
+    ? { x: Math.min(c.x, d.x), y: c.y - 1, w: Math.abs(d.x - c.x), h: 2 }
+    : { x: c.x - 1, y: Math.min(c.y, d.y), w: 2, h: Math.abs(d.y - c.y) };
+
+// Every in-bounds 4×4 mount-point maze route for edge `i` — avoiding nodes/groups AND a thin obstacle
+// along every segment of each edge it currently crosses (so the router steers fully around a conflicting
+// edge instead of re-crossing) — each scored by node hits, edge-crossings, length. Sorted best-first.
+const routeCandidates = (
+  i: number,
+  edges: readonly SceneEdge[],
+  obstacleBoxes: Map<string, readonly RouteBox[]>,
+  boxById: Map<string, RouteBox>,
+): RouteCand[] => {
+  const e = edges[i];
+  if (e === undefined || e.from === e.to) return [];
+  const fromBox = boxById.get(e.from);
+  const toBox = boxById.get(e.to);
+  if (fromBox === undefined || toBox === undefined) return [];
+  const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
+  const nodeObstacles = obstacleBoxes.get(e.id) ?? [];
+  const crossedBoxes: RouteBox[] = [];
+  for (let j = 0; j < edges.length; j++) {
+    const oj = edges[j];
+    if (j === i || oj === undefined) continue;
+    const ojSegs = segmentsOf(oj.waypoints);
+    if (crossingsBetween(e.waypoints, ojSegs) === 0) continue;
+    for (const [c, d] of ojSegs) crossedBoxes.push(segBox(c, d));
+  }
+  const mazeObstacles = [...nodeObstacles, ...crossedBoxes];
+  const curHits = routeHits(e.waypoints, nodeObstacles);
+  const out: RouteCand[] = [];
+  for (const s of sideMounts(fromBox)) {
+    for (const t of sideMounts(toBox)) {
+      const maze = mazeRoute(s, t, mazeObstacles, OBSTACLE_CLEARANCE);
+      if (maze === null || maze.length < 2) continue;
+      const hits = routeHits(maze, nodeObstacles); // node/group hits only, not the thin edge boxes
+      if (hits > curHits) continue; // never trade a node/group crossing for an edge crossing
+      out.push({ wp: maze, hits, cross: crossingsBetween(maze, others), len: routeLength(maze) });
+    }
+  }
+  out.sort((a, b) => a.hits - b.hits || a.cross - b.cross || a.len - b.len);
+  return out;
+};
+
+// Greedy local search: sweep edges, re-route each crossing one to its best alternate when that strictly
+// reduces its crossings (or node hits). Bounded sweeps; only strict improvements → terminates.
+const greedyReduce = (
+  start: readonly SceneEdge[],
+  obstacleBoxes: Map<string, readonly RouteBox[]>,
+  boxById: Map<string, RouteBox>,
+): SceneEdge[] => {
+  const edges = [...start];
   for (let sweep = 0; sweep < MAX_CROSS_SWEEPS; sweep++) {
     let improved = false;
     for (let i = 0; i < edges.length; i++) {
       const e = edges[i];
-      if (e === undefined || e.from === e.to) continue;
-      const fromBox = boxById.get(e.from);
-      const toBox = boxById.get(e.to);
-      if (fromBox === undefined || toBox === undefined) continue;
+      if (e === undefined) continue;
       const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
       const curCross = crossingsBetween(e.waypoints, others);
-      if (curCross === 0) continue; // crosses nothing — leave it exactly where it is
-      const nodeObstacles = obstacleBoxes.get(e.id) ?? [];
-      // Feed the maze a thin obstacle box along EVERY segment of each edge this one currently crosses, so
-      // the router steers fully around the conflicting edge (left to itself it just minimises length and
-      // re-crosses, or shifts the crossing onto another segment of the same edge).
-      const segBox = (c: Point, d: Point): RouteBox =>
-        c.y === d.y
-          ? { x: Math.min(c.x, d.x), y: c.y - 1, w: Math.abs(d.x - c.x), h: 2 }
-          : { x: c.x - 1, y: Math.min(c.y, d.y), w: 2, h: Math.abs(d.y - c.y) };
-      const crossedBoxes: RouteBox[] = [];
-      for (let j = 0; j < edges.length; j++) {
-        const oj = edges[j];
-        if (j === i || oj === undefined) continue;
-        const ojSegs = segmentsOf(oj.waypoints);
-        if (crossingsBetween(e.waypoints, ojSegs) === 0) continue;
-        for (const [c, d] of ojSegs) crossedBoxes.push(segBox(c, d));
-      }
-      const mazeObstacles = [...nodeObstacles, ...crossedBoxes];
-      const curHits = routeHits(e.waypoints, nodeObstacles);
-      let best: { wp: readonly Point[]; hits: number; cross: number; len: number } = {
-        wp: e.waypoints,
-        hits: curHits,
-        cross: curCross,
-        len: routeLength(e.waypoints),
-      };
-      for (const s of sideMounts(fromBox)) {
-        for (const t of sideMounts(toBox)) {
-          const maze = mazeRoute(s, t, mazeObstacles, OBSTACLE_CLEARANCE);
-          if (maze === null || maze.length < 2) continue;
-          const hits = routeHits(maze, nodeObstacles); // score node/group hits, not the thin edge boxes
-          if (hits > best.hits) continue; // never trade a node/group crossing for an edge crossing
-          const cross = crossingsBetween(maze, others);
-          const len = routeLength(maze);
-          if (hits < best.hits || cross < best.cross || (cross === best.cross && len < best.len)) {
-            best = { wp: maze, hits, cross, len };
-          }
-        }
-      }
-      if (best.cross < curCross || best.hits < curHits) {
-        const [w0, w1, ...wr] = best.wp;
-        if (w0 !== undefined && w1 !== undefined) {
-          edges[i] = {
-            ...e,
-            waypoints: twoOrMore(w0, w1, ...wr),
-            labelPos: e.labelPos === null ? null : pathMidpoint(best.wp),
-          };
-          improved = true;
-        }
+      if (curCross === 0) continue;
+      const curHits = routeHits(e.waypoints, obstacleBoxes.get(e.id) ?? []);
+      const top = routeCandidates(i, edges, obstacleBoxes, boxById)[0];
+      if (top !== undefined && (top.cross < curCross || top.hits < curHits)) {
+        edges[i] = applyRoute(e, top.wp);
+        improved = true;
       }
     }
     if (!improved) break;
   }
-  return { ...scene, edges };
+  return edges;
+};
+
+// Deterministically PERTURB a stalled configuration: force the `kick`-th crossing edge (most-crossing
+// first) onto its best alternate route that differs from its current one — even though it doesn't improve
+// that edge alone — so the next greedy pass can find improvements elsewhere. Null when nothing to kick.
+const perturb = (
+  edges: readonly SceneEdge[],
+  kick: number,
+  obstacleBoxes: Map<string, readonly RouteBox[]>,
+  boxById: Map<string, RouteBox>,
+): SceneEdge[] | null => {
+  const crossing: { readonly i: number; readonly n: number }[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    if (e === undefined) continue;
+    const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
+    const n = crossingsBetween(e.waypoints, others);
+    if (n > 0) crossing.push({ i, n });
+  }
+  if (crossing.length === 0) return null;
+  crossing.sort((a, b) => b.n - a.n || a.i - b.i); // most-crossing first, ties by index → deterministic
+  const target = crossing[kick % crossing.length];
+  if (target === undefined) return null;
+  const e = edges[target.i];
+  if (e === undefined) return null;
+  const alt = routeCandidates(target.i, edges, obstacleBoxes, boxById).find(
+    (c) => !sameRoute(c.wp, e.waypoints),
+  );
+  if (alt === undefined) return null;
+  const next = [...edges];
+  next[target.i] = applyRoute(e, alt.wp);
+  return next;
+};
+
+// Global edge–edge crossing minimisation. Greedy local search (re-route crossing edges around each other
+// via the maze), then ITERATED LOCAL SEARCH — when the greedy stalls with crossings left, kick it out of
+// the local minimum (force one edge onto a different route) and re-descend, keeping the best total seen.
+// Deterministic, bounded, keeps the best → terminates and never makes the picture worse. A crossing-free
+// scene short-circuits to byte-identical output.
+export const minimizeCrossings = (scene: Scene): Scene => {
+  if (totalCrossings(scene.edges) === 0) return scene;
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  let bestEdges = greedyReduce(scene.edges, obstacleBoxes, boxById);
+  let bestN = totalCrossings(bestEdges);
+  for (let kick = 0; kick < MAX_CROSS_KICKS && bestN > 0; kick++) {
+    const perturbed = perturb(bestEdges, kick, obstacleBoxes, boxById);
+    if (perturbed === null) break;
+    const reduced = greedyReduce(perturbed, obstacleBoxes, boxById);
+    const n = totalCrossings(reduced);
+    if (n < bestN) {
+      bestEdges = reduced;
+      bestN = n;
+    }
+  }
+  return { ...scene, edges: bestEdges };
 };
 
 export const spreadPorts = (scene: Scene): Scene => {

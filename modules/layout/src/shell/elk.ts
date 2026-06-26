@@ -49,6 +49,7 @@ import {
   decollideEdgeLabels,
   lowestEnergy,
   mazeRerouteEdges,
+  minimizeCrossings,
   styleOk,
   toElkGraph,
   toScene,
@@ -312,9 +313,10 @@ const elkSelectBest = async (
   }
   const best = lowestEnergy(passing);
   if (best === null) return fallback ?? err({ kind: "layout", message: "no layout produced" });
-  // Under Tidy, bend any ELK edge that still cuts through a node around it with the maze router (ELK
-  // routes around nodes, but a dense hierarchy can leave a residual crossing). Clean edges are untouched.
-  return ok(tidy ? mazeRerouteEdges(best) : best);
+  // Under Tidy, bend any ELK edge that still cuts through a node around it (maze reroute), then run the
+  // global edge–edge crossing minimiser over the result — ELK already minimises crossings, but a dense
+  // hierarchy can leave residual ones. Both are no-ops where there's nothing to fix; clean edges stay put.
+  return ok(tidy ? minimizeCrossings(mazeRerouteEdges(best)) : best);
 };
 
 export const layout = async (

@@ -331,3 +331,8 @@
   conflicting edges fed to the maze router as thin obstacles, keeping whichever orthogonal route crosses
   the fewest OTHER edges (without adding node/group crossings, then shortest). Early-outs on a crossing-
   free scene (byte-identical), bounded sweeps, strict improvement → terminates, never worse.
+- Crossing-min v2: `minimizeCrossings` is now an exported greedy-local-search + ITERATED-LOCAL-SEARCH
+  optimiser — when the greedy stalls with crossings left, it deterministically kicks one edge onto a
+  different route and re-descends, keeping the best total seen (escapes local minima, never worse). It's
+  also applied to the ELK families under Tidy (`minimizeCrossings(mazeRerouteEdges(best))` in
+  `elkSelectBest`), not just the spreadPorts families.

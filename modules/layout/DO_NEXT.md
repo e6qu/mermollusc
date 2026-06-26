@@ -79,8 +79,9 @@ it if a free-form look is ever wanted; it would NOT be a default, to preserve ea
 
 
 
-## Crossing-min + fit-on-load shipped
-Done: greedy global edge–edge crossing minimisation for the spreadPorts families (cloud/network/c4/block);
-zoom-to-fit on load. Remaining/possible: extend crossing-min to the ELK families (they already minimise
-crossings via ELK, but the maze reroute under Tidy could feed conflicting edges in too); a smarter (non-
-greedy) crossing optimiser if the local search leaves obvious crossings on very dense graphs.
+
+## Crossing-min v2 shipped
+Done: iterated-local-search (non-greedy) crossing optimiser; crossing-min extended to the ELK families
+under Tidy. Possible next: a proper port-order/barycenter crossing reducer for the layered families
+(complementary to ELK's own); cache the per-edge maze candidates across ILS kicks if the optimiser ever
+shows up in a profile on very large diagrams.
