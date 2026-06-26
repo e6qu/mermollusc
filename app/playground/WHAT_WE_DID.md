@@ -815,3 +815,5 @@
   architecture diagram gets a wider inter-row channel so its cross-tier links separate cleanly.
 - Tidy now also straightens the ELK families' edges around residual obstacles (maze reroute), and dense
   architecture diagrams (cloud/network/c4) de-collide overlapping edge labels.
+- Edges now avoid crossing group containers they don't connect into and pick the clearest of a node's
+  four sides when detouring; overlapping edge labels de-collide to the nearest free spot, for all families.

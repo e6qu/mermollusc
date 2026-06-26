@@ -77,8 +77,10 @@ it if a free-form look is ever wanted; it would NOT be a default, to preserve ea
 
 
 
-## Routing polish shipped
-Done: ELK families maze-reroute under Tidy; a single shared `OBSTACLE_CLEARANCE`/`segmentThroughBox`;
-mid-edge label de-collision on the architecture families. Possible next: horizontal label de-collision
-(currently vertical-only); de-collide labels for the ELK families too (not just spreadPorts ones); let
-the label nudge follow the edge instead of a free vertical drop on very tight layouts.
+
+## Routing/label batch shipped
+Done: containers-as-obstacles-unless-entered; 4-side mount-point selection in the maze reroute; nearest-
+spot bidirectional label de-collision applied to every family. Still open: GLOBAL edge–edge crossing
+minimisation (current passes minimise node/container crossings per edge, not edge-edge crossings across
+the whole graph — would need ordered/sequential routing or a crossing-aware port assignment); biasing the
+label nudge along the actual edge tangent.
