@@ -326,3 +326,8 @@
   child edges are straight arrows trimmed to the pill borders (so the arrowhead is visible), and each
   branch head is a stickman (`shape: "actor"`). `mainStart` now clears the first wide sha pill past the
   head.
+- Global edge–edge crossing minimisation: `spreadPorts` ends with a greedy `minimizeCrossings` pass —
+  for each edge that crosses another, it re-routes from each of the endpoints' four mount-points with the
+  conflicting edges fed to the maze router as thin obstacles, keeping whichever orthogonal route crosses
+  the fewest OTHER edges (without adding node/group crossings, then shortest). Early-outs on a crossing-
+  free scene (byte-identical), bounded sweeps, strict improvement → terminates, never worse.

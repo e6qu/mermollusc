@@ -201,6 +201,51 @@ describe("spreadPorts", () => {
     expect(wp[wp.length - 1]).toEqual(point(180, 145));
   });
 
+  // Count proper crossings of axis-aligned segments across all edge pairs in a routed scene.
+  const orthCross = (a1: { x: number; y: number }, a2: { x: number; y: number }, b1: { x: number; y: number }, b2: { x: number; y: number }): boolean => {
+    const aH = a1.y === a2.y;
+    if (aH === (b1.y === b2.y)) return false;
+    const h1 = aH ? a1 : b1;
+    const h2 = aH ? a2 : b2;
+    const v1 = aH ? b1 : a1;
+    const v2 = aH ? b2 : a2;
+    return (
+      v1.x > Math.min(h1.x, h2.x) && v1.x < Math.max(h1.x, h2.x) &&
+      h1.y > Math.min(v1.y, v2.y) && h1.y < Math.max(v1.y, v2.y)
+    );
+  };
+  const totalCrossings = (s: ReturnType<typeof spreadPorts>): number => {
+    const segs = s.edges.map((e) => {
+      const out: [{ x: number; y: number }, { x: number; y: number }][] = [];
+      for (let i = 1; i < e.waypoints.length; i++) {
+        const a = e.waypoints[i - 1];
+        const b = e.waypoints[i];
+        if (a !== undefined && b !== undefined) out.push([a, b]);
+      }
+      return out;
+    });
+    let n = 0;
+    for (let i = 0; i < segs.length; i++)
+      for (let j = i + 1; j < segs.length; j++)
+        for (const [a, b] of segs[i] ?? [])
+          for (const [c, d] of segs[j] ?? [])
+            if (orthCross(a, b, c, d)) n++;
+    return n;
+  };
+
+  it("minimises edge–edge crossings: a horizontal edge re-routes clear of a vertical one it crossed", () => {
+    // A→B runs horizontally at y≈115; C(top)→D(bottom) runs vertically through x≈115 — they cross.
+    const scene = {
+      nodes: [node("a", 0, 100), node("b", 220, 100), node("c", 95, -90), node("d", 95, 240)],
+      edges: [edge("ab", "a", "b"), edge("cd", "c", "d")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 280, 320),
+    };
+    const out = spreadPorts(scene);
+    expect(totalCrossings(out)).toBe(0); // the greedy pass found mount points with no crossing
+  });
+
   it("leaves a self-loop / dangling edge untouched", () => {
     const scene = {
       nodes: [node("a", 0, 0)],

@@ -78,9 +78,9 @@ it if a free-form look is ever wanted; it would NOT be a default, to preserve ea
 
 
 
-## Routing/label batch shipped
-Done: containers-as-obstacles-unless-entered; 4-side mount-point selection in the maze reroute; nearest-
-spot bidirectional label de-collision applied to every family. Still open: GLOBAL edge–edge crossing
-minimisation (current passes minimise node/container crossings per edge, not edge-edge crossings across
-the whole graph — would need ordered/sequential routing or a crossing-aware port assignment); biasing the
-label nudge along the actual edge tangent.
+
+## Crossing-min + fit-on-load shipped
+Done: greedy global edge–edge crossing minimisation for the spreadPorts families (cloud/network/c4/block);
+zoom-to-fit on load. Remaining/possible: extend crossing-min to the ELK families (they already minimise
+crossings via ELK, but the maze reroute under Tidy could feed conflicting edges in too); a smarter (non-
+greedy) crossing optimiser if the local search leaves obvious crossings on very dense graphs.
