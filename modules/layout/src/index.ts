@@ -7,6 +7,7 @@ export {
   heuristicMeasure,
   retidyRoutes,
   respreadPorts,
+  trunkRoutes,
   GANTT_DAY_WIDTH,
   layoutEnergy,
   lowestEnergy,

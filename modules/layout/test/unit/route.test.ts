@@ -8,6 +8,7 @@ import {
   retidyRoutes,
   routeWaypoints,
   spreadPorts,
+  trunkRoutes,
 } from "../../src/core/route.js";
 
 describe("routeWaypoints", () => {
@@ -336,6 +337,9 @@ describe("spreadPorts", () => {
     };
     expect(overlaps(retidyRoutes(scene))).toBeGreaterThan(0); // naive: the four stubs stack
     expect(overlaps(respreadPorts(scene))).toBe(0); // full: each edge gets its own lane
+    // Trunk mode does the OPPOSITE on purpose: the fan is merged onto one shared backbone (the bus look),
+    // so the four routes deliberately share collinear segments (which the renderer marks with junctions).
+    expect(overlaps(trunkRoutes(scene))).toBeGreaterThan(0);
   });
 
   it("reserves channel width by edge density: a busy channel pushes the far band apart", () => {

@@ -1026,6 +1026,103 @@ export const spreadPorts = (rawScene: Scene): Scene =>
 // leaves connectors sharing a backbone for the junction/bus rendering option.
 export const respreadPorts = (scene: Scene, bus = false): Scene => routeSpread(scene, bus);
 
+const TRUNK_MIN = 3; // a fan needs at least this many edges on one node side to become a trunk
+const TRUNK_GAP = 18; // distance from the node to its trunk line
+const samePoint = (a: Point, b: Point): boolean =>
+  Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+const compress = (pts: readonly Point[]): Point[] => {
+  const out: Point[] = [];
+  for (const p of pts) {
+    const last = out[out.length - 1];
+    if (last === undefined || !samePoint(last, p)) out.push(p);
+  }
+  return out;
+};
+
+// Active trunk merging (the aggressive bus). For each node side that a FAN of ≥ TRUNK_MIN connectors
+// reaches, route them all through one shared trunk line just off that side and into a single shared port:
+// each edge runs from its far end to the trunk, then along the trunk into the node. The trunk segment is
+// shared by the whole fan (a real backbone) and the renderer marks a junction where each edge joins it.
+// Bigger fans claim their edges first; an edge already in one trunk isn't pulled into another. Edges not
+// in any fan keep the routes they came in with — so callers pass an already-routed scene.
+const trunkMerge = (scene: Scene): Scene => {
+  const boxOf = boxOfNode(scene);
+  const fans = new Map<SceneNodeId, Map<Side, number[]>>();
+  const addIncident = (node: SceneNodeId, side: Side, idx: number): void => {
+    let bySide = fans.get(node);
+    if (bySide === undefined) {
+      bySide = new Map();
+      fans.set(node, bySide);
+    }
+    const list = bySide.get(side);
+    if (list === undefined) bySide.set(side, [idx]);
+    else list.push(idx);
+  };
+  scene.edges.forEach((e, idx) => {
+    if (e.from === e.to) return;
+    const fb = boxOf.get(e.from);
+    const tb = boxOf.get(e.to);
+    if (fb === undefined || tb === undefined) return;
+    addIncident(e.from, facingSide(fb, tb), idx);
+    addIncident(e.to, facingSide(tb, fb), idx);
+  });
+  const groups: {
+    readonly node: SceneNodeId;
+    readonly side: Side;
+    readonly edges: readonly number[];
+  }[] = [];
+  for (const [node, bySide] of fans)
+    for (const [side, edges] of bySide)
+      if (edges.length >= TRUNK_MIN) groups.push({ node, side, edges });
+  groups.sort((a, b) => b.edges.length - a.edges.length);
+
+  const claimed = new Set<number>();
+  const routed = new Map<number, TwoOrMore<Point>>();
+  for (const g of groups) {
+    const free = g.edges.filter((i) => !claimed.has(i));
+    if (free.length < TRUNK_MIN) continue;
+    const tb = boxOf.get(g.node);
+    if (tb === undefined) continue;
+    const tPort = portAt(tb, g.side, 0, 1); // single shared port at the side's centre
+    const vertical = g.side === "L" || g.side === "R";
+    const trunk =
+      g.side === "R"
+        ? tb.x + tb.w + TRUNK_GAP
+        : g.side === "L"
+          ? tb.x - TRUNK_GAP
+          : g.side === "B"
+            ? tb.y + tb.h + TRUNK_GAP
+            : tb.y - TRUNK_GAP;
+    for (const idx of free) {
+      const e = scene.edges[idx];
+      if (e === undefined) continue;
+      const otherId = e.from === g.node ? e.to : e.from;
+      const ob = boxOf.get(otherId);
+      if (ob === undefined) continue;
+      const oPort = portAt(ob, facingSide(ob, tb), 0, 1);
+      const toTrunk = vertical ? point(trunk, oPort.y) : point(oPort.x, trunk);
+      const alongTrunk = vertical ? point(trunk, tPort.y) : point(tPort.x, trunk);
+      const fromOther = compress([oPort, toTrunk, alongTrunk, tPort]); // far end → trunk → node
+      const ordered = e.from === g.node ? [...fromOther].reverse() : fromOther;
+      const [w0, w1, ...wr] = ordered;
+      if (w0 === undefined || w1 === undefined) continue;
+      routed.set(idx, twoOrMore(w0, w1, ...wr));
+      claimed.add(idx);
+    }
+  }
+  if (routed.size === 0) return scene;
+  const edges = scene.edges.map((e, idx): SceneEdge => {
+    const wp = routed.get(idx);
+    if (wp === undefined) return e;
+    return { ...e, waypoints: wp, labelPos: e.labelPos === null ? null : pathMidpoint(wp) };
+  });
+  return { ...scene, edges };
+};
+
+// The trunk rendering option: spread the non-fan connectors normally, then merge each fan onto a shared
+// trunk. Like `respreadPorts`, it respects the node positions it's given (no channel reservation).
+export const trunkRoutes = (scene: Scene): Scene => trunkMerge(routeSpread(scene, false));
+
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap
 // between the two boxes by construction, so an edge label anchored here stays clear of both endpoints —
 // unlike the whole-route midpoint (`edgeLabelAnchor`), which can land on a box's border row/column.

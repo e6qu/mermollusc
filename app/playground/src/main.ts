@@ -92,7 +92,14 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
-import { GANTT_DAY_WIDTH, layout, layoutDiagram, respreadPorts, retidyRoutes } from "@m/layout";
+import {
+  GANTT_DAY_WIDTH,
+  layout,
+  layoutDiagram,
+  respreadPorts,
+  retidyRoutes,
+  trunkRoutes,
+} from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
 import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
@@ -206,6 +213,7 @@ const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
 const tidyBtn = document.querySelector<HTMLButtonElement>("#tidy");
 const organicBtn = document.querySelector<HTMLButtonElement>("#organic");
 const busBtn = document.querySelector<HTMLButtonElement>("#bus");
+const trunkBtn = document.querySelector<HTMLButtonElement>("#trunk");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
@@ -309,6 +317,7 @@ if (
   tidyBtn === null ||
   organicBtn === null ||
   busBtn === null ||
+  trunkBtn === null ||
   loadPackEl === null ||
   exampleEl === null ||
   kindEl === null ||
@@ -595,6 +604,7 @@ let shownCacheEdgeStyles: EdgeStyles | null = null;
 let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheInteracting = false;
 let shownCacheBus = false;
+let shownCacheTrunk = false;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -636,7 +646,8 @@ const shownScene = (base: Scene): Scene => {
     shownCacheEdgeStyles === es &&
     shownCacheNodeStyles === ns &&
     shownCacheInteracting === interacting &&
-    shownCacheBus === busEnabled
+    shownCacheBus === busEnabled &&
+    shownCacheTrunk === trunkEnabled
   ) {
     return shownCacheResult;
   }
@@ -649,13 +660,15 @@ const shownScene = (base: Scene): Scene => {
   const family = ast?.kind ?? null;
   const spreadFamily = family !== null && SPREAD_FAMILIES.has(family);
   const tidied =
-    busEnabled && spreadFamily
-      ? respreadPorts(moved, true)
-      : ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
-        ? spreadFamily && !interacting
-          ? respreadPorts(moved)
-          : retidyRoutes(moved)
-        : moved;
+    spreadFamily && trunkEnabled
+      ? trunkRoutes(moved)
+      : spreadFamily && busEnabled
+        ? respreadPorts(moved, true)
+        : ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
+          ? spreadFamily && !interacting
+            ? respreadPorts(moved)
+            : retidyRoutes(moved)
+          : moved;
   // The presentation-only overlay (display only): curved edges + node accents from the document.
   const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
@@ -664,6 +677,7 @@ const shownScene = (base: Scene): Scene => {
   shownCacheNodeStyles = ns;
   shownCacheInteracting = interacting;
   shownCacheBus = busEnabled;
+  shownCacheTrunk = trunkEnabled;
   shownCacheResult = shown;
   return shown;
 };
@@ -710,7 +724,10 @@ const paintScene = (): void => {
   canvas.style.backgroundColor = active.background;
   // Build the display list once and reuse it for both the main canvas and the minimap overview. Junction
   // dots are drawn only for the box-routed families under the bus rendering option.
-  const cmds = toDisplayList(shown, busEnabled && ast !== null && SPREAD_FAMILIES.has(ast.kind));
+  const cmds = toDisplayList(
+    shown,
+    (busEnabled || trunkEnabled) && ast !== null && SPREAD_FAMILIES.has(ast.kind),
+  );
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
@@ -2175,6 +2192,17 @@ const BUS_KEY = "mermollusc-bus-routing";
 let busEnabled = ((): boolean => {
   try {
     return localStorage.getItem(BUS_KEY) === "true";
+  } catch {
+    return false;
+  }
+})();
+
+// "Trunk": the aggressive bus — each fan of connectors at a node side is actively re-routed through one
+// shared trunk + a single port, with junction dots. Display-only, persisted, takes precedence over Bus.
+const TRUNK_KEY = "mermollusc-trunk-routing";
+let trunkEnabled = ((): boolean => {
+  try {
+    return localStorage.getItem(TRUNK_KEY) === "true";
   } catch {
     return false;
   }
@@ -4699,6 +4727,24 @@ busBtn.addEventListener("click", () => {
   syncBusLabel();
   paintScene();
   setStatusAndAnnounce("ok", busEnabled ? "bus rendering on" : "bus rendering off");
+});
+
+// Trunk rendering: the aggressive bus (active fan→trunk merge). Display-only, takes precedence over Bus.
+const syncTrunkLabel = (): void => {
+  trunkBtn.setAttribute("aria-pressed", trunkEnabled ? "true" : "false");
+  trunkBtn.textContent = trunkEnabled ? "Trunk ✓" : "Trunk";
+};
+syncTrunkLabel();
+trunkBtn.addEventListener("click", () => {
+  trunkEnabled = !trunkEnabled;
+  try {
+    localStorage.setItem(TRUNK_KEY, trunkEnabled ? "true" : "false");
+  } catch (e) {
+    console.error("trunk-routing persist failed", e);
+  }
+  syncTrunkLabel();
+  paintScene();
+  setStatusAndAnnounce("ok", trunkEnabled ? "trunk rendering on" : "trunk rendering off");
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
