@@ -1,6 +1,14 @@
 import { brand, point, rect, twoOrMore } from "@m/std";
 import { describe, expect, it } from "vitest";
-import { boxCenter, decollideEdgeLabels, mazeRerouteEdges, routeWaypoints, spreadPorts } from "../../src/core/route.js";
+import {
+  boxCenter,
+  decollideEdgeLabels,
+  mazeRerouteEdges,
+  respreadPorts,
+  retidyRoutes,
+  routeWaypoints,
+  spreadPorts,
+} from "../../src/core/route.js";
 
 describe("routeWaypoints", () => {
   it("passes a full route through unchanged (≥2 points)", () => {
@@ -307,6 +315,27 @@ describe("spreadPorts", () => {
     };
     const out = spreadPorts(scene);
     expect(overlaps(out)).toBe(0); // the two routes were pulled onto separate tracks
+  });
+
+  it("respreadPorts re-routes a hand-arranged scene with full spreading, not naive stacked Z-routes", () => {
+    // A hub whose four connectors all leave the same side — the post-drag case. The cheap re-router
+    // (`retidyRoutes`) snaps each to a box-centre Z, stacking their stubs; the full re-router spreads
+    // them onto distinct ports. This is the fix for a hand-arranged diagram looking tangled.
+    const scene = {
+      nodes: [
+        node("h", 100, 200),
+        node("a", 500, 40),
+        node("b", 500, 140),
+        node("c", 500, 240),
+        node("d", 500, 340),
+      ],
+      edges: [edge("ha", "h", "a"), edge("hb", "h", "b"), edge("hc", "h", "c"), edge("hd", "h", "d")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 620, 420),
+    };
+    expect(overlaps(retidyRoutes(scene))).toBeGreaterThan(0); // naive: the four stubs stack
+    expect(overlaps(respreadPorts(scene))).toBe(0); // full: each edge gets its own lane
   });
 
   it("reserves channel width by edge density: a busy channel pushes the far band apart", () => {

@@ -926,8 +926,10 @@ const reserveChannels = (scene: Scene): Scene => {
   };
 };
 
-export const spreadPorts = (rawScene: Scene): Scene => {
-  const scene = reserveChannels(rawScene);
+// The position-respecting routing core: port-spread every box→box edge into distinct lanes, detour around
+// nodes, then minimise crossings and de-stack overlaps. Moves NO node — callers decide whether to reserve
+// channel room first. Shared by initial layout (`spreadPorts`) and post-drag re-routing (`respreadPorts`).
+const routeSpread = (scene: Scene): Scene => {
   const boxOf = boxOfNode(scene);
   const along = (side: Side, other: RouteBox): number =>
     side === "L" || side === "R" ? other.y + other.h / 2 : other.x + other.w / 2;
@@ -1012,6 +1014,15 @@ export const spreadPorts = (rawScene: Scene): Scene => {
   // overlaps onto separate lanes (nudge) — the second never adds a crossing.
   return separateOverlaps(minimizeCrossings({ ...scene, edges }));
 };
+
+// Initial layout: reserve channel room (moving bands apart by edge density) then route.
+export const spreadPorts = (rawScene: Scene): Scene => routeSpread(reserveChannels(rawScene));
+
+// Post-drag re-routing: the user has placed nodes by hand, so DON'T reserve room (that would move their
+// nodes) — just re-route at their exact positions with the full pipeline (port lanes + crossing-min +
+// overlap separation). This is what gives a hand-arranged diagram the same clean connectors as auto-layout
+// instead of the naive per-edge Z-routes `retidyRoutes` produces.
+export const respreadPorts = (scene: Scene): Scene => routeSpread(scene);
 
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap
 // between the two boxes by construction, so an edge label anchored here stays clear of both endpoints —

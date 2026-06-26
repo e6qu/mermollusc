@@ -92,7 +92,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
-import { GANTT_DAY_WIDTH, layout, layoutDiagram, retidyRoutes } from "@m/layout";
+import { GANTT_DAY_WIDTH, layout, layoutDiagram, respreadPorts, retidyRoutes } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
 import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
 import {
@@ -591,6 +591,7 @@ let shownCacheScene: Scene | null = null;
 let shownCacheOverrides: LayoutOverrides | null = null;
 let shownCacheEdgeStyles: EdgeStyles | null = null;
 let shownCacheNodeStyles: NodeStyles | null = null;
+let shownCacheInteracting = false;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -606,31 +607,54 @@ const TIDY_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
   "state",
   "requirement",
 ]);
+// The box-routed (architecture) families whose initial layout uses the full port-spreading router. After a
+// hand-arrangement these can be RE-routed by that same router (`respreadPorts`) at the user's exact node
+// positions — giving spread lanes + minimal crossings instead of the naive per-edge Z-routes `retidyRoutes`
+// produces. The other tidy families are ELK-routed (no synchronous re-router), so they keep `retidyRoutes`.
+const SPREAD_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
+  "block",
+  "network",
+  "cloud",
+  "c4",
+]);
 
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
   const es = doc.edgeStyles();
   const ns = doc.nodeStyles();
+  // While a pointer gesture is live we route cheaply (only the dragged edges blend), so the rest of the
+  // diagram stays put under the cursor; on release we run the full router. The flag is part of the cache
+  // key so the release paint re-routes even though the overrides didn't change on the final frame.
+  const interacting = isInteracting();
   if (
     shownCacheResult !== null &&
     shownCacheScene === base &&
     shownCacheOverrides === ov &&
     shownCacheEdgeStyles === es &&
-    shownCacheNodeStyles === ns
+    shownCacheNodeStyles === ns &&
+    shownCacheInteracting === interacting
   ) {
     return shownCacheResult;
   }
   const moved = applyOverrides(base, ov);
   // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
+  // Box-routed families get the FULL router on release (spread lanes + crossing-min), respecting the
+  // hand-placed positions; mid-gesture and the ELK families fall back to the cheap diagonal-snap.
+  const family = ast?.kind ?? null;
   const tidied =
-    ov.size > 0 && ast !== null && TIDY_FAMILIES.has(ast.kind) ? retidyRoutes(moved) : moved;
+    ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
+      ? SPREAD_FAMILIES.has(family) && !interacting
+        ? respreadPorts(moved)
+        : retidyRoutes(moved)
+      : moved;
   // The presentation-only overlay (display only): curved edges + node accents from the document.
   const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
   shownCacheOverrides = ov;
   shownCacheEdgeStyles = es;
   shownCacheNodeStyles = ns;
+  shownCacheInteracting = interacting;
   shownCacheResult = shown;
   return shown;
 };

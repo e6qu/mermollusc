@@ -119,7 +119,8 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       }
       const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
       const line = `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
-      return `${line}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}`;
+      const mids = cmd.midMarkers.map((m) => markerToSvg(m, theme)).join("");
+      return `${line}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}${mids}`;
     }
     case "icon": {
       const href = icons.get(`${cmd.ref.pack}/${cmd.ref.name}`);

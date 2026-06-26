@@ -367,3 +367,12 @@
   `SceneNodeId` band maps, `OverlapSeg`-keyed offset maps (no stringly composite keys), numeric track keys,
   named constants (`CHANNEL_BASE`/`CHANNEL_LANE`/`LANE_GAP`/`MAX_NEST_DEPTH`/`SEG_AXIS_EPS`), explicit
   optional handling (no fabricated `?? 0` defaults).
+- Hand-arranged diagrams now re-route through the FULL router (`respreadPorts`). Diagnosis: after a drag,
+  the app re-routed via `retidyRoutes`, which only snaps diagonal edges back to naive per-edge Z-routes —
+  no port-spreading, crossing-min or overlap separation. So a hand-arranged architecture diagram looked
+  far messier than its auto-layout (edges sharing a node side stacked at the box centre). `respreadPorts`
+  factors the position-respecting routing core out of `spreadPorts` (everything except `reserveChannels`,
+  which must NOT run on a drag — it would move the user's nodes) and runs it on the moved scene. Measured
+  on a four-edge hub: naive `retidyRoutes` left 8 parallel overlaps; `respreadPorts` 0. The app calls it
+  for the box-routed families (cloud/network/c4/block) on drag RELEASE (mid-gesture stays on the cheap
+  diagonal-snap so the diagram doesn't churn under the cursor).

@@ -382,6 +382,7 @@ export const paint = (
           ctx.setLineDash([]);
           drawMarker(ctx, cmd.fromMarker, theme);
           drawMarker(ctx, cmd.toMarker, theme);
+          for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
           break;
         }
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
@@ -394,6 +395,7 @@ export const paint = (
           }
           drawMarker(ctx, cmd.fromMarker, theme);
           drawMarker(ctx, cmd.toMarker, theme);
+          for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
           break;
         }
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
@@ -404,6 +406,7 @@ export const paint = (
         ctx.setLineDash([]);
         drawMarker(ctx, cmd.fromMarker, theme);
         drawMarker(ctx, cmd.toMarker, theme);
+        for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
         break;
       }
       case "icon": {
