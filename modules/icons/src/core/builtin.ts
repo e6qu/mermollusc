@@ -56,6 +56,38 @@ const ICONS = new Map<string, string>([
     "cdn",
     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.5A3.5 3.5 0 0 1 18 18z"/><path d="M12 9l3 4h-6z"/></svg>',
   ],
+  [
+    "load-balancer",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9.5" y="2" width="5" height="5" rx="1"/><rect x="2.5" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16.5" y="16" width="5" height="5" rx="1"/><rect x="11.5" y="7" width="1" height="4"/><rect x="5" y="11" width="14" height="1"/><rect x="4.5" y="11" width="1" height="5"/><rect x="11.5" y="11" width="1" height="5"/><rect x="18.5" y="11" width="1" height="5"/></svg>',
+  ],
+  [
+    "gateway",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 21V10a9 9 0 0 1 18 0v11h-4V10a5 5 0 0 0-10 0v11z"/></svg>',
+  ],
+  [
+    "container",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="3" height="4" rx="1"/><rect x="16" y="3" width="3" height="4" rx="1"/><rect x="2.5" y="7" width="19" height="13" rx="1.5"/></svg>',
+  ],
+  [
+    "microservice",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/></svg>',
+  ],
+  [
+    "cache",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>',
+  ],
+  [
+    "bucket",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 7l1.5 13a1 1 0 0 0 1 .9h11a1 1 0 0 0 1-.9L21 7z"/><ellipse cx="12.5" cy="6.5" rx="8.5" ry="2.3"/></svg>',
+  ],
+  [
+    "key",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7.5" cy="7.5" r="4.5"/><path d="M10 10l9 9v2.5h-2.5v-2h-2v-2l-2.5-2.5z"/></svg>',
+  ],
+  [
+    "lock",
+    '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4.5" y="10" width="15" height="11" rx="2"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  ],
 ]);
 
 export const builtinPack: IconPack = {
@@ -67,10 +99,11 @@ export const builtinPack: IconPack = {
   },
   icons: ICONS,
   categories: new Map<string, readonly string[]>([
-    ["compute", ["server", "compute", "host"]],
-    ["data", ["database", "storage"]],
-    ["network", ["router", "switch", "firewall", "cloud", "cdn"]],
+    ["compute", ["server", "compute", "host", "container", "microservice"]],
+    ["data", ["database", "storage", "bucket", "cache"]],
+    ["network", ["router", "switch", "cloud", "cdn", "load-balancer", "gateway"]],
     ["messaging", ["queue"]],
+    ["security", ["firewall", "key", "lock"]],
     ["people", ["user"]],
   ]),
 };
