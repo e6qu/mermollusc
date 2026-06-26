@@ -46,6 +46,8 @@ import {
   layoutPie,
   layoutSequence,
   layoutTimeline,
+  lowestEnergy,
+  styleOk,
   toElkGraph,
   toScene,
 } from "../core/index.js";
@@ -255,21 +257,64 @@ const toPositioned = (r: z.infer<typeof ResultZ>): PositionedGraph => {
   };
 };
 
+// "Tidy layout" candidate option-sets (deltas merged over the base config). The first is the default
+// (no delta) — its result is the fallback and the non-tidy path. The others ask ELK to minimise edge
+// crossings more aggressively / drop strict model-order, giving deterministic alternatives to choose
+// from. All are layered drawings, so the family's style is preserved; `lowestEnergy` + `styleOk` pick.
+const TIDY_CANDIDATES: readonly Record<string, string>[] = [
+  {},
+  {
+    "elk.layered.considerModelOrder.strategy": "NONE",
+    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+  },
+  {
+    "elk.layered.considerModelOrder.strategy": "NONE",
+    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+  },
+];
+
+// Run the ELK candidates and pick the lowest-energy scene that still satisfies the style invariants.
+// When `tidy` is off, runs only the default candidate (today's exact output). The default candidate is
+// always the fallback if no candidate passes the style guard.
+const elkSelectBest = async (
+  input: ReturnType<typeof toElkInput>,
+  buildScene: (positioned: PositionedGraph) => Result<Scene, LayoutError>,
+  tidy: boolean,
+): Promise<Result<Scene, LayoutError>> => {
+  const candidates = tidy ? TIDY_CANDIDATES : [{}];
+  let fallback: Result<Scene, LayoutError> | null = null;
+  const passing: Scene[] = [];
+  for (const extra of candidates) {
+    const layoutOptions =
+      Object.keys(extra).length === 0 ? input.layoutOptions : { ...input.layoutOptions, ...extra };
+    const raw = await elk.layout({ ...input, layoutOptions });
+    const decoded = decode(ResultZ, raw);
+    if (!decoded.ok) {
+      fallback ??= err({
+        kind: "layout",
+        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
+      });
+      continue;
+    }
+    const scene = buildScene(toPositioned(decoded.value));
+    fallback ??= scene; // the default candidate (index 0) is the fallback
+    if (scene.ok && styleOk(scene.value)) passing.push(scene.value);
+  }
+  const best = lowestEnergy(passing);
+  return best !== null
+    ? ok(best)
+    : (fallback ?? err({ kind: "layout", message: "no layout produced" }));
+};
+
 export const layout = async (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point>,
   measure: MeasureText,
+  tidy = false,
 ): Promise<Result<Scene, LayoutError>> => {
   try {
-    const raw = await elk.layout(toElkInput(toElkGraph(ast, seed, measure)));
-    const decoded = decode(ResultZ, raw);
-    if (!decoded.ok) {
-      return err({
-        kind: "layout",
-        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
-      });
-    }
-    return toScene(toPositioned(decoded.value), ast);
+    const input = toElkInput(toElkGraph(ast, seed, measure));
+    return await elkSelectBest(input, (positioned) => toScene(positioned, ast), tidy);
   } catch (e) {
     return err({ kind: "layout", message: messageOf(e) });
   }
@@ -512,6 +557,7 @@ const layoutCompartments = async (
   boxes: readonly CompartmentBox[],
   edges: readonly CompartmentEdge[],
   measure: MeasureText,
+  tidy: boolean,
 ): Promise<Result<Scene, LayoutError>> => {
   const graph: LayoutGraph = {
     id: "root",
@@ -538,72 +584,74 @@ const layoutCompartments = async (
     })),
   };
   try {
-    const raw = await elk.layout(toElkInput(graph));
-    const decoded = decode(ResultZ, raw);
-    if (!decoded.ok) {
-      return err({
-        kind: "layout",
-        message: `unexpected ELK result: ${decoded.error.issues.join("; ")}`,
-      });
-    }
-    const positioned = toPositioned(decoded.value);
-    const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
-    const edgeById = new Map(edges.map((e) => [e.id, e]));
-    const nodes: SceneNode[] = [];
-    for (const b of boxes) {
-      const p = posById.get(b.id);
-      if (p === undefined) {
-        return err({ kind: "layout", message: `${family}: entity ${b.id} was not positioned` });
-      }
-      nodes.push({
-        id: brand<string, "SceneNodeId">(b.id),
-        bounds: rect(p.x, p.y, p.width, p.height),
-        label: b.label,
-        shape: "rect",
-        parent: null,
-        icon: null,
-        rows: b.rows.length > 0 ? b.rows : null,
-        rowDivider: b.rowDivider,
-        subtitle: b.subtitle,
-        accent: "none",
-        role: "normal",
-      });
-    }
-    const centerById = new Map<string, Point>(
-      nodes.map((n) => [
-        n.id,
-        boxCenter(n.bounds.origin.x, n.bounds.origin.y, n.bounds.size.width, n.bounds.size.height),
-      ]),
+    return await elkSelectBest(
+      toElkInput(graph),
+      (positioned): Result<Scene, LayoutError> => {
+        const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
+        const edgeById = new Map(edges.map((e) => [e.id, e]));
+        const nodes: SceneNode[] = [];
+        for (const b of boxes) {
+          const p = posById.get(b.id);
+          if (p === undefined) {
+            return err({ kind: "layout", message: `${family}: entity ${b.id} was not positioned` });
+          }
+          nodes.push({
+            id: brand<string, "SceneNodeId">(b.id),
+            bounds: rect(p.x, p.y, p.width, p.height),
+            label: b.label,
+            shape: "rect",
+            parent: null,
+            icon: null,
+            rows: b.rows.length > 0 ? b.rows : null,
+            rowDivider: b.rowDivider,
+            subtitle: b.subtitle,
+            accent: "none",
+            role: "normal",
+          });
+        }
+        const centerById = new Map<string, Point>(
+          nodes.map((n) => [
+            n.id,
+            boxCenter(
+              n.bounds.origin.x,
+              n.bounds.origin.y,
+              n.bounds.size.width,
+              n.bounds.size.height,
+            ),
+          ]),
+        );
+        const sceneEdges: SceneEdge[] = [];
+        for (const pe of positioned.edges) {
+          const e = edgeById.get(pe.id);
+          if (e === undefined) continue;
+          const fromCenter = centerById.get(e.from);
+          const toCenter = centerById.get(e.to);
+          if (fromCenter === undefined || toCenter === undefined) continue;
+          sceneEdges.push({
+            id: brand<string, "SceneEdgeId">(pe.id),
+            from: brand<string, "SceneNodeId">(e.from),
+            to: brand<string, "SceneNodeId">(e.to),
+            waypoints: routeWaypoints(pe.points, fromCenter, toCenter),
+            label: e.label,
+            stroke: e.stroke,
+            fromEnd: e.fromEnd,
+            toEnd: e.toEnd,
+            curved: e.curved,
+            fromLabel: e.fromLabel,
+            toLabel: e.toLabel,
+            labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
+          });
+        }
+        return ok({
+          nodes,
+          edges: sceneEdges,
+          wedges: [],
+          decorations: [],
+          extent: rect(0, 0, positioned.width, positioned.height),
+        });
+      },
+      tidy,
     );
-    const sceneEdges: SceneEdge[] = [];
-    for (const pe of positioned.edges) {
-      const e = edgeById.get(pe.id);
-      if (e === undefined) continue;
-      const fromCenter = centerById.get(e.from);
-      const toCenter = centerById.get(e.to);
-      if (fromCenter === undefined || toCenter === undefined) continue;
-      sceneEdges.push({
-        id: brand<string, "SceneEdgeId">(pe.id),
-        from: brand<string, "SceneNodeId">(e.from),
-        to: brand<string, "SceneNodeId">(e.to),
-        waypoints: routeWaypoints(pe.points, fromCenter, toCenter),
-        label: e.label,
-        stroke: e.stroke,
-        fromEnd: e.fromEnd,
-        toEnd: e.toEnd,
-        curved: e.curved,
-        fromLabel: e.fromLabel,
-        toLabel: e.toLabel,
-        labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
-      });
-    }
-    return ok({
-      nodes,
-      edges: sceneEdges,
-      wedges: [],
-      decorations: [],
-      extent: rect(0, 0, positioned.width, positioned.height),
-    });
   } catch (e) {
     return err({ kind: "layout", message: messageOf(e) });
   }
@@ -611,7 +659,11 @@ const layoutCompartments = async (
 
 // ER: attribute rows; the `ErCardinality` strings on each end *are* `EdgeEnd` values; solid line =
 // identifying, dashed = non-identifying. Laid out left-to-right.
-const layoutEr = (ast: ErAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> =>
+const layoutEr = (
+  ast: ErAst,
+  measure: MeasureText,
+  tidy: boolean,
+): Promise<Result<Scene, LayoutError>> =>
   layoutCompartments(
     "er",
     { direction: "RIGHT", titleH: 30, rowH: 20, pad: 22, minW: 96, subtitleH: 0 },
@@ -636,6 +688,7 @@ const layoutEr = (ast: ErAst, measure: MeasureText): Promise<Result<Scene, Layou
       labelPos: null,
     })),
     measure,
+    tidy,
   );
 
 const VIS_GLYPH = (v: ClassMember["visibility"]): string => {
@@ -669,7 +722,11 @@ const classBox = (e: ClassAst["entities"][number]): CompartmentBox => {
     subtitle: classSubtitle(e),
   };
 };
-const layoutClass = (ast: ClassAst, measure: MeasureText): Promise<Result<Scene, LayoutError>> =>
+const layoutClass = (
+  ast: ClassAst,
+  measure: MeasureText,
+  tidy: boolean,
+): Promise<Result<Scene, LayoutError>> =>
   layoutCompartments(
     "class",
     { direction: "DOWN", titleH: 30, rowH: 20, pad: 24, minW: 100, subtitleH: 16 },
@@ -688,6 +745,7 @@ const layoutClass = (ast: ClassAst, measure: MeasureText): Promise<Result<Scene,
       labelPos: null,
     })),
     measure,
+    tidy,
   );
 
 // A requirement/element node's rows: a `«kind»` tag (its own compartment when fields follow), then a
@@ -702,6 +760,7 @@ const reqRows = (e: RequirementAst["entities"][number]): readonly string[] => [
 const layoutRequirement = (
   ast: RequirementAst,
   measure: MeasureText,
+  tidy: boolean,
 ): Promise<Result<Scene, LayoutError>> =>
   layoutCompartments(
     "requirement",
@@ -730,6 +789,7 @@ const layoutRequirement = (
       labelPos: null,
     })),
     measure,
+    tidy,
   );
 
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
@@ -739,10 +799,13 @@ export const layoutDiagram = async (
   measure: MeasureText,
   // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
   collapsed: ReadonlySet<NodeId> = new Set(),
+  // "Tidy layout": for the layered families, try a few deterministic ELK candidates and keep the
+  // lowest-energy one that preserves the family's style. The fixed-style families ignore it.
+  tidy = false,
 ): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":
-      return layout(ast, new Map(), measure);
+      return layout(ast, new Map(), measure, tidy);
     case "sequence":
       return layoutSequence(ast, measure);
     case "c4":
@@ -754,15 +817,15 @@ export const layoutDiagram = async (
     case "cloud":
       return layoutCloud(ast, measure, collapsed);
     case "state":
-      return map(await layout(stateToFlow(ast), new Map(), measure), (scene) =>
+      return map(await layout(stateToFlow(ast), new Map(), measure, tidy), (scene) =>
         applyStateSemantics(scene, ast),
       );
     case "er":
-      return layoutEr(ast, measure);
+      return layoutEr(ast, measure, tidy);
     case "class":
-      return layoutClass(ast, measure);
+      return layoutClass(ast, measure, tidy);
     case "requirement":
-      return layoutRequirement(ast, measure);
+      return layoutRequirement(ast, measure, tidy);
     case "gitGraph":
       return layoutGitGraph(ast, measure);
     case "timeline":

@@ -272,3 +272,9 @@
   and are now asserted across every example fixture, locking today's styles as the baseline. The golden
   test logs each example's energy (all examples are crossing-free; the timeline's 1 edge-node hit is its
   intended axis spine).
+- Energy-aware layout, PR 2 (opt-in): an `elkSelectBest` step runs a few DETERMINISTIC ELK candidates
+  (default config + two crossing-minimization / node-placement variants), filters each through `styleOk`,
+  and keeps the lowest-`layoutEnergy` survivor — for the layered families only (flowchart/state/er/class/
+  requirement), threaded via a `tidy` flag on `layout`/`layoutDiagram`. When off, only the default
+  candidate runs → today's exact output. The default candidate is always in the running, so tidy can
+  never raise the energy.

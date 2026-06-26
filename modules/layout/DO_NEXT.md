@@ -67,3 +67,8 @@ PR 1 (metric + family-agnostic invariants + baseline) is in. Next:
   churn). Add family-specific invariants where the family is known (sequence row, gantt axis, pie 2π…).
 - PR 3 (optional): gitGraph lane / mindmap angular ordering candidates; opt-in ELK `stress` algorithm.
 Refine the timeline-spine false positive (axis edge) in the metric if it ever drives selection.
+
+## Energy-aware layout — after PR 2 (the "Tidy layout" opt-in select shipped)
+Remaining: family-specific invariants as extra test guards (sequence row, gantt axis, pie 2π — the
+layered families already gate on the generic `styleOk`); gitGraph lane / mindmap angular ordering
+candidates; optional ELK `stress` algorithm; widen the tidy candidate set if measurements warrant.
