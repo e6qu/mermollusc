@@ -5,6 +5,7 @@ import {
   bezierControls,
   edgeLabelAnchor,
   smoothSegments,
+  roundedCorners,
   toDisplayList,
 } from "../../src/core/display.js";
 
@@ -578,5 +579,32 @@ describe("smoothSegments", () => {
   it("is empty for a single point and one segment for a pair", () => {
     expect(smoothSegments([point(0, 0)])).toHaveLength(0);
     expect(smoothSegments([point(0, 0), point(5, 5)])).toHaveLength(1);
+  });
+});
+
+describe("roundedCorners", () => {
+  it("rounds only at interior corners: straight legs, a quad arc per bend, exact endpoints", () => {
+    // a 4-point Z: two interior corners → each becomes (line to entry, quad around corner)
+    const z = [point(0, 0), point(50, 0), point(50, 40), point(100, 40)];
+    const ops = roundedCorners(z, 9);
+    // last op lands exactly on the final waypoint (arrowhead stays put)
+    expect(ops[ops.length - 1]?.to).toEqual(point(100, 40));
+    // there is at least one quadratic (a rounded corner) and at least one straight leg
+    expect(ops.some((o) => o.ctrl !== null)).toBe(true);
+    expect(ops.some((o) => o.ctrl === null)).toBe(true);
+    // the quad control points are the original corners (the curve is AT the bend)
+    const ctrls = ops.flatMap((o) => (o.ctrl === null ? [] : [o.ctrl]));
+    expect(ctrls).toContainEqual(point(50, 0));
+    expect(ctrls).toContainEqual(point(50, 40));
+  });
+  it("keeps a 2-point edge a single straight line (no corner to round)", () => {
+    const ops = roundedCorners([point(0, 0), point(20, 20)], 9);
+    expect(ops).toEqual([{ ctrl: null, to: point(20, 20) }]);
+  });
+  it("clamps the radius to half the shorter adjacent leg (a tight dog-leg stays clean)", () => {
+    // legs of length 4 → radius clamps to 2, so the arc never overshoots
+    const ops = roundedCorners([point(0, 0), point(4, 0), point(4, 4)], 9);
+    const quad = ops.find((o) => o.ctrl !== null);
+    expect(quad?.ctrl).toEqual(point(4, 0));
   });
 });

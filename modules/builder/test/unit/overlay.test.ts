@@ -32,7 +32,7 @@ describe("overlay codec", () => {
       ],
     ]);
 
-    const edgeStyles = new Map([[brand<string, "SceneEdgeId">("e0"), { curved: true }]]);
+    const edgeStyles = new Map([[brand<string, "SceneEdgeId">("e0"), { route: "curved" as const }]]);
     const nodeStyles = new Map([[snid("A"), { accent: "active" as const }]]);
     const decoded = decodeOverlay(
       JSON.parse(serializeOverlay(overrides, groups, edgeStyles, nodeStyles)),
@@ -51,6 +51,22 @@ describe("overlay codec", () => {
     if (!isOk(decoded)) return;
     expect(decoded.value.edgeStyles.size).toBe(0);
     expect(decoded.value.nodeStyles.size).toBe(0);
+  });
+
+  it("decodes a legacy `{curved}` edge style into the new route enum (old share-links keep working)", () => {
+    const decoded = decodeOverlay({
+      overrides: [],
+      groups: [],
+      edgeStyles: [
+        ["e0", { curved: true }],
+        ["e1", { curved: false }],
+      ],
+      nodeStyles: [],
+    });
+    expect(isOk(decoded)).toBe(true);
+    if (!isOk(decoded)) return;
+    expect(decoded.value.edgeStyles.get(brand<string, "SceneEdgeId">("e0"))?.route).toBe("curved");
+    expect(decoded.value.edgeStyles.get(brand<string, "SceneEdgeId">("e1"))?.route).toBe("square");
   });
 
   it("fails loudly on a malformed payload (no silent fallback)", () => {

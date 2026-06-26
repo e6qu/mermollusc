@@ -3,42 +3,48 @@ import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
-const isCurved = (page: Page, id: string) =>
-  page.evaluate((e) => window.__shownEdges?.().find((x) => x.id === e)?.curved ?? null, id);
+const edge = (page: Page, id: string) =>
+  page.evaluate((e) => window.__shownEdges?.().find((x) => x.id === e) ?? null, id);
+const isCurved = async (page: Page, id: string) => (await edge(page, id))?.curved ?? null;
+const pointCount = async (page: Page, id: string) => (await edge(page, id))?.waypoints.length ?? 0;
 
-test("the Curve control toggles an edge between curved and straight (visual-only, persists)", async ({
+const selectEdge = async (page: Page, id: string) => {
+  const pos = await page.evaluate((e) => window.__edgeLabelPos?.(e) ?? null, id);
+  if (pos === null) throw new Error("no edge label position");
+  await page.mouse.click(pos.x, pos.y);
+};
+
+test("the Route control cycles square → straight → curved (the route label tracks the state)", async ({
   page,
 }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await setSource(page, "flowchart TD\n  A[A] -->|go| B[B]\n");
+  // A flowchart with a real bend so square vs straight vs curved differ; the bending edge is labelled
+  // so the spec can click it.
+  await setSource(page, "flowchart TD\n  A[A] --> M{M}\n  M --> B[B]\n  A -->|skip| B\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  expect(await isCurved(page, "e0")).toBe(false);
 
-  // Select the edge via its label, then Curve.
-  const pos = await page.evaluate(() => window.__edgeLabelPos?.("e0") ?? null);
-  expect(pos).not.toBeNull();
-  if (pos === null) return;
-  await page.mouse.click(pos.x, pos.y);
+  await selectEdge(page, "e2"); // the A -->|skip| B edge (bends around M)
   await expect(page.locator("#ctx-curve")).toBeVisible();
-  await page.locator("#ctx-curve").click();
-  await expect.poll(() => isCurved(page, "e0")).toBe(true);
-  // The button now offers the inverse.
-  await expect(page.locator("#ctx-curve")).toHaveText("Straighten");
+  await expect(page.locator("#ctx-curve")).toHaveText("Square");
+  const squarePoints = await pointCount(page, "e2");
 
-  // It survives a reload (a per-browser visual preference), then can be straightened again.
-  await page.reload();
-  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await expect.poll(() => isCurved(page, "e0")).toBe(true);
+  await page.locator("#ctx-curve").click(); // square → straight
+  await expect(page.locator("#ctx-curve")).toHaveText("Straight");
+  expect(await isCurved(page, "e2")).toBe(false);
+  expect(await pointCount(page, "e2")).toBe(2); // collapsed to a direct line
 
-  const pos2 = await page.evaluate(() => window.__edgeLabelPos?.("e0") ?? null);
-  if (pos2 === null) return;
-  await page.mouse.click(pos2.x, pos2.y);
-  await page.locator("#ctx-curve").click();
-  await expect.poll(() => isCurved(page, "e0")).toBe(false);
+  await page.locator("#ctx-curve").click(); // straight → curved
+  await expect(page.locator("#ctx-curve")).toHaveText("Curved");
+  expect(await isCurved(page, "e2")).toBe(true);
+
+  await page.locator("#ctx-curve").click(); // curved → square (back to the default route)
+  await expect(page.locator("#ctx-curve")).toHaveText("Square");
+  expect(await isCurved(page, "e2")).toBe(false);
+  expect(await pointCount(page, "e2")).toBe(squarePoints);
 });
 
-test("a curved edge travels in the share link and is undoable (it's real overlay state)", async ({
+test("a curved route travels in the share link and is undoable (it's real overlay state)", async ({
   page,
 }) => {
   await page.goto("/");
@@ -46,19 +52,19 @@ test("a curved edge travels in the share link and is undoable (it's real overlay
   await setSource(page, "flowchart TD\n  A[A] -->|go| B[B]\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  const pos = await page.evaluate(() => window.__edgeLabelPos?.("e0") ?? null);
-  if (pos === null) return;
-  await page.mouse.click(pos.x, pos.y);
-  await page.locator("#ctx-curve").click();
+  await selectEdge(page, "e0");
+  await page.locator("#ctx-curve").click(); // → straight
+  await page.locator("#ctx-curve").click(); // → curved
   await expect.poll(() => isCurved(page, "e0")).toBe(true);
 
-  // Undo (overlay history) straightens it again.
+  // Undo (overlay history) steps the route back from curved → straight.
   await page.locator("#stage").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("ControlOrMeta+z");
   await expect.poll(() => isCurved(page, "e0")).toBe(false);
 
-  // Re-curve, then the share link carries the styling: a fresh load of that URL renders it curved.
-  await page.mouse.click(pos.x, pos.y);
+  // Re-curve (straight → curved is one step), then the share link carries the styling: a fresh load of
+  // that URL renders it curved.
+  await selectEdge(page, "e0");
   await page.locator("#ctx-curve").click();
   await expect.poll(() => isCurved(page, "e0")).toBe(true);
   const url = await page.evaluate(() => {

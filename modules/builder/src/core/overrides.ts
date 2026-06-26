@@ -22,7 +22,22 @@ export const applyStyles = (
       ? scene.edges
       : scene.edges.map((e): SceneEdge => {
           const s = edgeStyles.get(e.id);
-          return s !== undefined && s.curved !== e.curved ? { ...e, curved: s.curved } : e;
+          if (s === undefined) return e;
+          // `straight` collapses the route to a direct endpoint→endpoint line; `curved` flags the
+          // rounded-corner render; `square` keeps the laid-out right-angle route. The label follows.
+          if (s.route === "straight") {
+            const a = e.waypoints[0];
+            const b = e.waypoints[e.waypoints.length - 1];
+            if (a === undefined || b === undefined) return { ...e, curved: false };
+            return {
+              ...e,
+              curved: false,
+              waypoints: twoOrMore(a, b),
+              labelPos: e.labelPos === null ? null : point((a.x + b.x) / 2, (a.y + b.y) / 2),
+            };
+          }
+          const curved = s.route === "curved";
+          return curved !== e.curved ? { ...e, curved } : e;
         });
   const nodes =
     nodeStyles.size === 0
@@ -93,7 +108,12 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
     if (from !== undefined && to !== undefined && from.dx === to.dx && from.dy === to.dy) {
       const shift = (p: Point): Point => point(p.x + from.dx, p.y + from.dy);
       const [w0, w1, ...wr] = edge.waypoints;
-      return { ...edge, waypoints: twoOrMore(shift(w0), shift(w1), ...wr.map(shift)) };
+      // The label rides along too (it was detaching, left at the pre-drag spot, before this).
+      return {
+        ...edge,
+        waypoints: twoOrMore(shift(w0), shift(w1), ...wr.map(shift)),
+        labelPos: edge.labelPos === null ? null : shift(edge.labelPos),
+      };
     }
     // One endpoint moved (or the two by different deltas): translate each waypoint by a blend of the
     // endpoints' deltas weighted by its position along the edge (0 at `from`, 1 at `to`). Endpoints land
@@ -102,14 +122,15 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
     const fromD = from ?? { dx: 0, dy: 0 };
     const toD = to ?? { dx: 0, dy: 0 };
     const last = edge.waypoints.length - 1;
-    const blend = (p: Point, i: number): Point => {
-      const t = last <= 0 ? 0 : i / last;
-      return point(p.x + fromD.dx * (1 - t) + toD.dx * t, p.y + fromD.dy * (1 - t) + toD.dy * t);
-    };
+    const blendAt = (p: Point, t: number): Point =>
+      point(p.x + fromD.dx * (1 - t) + toD.dx * t, p.y + fromD.dy * (1 - t) + toD.dy * t);
+    const blend = (p: Point, i: number): Point => blendAt(p, last <= 0 ? 0 : i / last);
     const [w0, w1, ...wr] = edge.waypoints;
     return {
       ...edge,
       waypoints: twoOrMore(blend(w0, 0), blend(w1, 1), ...wr.map((p, i) => blend(p, i + 2))),
+      // Blend the mid-edge label at t≈0.5 so it tracks the connector rather than staying put.
+      labelPos: edge.labelPos === null ? null : blendAt(edge.labelPos, 0.5),
     };
   });
 

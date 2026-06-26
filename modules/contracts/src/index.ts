@@ -115,6 +115,7 @@ export type {
   LayoutOverrides,
   NodeOverride,
   EdgeStyle,
+  EdgeRoute,
   NodeStyle,
   EdgeStyles,
   NodeStyles,

@@ -76,6 +76,7 @@ import type {
   GroupMember,
   LayoutOverrides,
   NetworkSource,
+  EdgeRoute,
   EdgeStyles,
   NodeAccent,
   NodeId,
@@ -1184,14 +1185,19 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
   // Colour is a visual-only node preference; show it whenever nodes — and only nodes — are selected.
   ctxColourBtn.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
-  // Curve is a visual-only edge preference (all families' edges have waypoints), so it shows whenever
-  // edges — and only edges — are selected.
+  // The route control cycles square → straight → curved; it shows whenever edges — and only edges — are
+  // selected, labelled with the current route (or "Route" for a mixed selection).
   ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
-  ctxCurveBtn.textContent =
-    selection.edges.size > 0 &&
-    [...selection.edges].every((id) => doc.edgeStyles().get(id)?.curved === true)
-      ? "Straighten"
-      : "Curve";
+  const routes = new Set(
+    [...selection.edges].map((id) => doc.edgeStyles().get(id)?.route ?? "square"),
+  );
+  const ROUTE_LABEL: Record<EdgeRoute, string> = {
+    square: "Square",
+    straight: "Straight",
+    curved: "Curved",
+  };
+  const only = [...routes][0];
+  ctxCurveBtn.textContent = routes.size === 1 && only !== undefined ? ROUTE_LABEL[only] : "Route";
   ctxConnectBtn.hidden = !caps.canConnect;
   ctxDuplicateBtn.hidden = !caps.canDuplicate;
   ctxGroupBtn.hidden = !caps.canGroup;
@@ -4164,17 +4170,21 @@ const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick
 // Toggle the curved/straight presentation of the selected edge(s) — a visual-only preference (no source
 // edit, no re-layout), so just flip the set, persist, and repaint. Curves all if any selected edge is
 // straight, else straightens all.
-const toggleEdgeCurve = (): void => {
+const EDGE_ROUTE_CYCLE: readonly EdgeRoute[] = ["square", "straight", "curved"];
+const cycleEdgeRoute = (): void => {
   if (viewerMode || selection.edges.size === 0) return;
-  const anyStraight = [...selection.edges].some(
-    (id) => !(doc.edgeStyles().get(id)?.curved ?? false),
-  );
+  const firstId = [...selection.edges][0];
+  const cur = firstId === undefined ? "square" : (doc.edgeStyles().get(firstId)?.route ?? "square");
+  const next =
+    EDGE_ROUTE_CYCLE[(EDGE_ROUTE_CYCLE.indexOf(cur) + 1) % EDGE_ROUTE_CYCLE.length] ?? "square";
   doc.record();
-  for (const id of selection.edges) doc.setEdgeStyle(id, anyStraight ? { curved: true } : null);
+  // `square` is the default route → store no style (a clean overlay); the others are explicit.
+  for (const id of selection.edges)
+    doc.setEdgeStyle(id, next === "square" ? null : { route: next });
   doc.persist();
   paintScene();
-  updateGroupButtons(); // refresh the Curve/Straighten label for the new state
-  setStatusAndAnnounce("ok", anyStraight ? "edge curved" : "edge straightened");
+  updateGroupButtons(); // refresh the route label for the new state
+  setStatusAndAnnounce("ok", `edge route: ${next}`);
 };
 
 // Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
@@ -4282,7 +4292,7 @@ ctxShapeBtn.addEventListener(
       : cycleShape()),
 );
 ctxColourBtn.addEventListener("click", () => cycleNodeColour());
-ctxCurveBtn.addEventListener("click", () => toggleEdgeCurve());
+ctxCurveBtn.addEventListener("click", () => cycleEdgeRoute());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());

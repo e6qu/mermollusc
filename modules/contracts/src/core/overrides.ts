@@ -15,8 +15,11 @@ export type LayoutOverrides = ReadonlyMap<SceneNodeId, NodeOverride>;
 // Presentation-only overlay layers — visual preferences (a curved connector, a coloured node) that have
 // no Mermaid syntax, so they live in the sidecar overlay alongside positions and travel with it (persist,
 // share-link, collab), keeping the diagram text vanilla Mermaid. Keyed by scene id like the geometry.
+// How a connector is drawn between its endpoints: `square` = the laid-out right-angle route; `straight`
+// = a direct line; `curved` = the right-angle route with rounded corners (the bend, not the whole path).
+export type EdgeRoute = "square" | "straight" | "curved";
 export interface EdgeStyle {
-  readonly curved: boolean;
+  readonly route: EdgeRoute;
 }
 export interface NodeStyle {
   readonly accent: NodeAccent;

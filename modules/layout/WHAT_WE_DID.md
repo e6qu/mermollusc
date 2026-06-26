@@ -261,3 +261,6 @@
     edge into distinct *ports* along each shared node side (ordered by the opposite endpoint to avoid
     needless crossings), instead of every edge exiting/entering the side centre. Deterministic; self-loops
     and dangling edges are left untouched. Edge labels follow the new channel.
+- Edge routing v2: `spreadPorts` now also runs for network + c4 (were centre-to-centre straight lines),
+  and it staggers parallel edges' cross-channel legs (clamped into the gap) so several A→B connectors no
+  longer lay their middle legs on top of each other.

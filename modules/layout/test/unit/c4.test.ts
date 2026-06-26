@@ -76,9 +76,10 @@ describe("layoutC4", () => {
     expect(byId.get("alice")?.parent).toBeNull();
   });
 
-  it("emits a straight edge per relation", () => {
+  it("emits a right-angle (port-spread) edge per relation", () => {
     expect(scene.edges.map((e) => e.id)).toEqual(["r0"]);
-    expect(scene.edges[0]?.waypoints).toHaveLength(2);
+    // `spreadPorts` routes each relation as a 4-point orthogonal path into per-side lanes.
+    expect(scene.edges[0]?.waypoints).toHaveLength(4);
   });
 
   it("renders a description as a second label line and widens the box to fit it", () => {

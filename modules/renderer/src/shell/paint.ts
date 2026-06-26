@@ -1,7 +1,10 @@
 import { assertNever } from "@m/std";
 import type { BandFill, NodeAccent } from "@m/contracts";
-import { bezierControls, smoothSegments, wedgeColor } from "../core/index.js";
+import { bezierControls, roundedCorners, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
+
+// Corner radius for a rounded ("curved") edge route — the arc size at each bend.
+const CORNER_RADIUS = 9;
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
 // 2D context is assignable to this; tests pass a recording mock.
@@ -17,6 +20,7 @@ export interface Canvas2D {
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void;
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void;
   closePath(): void;
   stroke(): void;
   fill(): void;
@@ -333,14 +337,15 @@ export const paint = (
           ctx.setLineDash([]);
           break;
         }
-        // A curved multi-segment edge (a flowchart connector set to curved): a smooth spline through
-        // every waypoint, keeping its arrowhead. Markers point along the final segment as before.
+        // A curved multi-segment edge: straight legs with a rounded arc at each corner (the curve is only
+        // at the bends, not throughout), keeping its arrowhead. Markers point along the final segment.
         if (cmd.curved && cmd.points.length > 2) {
           ctx.setLineDash(cmd.dashed ? [6, 4] : []);
           ctx.beginPath();
           ctx.moveTo(first.x, first.y);
-          for (const seg of smoothSegments(cmd.points)) {
-            ctx.bezierCurveTo(seg.c1.x, seg.c1.y, seg.c2.x, seg.c2.y, seg.to.x, seg.to.y);
+          for (const op of roundedCorners(cmd.points, CORNER_RADIUS)) {
+            if (op.ctrl === null) ctx.lineTo(op.to.x, op.to.y);
+            else ctx.quadraticCurveTo(op.ctrl.x, op.ctrl.y, op.to.x, op.to.y);
           }
           ctx.stroke();
           ctx.setLineDash([]);

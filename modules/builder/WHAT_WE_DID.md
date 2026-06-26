@@ -144,3 +144,6 @@
   context forbids `:` for those families (sequence/state `:` labels stay `plain` — their lexer is safe).
 - `validateLabel` now rejects the `%%` comment marker in every context — a relabel containing `%%` would
   comment out the rest of the statement and silently delete the element (found by the label-edit fuzzer).
+- `applyStyles` applies the edge route: `straight` collapses to a 2-point line, `curved` flags rounded
+  rendering, `square` keeps the laid-out route — and `applyOverrides` now BLENDS the edge label position
+  with the waypoints on a drag, so labels travel with the edge instead of being left behind.

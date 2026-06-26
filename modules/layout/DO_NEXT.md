@@ -52,3 +52,9 @@ nodes; (2) expose `elk.layered.edgeRouting` + edge spacing; (3) per-family `elk.
 Deterministic port assignment (`spreadPorts`) shipped for cloud/block; ELK edge spacing tuned. Remaining:
 extend `spreadPorts` to network/c4 (currently centre-to-centre straight lines), and obstacle-avoidance so
 a spread lane doesn't cross an intervening node (step 3 — the larger piece).
+
+## Obstacle-avoiding edge routing (the remaining big piece)
+`spreadPorts` gives clean per-side lanes + staggered channels, but a lane is still a plain Z — it can
+cross a THIRD node sitting in the channel. Real avoidance needs a router that bends around intervening
+boxes: a visibility-graph or a grid A* over the node rectangles (per LAYOUT_RESEARCH). Substantial;
+deferred deliberately rather than half-done.
