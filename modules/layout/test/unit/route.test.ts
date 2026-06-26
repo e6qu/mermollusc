@@ -1,6 +1,6 @@
 import { brand, point, rect, twoOrMore } from "@m/std";
 import { describe, expect, it } from "vitest";
-import { boxCenter, routeWaypoints, spreadPorts } from "../../src/core/route.js";
+import { boxCenter, decollideEdgeLabels, mazeRerouteEdges, routeWaypoints, spreadPorts } from "../../src/core/route.js";
 
 describe("routeWaypoints", () => {
   it("passes a full route through unchanged (≥2 points)", () => {
@@ -117,6 +117,46 @@ describe("spreadPorts", () => {
     // The straight route would gore M; the detour must clear it while still joining a → b.
     expect(routeHitsObstacle(wp, m)).toBe(false);
     expect(wp.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("mazeRerouteEdges bends an already-routed edge around a node it would cross, leaving clear ones", () => {
+    const a = node("a", 0, 100);
+    const m = node("m", 150, 100);
+    const b = node("b", 300, 100);
+    // An edge already routed as a straight line through m (as ELK output might leave it).
+    const crossing = { ...edge("e0", "a", "b"), waypoints: twoOrMore(point(40, 115), point(300, 115)) };
+    const clear = { ...edge("e1", "a", "b"), waypoints: twoOrMore(point(20, 0), point(20, 80)) };
+    const scene = {
+      nodes: [a, m, b],
+      edges: [crossing, clear],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 340, 200),
+    };
+    const out = mazeRerouteEdges(scene);
+    expect(routeHitsObstacle(out.edges[0]?.waypoints ?? [], m)).toBe(false); // rerouted around m
+    expect(out.edges[1]?.waypoints).toEqual(clear.waypoints); // the clear edge is untouched
+  });
+
+  it("decollideEdgeLabels nudges a label off one it would overlap, leaving separated labels put", () => {
+    const measure = (s: string): number => s.length * 8; // a deterministic stand-in metric
+    const labelled = (id: string, lx: number, ly: number) => ({
+      ...edge(id, "a", "a"),
+      label: "RPC",
+      labelPos: point(lx, ly),
+    });
+    // Two labels stacked at the SAME spot must separate; a third far away stays exactly where it is.
+    const scene = {
+      nodes: [node("a", 0, 0)],
+      edges: [labelled("e0", 100, 100), labelled("e1", 100, 102), labelled("e2", 400, 400)],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 500, 500),
+    };
+    const out = decollideEdgeLabels(scene, measure);
+    const y = (i: number) => out.edges[i]?.labelPos?.y ?? 0;
+    expect(Math.abs(y(0) - y(1))).toBeGreaterThanOrEqual(16); // pushed at least a label-height apart
+    expect(out.edges[2]?.labelPos).toEqual(point(400, 400)); // the distant label is untouched
   });
 
   it("leaves a self-loop / dangling edge untouched", () => {

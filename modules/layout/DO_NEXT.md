@@ -76,9 +76,9 @@ Also still open: an opt-in ELK `stress` algorithm (a genuinely different, force-
 it if a free-form look is ever wanted; it would NOT be a default, to preserve each family's style).
 
 
-## Routing + family invariants shipped
-Done: the grid/visibility maze router (multi-bend obstacle avoidance behind spreadPorts); family-context
-invariants for sequence/gantt/timeline (alongside pie); cloud inter-row separation. Possible next: route
-the ELK families' edges through the same maze router when Tidy is on; share a single obstacle-clearance
-constant across route.ts + maze.ts; per-edge label de-collision (parallel same-label edges can still
-overlap their labels on very dense diagrams like the AWS cloud example).
+
+## Routing polish shipped
+Done: ELK families maze-reroute under Tidy; a single shared `OBSTACLE_CLEARANCE`/`segmentThroughBox`;
+mid-edge label de-collision on the architecture families. Possible next: horizontal label de-collision
+(currently vertical-only); de-collide labels for the ELK families too (not just spreadPorts ones); let
+the label nudge follow the edge instead of a free vertical drop on very tight layouts.

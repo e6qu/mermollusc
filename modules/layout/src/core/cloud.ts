@@ -1,6 +1,6 @@
 import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
-import { orthogonalRoute, routeChannelMid, spreadPorts } from "./route.js";
+import { decollideEdgeLabels, orthogonalRoute, routeChannelMid, spreadPorts } from "./route.js";
 import type {
   CloudAst,
   CloudNodeKind,
@@ -223,6 +223,9 @@ export const layoutCloud = (
   }
   // Spread connectors into per-side lanes so several links touching the same node don't stack into one line.
   return ok(
-    spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+    decollideEdgeLabels(
+      spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+      measure,
+    ),
   );
 };

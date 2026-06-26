@@ -14,9 +14,15 @@ export interface MazeBox {
   readonly h: number;
 }
 
+// The single clearance the routers keep between an edge and an unrelated node — shared by the maze
+// router (its grid lines sit this far outside each box) and the local repair in `route.ts`, so both
+// agree on what "passing through a node" means and how far a detour stands off.
+export const OBSTACLE_CLEARANCE = 10;
+
 // A strict bounding-box overlap is exact for an axis-aligned segment vs an axis-aligned box: touching a
-// border (the grid lines sit a margin outside each box) doesn't count as passing through.
-const segThroughBox = (a: Point, b: Point, o: MazeBox): boolean => {
+// border (the grid lines sit a margin outside each box) doesn't count as passing through. Shared with
+// `route.ts` so the hit test is defined once.
+export const segmentThroughBox = (a: Point, b: Point, o: MazeBox): boolean => {
   const x0 = Math.min(a.x, b.x);
   const x1 = Math.max(a.x, b.x);
   const y0 = Math.min(a.y, b.y);
@@ -24,7 +30,7 @@ const segThroughBox = (a: Point, b: Point, o: MazeBox): boolean => {
   return x0 < o.x + o.w && x1 > o.x && y0 < o.y + o.h && y1 > o.y;
 };
 const clear = (a: Point, b: Point, obstacles: readonly MazeBox[]): boolean => {
-  for (const o of obstacles) if (segThroughBox(a, b, o)) return false;
+  for (const o of obstacles) if (segmentThroughBox(a, b, o)) return false;
   return true;
 };
 

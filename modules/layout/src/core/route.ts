@@ -1,6 +1,7 @@
 import { point, twoOrMore, type Point, type TwoOrMore } from "@m/std";
 import type { Scene, SceneEdge } from "@m/contracts";
-import { mazeRoute } from "./maze.js";
+import type { MeasureText } from "./graph.js";
+import { mazeRoute, segmentThroughBox, OBSTACLE_CLEARANCE } from "./maze.js";
 
 // Build an edge's waypoints (always ≥ 2) from a routing engine's point list. ELK normally returns a
 // full route (each section carries at least its start + end), but a degenerate/unrouted edge can yield
@@ -98,22 +99,13 @@ const boxOfNode = (scene: Scene): Map<string, RouteBox> =>
     ]),
   );
 
-// Does an axis-aligned (orthogonal) segment pass through a box's interior? Both legs of a Z-route are
-// horizontal or vertical, so a strict bounding-box overlap is exact (touching a border doesn't count).
-const segThroughBox = (a: Point, b: Point, box: RouteBox): boolean => {
-  const x0 = Math.min(a.x, b.x);
-  const x1 = Math.max(a.x, b.x);
-  const y0 = Math.min(a.y, b.y);
-  const y1 = Math.max(a.y, b.y);
-  return x0 < box.x + box.w && x1 > box.x && y0 < box.y + box.h && y1 > box.y;
-};
 const routeHits = (pts: readonly Point[], obstacles: readonly RouteBox[]): number => {
   let hits = 0;
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1];
     const b = pts[i];
     if (a === undefined || b === undefined) continue;
-    for (const o of obstacles) if (segThroughBox(a, b, o)) hits++;
+    for (const o of obstacles) if (segmentThroughBox(a, b, o)) hits++;
   }
   return hits;
 };
@@ -127,7 +119,6 @@ const routeLength = (pts: readonly Point[]): number => {
   return len;
 };
 const OBSTACLE_SCAN_STEPS = 16; // candidate channel positions tried when a Z-route hits a node
-const OBSTACLE_MARGIN = 10; // clearance the maze router keeps between a detour leg and an obstacle
 
 // The point at the half-way arc length along a multi-segment route — where a mid-route label sits.
 const pathMidpoint = (pts: readonly Point[]): Point => {
@@ -201,6 +192,77 @@ const avoidObstacles = (
     );
   }
   return { m1: best.m1, m2: best.m2 };
+};
+
+// Re-route any edge that cuts through a non-endpoint, non-container node using the maze router, keeping
+// the edge's existing endpoints (unlike `spreadPorts`, which also re-assigns ports). For already-routed
+// scenes — the ELK families under "Tidy" — so their edges bend around residual obstacles too. Edges that
+// already clear every box are returned untouched, so this changes nothing when nothing crosses.
+export const mazeRerouteEdges = (scene: Scene): Scene => {
+  const boxed = scene.nodes
+    .filter((n) => n.shape !== "container")
+    .map((n) => ({
+      id: n.id,
+      box: {
+        x: n.bounds.origin.x,
+        y: n.bounds.origin.y,
+        w: n.bounds.size.width,
+        h: n.bounds.size.height,
+      },
+    }));
+  const edges = scene.edges.map((e): SceneEdge => {
+    const start = e.waypoints[0];
+    const end = e.waypoints[e.waypoints.length - 1];
+    if (start === undefined || end === undefined || e.from === e.to) return e;
+    const obstacles = boxed.filter((b) => b.id !== e.from && b.id !== e.to).map((b) => b.box);
+    if (routeHits(e.waypoints, obstacles) === 0) return e;
+    const maze = mazeRoute(start, end, obstacles, OBSTACLE_CLEARANCE);
+    if (maze !== null && maze.length >= 2 && routeHits(maze, obstacles) === 0) {
+      const [w0, w1, ...wr] = maze;
+      if (w0 !== undefined && w1 !== undefined) {
+        return {
+          ...e,
+          waypoints: twoOrMore(w0, w1, ...wr),
+          labelPos: e.labelPos === null ? null : pathMidpoint(maze),
+        };
+      }
+    }
+    return e;
+  });
+  return { ...scene, edges };
+};
+
+// De-collide mid-edge labels on dense diagrams: where two edge labels (each placed at its `labelPos`)
+// would overlap, nudge the later one vertically clear of the earlier. Greedy and order-stable — a label
+// that fits is left exactly where the router put it, so this is a no-op on sparse diagrams. Only edges
+// with a label AND an explicit `labelPos` participate (a null `labelPos` is anchored later by the
+// renderer). `measure` is the pure text metric the layout already uses.
+const LABEL_HEIGHT = 16;
+const LABEL_X_PAD = 8; // horizontal padding folded into a label's measured width
+const LABEL_V_GAP = 4; // minimum vertical gap kept between two stacked labels
+export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene => {
+  interface LabelBox {
+    readonly cx: number;
+    readonly cy: number;
+    readonly halfW: number;
+  }
+  const placed: LabelBox[] = [];
+  const overlaps = (a: LabelBox, b: LabelBox): boolean =>
+    Math.abs(a.cx - b.cx) < a.halfW + b.halfW && Math.abs(a.cy - b.cy) < LABEL_HEIGHT + LABEL_V_GAP;
+  const edges = scene.edges.map((e): SceneEdge => {
+    const anchor = e.labelPos;
+    if (e.label === null || anchor === null) return e;
+    const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
+    let cy: number = anchor.y;
+    for (let guard = 0; guard < 64; guard++) {
+      const blocker = placed.find((p) => overlaps({ cx: anchor.x, cy, halfW }, p));
+      if (blocker === undefined) break;
+      cy = blocker.cy + LABEL_HEIGHT + LABEL_V_GAP; // drop just below whatever it hit, then retest
+    }
+    placed.push({ cx: anchor.x, cy, halfW });
+    return cy === anchor.y ? e : { ...e, labelPos: point(anchor.x, cy) };
+  });
+  return { ...scene, edges };
 };
 
 export const spreadPorts = (scene: Scene): Scene => {
@@ -286,7 +348,7 @@ export const spreadPorts = (scene: Scene): Scene => {
     }
     // The route would cut through a node. Prefer the maze router (general multi-bend detours); if it
     // can't find a clear orthogonal path, fall back to the local two-topology channel repair.
-    const maze = mazeRoute(p0, p3, obstacles, OBSTACLE_MARGIN);
+    const maze = mazeRoute(p0, p3, obstacles, OBSTACLE_CLEARANCE);
     if (maze !== null && maze.length >= 2 && routeHits(maze, obstacles) === 0) {
       const [w0, w1, ...wr] = maze;
       if (w0 !== undefined && w1 !== undefined) {
