@@ -10,7 +10,7 @@ export { layoutPie, pieSlicesTileCircle } from "./pie.js";
 export { layoutGantt, ganttTasksStackInRowOrder, DAY_WIDTH as GANTT_DAY_WIDTH } from "./gantt.js";
 export { layoutMindmap } from "./mindmap.js";
 export { heuristicMeasure } from "./graph.js";
-export { retidyRoutes, spreadPorts } from "./route.js";
+export { retidyRoutes, spreadPorts, mazeRerouteEdges, decollideEdgeLabels } from "./route.js";
 export { mazeRoute } from "./maze.js";
 export type { MazeBox } from "./maze.js";
 export { layoutEnergy, lowestEnergy } from "./energy.js";

@@ -813,3 +813,5 @@
   around it), via the layout's `spreadPorts` — no UI, on by default since it only changes crossing routes.
 - Edge routing now bends around multiple obstacles (grid maze router behind `spreadPorts`), and the cloud
   architecture diagram gets a wider inter-row channel so its cross-tier links separate cleanly.
+- Tidy now also straightens the ELK families' edges around residual obstacles (maze reroute), and dense
+  architecture diagrams (cloud/network/c4) de-collide overlapping edge labels.

@@ -305,3 +305,11 @@
   `ganttTasksStackInRowOrder` — asserted on the real examples (golden baseline) and with pos/neg units.
 - Cloud separation: a wider `ROW_GAP` (72) than the side-by-side `GAP` (44) between stacked group rows,
   so cross-row connectors get a roomier vertical channel for the router to spread/detour them.
+- ELK families route through the maze router under Tidy: `elkSelectBest` runs `mazeRerouteEdges` on the
+  chosen scene when `tidy` is on, so a residual ELK edge crossing a node bends around it (clean edges
+  untouched). Default (Tidy off) ELK output is unchanged.
+- Unified obstacle clearance: a single `OBSTACLE_CLEARANCE` and a shared `segmentThroughBox` now live in
+  `maze.ts` and are imported by `route.ts` (the duplicate copy + `OBSTACLE_MARGIN` are gone).
+- `decollideEdgeLabels(scene, measure)`: greedily nudges overlapping mid-edge labels vertically apart
+  (a no-op when none overlap); applied after `spreadPorts` in cloud/network/c4 to de-clutter dense
+  architecture diagrams.

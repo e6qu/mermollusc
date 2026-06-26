@@ -47,6 +47,7 @@ import {
   layoutSequence,
   layoutTimeline,
   lowestEnergy,
+  mazeRerouteEdges,
   styleOk,
   toElkGraph,
   toScene,
@@ -309,9 +310,10 @@ const elkSelectBest = async (
     if (scene.ok && styleOk(scene.value)) passing.push(scene.value);
   }
   const best = lowestEnergy(passing);
-  return best !== null
-    ? ok(best)
-    : (fallback ?? err({ kind: "layout", message: "no layout produced" }));
+  if (best === null) return fallback ?? err({ kind: "layout", message: "no layout produced" });
+  // Under Tidy, bend any ELK edge that still cuts through a node around it with the maze router (ELK
+  // routes around nodes, but a dense hierarchy can leave a residual crossing). Clean edges are untouched.
+  return ok(tidy ? mazeRerouteEdges(best) : best);
 };
 
 export const layout = async (

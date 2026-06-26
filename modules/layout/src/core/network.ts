@@ -1,6 +1,6 @@
 import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
-import { spreadPorts } from "./route.js";
+import { decollideEdgeLabels, spreadPorts } from "./route.js";
 import type {
   NetworkAst,
   NetworkGroup,
@@ -178,6 +178,9 @@ export const layoutNetwork = (
   }
   // Spread connectors into per-side lanes so links sharing a node don't stack into one line.
   return ok(
-    spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+    decollideEdgeLabels(
+      spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+      measure,
+    ),
   );
 };
