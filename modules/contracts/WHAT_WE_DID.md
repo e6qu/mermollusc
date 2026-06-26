@@ -137,3 +137,4 @@
   (persisted, shared, undoable) and keeps the Mermaid source vanilla.
 - `EdgeStyle` is now a 3-way route (`square` | `straight` | `curved`) instead of a `curved` boolean — the
   per-edge route style in the overlay. Serialization stays back-compatible with old `{curved}` links.
+- `NodeShape` gains `actor` — a UML-style stickman (a person), used for gitGraph branch heads.

@@ -162,7 +162,7 @@ export const EXAMPLES = new Map<string, string>([
   ],
   [
     "gitGraph",
-    'gitGraph\n  commit id: "init"\n  commit id: "setup"\n  branch develop\n  commit id: "db-schema"\n  branch feature\n  commit id: "login-ui"\n  commit id: "login-api"\n  checkout develop\n  merge feature tag: "login"\n  commit id: "search"\n  checkout main\n  commit id: "hotfix" type: HIGHLIGHT\n  merge develop tag: "v1.0"\n  commit id: "release"\n',
+    'gitGraph\n  commit\n  commit\n  branch develop\n  checkout develop\n  commit\n  branch feature\n  checkout feature\n  commit\n  commit\n  checkout develop\n  merge feature\n  commit\n  checkout main\n  merge develop tag: "v1.0"\n  branch hotfix\n  checkout hotfix\n  commit type: HIGHLIGHT\n  checkout main\n  merge hotfix tag: "v1.0.1"\n  checkout develop\n  merge main\n',
   ],
   [
     "timeline",

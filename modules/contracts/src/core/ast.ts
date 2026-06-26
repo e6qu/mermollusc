@@ -6,7 +6,7 @@ import type { IconRef } from "./scene.js";
 export type NodeId = Brand<string, "NodeId">;
 export type EdgeId = Brand<string, "EdgeId">;
 
-export type NodeShape = "rect" | "round" | "stadium" | "diamond" | "circle" | "container";
+export type NodeShape = "rect" | "round" | "stadium" | "diamond" | "circle" | "container" | "actor"; // a UML-style stickman (a person) — e.g. the developer on a gitGraph branch
 export type EdgeKind = "arrow" | "open" | "dotted" | "thick";
 export type FlowDirection = "TB" | "BT" | "LR" | "RL";
 

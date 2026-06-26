@@ -321,6 +321,37 @@ export const paint = (
         ctx.stroke();
         break;
       }
+      case "actor": {
+        // A stickman drawn to fit the box's upper part (the label sits on the bottom row).
+        const figureH = cmd.height - 16;
+        const cxm = cmd.x + cmd.width / 2;
+        const r = Math.max(4, figureH * 0.16);
+        const headCy = cmd.y + r + 2;
+        const bodyTop = headCy + r;
+        const bodyBot = cmd.y + figureH * 0.66;
+        const armY = bodyTop + (bodyBot - bodyTop) * 0.25;
+        const armX = cmd.width * 0.22;
+        const legX = cmd.width * 0.16;
+        const legBot = cmd.y + figureH * 0.92;
+        ctx.strokeStyle = theme.stroke;
+        ctx.fillStyle = theme.background;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(cxm, headCy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cxm, bodyTop);
+        ctx.lineTo(cxm, bodyBot); // body
+        ctx.moveTo(cxm - armX, armY);
+        ctx.lineTo(cxm + armX, armY); // arms
+        ctx.moveTo(cxm, bodyBot);
+        ctx.lineTo(cxm - legX, legBot); // left leg
+        ctx.moveTo(cxm, bodyBot);
+        ctx.lineTo(cxm + legX, legBot); // right leg
+        ctx.stroke();
+        break;
+      }
       case "polyline": {
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;

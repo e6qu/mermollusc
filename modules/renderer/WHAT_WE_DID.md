@@ -150,3 +150,5 @@
 - `roundedCorners`: a rounded-corner path (straight legs + a quadratic arc at each bend), so a "curved"
   edge route curves only AT the corners, not as a continuous spline. Replaces the multi-point
   `smoothSegments` rendering for curved edges (the 2-point mindmap/gitGraph bezier is unchanged).
+- New `actor` DrawCmd: a stickman (head + body + arms + legs) drawn to fit a node's box, in both the
+  canvas and SVG backends. `nodeCmds` emits it for `shape: "actor"` (with the label on the bottom row).

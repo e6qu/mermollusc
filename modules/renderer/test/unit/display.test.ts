@@ -47,6 +47,31 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "diamond")).toHaveLength(1);
   });
 
+  it("emits a stickman (actor) command plus a label for an actor-shaped node", () => {
+    const actorScene: Scene = {
+      ...scene,
+      nodes: [
+        {
+          id: snid("dev"),
+          bounds: rect(0, 0, 60, 50),
+          label: "main",
+          shape: "actor",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          subtitle: null,
+          accent: "none",
+          role: "normal",
+          rows: null,
+        },
+      ],
+      edges: [],
+    };
+    const out = toDisplayList(actorScene);
+    expect(out.filter((c) => c.kind === "actor")).toHaveLength(1);
+    expect(out.some((c) => c.kind === "label" && c.text === "main")).toBe(true);
+  });
+
   it("emits labels for nodes and for labeled edges", () => {
     const labels = cmds.filter((c) => c.kind === "label");
     expect(labels.map((l) => (l.kind === "label" ? l.text : ""))).toEqual(["A", "B", "go"]);

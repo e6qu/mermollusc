@@ -39,12 +39,24 @@ const GAP_MAIN = 28; // clear space between successive commits, on top of their 
 const GAP_LANE = 34; // clear space between branch lanes
 const MARGIN = 16;
 const HEAD_GAP = 28; // between a branch-name head and its lane's first commit
-const HEAD_H = 26;
+const HEAD_H = 50; // tall enough for the per-branch stickman plus its name on the bottom row
 const HEAD_PAD = 16;
 const MIN_HEAD_W = 48;
 
-// A commit's display label: its id, with any release tag appended in brackets.
-const commitLabel = (c: GitCommit): string => (c.tag === null ? c.id : `${c.id} [${c.tag}]`);
+// A short, git-like abbreviated SHA derived deterministically from the commit id (FNV-1a → 7 hex), so
+// every commit reads like a real one (`a3f9c21`) regardless of how it was authored. Same id → same sha.
+const shortSha = (id: string): string => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0").slice(0, 7);
+};
+
+// A commit's display label: its short SHA, with any release tag appended in brackets.
+const commitLabel = (c: GitCommit): string =>
+  c.tag === null ? shortSha(c.id) : `${shortSha(c.id)} [${c.tag}]`;
 
 // `highlight` commits draw as a filled rectangle (Mermaid's highlight box); the rest are rounded pills.
 const commitShape = (c: GitCommit): NodeShape => (c.commitType === "highlight" ? "rect" : "round");
@@ -77,7 +89,11 @@ export const layoutGitGraph = (
   const mainPitch = vertical ? verticalPitch : horizontalPitch;
   const lanePitch = vertical ? horizontalPitch : verticalPitch;
 
-  const mainStart = (vertical ? HEAD_H : headW) + HEAD_GAP + MARGIN;
+  // Leave HEAD_GAP of clear space between the branch head and the NEAR EDGE of the first commit — so add
+  // the commit's main-axis half-extent (its width along the commit axis), or the first wide sha pill
+  // would overlap the head box.
+  const mainStart =
+    (vertical ? HEAD_H : headW) + HEAD_GAP + MARGIN + (vertical ? COMMIT_H : maxPillW) / 2;
   const laneStart = MARGIN + (vertical ? maxPillW : COMMIT_H) / 2;
   const mainCoord = (col: number): number =>
     ast.direction === "BT" ? mainStart + (lastCol - col) * mainPitch : mainStart + col * mainPitch;
@@ -90,6 +106,7 @@ export const layoutGitGraph = (
     const nodes: SceneNode[] = [];
     const edges: SceneEdge[] = [];
     const center = new Map<GitCommitId, { readonly x: number; readonly y: number }>();
+    const widthById = new Map<GitCommitId, number>();
     let maxX = 0;
     let maxY = 0;
     const grow = (x: number, y: number): void => {
@@ -105,7 +122,8 @@ export const layoutGitGraph = (
         id: sceneNodeId(`branch:${b.name}`),
         bounds: rect(x, y, headW, HEAD_H),
         label: b.name,
-        shape: "round",
+        // A stickman per branch — the person working that line of development.
+        shape: "actor",
         parent: null,
         icon: null,
         rows: null,
@@ -129,6 +147,7 @@ export const layoutGitGraph = (
       const c = place(col, l);
       center.set(commit.id, c);
       const w = pillW(commit);
+      widthById.set(commit.id, w);
       nodes.push({
         id: sceneNodeId(commit.id),
         bounds: rect(c.x - w / 2, c.y - COMMIT_H / 2, w, COMMIT_H),
@@ -145,23 +164,39 @@ export const layoutGitGraph = (
       grow(c.x + w / 2, c.y + COMMIT_H / 2);
     }
 
+    // Trim an endpoint from a pill's centre to where the parent→child line crosses its border, so the
+    // arrowhead lands ON the pill edge (visible) instead of hidden under the pill.
+    const borderPoint = (cx: number, cy: number, w: number, toward: { x: number; y: number }) => {
+      const dx = toward.x - cx;
+      const dy = toward.y - cy;
+      if (dx === 0 && dy === 0) return point(cx, cy);
+      const tx = dx === 0 ? Number.POSITIVE_INFINITY : w / 2 / Math.abs(dx);
+      const ty = dy === 0 ? Number.POSITIVE_INFINITY : COMMIT_H / 2 / Math.abs(dy);
+      const t = Math.min(tx, ty);
+      return point(cx + dx * t, cy + dy * t);
+    };
     for (const commit of ast.commits) {
       const to = center.get(commit.id);
-      if (to === undefined) continue;
+      const toW = widthById.get(commit.id);
+      if (to === undefined || toW === undefined) continue;
       for (const parent of commit.parents) {
         const from = center.get(parent);
+        const fromW = widthById.get(parent);
         // A parent always precedes its child in creation order, so its centre is known; skip defensively.
-        if (from === undefined) continue;
+        if (from === undefined || fromW === undefined) continue;
+        const start = borderPoint(from.x, from.y, fromW, to);
+        const end = borderPoint(to.x, to.y, toW, from);
         edges.push({
           id: sceneEdgeId(`${parent}->${commit.id}`),
           from: sceneNodeId(parent),
           to: sceneNodeId(commit.id),
-          waypoints: [point(from.x, from.y), point(to.x, to.y)],
+          // Straight, border-to-border, with an arrowhead — so the parent → child direction is explicit.
+          waypoints: [start, end],
           label: null,
           stroke: "solid",
           fromEnd: "none",
-          toEnd: "none",
-          curved: true,
+          toEnd: "arrow", // history flows parent → child; the arrowhead points to the newer commit
+          curved: false,
           fromLabel: null,
           toLabel: null,
           labelPos: null,

@@ -75,6 +75,26 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const pts = `${num(cmd.cx)},${num(cmd.cy - hh)} ${num(cmd.cx + hw)},${num(cmd.cy)} ${num(cmd.cx)},${num(cmd.cy + hh)} ${num(cmd.cx - hw)},${num(cmd.cy)}`;
       return `<polygon points="${pts}" fill="${theme.nodeFill}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
     }
+    case "actor": {
+      const figureH = cmd.height - 16;
+      const cxm = cmd.x + cmd.width / 2;
+      const r = Math.max(4, figureH * 0.16);
+      const headCy = cmd.y + r + 2;
+      const bodyTop = headCy + r;
+      const bodyBot = cmd.y + figureH * 0.66;
+      const armY = bodyTop + (bodyBot - bodyTop) * 0.25;
+      const armX = cmd.width * 0.22;
+      const legX = cmd.width * 0.16;
+      const legBot = cmd.y + figureH * 0.92;
+      const s = `stroke="${theme.stroke}" stroke-width="1.5"`;
+      return (
+        `<circle cx="${num(cxm)}" cy="${num(headCy)}" r="${num(r)}" fill="${theme.background}" ${s}/>` +
+        `<line x1="${num(cxm)}" y1="${num(bodyTop)}" x2="${num(cxm)}" y2="${num(bodyBot)}" ${s}/>` +
+        `<line x1="${num(cxm - armX)}" y1="${num(armY)}" x2="${num(cxm + armX)}" y2="${num(armY)}" ${s}/>` +
+        `<line x1="${num(cxm)}" y1="${num(bodyBot)}" x2="${num(cxm - legX)}" y2="${num(legBot)}" ${s}/>` +
+        `<line x1="${num(cxm)}" y1="${num(bodyBot)}" x2="${num(cxm + legX)}" y2="${num(legBot)}" ${s}/>`
+      );
+    }
     case "polyline": {
       const dash = cmd.dashed ? ' stroke-dasharray="6 4"' : "";
       const a = cmd.points[0];

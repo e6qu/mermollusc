@@ -21,6 +21,8 @@ const wrapLabel = (shape: NodeShape, id: string, label: string): string => {
       return `${id}((${label}))`;
     case "container":
       return `${id}[${label}]`; // C4 boundary; not emitted by the flowchart printer
+    case "actor":
+      return `${id}(${label})`; // synthetic (gitGraph branch heads); not emitted by the flowchart printer
   }
 };
 

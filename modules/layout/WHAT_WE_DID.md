@@ -322,3 +322,7 @@
   in all four directions, smallest displacement — follows the edge instead of a fixed vertical drop), and
   it now runs once for EVERY family in `layoutDiagram` (the ELK families included), not just the
   spreadPorts ones.
+- gitGraph made realistic: commits are labelled with a deterministic short SHA (FNV-1a → 7 hex), parent→
+  child edges are straight arrows trimmed to the pill borders (so the arrowhead is visible), and each
+  branch head is a stickman (`shape: "actor"`). `mainStart` now clears the first wide sha pill past the
+  head.
