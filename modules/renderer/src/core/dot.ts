@@ -17,6 +17,7 @@ const SHAPE: Record<NodeShape, string> = {
   circle: "circle",
   diamond: "diamond",
   container: "box",
+  actor: "box",
 };
 
 // `round`/`stadium` map onto a rounded box (DOT has no stadium); the rest map to a native DOT shape.

@@ -817,3 +817,7 @@
   architecture diagrams (cloud/network/c4) de-collide overlapping edge labels.
 - Edges now avoid crossing group containers they don't connect into and pick the clearest of a node's
   four sides when detouring; overlapping edge labels de-collide to the nearest free spot, for all families.
+- Stable, shareable per-example URLs: selecting an example sets `?example=<name>`, and loading such a URL
+  opens that example (falls back to persisted/sample for an unknown name; starts with a clean overlay).
+- The gitGraph example is now a semi-complicated git-flow (main + develop + feature + hotfix, merges and
+  release tags) showcasing the stickman-per-branch, short-SHA, arrowed connectors.

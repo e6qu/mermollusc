@@ -104,6 +104,19 @@ describe("layoutGitGraph", () => {
     expect(hl.value.nodes.find((n) => n.id === "h")?.shape).toBe("rect");
   });
 
+  it("labels commits with a deterministic short SHA, draws arrows, and a stickman per branch", () => {
+    // commit labels read like abbreviated git SHAs (7 hex), and are stable across runs
+    expect(node("c0")?.label).toMatch(/^[0-9a-f]{7}$/);
+    const again = layoutGitGraph(ast, heuristicMeasure);
+    if (!again.ok) throw new Error(again.error.message);
+    expect(again.value.nodes.find((n) => n.id === "c0")?.label).toBe(node("c0")?.label);
+    // every parent→child edge is a straight arrow (so the direction of history is explicit)
+    expect(scene.edges.every((e) => e.toEnd === "arrow" && e.curved === false)).toBe(true);
+    // each branch head is a stickman (the developer on that line)
+    expect(node("branch:main")?.shape).toBe("actor");
+    expect(node("branch:dev")?.shape).toBe("actor");
+  });
+
   it("connects every commit to each of its parents", () => {
     expect(hasEdge("c0->c1")).toBe(true);
     expect(hasEdge("c0->c2")).toBe(true);

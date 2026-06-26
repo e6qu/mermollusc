@@ -4554,7 +4554,8 @@ exampleEl.addEventListener("change", () => {
     exampleEl.value = "";
     return;
   }
-  const text = EXAMPLES.get(exampleEl.value);
+  const name = exampleEl.value;
+  const text = EXAMPLES.get(name);
   exampleEl.value = "";
   if (text === undefined) return;
   // Loading an example replaces the whole source and clears the manual layout/groups (a different
@@ -4578,6 +4579,8 @@ exampleEl.addEventListener("change", () => {
   doc.persist();
   editor.setValue(text);
   void renderFromText(text);
+  // Give the example a stable, shareable URL (`?example=<name>`), replacing any prior share hash.
+  history.replaceState(null, "", `${location.pathname}?example=${encodeURIComponent(name)}`);
   announce("loaded example — undo in the editor to restore your text");
 });
 
@@ -4930,9 +4933,12 @@ resetCacheBtn.addEventListener("click", () => {
   location.replace(location.pathname);
 });
 
-// A `#src=…` hash (a shared link) wins over the persisted source, which wins over the sample.
+// Resolution order: a `#src=…` hash (a shared custom diagram) wins, then a `?example=<name>` link (a
+// shared example), then the persisted source, then the sample.
 const fromHash = hashValue("src");
-const initialSource = fromHash ?? loadSource() ?? SAMPLE;
+const exampleParam = new URLSearchParams(location.search).get("example");
+const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam) ?? null);
+const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
 // source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
@@ -4956,7 +4962,9 @@ if (!useCollab) {
   const linkOverlay = fromHash === null ? null : hashValue("overlay");
   if (linkOverlay !== null) {
     applyOverlayJson(linkOverlay, "share link");
-  } else if (fromHash === null) {
+  } else if (fromHash === null && exampleFromUrl === null) {
+    // A bare load (no shared source and no `?example=` link) restores the persisted overlay; an example
+    // link starts clean (the persisted overlay belongs to a different diagram).
     const rawOverlay = loadOverlay();
     if (rawOverlay !== null) applyOverlayJson(rawOverlay, "localStorage");
   }

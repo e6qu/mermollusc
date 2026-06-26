@@ -33,6 +33,7 @@ const NODE_WRAP: Record<NodeShape, readonly [string, string]> = {
   diamond: ["{", "}"],
   circle: ["((", "))"],
   container: ["[", "]"],
+  actor: ["(", ")"], // synthetic (gitGraph branch heads); never round-trips to flowchart text
 };
 
 const ARROW: Record<EdgeKind, string> = {
@@ -852,6 +853,8 @@ const wrapShape = (shape: NodeShape, label: string): string => {
       return `{${label}}`;
     case "container":
       return `[${label}]`;
+    case "actor":
+      return `(${label})`;
     default:
       return assertNever(shape);
   }

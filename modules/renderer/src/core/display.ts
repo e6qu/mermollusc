@@ -75,6 +75,14 @@ export type DrawCmd =
       readonly height: Length;
     }
   | {
+      // A UML-style stickman (head, body, arms, legs) drawn to fit the box — a person/actor.
+      readonly kind: "actor";
+      readonly x: Coordinate;
+      readonly y: Coordinate;
+      readonly width: Length;
+      readonly height: Length;
+    }
+  | {
       readonly kind: "polyline";
       readonly points: readonly Point[];
       readonly dashed: boolean;
@@ -335,6 +343,8 @@ const cornerRadius = (shape: NodeShape, w: number, h: number): number => {
       return 0;
     case "container":
       return 4;
+    case "actor":
+      return 0;
   }
 };
 
@@ -396,6 +406,20 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
   }
   if (node.shape === "diamond") {
     return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
+  }
+  if (node.shape === "actor") {
+    // A stickman filling the upper part of the box, with its label on the bottom row.
+    return [
+      { kind: "actor", x: origin.x, y: origin.y, width: size.width, height: size.height },
+      {
+        kind: "label",
+        x: cx,
+        y: coordinate(origin.y + size.height - 8),
+        text: node.label,
+        align: "center",
+        plate: false,
+      },
+    ];
   }
   if (node.shape === "container") {
     // A C4 boundary: outline with its label near the top so nested children don't overlap it.

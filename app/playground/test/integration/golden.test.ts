@@ -98,6 +98,8 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `box ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)} r${r(c.radius)}`;
       case "diamond":
         return `diamond ${r(c.cx)},${r(c.cy)} ${r(c.width)}x${r(c.height)}`;
+      case "actor":
+        return `actor ${r(c.x)},${r(c.y)} ${r(c.width)}x${r(c.height)}`;
       case "stateStart":
         return `stateStart ${r(c.cx)},${r(c.cy)} r${r(c.radius)}`;
       case "stateEnd":
