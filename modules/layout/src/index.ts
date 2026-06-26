@@ -6,6 +6,7 @@ export {
   layoutC4,
   heuristicMeasure,
   retidyRoutes,
+  respreadPorts,
   GANTT_DAY_WIDTH,
   layoutEnergy,
   lowestEnergy,

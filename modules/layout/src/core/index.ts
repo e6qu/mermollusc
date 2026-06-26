@@ -13,6 +13,7 @@ export { heuristicMeasure } from "./graph.js";
 export {
   retidyRoutes,
   spreadPorts,
+  respreadPorts,
   mazeRerouteEdges,
   decollideEdgeLabels,
   minimizeCrossings,

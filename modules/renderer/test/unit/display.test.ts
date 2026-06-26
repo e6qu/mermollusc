@@ -47,6 +47,32 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "diamond")).toHaveLength(1);
   });
 
+  it("puts a direction chevron on each long segment of a directed edge, and none when undirected", () => {
+    const threeLeg = (toEnd: "none" | "arrow"): Scene => ({
+      ...scene,
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(100, 0), point(100, 100)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd,
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+    });
+    const directed = toDisplayList(threeLeg("arrow")).find((c) => c.kind === "polyline");
+    expect(directed?.kind === "polyline" ? directed.midMarkers.length : -1).toBe(2); // one per leg
+    const undirected = toDisplayList(threeLeg("none")).find((c) => c.kind === "polyline");
+    expect(undirected?.kind === "polyline" ? undirected.midMarkers.length : -1).toBe(0);
+  });
+
   it("emits a stickman (actor) command plus a label for an actor-shaped node", () => {
     const actorScene: Scene = {
       ...scene,

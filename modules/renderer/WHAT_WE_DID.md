@@ -152,3 +152,10 @@
   `smoothSegments` rendering for curved edges (the 2-point mindmap/gitGraph bezier is unchanged).
 - New `actor` DrawCmd: a stickman (head + body + arms + legs) drawn to fit a node's box, in both the
   canvas and SVG backends. `nodeCmds` emits it for `shape: "actor"` (with the label on the bottom row).
+- Per-segment direction hints: a directed edge (arrow / open-arrow / triangle head) now carries a small
+  open chevron on EVERY segment of its route, pointing the way flow travels, so direction is legible on
+  each leg of a multi-bend orthogonal connector — not only at the head. Computed in `toDisplayList`
+  (`directionHints`) as lightweight `EndMarker`s (same `lines` shape as `arrowOpen`), so both the canvas
+  and SVG backends draw them with the existing marker path and the edge's stroke colour. Undirected and
+  curved edges, and segments shorter than a chevron, get none. Reverse-directed edges (head at the source)
+  point the hints backward.

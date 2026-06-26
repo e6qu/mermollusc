@@ -88,6 +88,10 @@ export type DrawCmd =
       readonly dashed: boolean;
       readonly fromMarker: EndMarker;
       readonly toMarker: EndMarker;
+      // Small open chevrons, one per segment, pointing in the direction of flow — so a directed edge's
+      // direction is legible on every leg of a multi-bend orthogonal route, not just at its head. Empty
+      // for undirected/curved edges. Drawn exactly like the end markers (same lines, same stroke).
+      readonly midMarkers: readonly EndMarker[];
       // Draw as a smooth bezier bowed along the dominant axis (a 2-point mindmap/gitGraph connector)
       // rather than straight segments. Markers are unused on curved edges (they're arrowless).
       readonly curved: boolean;
@@ -241,6 +245,56 @@ const endMarker = (end: EdgeEnd, nodePt: Point, away: Point): EndMarker => {
         circle: { center: at(MARKER_LEN + 6, 0), radius: CIRCLE_R },
       };
   }
+};
+
+// Edge ends that denote a flow DIRECTION (an arrowhead), as opposed to ER/UML cardinality glyphs
+// (bars, crow's feet, the "zero" ring) which don't. Only directed edges get per-segment hints.
+const DIRECTIONAL_ENDS: ReadonlySet<EdgeEnd> = new Set(["arrow", "arrowOpen", "triangle"]);
+const HINT_LEN = 7; // length of a mid-segment direction chevron, along the flow
+const HINT_HALF = 4; // half-width of its open "V"
+const HINT_MIN_SEG = 18; // skip segments shorter than this — no room for a readable chevron
+
+// A small open chevron centred on `mid`, opening toward `flow` (a unit vector) — the lightweight "this way"
+// hint placed on each segment of a directed edge. Same `lines` shape as `arrowOpen`, so the backends draw
+// it with the existing marker path and it inherits the edge's stroke colour.
+const directionHint = (mid: Point, flow: Point): EndMarker => {
+  const px = -flow.y;
+  const py = flow.x;
+  const apex = point(mid.x + flow.x * (HINT_LEN / 2), mid.y + flow.y * (HINT_LEN / 2));
+  const tail = (perp: number): Point =>
+    point(mid.x - flow.x * (HINT_LEN / 2) + px * perp, mid.y - flow.y * (HINT_LEN / 2) + py * perp);
+  return {
+    lines: [
+      [tail(HINT_HALF), apex],
+      [tail(-HINT_HALF), apex],
+    ],
+    polygons: [],
+    circle: null,
+  };
+};
+
+// One chevron per segment of a directed, straight (non-curved) edge, pointing the way flow travels:
+// toward the target when the head is at the target end, toward the source when it's reversed. Undirected
+// or curved edges get none.
+const directionHints = (
+  points: readonly Point[],
+  fromEnd: EdgeEnd,
+  toEnd: EdgeEnd,
+  curved: boolean,
+): readonly EndMarker[] => {
+  const forward = DIRECTIONAL_ENDS.has(toEnd);
+  const backward = !forward && DIRECTIONAL_ENDS.has(fromEnd);
+  if (curved || (!forward && !backward)) return [];
+  const hints: EndMarker[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a === undefined || b === undefined) continue;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < HINT_MIN_SEG) continue;
+    const mid = point((a.x + b.x) / 2, (a.y + b.y) / 2);
+    hints.push(directionHint(mid, forward ? awayUnit(b, a) : awayUnit(a, b)));
+  }
+  return hints;
 };
 
 // Two cubic-bezier control points for a smooth curve from `a` to `b`, bowed along the dominant axis
@@ -466,6 +520,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         dashed: false,
         fromMarker: EMPTY_MARKER,
         toMarker: EMPTY_MARKER,
+        midMarkers: [],
         curved: false,
       },
       label,
@@ -543,6 +598,7 @@ const dividerAt = (x: number, y: number, width: number): DrawCmd => ({
   dashed: false,
   fromMarker: EMPTY_MARKER,
   toMarker: EMPTY_MARKER,
+  midMarkers: [],
   curved: false,
 });
 
@@ -628,6 +684,7 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
       dashed: edge.stroke === "dashed",
       fromMarker,
       toMarker,
+      midMarkers: directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved),
       curved: edge.curved,
     });
     if (edge.label !== null) {
@@ -683,6 +740,7 @@ const decorationCmd = (d: Decoration): DrawCmd => {
         dashed: true,
         fromMarker: EMPTY_MARKER,
         toMarker: EMPTY_MARKER,
+        midMarkers: [],
         curved: false,
       };
     case "caption":
