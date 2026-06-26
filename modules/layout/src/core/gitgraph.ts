@@ -32,6 +32,60 @@ const permutations = <T>(items: readonly T[]): T[][] => {
   return out;
 };
 
+// Order branch lanes by the barycenter (mean adjacent lane) of the branches each connects to via a
+// cross-branch commit edge — the classic crossing-reduction heuristic, for git graphs with too many
+// branches to brute-force the optimum (above MAX_TIDY_BRANCHES). Deterministic (stable name tie-break),
+// pins the first branch (conventionally `main`) to lane 0, and iterates to a fixpoint.
+const barycenterLanes = (ast: GitGraphAst): Map<GitBranchName, number> => {
+  const branchOf = new Map<GitCommitId, GitBranchName>(ast.commits.map((c) => [c.id, c.branch]));
+  const adj = new Map<GitBranchName, Map<GitBranchName, number>>();
+  const link = (a: GitBranchName, b: GitBranchName): void => {
+    if (a === b) return;
+    const m = adj.get(a) ?? new Map<GitBranchName, number>();
+    m.set(b, (m.get(b) ?? 0) + 1);
+    adj.set(a, m);
+  };
+  for (const c of ast.commits) {
+    for (const p of c.parents) {
+      const pb = branchOf.get(p);
+      if (pb !== undefined) {
+        link(c.branch, pb);
+        link(pb, c.branch);
+      }
+    }
+  }
+  const first = ast.branches[0]?.name ?? null;
+  let lane = new Map<GitBranchName, number>(ast.branches.map((b) => [b.name, b.order]));
+  for (let iter = 0; iter < 8; iter++) {
+    const keyed = ast.branches.map((b) => {
+      const m = adj.get(b.name);
+      let sum = 0;
+      let weight = 0;
+      if (m !== undefined) {
+        for (const [other, w] of m) {
+          sum += (lane.get(other) ?? 0) * w;
+          weight += w;
+        }
+      }
+      return { name: b.name, key: weight === 0 ? (lane.get(b.name) ?? 0) : sum / weight };
+    });
+    keyed.sort((a, b) => a.key - b.key || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    const rest = keyed.map((k) => k.name).filter((n) => n !== first);
+    const order = first === null ? rest : [first, ...rest];
+    const next = new Map<GitBranchName, number>(order.map((n, i) => [n, i]));
+    let same = true;
+    for (const [n, l] of next) {
+      if (lane.get(n) !== l) {
+        same = false;
+        break;
+      }
+    }
+    lane = next;
+    if (same) break;
+  }
+  return lane;
+};
+
 const COMMIT_H = 28;
 const MIN_COMMIT_W = 30;
 const PILL_PAD = 18; // horizontal label padding inside a commit pill
@@ -215,11 +269,17 @@ export const layoutGitGraph = (
 
   const declared = new Map<GitBranchName, number>(ast.branches.map((b) => [b.name, b.order]));
   const base = build(declared);
-  // Tidy only kicks in for a handful of branches (bounded permutations); larger graphs keep the declared
-  // order. The declared layout is always a candidate, so tidy can only equal or improve the energy.
-  if (!tidy || ast.branches.length < 3 || ast.branches.length > MAX_TIDY_BRANCHES || !isOk(base)) {
+  if (!tidy || ast.branches.length < 3 || !isOk(base)) return base;
+  // Many branches: brute-forcing every lane permutation is infeasible, so order lanes by barycenter and
+  // keep whichever of {declared, barycenter} has the lower energy. The declared layout is always a
+  // candidate, so tidy can only equal or improve it.
+  if (ast.branches.length > MAX_TIDY_BRANCHES) {
+    const bary = build(barycenterLanes(ast));
+    if (isOk(bary) && styleOk(bary.value))
+      return ok(lowestEnergy([base.value, bary.value]) ?? base.value);
     return base;
   }
+  // Few branches: brute-force the optimum (the declared order is always one candidate).
   const [first, ...rest] = ast.branches;
   if (first === undefined) return base;
   const candidates: Scene[] = [base.value];

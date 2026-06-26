@@ -80,8 +80,8 @@ it if a free-form look is ever wanted; it would NOT be a default, to preserve ea
 
 
 
-## Crossing-min v2 shipped
-Done: iterated-local-search (non-greedy) crossing optimiser; crossing-min extended to the ELK families
-under Tidy. Possible next: a proper port-order/barycenter crossing reducer for the layered families
-(complementary to ELK's own); cache the per-edge maze candidates across ILS kicks if the optimiser ever
-shows up in a profile on very large diagrams.
+
+## Crossing optimiser: culling + barycenter shipped
+Done: obstacle culling (the effective perf fix — the maze-candidate cache turned out marginal) + density-
+scaled ILS; barycenter lane ordering for gitGraph beyond the brute-force cap. The ELK/spreadPorts families
+already have barycenter ordering, so there's no further complementary pass to add there.
