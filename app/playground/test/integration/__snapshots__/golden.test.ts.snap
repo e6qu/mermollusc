@@ -2,8 +2,8 @@
 
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
-  "polyline 48,20 70,20 70,20 92,20 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 92,20 70,20 70,104 48,104 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 48,20 70,20 70,13 92,13 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 92,27 70,27 70,104 48,104 dashed=false from=l0p0c0 to=l0p1c0",
   "box 0,0 48x40 r0",
   "label "Web" 24,20 center",
   "box 92,0 48x40 r0",
@@ -31,7 +31,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 [
   "polyline 62,98 62,158 dashed=false from=l0p1c0 to=l0p0c0",
-  "polyline 102,98 102,108 212,108 212,158 dashed=false from=l0p1c0 to=l0p0c0",
+  "polyline 102,98 102,112 212,112 212,158 dashed=false from=l0p1c0 to=l0p0c0",
   "box 22,12 120x86 r0",
   "label "«abstract»" 82,22 center",
   "label "Animal" 82,43 center",
@@ -91,7 +91,7 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 [
   "polyline 64,52 64,92 dashed=false from=l0p0c0 to=l0p1c0",
   "polyline 52,132 52,230 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 76,132 76,142 102,142 102,280 68,280 68,310 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 76,132 76,146 106,146 106,284 68,284 68,310 dashed=false from=l0p0c0 to=l0p1c0",
   "polyline 52,270 52,310 dashed=false from=l0p0c0 to=l0p1c0",
   "box 32,12 64x40 r0",
   "label "Start" 64,32 center",
@@ -102,7 +102,7 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
   "box 36,310 48x40 r8",
   "label "End" 60,330 center",
   "label "yes" 31,181 center",
-  "label "no" 120,181 center",
+  "label "no" 124,181 center",
 ]
 `;
 

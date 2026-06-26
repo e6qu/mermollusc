@@ -47,3 +47,8 @@ Spike done. Recommendation: NO bespoke force/annealing engine (breaks determinis
 Sequenced, deterministic wins instead: (1) port assignment in route.ts to fix edge overlap at branch
 nodes; (2) expose `elk.layered.edgeRouting` + edge spacing; (3) per-family `elk.algorithm` selector
 (layered/stress/mrtree/radial) reusing elkjs's built-in algorithms.
+
+## Edge-routing (LAYOUT_RESEARCH steps 1–2: DONE)
+Deterministic port assignment (`spreadPorts`) shipped for cloud/block; ELK edge spacing tuned. Remaining:
+extend `spreadPorts` to network/c4 (currently centre-to-centre straight lines), and obstacle-avoidance so
+a spread lane doesn't cross an intervening node (step 3 — the larger piece).

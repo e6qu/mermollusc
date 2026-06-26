@@ -10,7 +10,7 @@ export { layoutPie } from "./pie.js";
 export { layoutGantt, DAY_WIDTH as GANTT_DAY_WIDTH } from "./gantt.js";
 export { layoutMindmap } from "./mindmap.js";
 export { heuristicMeasure } from "./graph.js";
-export { retidyRoutes } from "./route.js";
+export { retidyRoutes, spreadPorts } from "./route.js";
 export { widestLine, clampedWidth } from "./measure.js";
 export { gridGeometry } from "./grid.js";
 export type { GridCell, GridExtent, GridGeometry } from "./grid.js";

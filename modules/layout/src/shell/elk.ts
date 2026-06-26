@@ -125,6 +125,13 @@ const elkLayoutOptions = (c: LayoutConfig): Record<string, string> => {
     "elk.direction": c.direction,
     "elk.spacing.nodeNode": String(c.nodeSpacing),
     "elk.layered.spacing.nodeNodeBetweenLayers": String(c.layerSpacing),
+    // Keep parallel connectors from stacking on top of each other: pull edges apart from one another and
+    // from nodes (both within a layer and across the gap between layers), so each gets its own lane on a
+    // node's side rather than all sharing the side centre — the main cause of the overlapping-edge look.
+    "elk.spacing.edgeEdge": "14",
+    "elk.spacing.edgeNode": "14",
+    "elk.layered.spacing.edgeEdgeBetweenLayers": "14",
+    "elk.layered.spacing.edgeNodeBetweenLayers": "14",
   };
   if (!c.interactive) return base;
   return {

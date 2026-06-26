@@ -254,3 +254,10 @@
 - Mindmap layout is now total on an internally-inconsistent AST: a rootless node set (orphans / a parent
   cycle) returns a clean layout error instead of throwing on an ±Infinity extent, and a depth cap breaks
   a root→…→cycle recursion (matching the other nested layouts' MAX_NEST_DEPTH guard).
+- Edge-routing overlap reduction (from the LAYOUT_RESEARCH spike's deterministic recommendations):
+  - ELK families (flowchart/state/er/class/requirement): added edge-edge / edge-node spacing options
+    (within a layer and between layers) so parallel connectors get their own lane instead of stacking.
+  - Hand-rolled architecture families (cloud, block): new `spreadPorts` post-pass re-routes every box→box
+    edge into distinct *ports* along each shared node side (ordered by the opposite endpoint to avoid
+    needless crossings), instead of every edge exiting/entering the side centre. Deterministic; self-loops
+    and dangling edges are left untouched. Edge labels follow the new channel.
