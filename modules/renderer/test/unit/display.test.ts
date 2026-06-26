@@ -73,6 +73,37 @@ describe("toDisplayList", () => {
     expect(undirected?.kind === "polyline" ? undirected.midMarkers.length : -1).toBe(0);
   });
 
+  it("marks a bus junction where an edge branches off a backbone another continues along (opt-in only)", () => {
+    const leg = (id: string, wp: Scene["edges"][number]["waypoints"]) => ({
+      id: seid(id),
+      from: snid("A"),
+      to: snid("B"),
+      waypoints: wp,
+      label: null,
+      stroke: "solid" as const,
+      fromEnd: "none" as const,
+      toEnd: "arrow" as const,
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
+      labelPos: null,
+    });
+    // Both run right along y=100; the first turns down at x=150 where the second keeps going → a junction.
+    const busScene: Scene = {
+      ...scene,
+      edges: [
+        leg("a", [point(0, 100), point(150, 100), point(150, 200)]),
+        leg("b", [point(0, 100), point(200, 100), point(200, 200)]),
+      ],
+    };
+    expect(toDisplayList(busScene, false).filter((c) => c.kind === "junction")).toHaveLength(0);
+    const junctions = toDisplayList(busScene, true).filter((c) => c.kind === "junction");
+    expect(junctions).toHaveLength(1);
+    expect(junctions[0]?.kind === "junction" ? [junctions[0].cx, junctions[0].cy] : null).toEqual([
+      150, 100,
+    ]);
+  });
+
   it("emits a stickman (actor) command plus a label for an actor-shaped node", () => {
     const actorScene: Scene = {
       ...scene,

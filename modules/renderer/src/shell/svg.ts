@@ -63,6 +63,8 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${accentFill(cmd.accent, theme)}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
     case "stateStart":
       return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(Math.max(3, cmd.radius - 3))}" fill="${theme.stroke}"/>`;
+    case "junction":
+      return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(cmd.radius)}" fill="${theme.stroke}"/>`;
     case "stateEnd":
       return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(Math.max(5, cmd.radius - 1))}" fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"/><circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(Math.max(2.5, cmd.radius - 6))}" fill="${theme.stroke}"/>`;
     case "stateBar":

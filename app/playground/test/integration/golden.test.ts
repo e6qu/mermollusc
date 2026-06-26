@@ -109,7 +109,7 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
       case "polyline": {
         const m = (mk: (typeof c)["toMarker"]): string =>
           `l${mk.lines.length}p${mk.polygons.length}c${mk.circle === null ? 0 : 1}`;
-        return `polyline ${c.points.map((p) => `${r(p.x)},${r(p.y)}`).join(" ")} dashed=${c.dashed} from=${m(c.fromMarker)} to=${m(c.toMarker)}`;
+        return `polyline ${c.points.map((p) => `${r(p.x)},${r(p.y)}`).join(" ")} dashed=${c.dashed} from=${m(c.fromMarker)} to=${m(c.toMarker)} mid=${c.midMarkers.length}`;
       }
       case "icon":
         return `icon ${c.ref.pack}/${c.ref.name} ${r(c.x)},${r(c.y)} ${r(c.size)}`;
@@ -117,6 +117,8 @@ const normalize = (cmds: ReturnType<typeof toDisplayList>): string[] =>
         return `label "${c.text}" ${r(c.x)},${r(c.y)} ${c.align}`;
       case "wedge":
         return `wedge ${r(c.cx)},${r(c.cy)} r${r(c.radius)}/${r(c.innerRadius)} ${c.startAngle.toFixed(3)}..${c.endAngle.toFixed(3)} c${c.colorIndex}`;
+      case "junction":
+        return `junction ${r(c.cx)},${r(c.cy)} r${r(c.radius)}`;
     }
   });
 

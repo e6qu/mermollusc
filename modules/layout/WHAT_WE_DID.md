@@ -376,3 +376,7 @@
   on a four-edge hub: naive `retidyRoutes` left 8 parallel overlaps; `respreadPorts` 0. The app calls it
   for the box-routed families (cloud/network/c4/block) on drag RELEASE (mid-gesture stays on the cheap
   diagonal-snap so the diagram doesn't churn under the cursor).
+- Bus routing flag on `routeSpread`/`respreadPorts`: with `bus` set, the spread routes are kept as-is
+  (skip the crossing-min + overlap-separation passes), so connectors to a shared endpoint stay coincident
+  on a common backbone instead of being de-stacked onto separate lanes — the layout half of the opt-in
+  junction/bus rendering (the renderer marks the junctions).

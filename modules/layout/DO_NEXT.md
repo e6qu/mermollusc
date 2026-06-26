@@ -100,3 +100,11 @@ the lane optimiser is a greedy heuristic, so its crossing/overlap counts are mil
 constant — re-measure if you retune. Possible next: size reservation by the MAX simultaneous overlap in a
 channel rather than the total crossing count (less over-reservation on wide, sparse channels); extend band
 detection below the top level for diagrams whose stacks live inside a single group.
+
+## Bus rendering shipped as an MVP (opt-in)
+"Bus" mode = `respreadPorts(scene, true)` (no crossing-min / no separation, so shared-endpoint connectors
+stay on a common backbone) + renderer junction dots. It's display-only (a re-route + dots, no re-layout),
+gated to the box-routed families. The backbones currently come only from the staggered port routing, so
+sharing is modest. Next, to make buses pronounced: ACTIVELY merge shared-endpoint edges through a common
+trunk (route them to one shared port / backbone, branch with junctions) — the yWorks BusRouter model in
+[[edge-routing-sota]]. Also consider snapping near-parallel close segments onto a single track.

@@ -159,3 +159,8 @@
   and SVG backends draw them with the existing marker path and the edge's stroke colour. Undirected and
   curved edges, and segments shorter than a chevron, get none. Reverse-directed edges (head at the source)
   point the hints backward.
+- Bus junctions (opt-in rendering): `toDisplayList(scene, drawJunctions)` can mark, with a small filled
+  dot, every point where one edge branches off a backbone another edge continues along — a waypoint of A
+  inside a collinear segment of B. A plain crossing isn't collinear, so it isn't marked. New `junction`
+  DrawCmd, drawn by both backends (a stroke-coloured dot). Off by default — only the app's Bus toggle asks
+  for it.

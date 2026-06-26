@@ -929,7 +929,7 @@ const reserveChannels = (scene: Scene): Scene => {
 // The position-respecting routing core: port-spread every box→box edge into distinct lanes, detour around
 // nodes, then minimise crossings and de-stack overlaps. Moves NO node — callers decide whether to reserve
 // channel room first. Shared by initial layout (`spreadPorts`) and post-drag re-routing (`respreadPorts`).
-const routeSpread = (scene: Scene): Scene => {
+const routeSpread = (scene: Scene, bus: boolean): Scene => {
   const boxOf = boxOfNode(scene);
   const along = (side: Side, other: RouteBox): number =>
     side === "L" || side === "R" ? other.y + other.h / 2 : other.x + other.w / 2;
@@ -1009,20 +1009,22 @@ const routeSpread = (scene: Scene): Scene => {
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };
   });
-  // Final pass: cut edge-against-edge crossings across the whole diagram (a no-op when there are none).
-  // Two complementary passes: minimise perpendicular crossings (re-route), then de-stack parallel
-  // overlaps onto separate lanes (nudge) — the second never adds a crossing.
-  return separateOverlaps(minimizeCrossings({ ...scene, edges }));
+  const wired = { ...scene, edges };
+  // BUS mode keeps the staggered routes as-is: connectors to a shared endpoint already run along common
+  // channel legs, so leaving them coincident forms a shared "backbone" (the renderer marks the junctions
+  // where edges branch off it). The default instead minimises crossings then de-stacks the overlaps onto
+  // separate lanes — the two complementary passes that give the clean parallel look.
+  return bus ? wired : separateOverlaps(minimizeCrossings(wired));
 };
 
-// Initial layout: reserve channel room (moving bands apart by edge density) then route.
-export const spreadPorts = (rawScene: Scene): Scene => routeSpread(reserveChannels(rawScene));
+// Initial layout: reserve channel room (moving bands apart by edge density) then route (default, no bus).
+export const spreadPorts = (rawScene: Scene): Scene =>
+  routeSpread(reserveChannels(rawScene), false);
 
-// Post-drag re-routing: the user has placed nodes by hand, so DON'T reserve room (that would move their
-// nodes) — just re-route at their exact positions with the full pipeline (port lanes + crossing-min +
-// overlap separation). This is what gives a hand-arranged diagram the same clean connectors as auto-layout
-// instead of the naive per-edge Z-routes `retidyRoutes` produces.
-export const respreadPorts = (scene: Scene): Scene => routeSpread(scene);
+// Re-route at the user's exact node positions (no channel reservation — that would move their nodes). The
+// default gives a hand-arranged diagram the same clean parallel connectors as auto-layout; `bus` instead
+// leaves connectors sharing a backbone for the junction/bus rendering option.
+export const respreadPorts = (scene: Scene, bus = false): Scene => routeSpread(scene, bus);
 
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap
 // between the two boxes by construction, so an edge label anchored here stays clear of both endpoints —
