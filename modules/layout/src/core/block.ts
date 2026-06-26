@@ -15,7 +15,7 @@ import type {
 import type { LayoutError, MeasureText } from "./graph.js";
 import type { Size } from "./grid.js";
 import { clampedWidth } from "./measure.js";
-import { orthogonalRoute, routeChannelMid, type RouteBox } from "./route.js";
+import { orthogonalRoute, routeChannelMid, spreadPorts, type RouteBox } from "./route.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 40;
@@ -219,5 +219,8 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     width = Math.max(width, box.x + box.w);
     height = Math.max(height, box.y + box.h);
   }
-  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
+  // Spread connectors into per-side lanes so several links touching the same node don't stack into one line.
+  return ok(
+    spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+  );
 };
