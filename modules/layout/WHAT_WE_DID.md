@@ -284,3 +284,15 @@
   lowest-`layoutEnergy` one — so cross-lane merge/branch edges draw with fewer crossings. Default (off) is
   the declared order, byte-identical to before. Mindmap is left as-is (its disjoint angular sectors are
   already crossing-free, so reordering has no benefit).
+- Obstacle-avoiding edge routing: `spreadPorts` now reroutes any Z-route whose leg would cut through a
+  non-endpoint, non-container node. It searches two orthogonal detour topologies (channel along the
+  dominant axis, and transposed perpendicular — a dog-leg lifting an aligned obstacle off the straight
+  line), each scanned across positions inside and beyond the inter-box gap, keeping the fewest-hits then
+  shortest route. Routes that already clear every box are returned unchanged (no golden churn on clean
+  diagrams). Helps the spreadPorts families (network/cloud/c4/block).
+- Family-context style invariant: `pieSlicesTileCircle` lives in the pie layout (only it can tell the
+  slice wedges, sharing the pie centre, from the per-swatch legend discs) and verifies the slices sum to
+  2π — asserted in the pie unit test and the golden baseline.
+- Organic layout: `elkLayoutOptions(c, organic)` swaps the layered algorithm for ELK `stress` (force-
+  based), threaded as an `organic` flag through `layout`/`layoutDiagram` for flowchart + state only — an
+  opt-in free-form look, never a default; the compartment families stay layered.

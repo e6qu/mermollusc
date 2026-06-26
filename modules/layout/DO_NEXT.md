@@ -53,11 +53,6 @@ Deterministic port assignment (`spreadPorts`) shipped for cloud/block; ELK edge 
 extend `spreadPorts` to network/c4 (currently centre-to-centre straight lines), and obstacle-avoidance so
 a spread lane doesn't cross an intervening node (step 3 — the larger piece).
 
-## Obstacle-avoiding edge routing (the remaining big piece)
-`spreadPorts` gives clean per-side lanes + staggered channels, but a lane is still a plain Z — it can
-cross a THIRD node sitting in the channel. Real avoidance needs a router that bends around intervening
-boxes: a visibility-graph or a grid A* over the node rectangles (per LAYOUT_RESEARCH). Substantial;
-deferred deliberately rather than half-done.
 
 ## Energy-aware layout — next slices (plan agreed: deterministic candidate-and-select, opt-in)
 PR 1 (metric + family-agnostic invariants + baseline) is in. Next:
@@ -79,3 +74,11 @@ Remaining (lower priority): family-specific style invariants need family context
 "slices tile 2π" guard must live where the family is known (the pie layout/shell), not in `invariants.ts`.
 Also still open: an opt-in ELK `stress` algorithm (a genuinely different, force-like style — only worth
 it if a free-form look is ever wanted; it would NOT be a default, to preserve each family's style).
+
+## Layout-quality batch shipped (obstacle routing + pie invariant + organic)
+Done: obstacle-avoiding spreadPorts routing; the pie family-context invariant; the opt-in ELK `stress`
+"Organic" layout. Remaining, lower priority: the same family-context invariant pattern for sequence
+(actors on one header row), gantt (bars on the day axis), timeline (periods left→right) — each needs its
+family AST, so it lives next to that family's layout like `pieSlicesTileCircle`. The obstacle router is a
+local Z-route repair (two detour topologies); a full grid/visibility maze router remains possible if a
+diagram needs multi-bend detours around several obstacles.

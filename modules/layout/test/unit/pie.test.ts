@@ -2,7 +2,7 @@ import { brand, positive } from "@m/std";
 import type { PieAst, SceneWedge } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
-import { layoutPie } from "../../src/core/pie.js";
+import { layoutPie, pieSlicesTileCircle } from "../../src/core/pie.js";
 
 const sid = (s: string) => brand<string, "PieSliceId">(s);
 
@@ -110,5 +110,17 @@ describe("layoutPie", () => {
     if (!empty.ok) throw new Error(empty.error.message);
     expect(empty.value.wedges).toHaveLength(0);
     expect(empty.value.extent.size.width).toBeGreaterThan(0);
+  });
+
+  it("pieSlicesTileCircle holds for a real pie (slices tile 2π) and fails if a slice is dropped", () => {
+    expect(pieSlicesTileCircle(scene)).toBe(true);
+    expect(pieSlicesTileCircle({ ...scene, wedges: [] })).toBe(true); // vacuous: no wedges
+    // Drop one slice from the pie-centre group → the remaining slices no longer tile the circle.
+    const sliceCentreKey = `${Math.round(slices[0]?.center.x ?? 0)},${Math.round(slices[0]?.center.y ?? 0)}`;
+    const firstSlice = slices[0];
+    const broken = scene.wedges.filter(
+      (w) => w !== firstSlice && `${Math.round(w.center.x)},${Math.round(w.center.y)}` === sliceCentreKey,
+    );
+    expect(pieSlicesTileCircle({ ...scene, wedges: broken })).toBe(false);
   });
 });
