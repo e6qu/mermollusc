@@ -380,3 +380,10 @@
   (skip the crossing-min + overlap-separation passes), so connectors to a shared endpoint stay coincident
   on a common backbone instead of being de-stacked onto separate lanes — the layout half of the opt-in
   junction/bus rendering (the renderer marks the junctions).
+- Trunk merging (`trunkRoutes`) — the aggressive bus. Where the gentle Bus mode just left the staggered
+  routes coincident, `trunkMerge` ACTIVELY re-routes each fan: for any node side reached by ≥3 connectors
+  it builds one shared trunk line just off that side and routes the whole fan through it into a single
+  shared port, so the fan genuinely shares a backbone (the renderer marks a junction where each edge
+  joins). Bigger fans claim their edges first; an edge already in a trunk isn't pulled into another;
+  non-fan edges keep the spread routes they came in with. Display-only (respects given positions, no
+  channel reservation). Wired to a new "Trunk" toggle in the app, taking precedence over "Bus".

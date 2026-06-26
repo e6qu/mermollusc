@@ -108,3 +108,10 @@ gated to the box-routed families. The backbones currently come only from the sta
 sharing is modest. Next, to make buses pronounced: ACTIVELY merge shared-endpoint edges through a common
 trunk (route them to one shared port / backbone, branch with junctions) — the yWorks BusRouter model in
 [[edge-routing-sota]]. Also consider snapping near-parallel close segments onto a single track.
+
+## Trunk merging shipped (the aggressive bus, opt-in "Trunk" toggle)
+`trunkRoutes` = spread the non-fan edges, then merge each ≥3 fan onto a shared trunk + single port. The
+trunk currently hugs the node (short trunk, long parallel approaches) and does NOT run obstacle avoidance,
+so a trunk leg can clip an intervening box on dense diagrams. Next: place the trunk in the channel between
+the fan and its far ends (balanced), and maze-route the trunk's approaches around obstacles; consider a
+min-fan of 2 behind a threshold. Junction detection is shared with Bus mode (renderer `busJunctions`).

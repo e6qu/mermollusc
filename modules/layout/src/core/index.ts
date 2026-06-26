@@ -14,6 +14,7 @@ export {
   retidyRoutes,
   spreadPorts,
   respreadPorts,
+  trunkRoutes,
   mazeRerouteEdges,
   decollideEdgeLabels,
   minimizeCrossings,
