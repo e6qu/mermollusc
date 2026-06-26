@@ -1,4 +1,10 @@
-import { heuristicMeasure, layoutDiagram } from "@m/layout";
+import {
+  containersEncloseMembers,
+  heuristicMeasure,
+  layoutDiagram,
+  layoutEnergy,
+  noSiblingOverlaps,
+} from "@m/layout";
 import { parseDiagram } from "@m/parser";
 import { toDisplayList } from "@m/renderer";
 import { isOk } from "@m/std";
@@ -118,6 +124,31 @@ describe("pipeline goldens", () => {
       expect(isOk(laid)).toBe(true);
       if (!isOk(laid)) return;
       expect(normalize(toDisplayList(laid.value))).toMatchSnapshot();
+    });
+  }
+});
+
+// The baseline for the (opt-in) energy-aware layout work: every default layout must satisfy the
+// family-agnostic style invariants (no sibling overlaps, containers enclose members) — this locks
+// today's styles in as the baseline, so a later layout change can't silently break a diagram type.
+// It also records each example's energy (crossings/overlaps), giving us numbers for "we still get
+// overlaps" before any change. Pure measurement — no behaviour change in this PR.
+describe("layout energy baseline + style invariants", () => {
+  for (const sample of SAMPLES) {
+    it(`${sample.name}: satisfies the style invariants and has finite energy`, async () => {
+      const parsed = parseDiagram(sample.text);
+      if (!isOk(parsed)) return;
+      const laid = await layoutDiagram(parsed.value, heuristicMeasure);
+      if (!isOk(laid)) return;
+      const e = layoutEnergy(laid.value);
+      // Baseline guard: today's default layout keeps the family-agnostic style invariants.
+      expect(noSiblingOverlaps(laid.value)).toBe(true);
+      expect(containersEncloseMembers(laid.value)).toBe(true);
+      // Surface the numbers (crossings / edge-node hits) so the metric is visible in the run.
+      console.log(
+        `energy[${sample.name}] crossings=${e.crossings} edgeNodeHits=${e.edgeNodeHits} total=${e.total.toFixed(1)}`,
+      );
+      expect(Number.isFinite(e.total)).toBe(true);
     });
   }
 });

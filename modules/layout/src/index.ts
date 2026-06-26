@@ -7,5 +7,16 @@ export {
   heuristicMeasure,
   retidyRoutes,
   GANTT_DAY_WIDTH,
+  layoutEnergy,
+  lowestEnergy,
+  noSiblingOverlaps,
+  containersEncloseMembers,
+  styleOk,
 } from "./core/index.js";
-export type { LayoutGraph, PositionedGraph, LayoutError, MeasureText } from "./core/index.js";
+export type {
+  LayoutGraph,
+  PositionedGraph,
+  LayoutError,
+  MeasureText,
+  EnergyBreakdown,
+} from "./core/index.js";
