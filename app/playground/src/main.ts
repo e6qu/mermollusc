@@ -4578,7 +4578,8 @@ exampleEl.addEventListener("change", () => {
   doc.clearHistory(); // a different diagram — the old positions/history no longer apply
   doc.persist();
   editor.setValue(text);
-  void renderFromText(text);
+  // Fit the freshly loaded example in the viewport (a wide one like the git-flow shouldn't run off-edge).
+  void renderFromText(text).then(() => fitView());
   // Give the example a stable, shareable URL (`?example=<name>`), replacing any prior share hash.
   history.replaceState(null, "", `${location.pathname}?example=${encodeURIComponent(name)}`);
   announce("loaded example — undo in the editor to restore your text");
@@ -5043,7 +5044,9 @@ setSourceCollapsed(loadSourceCollapsed(), false);
 // Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
 // itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
 // authoritative shared text (identical when this client seeds; the room's text when it joins one).
-void renderFromText(initialSource);
+// Fit the whole diagram in the viewport on first paint, so a wide one (e.g. a full git-flow) is visible
+// at once instead of running off the edge. `fitView` caps at 100%, so a small diagram is left untouched.
+void renderFromText(initialSource).then(() => fitView());
 
 // Collab transport (experimental): connect the session to the dev relay so peers' source-text and
 // overlay edits arrive (the source binds to the editor via `sourceBinding`; an overlay change repaints

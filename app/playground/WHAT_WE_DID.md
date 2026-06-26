@@ -821,3 +821,5 @@
   opens that example (falls back to persisted/sample for an unknown name; starts with a clean overlay).
 - The gitGraph example is now a semi-complicated git-flow (main + develop + feature + hotfix, merges and
   release tags) showcasing the stickman-per-branch, short-SHA, arrowed connectors.
+- Zoom-to-fit on load: the initial render and every example load now call `fitView`, so a wide diagram
+  (e.g. the full git-flow) is visible at once. Caps at 100%, so a small diagram is left untouched.

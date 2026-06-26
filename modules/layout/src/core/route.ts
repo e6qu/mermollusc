@@ -358,6 +358,129 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
   return { ...scene, edges };
 };
 
+// Proper crossing of two axis-aligned segments (one horizontal, one vertical, meeting in both
+// interiors). Orthogonal routes only — what spreadPorts produces — so this is exact and cheap.
+const orthSegmentsCross = (a1: Point, a2: Point, b1: Point, b2: Point): boolean => {
+  const aHoriz = a1.y === a2.y;
+  if (aHoriz === (b1.y === b2.y)) return false; // both horizontal or both vertical → never a proper cross
+  const h1 = aHoriz ? a1 : b1;
+  const h2 = aHoriz ? a2 : b2;
+  const v1 = aHoriz ? b1 : a1;
+  const v2 = aHoriz ? b2 : a2;
+  return (
+    v1.x > Math.min(h1.x, h2.x) &&
+    v1.x < Math.max(h1.x, h2.x) &&
+    h1.y > Math.min(v1.y, v2.y) &&
+    h1.y < Math.max(v1.y, v2.y)
+  );
+};
+const segmentsOf = (wp: readonly Point[]): ReadonlyArray<readonly [Point, Point]> => {
+  const out: [Point, Point][] = [];
+  for (let i = 1; i < wp.length; i++) {
+    const a = wp[i - 1];
+    const b = wp[i];
+    if (a !== undefined && b !== undefined) out.push([a, b]);
+  }
+  return out;
+};
+const crossingsBetween = (
+  path: readonly Point[],
+  others: ReadonlyArray<readonly [Point, Point]>,
+): number => {
+  let n = 0;
+  for (const [a, b] of segmentsOf(path)) {
+    for (const [c, d] of others) if (orthSegmentsCross(a, b, c, d)) n++;
+  }
+  return n;
+};
+const MAX_CROSS_SWEEPS = 3;
+
+// Global edge–edge crossing reduction (a tendency, greedy local search): repeatedly try re-routing each
+// CROSSING edge from each of its endpoints' four mount-points, keeping whichever orthogonal route crosses
+// the fewest OTHER edges — without adding any node/group crossing, then shortest. Only edges that already
+// cross another are touched, so a crossing-free diagram is returned byte-identical. Bounded sweeps +
+// strict improvement guarantee it terminates and never makes the picture worse.
+const minimizeCrossings = (scene: Scene): Scene => {
+  const segsByEdge = scene.edges.map((e) => segmentsOf(e.waypoints));
+  let total = 0;
+  for (let i = 0; i < segsByEdge.length; i++) {
+    for (let j = i + 1; j < segsByEdge.length; j++) {
+      const si = segsByEdge[i];
+      const sj = segsByEdge[j];
+      if (si === undefined || sj === undefined) continue;
+      for (const [a, b] of si) for (const [c, d] of sj) if (orthSegmentsCross(a, b, c, d)) total++;
+    }
+  }
+  if (total === 0) return scene; // already crossing-free — no work, no change
+
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const edges = [...scene.edges];
+  for (let sweep = 0; sweep < MAX_CROSS_SWEEPS; sweep++) {
+    let improved = false;
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      if (e === undefined || e.from === e.to) continue;
+      const fromBox = boxById.get(e.from);
+      const toBox = boxById.get(e.to);
+      if (fromBox === undefined || toBox === undefined) continue;
+      const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
+      const curCross = crossingsBetween(e.waypoints, others);
+      if (curCross === 0) continue; // crosses nothing — leave it exactly where it is
+      const nodeObstacles = obstacleBoxes.get(e.id) ?? [];
+      // Feed the maze a thin obstacle box along EVERY segment of each edge this one currently crosses, so
+      // the router steers fully around the conflicting edge (left to itself it just minimises length and
+      // re-crosses, or shifts the crossing onto another segment of the same edge).
+      const segBox = (c: Point, d: Point): RouteBox =>
+        c.y === d.y
+          ? { x: Math.min(c.x, d.x), y: c.y - 1, w: Math.abs(d.x - c.x), h: 2 }
+          : { x: c.x - 1, y: Math.min(c.y, d.y), w: 2, h: Math.abs(d.y - c.y) };
+      const crossedBoxes: RouteBox[] = [];
+      for (let j = 0; j < edges.length; j++) {
+        const oj = edges[j];
+        if (j === i || oj === undefined) continue;
+        const ojSegs = segmentsOf(oj.waypoints);
+        if (crossingsBetween(e.waypoints, ojSegs) === 0) continue;
+        for (const [c, d] of ojSegs) crossedBoxes.push(segBox(c, d));
+      }
+      const mazeObstacles = [...nodeObstacles, ...crossedBoxes];
+      const curHits = routeHits(e.waypoints, nodeObstacles);
+      let best: { wp: readonly Point[]; hits: number; cross: number; len: number } = {
+        wp: e.waypoints,
+        hits: curHits,
+        cross: curCross,
+        len: routeLength(e.waypoints),
+      };
+      for (const s of sideMounts(fromBox)) {
+        for (const t of sideMounts(toBox)) {
+          const maze = mazeRoute(s, t, mazeObstacles, OBSTACLE_CLEARANCE);
+          if (maze === null || maze.length < 2) continue;
+          const hits = routeHits(maze, nodeObstacles); // score node/group hits, not the thin edge boxes
+          if (hits > best.hits) continue; // never trade a node/group crossing for an edge crossing
+          const cross = crossingsBetween(maze, others);
+          const len = routeLength(maze);
+          if (hits < best.hits || cross < best.cross || (cross === best.cross && len < best.len)) {
+            best = { wp: maze, hits, cross, len };
+          }
+        }
+      }
+      if (best.cross < curCross || best.hits < curHits) {
+        const [w0, w1, ...wr] = best.wp;
+        if (w0 !== undefined && w1 !== undefined) {
+          edges[i] = {
+            ...e,
+            waypoints: twoOrMore(w0, w1, ...wr),
+            labelPos: e.labelPos === null ? null : pathMidpoint(best.wp),
+          };
+          improved = true;
+        }
+      }
+    }
+    if (!improved) break;
+  }
+  return { ...scene, edges };
+};
+
 export const spreadPorts = (scene: Scene): Scene => {
   const boxOf = boxOfNode(scene);
   const along = (side: Side, other: RouteBox): number =>
@@ -438,7 +561,8 @@ export const spreadPorts = (scene: Scene): Scene => {
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };
   });
-  return { ...scene, edges };
+  // Final pass: cut edge-against-edge crossings across the whole diagram (a no-op when there are none).
+  return minimizeCrossings({ ...scene, edges });
 };
 
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap

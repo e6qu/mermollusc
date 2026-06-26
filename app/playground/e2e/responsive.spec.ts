@@ -88,6 +88,9 @@ test("phone-width stage keeps pan and zoom controls reachable", async ({ page })
     page,
     "flowchart TD\n  A-->B\n  A-->C\n  B-->D\n  C-->D\n  D-->E\n  E-->F\n  F-->G\n  G-->H\n  H-->I\n",
   );
+  // Normalise zoom first — a narrow phone viewport fits the diagram below 100% on load.
+  await page.locator("#zoom-reset").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("100%");
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-reset")).toHaveText("125%");
 
