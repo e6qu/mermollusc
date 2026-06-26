@@ -163,6 +163,36 @@ describe("layoutGitGraph", () => {
     expect(et).toBeLessThan(eb); // and strictly better here — the b-merge no longer crosses lane a
   });
 
+  it("uses barycenter lane ordering for many branches (>5) — strictly improves a mis-declared chain", () => {
+    const co = (id: string, branch: string, parents: string[], merge = false) => ({
+      id: cid(id), branch: bn(branch), parents: parents.map(cid),
+      tag: null, commitType: "normal" as const, merge,
+    });
+    // A chain — a off main, b off a, c off b, d off c, e off d — but the branches are DECLARED in reverse
+    // lane order, so the declared layout crosses. Barycenter (too many branches to brute-force) reorders
+    // the lanes by adjacency and untangles it.
+    const ast: GitGraphAst = {
+      kind: "gitGraph",
+      direction: "LR",
+      branches: [
+        { name: bn("main"), order: 0 }, { name: bn("e"), order: 1 }, { name: bn("d"), order: 2 },
+        { name: bn("c"), order: 3 }, { name: bn("b"), order: 4 }, { name: bn("a"), order: 5 },
+      ],
+      commits: [
+        co("c0", "main", []),
+        co("a1", "a", ["c0"]), co("b1", "b", ["a1"]), co("c1", "c", ["b1"]),
+        co("d1", "d", ["c1"]), co("e1", "e", ["d1"]),
+        co("ma", "main", ["c0", "a1"], true),
+      ],
+    };
+    const declared = layoutGitGraph(ast, heuristicMeasure, false);
+    const tidy = layoutGitGraph(ast, heuristicMeasure, true);
+    if (!declared.ok || !tidy.ok) throw new Error("layout failed");
+    expect(ast.branches.length).toBeGreaterThan(5); // exercises the barycenter (non-brute-force) path
+    expect(noSiblingOverlaps(tidy.value)).toBe(true); // still a valid gitGraph
+    expect(layoutEnergy(tidy.value).crossings).toBeLessThan(layoutEnergy(declared.value).crossings);
+  });
+
   it("leaves the declared order untouched when tidy is off (default output is stable)", () => {
     const off = layoutGitGraph(crossing, heuristicMeasure, false);
     const explicitOff = layoutGitGraph(crossing, heuristicMeasure);

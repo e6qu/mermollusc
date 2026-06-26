@@ -336,3 +336,13 @@
   different route and re-descends, keeping the best total seen (escapes local minima, never worse). It's
   also applied to the ELK families under Tidy (`minimizeCrossings(mazeRerouteEdges(best))` in
   `elkSelectBest`), not just the spreadPorts families.
+- Crossing optimiser performance: profiling showed the proposed maze-candidate cache barely helps (the
+  per-edge maze queries are nearly all unique), so the real win is OBSTACLE CULLING — each maze only gets
+  the node/group boxes near the edge's endpoints, shrinking its Hanan grid. A realistic 256-node /
+  210-local-edge diagram drops from grid-bound to ~24ms. A memo is still kept (occasionally hits) and the
+  iterated-local-search scales its kicks down on pathologically dense inputs.
+- Barycenter lane ordering for gitGraph: above the ≤5-branch brute-force cap, `barycenterLanes` orders the
+  lanes by the mean adjacent lane (the classic crossing-reduction heuristic, deterministic, main pinned to
+  lane 0), compared against the declared order by energy — so a large git-flow declared out of order gets
+  untangled (e.g. a mis-declared 6-branch chain: 2 crossings → 0). The ELK layered families already get
+  barycenter crossing-min from ELK; spreadPorts already orders ports by the opposite endpoint.
