@@ -120,8 +120,16 @@ const ResultZ = z.object({
 });
 
 // The string-keyed option bag is ELK's API surface, kept at this boundary; the core works with
-// the typed LayoutConfig instead.
-const elkLayoutOptions = (c: LayoutConfig): Record<string, string> => {
+// the typed LayoutConfig instead. `organic` swaps the layered (Sugiyama) algorithm for ELK's
+// force-based `stress` — a deliberately different, free-form style, only ever reached by opt-in.
+const elkLayoutOptions = (c: LayoutConfig, organic: boolean): Record<string, string> => {
+  if (organic) {
+    return {
+      "elk.algorithm": "stress",
+      "elk.stress.desiredEdgeLength": "140",
+      "elk.spacing.nodeNode": String(Math.max(c.nodeSpacing, 60)),
+    };
+  }
   const base: Record<string, string> = {
     "elk.algorithm": "layered",
     "elk.direction": c.direction,
@@ -187,7 +195,7 @@ const toElkInputEdge = (e: LayoutGraph["edges"][number]): ElkInputEdge => {
   return { ...base, labels: [{ id: `${e.id}-lbl`, text: " ", ...e.label }] };
 };
 
-const toElkInput = (g: LayoutGraph) => ({
+const toElkInput = (g: LayoutGraph, organic: boolean) => ({
   id: g.id,
   // INCLUDE_CHILDREN lays the whole hierarchy out together and routes cross-subgraph edges. ELK then
   // returns each edge's geometry relative to the edge's least-common-ancestor container (tagged on the
@@ -195,7 +203,7 @@ const toElkInput = (g: LayoutGraph) => ({
   // placement: CENTER` makes ELK reserve routing space for each edge's midpoint label and return its
   // position, so a label clears the nodes instead of overlapping them.
   layoutOptions: {
-    ...elkLayoutOptions(g.config),
+    ...elkLayoutOptions(g.config, organic),
     "elk.hierarchyHandling": "INCLUDE_CHILDREN",
     "elk.edgeLabels.placement": "CENTER",
     "elk.spacing.edgeLabel": "4",
@@ -311,10 +319,12 @@ export const layout = async (
   seed: ReadonlyMap<NodeId, Point>,
   measure: MeasureText,
   tidy = false,
+  organic = false,
 ): Promise<Result<Scene, LayoutError>> => {
   try {
-    const input = toElkInput(toElkGraph(ast, seed, measure));
-    return await elkSelectBest(input, (positioned) => toScene(positioned, ast), tidy);
+    const input = toElkInput(toElkGraph(ast, seed, measure), organic);
+    // Organic (stress) is a single force-based layout — the layered tidy candidates don't apply.
+    return await elkSelectBest(input, (positioned) => toScene(positioned, ast), tidy && !organic);
   } catch (e) {
     return err({ kind: "layout", message: messageOf(e) });
   }
@@ -585,7 +595,7 @@ const layoutCompartments = async (
   };
   try {
     return await elkSelectBest(
-      toElkInput(graph),
+      toElkInput(graph, false), // the compartment families (er/class/requirement) stay layered
       (positioned): Result<Scene, LayoutError> => {
         const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
         const edgeById = new Map(edges.map((e) => [e.id, e]));
@@ -802,10 +812,13 @@ export const layoutDiagram = async (
   // "Tidy layout": for the layered families, try a few deterministic ELK candidates and keep the
   // lowest-energy one that preserves the family's style. The fixed-style families ignore it.
   tidy = false,
+  // "Organic": opt-in force-based (ELK stress) layout for flowchart/state — a deliberately free-form
+  // look, never a default, and only for the two families where a non-hierarchical graph reads well.
+  organic = false,
 ): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":
-      return layout(ast, new Map(), measure, tidy);
+      return layout(ast, new Map(), measure, tidy, organic);
     case "sequence":
       return layoutSequence(ast, measure);
     case "c4":
@@ -817,7 +830,7 @@ export const layoutDiagram = async (
     case "cloud":
       return layoutCloud(ast, measure, collapsed);
     case "state":
-      return map(await layout(stateToFlow(ast), new Map(), measure, tidy), (scene) =>
+      return map(await layout(stateToFlow(ast), new Map(), measure, tidy, organic), (scene) =>
         applyStateSemantics(scene, ast),
       );
     case "er":

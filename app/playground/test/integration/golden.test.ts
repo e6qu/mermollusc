@@ -4,6 +4,7 @@ import {
   layoutDiagram,
   layoutEnergy,
   noSiblingOverlaps,
+  pieSlicesTileCircle,
 } from "@m/layout";
 import { parseDiagram } from "@m/parser";
 import { toDisplayList } from "@m/renderer";
@@ -144,6 +145,7 @@ describe("layout energy baseline + style invariants", () => {
       // Baseline guard: today's default layout keeps the family-agnostic style invariants.
       expect(noSiblingOverlaps(laid.value)).toBe(true);
       expect(containersEncloseMembers(laid.value)).toBe(true);
+      expect(pieSlicesTileCircle(laid.value)).toBe(true); // vacuous off-pie; real on the pie example
       // Surface the numbers (crossings / edge-node hits) so the metric is visible in the run.
       console.log(
         `energy[${sample.name}] crossings=${e.crossings} edgeNodeHits=${e.edgeNodeHits} total=${e.total.toFixed(1)}`,
@@ -151,6 +153,21 @@ describe("layout energy baseline + style invariants", () => {
       expect(Number.isFinite(e.total)).toBe(true);
     });
   }
+
+  it("organic (ELK stress) lays a flowchart out validly and differently from layered", async () => {
+    const parsed = parseDiagram("flowchart TD\n  A --> B\n  A --> C\n  B --> D\n  C --> D\n");
+    if (!isOk(parsed)) return;
+    const layered = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false, false);
+    const organic = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false, true);
+    if (!isOk(layered) || !isOk(organic)) throw new Error("layout failed");
+    // A real, in-bounds, non-overlapping placement…
+    expect(organic.value.nodes).toHaveLength(4);
+    expect(noSiblingOverlaps(organic.value)).toBe(true);
+    // …that is genuinely a different (force-based) shape, not the layered one.
+    const pos = (s: typeof organic.value) =>
+      s.nodes.map((n) => `${Math.round(n.bounds.origin.x)},${Math.round(n.bounds.origin.y)}`).join(";");
+    expect(pos(organic.value)).not.toEqual(pos(layered.value));
+  });
 
   // "Tidy layout" must never make a layered family WORSE — the default config is always one of the
   // candidates, so the selected energy is ≤ the default's. (Often equal: ELK's default is already good.)

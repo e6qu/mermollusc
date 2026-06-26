@@ -97,6 +97,87 @@ const boxOfNode = (scene: Scene): Map<string, RouteBox> =>
     ]),
   );
 
+// Does an axis-aligned (orthogonal) segment pass through a box's interior? Both legs of a Z-route are
+// horizontal or vertical, so a strict bounding-box overlap is exact (touching a border doesn't count).
+const segThroughBox = (a: Point, b: Point, box: RouteBox): boolean => {
+  const x0 = Math.min(a.x, b.x);
+  const x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y);
+  const y1 = Math.max(a.y, b.y);
+  return x0 < box.x + box.w && x1 > box.x && y0 < box.y + box.h && y1 > box.y;
+};
+const routeHits = (pts: readonly Point[], obstacles: readonly RouteBox[]): number => {
+  let hits = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    if (a === undefined || b === undefined) continue;
+    for (const o of obstacles) if (segThroughBox(a, b, o)) hits++;
+  }
+  return hits;
+};
+const routeLength = (pts: readonly Point[]): number => {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    if (a !== undefined && b !== undefined) len += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+  }
+  return len;
+};
+const OBSTACLE_SCAN_STEPS = 16; // candidate channel positions tried when a Z-route hits a node
+
+// If the default Z-route would cut through an unrelated node, search for an orthogonal detour: two route
+// topologies (the cross-channel leg along the dominant axis, OR transposed so it runs perpendicular — a
+// dog-leg that lifts an aligned obstacle off the straight line), each scanned across positions inside AND
+// beyond the inter-box gap. Keep the route with the fewest hits, then the shortest. A route that already
+// clears every box is returned unchanged, so clean diagrams don't move (no golden churn).
+const avoidObstacles = (
+  p0: Point,
+  p3: Point,
+  m1: Point,
+  m2: Point,
+  horizontal: boolean,
+  obstacles: readonly RouteBox[],
+): { readonly m1: Point; readonly m2: Point } => {
+  let best = {
+    m1,
+    m2,
+    hits: routeHits([p0, m1, m2, p3], obstacles),
+    len: routeLength([p0, m1, m2, p3]),
+  };
+  if (best.hits === 0) return { m1, m2 };
+  const consider = (cm1: Point, cm2: Point): void => {
+    const hits = routeHits([p0, cm1, cm2, p3], obstacles);
+    const len = routeLength([p0, cm1, cm2, p3]);
+    if (hits < best.hits || (hits === best.hits && len < best.len)) {
+      best = { m1: cm1, m2: cm2, hits, len };
+    }
+  };
+  // Topology A — channel along the dominant axis (the default shape), slid across an extended range.
+  const aLo = horizontal ? Math.min(p0.x, p3.x) : Math.min(p0.y, p3.y);
+  const aSpan = Math.max((horizontal ? Math.abs(p3.x - p0.x) : Math.abs(p3.y - p0.y)) || 1, 1);
+  for (let k = 0; k <= OBSTACLE_SCAN_STEPS; k++) {
+    const c = aLo - aSpan + k * ((3 * aSpan) / OBSTACLE_SCAN_STEPS);
+    consider(
+      horizontal ? point(c, p0.y) : point(p0.x, c),
+      horizontal ? point(c, p3.y) : point(p3.x, c),
+    );
+  }
+  // Topology B — transposed channel: the dog-leg runs perpendicular at an offset `d`, so an obstacle on
+  // the straight port-to-port line is cleared by going above/below (or left/right of) it.
+  const bCenter = horizontal ? (p0.y + p3.y) / 2 : (p0.x + p3.x) / 2;
+  const bSpan = Math.max(aSpan, 200); // reach far enough to clear tall/wide obstacles either side
+  for (let k = 0; k <= OBSTACLE_SCAN_STEPS; k++) {
+    const d = bCenter - bSpan + k * ((2 * bSpan) / OBSTACLE_SCAN_STEPS);
+    consider(
+      horizontal ? point(p0.x, d) : point(d, p0.y),
+      horizontal ? point(p3.x, d) : point(d, p3.y),
+    );
+  }
+  return { m1: best.m1, m2: best.m2 };
+};
+
 export const spreadPorts = (scene: Scene): Scene => {
   const boxOf = boxOfNode(scene);
   const along = (side: Side, other: RouteBox): number =>
@@ -130,6 +211,24 @@ export const spreadPorts = (scene: Scene): Scene => {
       rankOf.set(stub, { rank: i, count: group.length });
     });
   }
+  // Candidate obstacles: every non-container node box (a container is a region, not an obstacle). Each
+  // edge excludes its own two endpoints below.
+  const obstacleNodes = scene.nodes.filter((n) => n.shape !== "container");
+  const obstacleBoxes = new Map<string, RouteBox[]>(
+    scene.edges.map((e) => [
+      e.id,
+      obstacleNodes
+        .filter((n) => n.id !== e.from && n.id !== e.to)
+        .map(
+          (n): RouteBox => ({
+            x: n.bounds.origin.x,
+            y: n.bounds.origin.y,
+            w: n.bounds.size.width,
+            h: n.bounds.size.height,
+          }),
+        ),
+    ]),
+  );
   const edges = scene.edges.map((e, i): SceneEdge => {
     const s = stubs[i];
     const a = boxOf.get(e.from);
@@ -152,8 +251,11 @@ export const spreadPorts = (scene: Scene): Scene => {
     const off = Math.max(-limit, Math.min(limit, raw));
     const midX = (p0.x + p3.x) / 2 + (horizontal ? off : 0);
     const midY = (p0.y + p3.y) / 2 + (horizontal ? 0 : off);
-    const m1 = horizontal ? point(midX, p0.y) : point(p0.x, midY);
-    const m2 = horizontal ? point(midX, p3.y) : point(p3.x, midY);
+    const sm1 = horizontal ? point(midX, p0.y) : point(p0.x, midY);
+    const sm2 = horizontal ? point(midX, p3.y) : point(p3.x, midY);
+    // Reroute around any non-endpoint, non-container node the staggered channel would cut through.
+    const obstacles = obstacleBoxes.get(e.id) ?? [];
+    const { m1, m2 } = avoidObstacles(p0, p3, sm1, sm2, horizontal, obstacles);
     // A label anchored on the channel leg follows the new route (its old anchor is now stale).
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };

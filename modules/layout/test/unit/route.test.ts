@@ -81,6 +81,44 @@ describe("spreadPorts", () => {
     }
   });
 
+  // Reuse the energy module's geometry to assert "no leg passes through the obstacle box".
+  const through = (a: { x: number; y: number }, b: { x: number; y: number }, box: ReturnType<typeof node>): boolean => {
+    const x0 = Math.min(a.x, b.x);
+    const x1 = Math.max(a.x, b.x);
+    const y0 = Math.min(a.y, b.y);
+    const y1 = Math.max(a.y, b.y);
+    const bx = box.bounds.origin.x;
+    const by = box.bounds.origin.y;
+    return x0 < bx + box.bounds.size.width && x1 > bx && y0 < by + box.bounds.size.height && y1 > by;
+  };
+  const routeHitsObstacle = (wp: readonly { x: number; y: number }[], box: ReturnType<typeof node>): boolean => {
+    for (let i = 1; i < wp.length; i++) {
+      const a = wp[i - 1];
+      const b = wp[i];
+      if (a !== undefined && b !== undefined && through(a, b, box)) return true;
+    }
+    return false;
+  };
+
+  it("reroutes around a node sitting directly on the straight A→B line (obstacle avoidance)", () => {
+    // A and B are horizontally aligned; M sits squarely between them, on the direct line.
+    const a = node("a", 0, 100);
+    const m = node("m", 150, 100); // obstacle, dead centre between a (x0) and b (x300)
+    const b = node("b", 300, 100);
+    const scene = {
+      nodes: [a, m, b],
+      edges: [edge("e0", "a", "b")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 340, 200),
+    };
+    const out = spreadPorts(scene);
+    const wp = out.edges[0]?.waypoints ?? [];
+    // The straight route would gore M; the detour must clear it while still joining a → b.
+    expect(routeHitsObstacle(wp, m)).toBe(false);
+    expect(wp.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("leaves a self-loop / dangling edge untouched", () => {
     const scene = {
       nodes: [node("a", 0, 0)],

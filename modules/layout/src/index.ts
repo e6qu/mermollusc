@@ -12,6 +12,7 @@ export {
   noSiblingOverlaps,
   containersEncloseMembers,
   styleOk,
+  pieSlicesTileCircle,
 } from "./core/index.js";
 export type {
   LayoutGraph,

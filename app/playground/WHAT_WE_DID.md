@@ -807,3 +807,7 @@
   crossing of a few deterministic ELK candidates; default (off) is unchanged. Opt-in, like Sketch/Theme.
 - The "Tidy layout" toggle now also tidies gitGraph (branch-lane reordering to cut cross-lane crossings),
   on top of the layered families.
+- "Organic" toggle (#organic, persisted): force-based (ELK stress) layout for flowchart/state — a
+  free-form alternative to the layered default. Opt-in, like Tidy/Sketch.
+- Edge routing now avoids obstacles automatically (an edge that would cross an unrelated node detours
+  around it), via the layout's `spreadPorts` — no UI, on by default since it only changes crossing routes.

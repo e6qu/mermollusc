@@ -125,3 +125,29 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     extent: rect(0, 0, width, height),
   });
 };
+
+// Family-context style invariant: a pie's slices must tile the full circle (their angular spans sum to
+// 2π). The scene's wedges mix the slices with the legend colour-swatches (each a full disc at its own
+// centre), which is why this lives here — only the layout knows the slices all share the pie centre, so
+// it groups by centre and checks the largest group (the slices). Vacuously true with no wedges.
+export const pieSlicesTileCircle = (scene: Scene): boolean => {
+  if (scene.wedges.length === 0) return true;
+  const spanByCentre = new Map<string, number>();
+  const countByCentre = new Map<string, number>();
+  for (const w of scene.wedges) {
+    const key = `${Math.round(w.center.x)},${Math.round(w.center.y)}`;
+    spanByCentre.set(key, (spanByCentre.get(key) ?? 0) + (w.endAngle - w.startAngle));
+    countByCentre.set(key, (countByCentre.get(key) ?? 0) + 1);
+  }
+  let sliceKey: string | null = null;
+  let most = 0;
+  for (const [key, n] of countByCentre) {
+    if (n > most) {
+      most = n;
+      sliceKey = key;
+    }
+  }
+  return sliceKey === null
+    ? true
+    : Math.abs((spanByCentre.get(sliceKey) ?? 0) - Math.PI * 2) < 1e-3;
+};
