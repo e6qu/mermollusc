@@ -800,3 +800,6 @@
   @m/builder, the local document-model, and the collab session (styling is per-client in-session for now
   — positions/groups still sync; sharing styling across peers is the noted follow-up). +e2e (share-link
   round-trip + undo).
+- Edge route control: the context-bar button now cycles a connector through Square → Straight → Curved
+  (was a curve on/off toggle); the route is per-edge overlay state (persists, shares, undoable), curved
+  rendering rounds only the corners, and edge labels follow the edge when its endpoint is dragged.

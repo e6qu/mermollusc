@@ -1,6 +1,7 @@
 export {
   bezierControls,
   smoothSegments,
+  roundedCorners,
   edgeLabelAnchor,
   toDisplayList,
   wedgeColor,

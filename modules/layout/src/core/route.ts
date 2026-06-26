@@ -57,6 +57,7 @@ export const orthogonalRoute = (
 // route whose endpoints are spread into distinct *lanes* along each shared side (ordered by the opposite
 // endpoint so lanes don't cross needlessly). Deterministic — same scene in, same routes out. Edges with a
 // non-box endpoint (or a self-loop) keep their existing waypoints.
+const CHANNEL_GAP = 10; // horizontal/vertical separation between parallel edges' cross-channel legs
 type Side = "T" | "B" | "L" | "R";
 const facingSide = (from: RouteBox, to: RouteBox): Side => {
   const fcx = from.x + from.w / 2;
@@ -141,10 +142,18 @@ export const spreadPorts = (scene: Scene): Scene => {
     const p0 = portAt(a, fs, fr.rank, fr.count);
     const p3 = portAt(b, facingSide(b, a), tr.rank, tr.count);
     // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v): the two
-    // mid points sit on the central cross-channel leg.
+    // mid points sit on the central cross-channel leg. Stagger that leg per source-lane so parallel edges
+    // (e.g. several A→B) don't lay their cross-channel legs on top of each other; clamp into the gap so
+    // the leg stays between the two boxes.
     const horizontal = fs === "L" || fs === "R";
-    const m1 = horizontal ? point((p0.x + p3.x) / 2, p0.y) : point(p0.x, (p0.y + p3.y) / 2);
-    const m2 = horizontal ? point((p0.x + p3.x) / 2, p3.y) : point(p3.x, (p0.y + p3.y) / 2);
+    const span = horizontal ? Math.abs(p3.x - p0.x) : Math.abs(p3.y - p0.y);
+    const raw = (fr.rank - (fr.count - 1) / 2) * CHANNEL_GAP;
+    const limit = (span / 2) * 0.6;
+    const off = Math.max(-limit, Math.min(limit, raw));
+    const midX = (p0.x + p3.x) / 2 + (horizontal ? off : 0);
+    const midY = (p0.y + p3.y) / 2 + (horizontal ? 0 : off);
+    const m1 = horizontal ? point(midX, p0.y) : point(p0.x, midY);
+    const m2 = horizontal ? point(midX, p3.y) : point(p3.x, midY);
     // A label anchored on the channel leg follows the new route (its old anchor is now stale).
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };

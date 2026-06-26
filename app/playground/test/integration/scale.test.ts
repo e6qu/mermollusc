@@ -19,6 +19,7 @@ class NoopCtx implements Canvas2D {
   moveTo(): void {}
   lineTo(): void {}
   bezierCurveTo(): void {}
+  quadraticCurveTo(): void {}
   closePath(): void {}
   stroke(): void {}
   fill(): void {}

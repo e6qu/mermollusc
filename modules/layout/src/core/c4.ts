@@ -1,5 +1,6 @@
 import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
+import { spreadPorts } from "./route.js";
 import type {
   C4Ast,
   C4Element,
@@ -149,5 +150,8 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
     width = Math.max(width, b.x + b.w);
     height = Math.max(height, b.y + b.h);
   }
-  return ok({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) });
+  // Spread connectors into per-side lanes so links sharing a node don't stack into one line.
+  return ok(
+    spreadPorts({ nodes, edges, wedges: [], decorations: [], extent: rect(0, 0, width, height) }),
+  );
 };

@@ -247,6 +247,45 @@ export const bezierControls = (a: Point, b: Point): readonly [Point, Point] => {
   return [point(a.x, a.y + dy * 0.5), point(b.x, b.y - dy * 0.5)];
 };
 
+// A rounded-corner path: straight legs with a quadratic arc at each bend, so the curve is *only at the
+// corners* (not a continuous spline). The path starts at `points[0]`; each op is either a straight line
+// (`ctrl: null`) or a quadratic bezier whose control point is the original corner. Segments shorter than
+// twice the radius round less, so a tight dog-leg still reads cleanly. Endpoints stay exact (arrowheads
+// don't move). Used for the "curved" edge route style over an orthogonal route.
+export interface CornerOp {
+  readonly ctrl: Point | null;
+  readonly to: Point;
+}
+export const roundedCorners = (points: readonly Point[], radius: number): readonly CornerOp[] => {
+  const ops: CornerOp[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const cur = points[i];
+    if (prev === undefined || cur === undefined) continue;
+    const next = points[i + 1];
+    if (next === undefined) {
+      ops.push({ ctrl: null, to: cur }); // last point: a straight finish onto the endpoint
+      break;
+    }
+    const d1 = Math.hypot(cur.x - prev.x, cur.y - prev.y);
+    const d2 = Math.hypot(next.x - cur.x, next.y - cur.y);
+    const r = Math.min(radius, d1 / 2, d2 / 2);
+    if (r < 0.5 || d1 === 0 || d2 === 0) {
+      ops.push({ ctrl: null, to: cur }); // negligible/degenerate corner → keep it sharp
+      continue;
+    }
+    ops.push({
+      ctrl: null,
+      to: point(cur.x - ((cur.x - prev.x) / d1) * r, cur.y - ((cur.y - prev.y) / d1) * r),
+    });
+    ops.push({
+      ctrl: cur,
+      to: point(cur.x + ((next.x - cur.x) / d2) * r, cur.y + ((next.y - cur.y) / d2) * r),
+    });
+  }
+  return ops;
+};
+
 // A smooth cubic-bezier spline through every waypoint (Catmull-Rom → bezier), so a multi-segment routed
 // edge can render as one flowing curve instead of straight dog-legs, while still ending exactly on the
 // last waypoint (the arrowhead stays put). Each segment carries the two control points + its endpoint;

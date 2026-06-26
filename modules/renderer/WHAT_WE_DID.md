@@ -147,3 +147,6 @@
 - `smoothSegments`: a Catmull-Rom→bezier spline through every edge waypoint, so a multi-segment routed
   edge can render as one flowing curve (keeping its arrowhead). Canvas + SVG backends both use it for a
   curved edge with >2 points; the existing 2-point bezier (mindmap/gitGraph) is unchanged.
+- `roundedCorners`: a rounded-corner path (straight legs + a quadratic arc at each bend), so a "curved"
+  edge route curves only AT the corners, not as a continuous spline. Replaces the multi-point
+  `smoothSegments` rendering for curved edges (the 2-point mindmap/gitGraph bezier is unchanged).
