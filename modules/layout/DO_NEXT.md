@@ -58,3 +58,12 @@ a spread lane doesn't cross an intervening node (step 3 — the larger piece).
 cross a THIRD node sitting in the channel. Real avoidance needs a router that bends around intervening
 boxes: a visibility-graph or a grid A* over the node rectangles (per LAYOUT_RESEARCH). Substantial;
 deferred deliberately rather than half-done.
+
+## Energy-aware layout — next slices (plan agreed: deterministic candidate-and-select, opt-in)
+PR 1 (metric + family-agnostic invariants + baseline) is in. Next:
+- PR 2: a "Tidy layout" opt-in toggle. When on, the layered families (flowchart/state/er/class/req) run a
+  few DETERMINISTIC ELK candidates (varying `considerModelOrder` / `crossingMinimization`), each filtered
+  through its style invariant, and `lowestEnergy` picks the survivor. Default output unchanged (no golden
+  churn). Add family-specific invariants where the family is known (sequence row, gantt axis, pie 2π…).
+- PR 3 (optional): gitGraph lane / mindmap angular ordering candidates; opt-in ELK `stress` algorithm.
+Refine the timeline-spine false positive (axis edge) in the metric if it ever drives selection.

@@ -264,3 +264,11 @@
 - Edge routing v2: `spreadPorts` now also runs for network + c4 (were centre-to-centre straight lines),
   and it staggers parallel edges' cross-channel legs (clamped into the gap) so several A→B connectors no
   longer lay their middle legs on top of each other.
+- Energy-aware layout, PR 1 (measurement only, no behaviour change): `energy.ts` — a pure
+  `layoutEnergy(scene)` scoring edge crossings (×10), edges through unrelated nodes (×6, containers
+  excluded as regions), node overlaps (×20) + a faint tidiness term; `lowestEnergy` picks the min
+  deterministically (for the future candidate-and-select). `invariants.ts` — family-agnostic style
+  predicates (`noSiblingOverlaps`, `containersEncloseMembers`, `styleOk`) that gate candidate eligibility
+  and are now asserted across every example fixture, locking today's styles as the baseline. The golden
+  test logs each example's energy (all examples are crossing-free; the timeline's 1 edge-node hit is its
+  intended axis spine).
