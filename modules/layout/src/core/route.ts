@@ -198,32 +198,104 @@ const avoidObstacles = (
 // the edge's existing endpoints (unlike `spreadPorts`, which also re-assigns ports). For already-routed
 // scenes — the ELK families under "Tidy" — so their edges bend around residual obstacles too. Edges that
 // already clear every box are returned untouched, so this changes nothing when nothing crosses.
+const routeBoxOf = (n: Scene["nodes"][number]): RouteBox => ({
+  x: n.bounds.origin.x,
+  y: n.bounds.origin.y,
+  w: n.bounds.size.width,
+  h: n.bounds.size.height,
+});
+
+// Per-edge obstacle boxes — what an edge should avoid. A leaf node is an obstacle unless it's an
+// endpoint. A group CONTAINER is an obstacle UNLESS the edge enters it (an endpoint is that container or
+// nested inside it), so edges keep out of groups they don't belong to but can still reach an element
+// inside one. A tendency, not a guarantee: if no clear route exists, the routers fall back.
+const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]> => {
+  const parentOf = new Map<string, string | null>(scene.nodes.map((n) => [n.id, n.parent]));
+  const ancestorsOf = (id: string): ReadonlySet<string> => {
+    const out = new Set<string>();
+    let p = parentOf.get(id) ?? null;
+    for (let guard = 0; p !== null && guard < 64; guard++) {
+      out.add(p);
+      p = parentOf.get(p) ?? null;
+    }
+    return out;
+  };
+  return new Map(
+    scene.edges.map((e) => {
+      const entered = new Set<string>([...ancestorsOf(e.from), ...ancestorsOf(e.to)]);
+      const boxes = scene.nodes
+        .filter((n) => {
+          if (n.id === e.from || n.id === e.to) return false;
+          if (n.shape === "container") return !entered.has(n.id);
+          return true;
+        })
+        .map(routeBoxOf);
+      return [e.id, boxes];
+    }),
+  );
+};
+
+// The four side-centre mount points of a box (right, left, bottom, top) — so a detour can leave/enter a
+// node on whichever side gives the clearest route, instead of always the one the layout first picked.
+const sideMounts = (b: RouteBox): readonly Point[] => [
+  point(b.x + b.w, b.y + b.h / 2),
+  point(b.x, b.y + b.h / 2),
+  point(b.x + b.w / 2, b.y + b.h),
+  point(b.x + b.w / 2, b.y),
+];
+
+// Route an obstacle-crossing edge with the maze router, trying every (from-side, to-side) mount-point
+// pair and keeping the path with the fewest obstacle hits, then the shortest. Returns null when the
+// edge already clears everything or no better orthogonal path is found.
+const mazeAroundObstacles = (
+  fromBox: RouteBox | null,
+  toBox: RouteBox | null,
+  start: Point,
+  end: Point,
+  current: readonly Point[],
+  obstacles: readonly RouteBox[],
+): readonly Point[] | null => {
+  if (routeHits(current, obstacles) === 0) return null;
+  const starts = fromBox === null ? [start] : sideMounts(fromBox);
+  const ends = toBox === null ? [end] : sideMounts(toBox);
+  let best: { path: readonly Point[]; hits: number; len: number } | null = null;
+  for (const s of starts) {
+    for (const t of ends) {
+      const maze = mazeRoute(s, t, obstacles, OBSTACLE_CLEARANCE);
+      if (maze === null || maze.length < 2) continue;
+      const hits = routeHits(maze, obstacles);
+      const len = routeLength(maze);
+      if (best === null || hits < best.hits || (hits === best.hits && len < best.len)) {
+        best = { path: maze, hits, len };
+      }
+    }
+  }
+  return best === null ? null : best.path;
+};
+
 export const mazeRerouteEdges = (scene: Scene): Scene => {
-  const boxed = scene.nodes
-    .filter((n) => n.shape !== "container")
-    .map((n) => ({
-      id: n.id,
-      box: {
-        x: n.bounds.origin.x,
-        y: n.bounds.origin.y,
-        w: n.bounds.size.width,
-        h: n.bounds.size.height,
-      },
-    }));
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
   const edges = scene.edges.map((e): SceneEdge => {
     const start = e.waypoints[0];
     const end = e.waypoints[e.waypoints.length - 1];
     if (start === undefined || end === undefined || e.from === e.to) return e;
-    const obstacles = boxed.filter((b) => b.id !== e.from && b.id !== e.to).map((b) => b.box);
-    if (routeHits(e.waypoints, obstacles) === 0) return e;
-    const maze = mazeRoute(start, end, obstacles, OBSTACLE_CLEARANCE);
-    if (maze !== null && maze.length >= 2 && routeHits(maze, obstacles) === 0) {
-      const [w0, w1, ...wr] = maze;
+    const obstacles = obstacleBoxes.get(e.id) ?? [];
+    const path = mazeAroundObstacles(
+      boxById.get(e.from) ?? null,
+      boxById.get(e.to) ?? null,
+      start,
+      end,
+      e.waypoints,
+      obstacles,
+    );
+    if (path !== null) {
+      const [w0, w1, ...wr] = path;
       if (w0 !== undefined && w1 !== undefined) {
         return {
           ...e,
           waypoints: twoOrMore(w0, w1, ...wr),
-          labelPos: e.labelPos === null ? null : pathMidpoint(maze),
+          labelPos: e.labelPos === null ? null : pathMidpoint(path),
         };
       }
     }
@@ -233,13 +305,22 @@ export const mazeRerouteEdges = (scene: Scene): Scene => {
 };
 
 // De-collide mid-edge labels on dense diagrams: where two edge labels (each placed at its `labelPos`)
-// would overlap, nudge the later one vertically clear of the earlier. Greedy and order-stable — a label
-// that fits is left exactly where the router put it, so this is a no-op on sparse diagrams. Only edges
-// with a label AND an explicit `labelPos` participate (a null `labelPos` is anchored later by the
-// renderer). `measure` is the pure text metric the layout already uses.
+// would overlap, move the later one to the NEAREST clear spot — searching outward in all four
+// directions, so it follows the edge (smallest displacement) rather than dropping straight down. Greedy
+// and order-stable; a label that fits is left exactly where the router put it (a no-op when nothing
+// overlaps). Only edges with a label AND an explicit `labelPos` participate (a null one is anchored later
+// by the renderer). `measure` is the pure text metric the layout already uses.
 const LABEL_HEIGHT = 16;
 const LABEL_X_PAD = 8; // horizontal padding folded into a label's measured width
-const LABEL_V_GAP = 4; // minimum vertical gap kept between two stacked labels
+const LABEL_GAP = 4; // minimum clear gap kept between two labels
+const DECOLLIDE_STEP = 6;
+const DECOLLIDE_MAX = 140; // give up past this displacement and leave the label put
+const DECOLLIDE_DIRS: ReadonlyArray<readonly [number, number]> = [
+  [0, 1],
+  [0, -1],
+  [1, 0],
+  [-1, 0],
+];
 export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene => {
   interface LabelBox {
     readonly cx: number;
@@ -247,20 +328,32 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     readonly halfW: number;
   }
   const placed: LabelBox[] = [];
-  const overlaps = (a: LabelBox, b: LabelBox): boolean =>
-    Math.abs(a.cx - b.cx) < a.halfW + b.halfW && Math.abs(a.cy - b.cy) < LABEL_HEIGHT + LABEL_V_GAP;
+  const overlaps = (cx: number, cy: number, halfW: number, b: LabelBox): boolean =>
+    Math.abs(cx - b.cx) < halfW + b.halfW + LABEL_GAP &&
+    Math.abs(cy - b.cy) < LABEL_HEIGHT + LABEL_GAP;
+  const fits = (cx: number, cy: number, halfW: number): boolean =>
+    placed.every((p) => !overlaps(cx, cy, halfW, p));
   const edges = scene.edges.map((e): SceneEdge => {
     const anchor = e.labelPos;
     if (e.label === null || anchor === null) return e;
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
-    let cy: number = anchor.y;
-    for (let guard = 0; guard < 64; guard++) {
-      const blocker = placed.find((p) => overlaps({ cx: anchor.x, cy, halfW }, p));
-      if (blocker === undefined) break;
-      cy = blocker.cy + LABEL_HEIGHT + LABEL_V_GAP; // drop just below whatever it hit, then retest
+    const ax: number = anchor.x;
+    const ay: number = anchor.y;
+    let spot: { readonly cx: number; readonly cy: number } | null = null;
+    if (!fits(ax, ay, halfW)) {
+      for (let r = DECOLLIDE_STEP; r <= DECOLLIDE_MAX && spot === null; r += DECOLLIDE_STEP) {
+        for (const [dx, dy] of DECOLLIDE_DIRS) {
+          if (fits(ax + dx * r, ay + dy * r, halfW)) {
+            spot = { cx: ax + dx * r, cy: ay + dy * r };
+            break;
+          }
+        }
+      }
     }
-    placed.push({ cx: anchor.x, cy, halfW });
-    return cy === anchor.y ? e : { ...e, labelPos: point(anchor.x, cy) };
+    const cx = spot?.cx ?? ax;
+    const cy = spot?.cy ?? ay;
+    placed.push({ cx, cy, halfW });
+    return spot === null ? e : { ...e, labelPos: point(cx, cy) };
   });
   return { ...scene, edges };
 };
@@ -298,24 +391,9 @@ export const spreadPorts = (scene: Scene): Scene => {
       rankOf.set(stub, { rank: i, count: group.length });
     });
   }
-  // Candidate obstacles: every non-container node box (a container is a region, not an obstacle). Each
-  // edge excludes its own two endpoints below.
-  const obstacleNodes = scene.nodes.filter((n) => n.shape !== "container");
-  const obstacleBoxes = new Map<string, RouteBox[]>(
-    scene.edges.map((e) => [
-      e.id,
-      obstacleNodes
-        .filter((n) => n.id !== e.from && n.id !== e.to)
-        .map(
-          (n): RouteBox => ({
-            x: n.bounds.origin.x,
-            y: n.bounds.origin.y,
-            w: n.bounds.size.width,
-            h: n.bounds.size.height,
-          }),
-        ),
-    ]),
-  );
+  // Per-edge obstacles (leaf nodes, plus any group container the edge doesn't enter) — so a spread route
+  // also keeps out of groups it doesn't belong to.
+  const obstacleBoxes = obstaclesForEdges(scene);
   const edges = scene.edges.map((e, i): SceneEdge => {
     const s = stubs[i];
     const a = boxOf.get(e.from);

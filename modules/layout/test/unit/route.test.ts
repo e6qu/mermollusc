@@ -82,7 +82,8 @@ describe("spreadPorts", () => {
   });
 
   // Reuse the energy module's geometry to assert "no leg passes through the obstacle box".
-  const through = (a: { x: number; y: number }, b: { x: number; y: number }, box: ReturnType<typeof node>): boolean => {
+  type Boxed = { readonly bounds: ReturnType<typeof node>["bounds"] };
+  const through = (a: { x: number; y: number }, b: { x: number; y: number }, box: Boxed): boolean => {
     const x0 = Math.min(a.x, b.x);
     const x1 = Math.max(a.x, b.x);
     const y0 = Math.min(a.y, b.y);
@@ -91,7 +92,7 @@ describe("spreadPorts", () => {
     const by = box.bounds.origin.y;
     return x0 < bx + box.bounds.size.width && x1 > bx && y0 < by + box.bounds.size.height && y1 > by;
   };
-  const routeHitsObstacle = (wp: readonly { x: number; y: number }[], box: ReturnType<typeof node>): boolean => {
+  const routeHitsObstacle = (wp: readonly { x: number; y: number }[], box: Boxed): boolean => {
     for (let i = 1; i < wp.length; i++) {
       const a = wp[i - 1];
       const b = wp[i];
@@ -157,6 +158,47 @@ describe("spreadPorts", () => {
     const y = (i: number) => out.edges[i]?.labelPos?.y ?? 0;
     expect(Math.abs(y(0) - y(1))).toBeGreaterThanOrEqual(16); // pushed at least a label-height apart
     expect(out.edges[2]?.labelPos).toEqual(point(400, 400)); // the distant label is untouched
+  });
+
+  const container = (id: string, x: number, y: number, w: number, h: number, parent: string | null = null) => ({
+    ...node(id, x, y),
+    bounds: rect(x, y, w, h),
+    shape: "container" as const,
+    parent: parent === null ? null : brand<string, "SceneNodeId">(parent),
+  });
+
+  it("routes an edge AROUND a group it doesn't enter, but THROUGH one it connects into", () => {
+    const a = node("a", 0, 140);
+    const b = node("b", 460, 140);
+    const g = container("g", 150, 90, 140, 120); // a group straddling the direct a→b line
+    // a → b: neither endpoint is inside g, so g is an obstacle — the route must avoid it.
+    const outside = { ...edge("e0", "a", "b"), waypoints: twoOrMore(point(40, 155), point(460, 155)) };
+    const out = mazeRerouteEdges({
+      nodes: [a, g, b],
+      edges: [outside],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 520, 300),
+    });
+    expect(routeHitsObstacle(out.edges[0]?.waypoints ?? [], g)).toBe(false);
+
+    // An edge whose endpoint sits INSIDE g may cross g's box (it has to, to reach the member).
+    const inner = node("inner", 180, 130); // a leaf nested in g
+    const innerNode = { ...inner, parent: brand<string, "SceneNodeId">("g") };
+    const entering = {
+      ...edge("e1", "a", "inner"),
+      waypoints: twoOrMore(point(40, 155), point(180, 145)),
+    };
+    const out2 = mazeRerouteEdges({
+      nodes: [a, g, innerNode],
+      edges: [entering],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 520, 300),
+    });
+    // It reaches the inner node (endpoints preserved); g is not treated as a wall for its own member.
+    const wp = out2.edges[0]?.waypoints ?? [];
+    expect(wp[wp.length - 1]).toEqual(point(180, 145));
   });
 
   it("leaves a self-loop / dangling edge untouched", () => {

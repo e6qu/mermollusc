@@ -46,6 +46,7 @@ import {
   layoutPie,
   layoutSequence,
   layoutTimeline,
+  decollideEdgeLabels,
   lowestEnergy,
   mazeRerouteEdges,
   styleOk,
@@ -806,17 +807,12 @@ const layoutRequirement = (
 
 // Routes by family: flowchart through ELK (async); the rest through pure layouts. `measure` sizes
 // labels — callers pass a real canvas `measureText`, or `heuristicMeasure` for the char-width metric.
-export const layoutDiagram = async (
+const layoutByFamily = async (
   ast: DiagramAst,
   measure: MeasureText,
-  // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
-  collapsed: ReadonlySet<NodeId> = new Set(),
-  // "Tidy layout": for the layered families, try a few deterministic ELK candidates and keep the
-  // lowest-energy one that preserves the family's style. The fixed-style families ignore it.
-  tidy = false,
-  // "Organic": opt-in force-based (ELK stress) layout for flowchart/state — a deliberately free-form
-  // look, never a default, and only for the two families where a non-hierarchical graph reads well.
-  organic = false,
+  collapsed: ReadonlySet<NodeId>,
+  tidy: boolean,
+  organic: boolean,
 ): Promise<Result<Scene, LayoutError>> => {
   switch (ast.kind) {
     case "flowchart":
@@ -852,4 +848,22 @@ export const layoutDiagram = async (
     case "gantt":
       return layoutGantt(ast, measure);
   }
+};
+
+export const layoutDiagram = async (
+  ast: DiagramAst,
+  measure: MeasureText,
+  // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
+  collapsed: ReadonlySet<NodeId> = new Set(),
+  // "Tidy layout": for the layered families, try a few deterministic ELK candidates and keep the
+  // lowest-energy one that preserves the family's style. The fixed-style families ignore it.
+  tidy = false,
+  // "Organic": opt-in force-based (ELK stress) layout for flowchart/state — a deliberately free-form
+  // look, never a default, and only for the two families where a non-hierarchical graph reads well.
+  organic = false,
+): Promise<Result<Scene, LayoutError>> => {
+  const routed = await layoutByFamily(ast, measure, collapsed, tidy, organic);
+  // De-collide mid-edge labels for every family (a no-op when nothing overlaps), so dense diagrams —
+  // including the ELK families, whose labels this didn't reach before — don't stack captions.
+  return map(routed, (scene) => decollideEdgeLabels(scene, measure));
 };

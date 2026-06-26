@@ -313,3 +313,12 @@
 - `decollideEdgeLabels(scene, measure)`: greedily nudges overlapping mid-edge labels vertically apart
   (a no-op when none overlap); applied after `spreadPorts` in cloud/network/c4 to de-clutter dense
   architecture diagrams.
+- Smarter edge routing (tendencies, with fallback): per-edge obstacles now include any GROUP CONTAINER
+  the edge doesn't enter (an endpoint isn't that container or nested in it), so edges keep out of groups
+  they don't belong to; the obstacle-crossing maze reroute now tries all four side mount-points of each
+  endpoint and keeps the lowest-crossing, then shortest, path. Shared `obstaclesForEdges` used by both
+  `spreadPorts` and `mazeRerouteEdges`.
+- Edge-label de-collision v2: overlapping mid-edge labels move to the NEAREST clear spot (outward search
+  in all four directions, smallest displacement — follows the edge instead of a fixed vertical drop), and
+  it now runs once for EVERY family in `layoutDiagram` (the ELK families included), not just the
+  spreadPorts ones.
