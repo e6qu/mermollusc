@@ -1,5 +1,5 @@
-import { point, twoOrMore, type Point, type TwoOrMore } from "@m/std";
-import type { Scene, SceneEdge } from "@m/contracts";
+import { point, rect, twoOrMore, type Point, type TwoOrMore } from "@m/std";
+import type { Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
 import type { MeasureText } from "./graph.js";
 import { mazeRoute, segmentThroughBox, OBSTACLE_CLEARANCE } from "./maze.js";
 
@@ -393,11 +393,6 @@ const orthSegmentsOverlap = (a1: Point, a2: Point, b1: Point, b2: Point): boolea
   const hi = Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y));
   return hi - lo > OVERLAP_MIN;
 };
-// A "conflict" between two edge segments: a perpendicular crossing OR a parallel overlap. The optimiser
-// minimises both — the overlap term is what actually de-stacks the heavily-overlapped architecture edges.
-const segmentsConflict = (a1: Point, a2: Point, b1: Point, b2: Point): boolean =>
-  orthSegmentsCross(a1, a2, b1, b2) || orthSegmentsOverlap(a1, a2, b1, b2);
-
 const segmentsOf = (wp: readonly Point[]): ReadonlyArray<readonly [Point, Point]> => {
   const out: [Point, Point][] = [];
   for (let i = 1; i < wp.length; i++) {
@@ -407,18 +402,22 @@ const segmentsOf = (wp: readonly Point[]): ReadonlyArray<readonly [Point, Point]
   }
   return out;
 };
+// A "conflict" between two edge segments is a perpendicular CROSSING or a parallel OVERLAP; the optimiser
+// below minimises both (re-routing), and `separateOverlaps` then de-stacks any remaining parallel runs
+// onto separate lanes without re-routing.
 const conflictsBetween = (
   path: readonly Point[],
   others: ReadonlyArray<readonly [Point, Point]>,
 ): number => {
   let n = 0;
   for (const [a, b] of segmentsOf(path)) {
-    for (const [c, d] of others) if (segmentsConflict(a, b, c, d)) n++;
+    for (const [c, d] of others)
+      if (orthSegmentsCross(a, b, c, d) || orthSegmentsOverlap(a, b, c, d)) n++;
   }
   return n;
 };
 const MAX_CROSS_SWEEPS = 3;
-const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with conflicts left
+const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
 
 const totalConflicts = (edges: readonly SceneEdge[]): number => {
   const segs = edges.map((e) => segmentsOf(e.waypoints));
@@ -428,7 +427,9 @@ const totalConflicts = (edges: readonly SceneEdge[]): number => {
       const si = segs[i];
       const sj = segs[j];
       if (si === undefined || sj === undefined) continue;
-      for (const [a, b] of si) for (const [c, d] of sj) if (segmentsConflict(a, b, c, d)) n++;
+      for (const [a, b] of si)
+        for (const [c, d] of sj)
+          if (orthSegmentsCross(a, b, c, d) || orthSegmentsOverlap(a, b, c, d)) n++;
     }
   }
   return n;
@@ -627,7 +628,306 @@ export const minimizeCrossings = (scene: Scene): Scene => {
   return { ...scene, edges: bestEdges };
 };
 
-export const spreadPorts = (scene: Scene): Scene => {
+const LANE_GAP = 8; // perpendicular separation between de-stacked parallel edge segments
+const OVERLAP_SWEEPS = 4; // bounded passes; each separates the stacks the previous pass exposed
+const SEG_AXIS_EPS = 0.5; // a segment counts as axis-aligned when its extent on one axis is below this
+
+// One axis-aligned interior segment of a route, indexed so a perpendicular nudge can be applied back.
+interface OverlapSeg {
+  readonly edge: number; // index into the scene's edge list
+  readonly start: number; // index of the segment's first waypoint within that edge
+  readonly vertical: boolean;
+  readonly track: number; // x for a vertical run, y for a horizontal one — the line it sits on
+  readonly lo: number; // span along the run …
+  readonly hi: number; // … from lo to hi
+}
+
+const anyOverlap = (edges: readonly SceneEdge[]): boolean => {
+  const segs = edges.map((e) => segmentsOf(e.waypoints));
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const si = segs[i];
+      const sj = segs[j];
+      if (si === undefined || sj === undefined) continue;
+      for (const [a, b] of si)
+        for (const [c, d] of sj) if (orthSegmentsOverlap(a, b, c, d)) return true;
+    }
+  }
+  return false;
+};
+
+// Within one track, give each maximal run of mutually-overlapping segments a distinct lane (greedy
+// interval colouring), then a centred perpendicular offset per lane. Records offsets keyed by the segment
+// object itself — no stringly composite key. Singleton runs get no offset (they aren't stacked).
+const assignLaneOffsets = (group: readonly OverlapSeg[], into: Map<OverlapSeg, number>): void => {
+  const sorted = [...group].sort((a, b) => a.lo - b.lo || a.edge - b.edge);
+  let i = 0;
+  while (i < sorted.length) {
+    const head = sorted[i];
+    if (head === undefined) {
+      i++;
+      continue;
+    }
+    const run: OverlapSeg[] = [head];
+    let maxHi = head.hi;
+    let j = i;
+    while (j + 1 < sorted.length) {
+      const next = sorted[j + 1];
+      if (next === undefined || next.lo >= maxHi - OVERLAP_MIN) break;
+      run.push(next);
+      maxHi = Math.max(maxHi, next.hi);
+      j++;
+    }
+    if (run.length >= 2) {
+      const laneEnd: number[] = []; // laneEnd[L] = hi of the segment currently occupying lane L
+      const laneOf = new Map<OverlapSeg, number>();
+      for (const sg of run) {
+        let lane = -1;
+        for (const [L, end] of laneEnd.entries())
+          if (end <= sg.lo) {
+            lane = L;
+            break;
+          }
+        if (lane === -1) {
+          lane = laneEnd.length;
+          laneEnd.push(sg.hi);
+        } else laneEnd[lane] = sg.hi;
+        laneOf.set(sg, lane);
+      }
+      const lanes = laneEnd.length;
+      for (const sg of run) {
+        const lane = laneOf.get(sg);
+        if (lane === undefined) continue;
+        into.set(sg, (lane - (lanes - 1) / 2) * LANE_GAP);
+      }
+    }
+    i = j + 1;
+  }
+};
+
+// Separate edge segments that run collinear on top of each other ("overlap") by nudging them onto
+// adjacent parallel tracks — a topology-preserving LANE ASSIGNMENT, not a re-route. Only INTERIOR segments
+// move (both endpoints are bends, never a node port); because orthogonal routes alternate horizontal and
+// vertical, shifting a vertical leg in x (or a horizontal leg in y) only lengthens its perpendicular
+// neighbours, so every route stays axis-aligned and connected. A nudge is kept only when it adds neither a
+// node hit nor a new crossing — so it de-stacks what it can cleanly and leaves the rest to crossing-min.
+export const separateOverlaps = (scene: Scene): Scene => {
+  if (!anyOverlap(scene.edges)) return scene; // nothing stacked → byte-identical (no golden churn)
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const routes: Point[][] = scene.edges.map((e) => e.waypoints.map((p) => point(p.x, p.y)));
+
+  const collect = (): OverlapSeg[] => {
+    const out: OverlapSeg[] = [];
+    for (const [edge, w] of routes.entries()) {
+      for (let start = 1; start + 2 < w.length; start++) {
+        const a = w[start];
+        const b = w[start + 1];
+        if (a === undefined || b === undefined) continue;
+        if (Math.abs(a.x - b.x) < SEG_AXIS_EPS)
+          out.push({
+            edge,
+            start,
+            vertical: true,
+            track: a.x,
+            lo: Math.min(a.y, b.y),
+            hi: Math.max(a.y, b.y),
+          });
+        else if (Math.abs(a.y - b.y) < SEG_AXIS_EPS)
+          out.push({
+            edge,
+            start,
+            vertical: false,
+            track: a.y,
+            lo: Math.min(a.x, b.x),
+            hi: Math.max(a.x, b.x),
+          });
+      }
+    }
+    return out;
+  };
+
+  for (let sweep = 0; sweep < OVERLAP_SWEEPS; sweep++) {
+    const segs = collect();
+    const verticalTracks = new Map<number, OverlapSeg[]>(); // keyed by the run's x …
+    const horizontalTracks = new Map<number, OverlapSeg[]>(); // … or y, quantised to a track
+    for (const sg of segs) {
+      const tracks = sg.vertical ? verticalTracks : horizontalTracks;
+      const key = Math.round(sg.track);
+      const g = tracks.get(key);
+      if (g === undefined) tracks.set(key, [sg]);
+      else g.push(sg);
+    }
+    const offset = new Map<OverlapSeg, number>();
+    for (const group of [...verticalTracks.values(), ...horizontalTracks.values()])
+      if (group.length >= 2) assignLaneOffsets(group, offset);
+    if (offset.size === 0) break; // converged — nothing left stacked
+
+    // Per edge, the (dx,dy) for each waypoint that moves; a missing entry means "this waypoint stays put".
+    // A vertical interior segment shifts its two endpoints in x, a horizontal one in y; since the segments
+    // sharing a waypoint are perpendicular, each waypoint takes at most one x- and one y-shift — no clash.
+    const shiftsByEdge: Map<number, { dx: number; dy: number }>[] = routes.map(() => new Map());
+    for (const sg of segs) {
+      const off = offset.get(sg);
+      if (off === undefined) continue;
+      const shifts = shiftsByEdge[sg.edge];
+      if (shifts === undefined) continue;
+      for (const idx of [sg.start, sg.start + 1]) {
+        const prior = shifts.get(idx);
+        const dx = sg.vertical ? off : prior === undefined ? 0 : prior.dx;
+        const dy = sg.vertical ? (prior === undefined ? 0 : prior.dy) : off;
+        shifts.set(idx, { dx, dy });
+      }
+    }
+    for (const [edge, current] of routes.entries()) {
+      const shifts = shiftsByEdge[edge];
+      const sceneEdge = scene.edges[edge];
+      const obstacles = sceneEdge === undefined ? undefined : obstacleBoxes.get(sceneEdge.id);
+      if (shifts === undefined || shifts.size === 0 || obstacles === undefined) continue;
+      const candidate = current.map((p, idx) => {
+        const s = shifts.get(idx);
+        return s === undefined ? p : point(p.x + s.dx, p.y + s.dy);
+      });
+      const others: (readonly [Point, Point])[] = [];
+      for (const [other, w] of routes.entries())
+        if (other !== edge) for (const seg of segmentsOf(w)) others.push(seg);
+      // Keep the nudge unless it WORSENS things — more total conflicts or a new node hit. Net-neutral moves
+      // are allowed: a lane shift that doesn't yet cut conflicts can reposition a stack so a later sweep
+      // resolves it (the sweep count bounds this), which de-stacks more than a strict "must improve now" gate.
+      const addsNodeHit = routeHits(candidate, obstacles) > routeHits(current, obstacles);
+      const worsensConflicts =
+        conflictsBetween(candidate, others) > conflictsBetween(current, others);
+      if (!addsNodeHit && !worsensConflicts) routes[edge] = candidate;
+    }
+  }
+
+  const edges = scene.edges.map((edge, e): SceneEdge => {
+    const pts = routes[e];
+    if (pts === undefined) return edge;
+    const unchanged =
+      edge.waypoints.length === pts.length &&
+      edge.waypoints.every((p, idx) => {
+        const q = pts[idx];
+        return q !== undefined && p.x === q.x && p.y === q.y;
+      });
+    if (unchanged) return edge;
+    const [w0, w1, ...wr] = pts;
+    if (w0 === undefined || w1 === undefined) return edge;
+    return {
+      ...edge,
+      waypoints: twoOrMore(w0, w1, ...wr),
+      labelPos: edge.labelPos === null ? null : pathMidpoint(pts),
+    };
+  });
+  return { ...scene, edges };
+};
+
+const CHANNEL_BASE = 24; // minimum gap kept between two node bands, before lane reservation
+const CHANNEL_MARGIN = 16; // extent padding after expansion
+// Width reserved per edge crossing a channel — a bit over one lane (`LANE_GAP`), since a Z-route's two
+// stubs each want a slot. Tuned so dense architecture channels get enough room for the lane pass to
+// de-stack without crossings, while sparse channels (few/no crossing edges) stay compact.
+const CHANNEL_LANE = 13;
+const MAX_NEST_DEPTH = 64; // group nesting can't realistically exceed this; bounds the ancestor walk
+
+// One contiguous strip of top-level nodes along an axis; the groups in it shift together (rigidly).
+interface NodeBand {
+  lo: number;
+  hi: number;
+  readonly ids: Set<SceneNodeId>;
+}
+
+// Reserve channel width by edge density (the root fix for stacked edges): the gap between two bands of
+// top-level nodes/groups must fit a LANE for every edge that crosses it, so the lane-separation pass has
+// room to de-stack without crossings. Bands (and the groups in them) shift rigidly to open the room, so
+// containment is preserved. A no-op when the existing gaps already suffice (sparse diagrams don't move).
+const reserveChannels = (scene: Scene): Scene => {
+  const parentOf = new Map<SceneNodeId, SceneNodeId | null>(
+    scene.nodes.map((n) => [n.id, n.parent]),
+  );
+  const topAncestor = (id: SceneNodeId): SceneNodeId => {
+    let cur = id;
+    for (let depth = 0; depth < MAX_NEST_DEPTH; depth++) {
+      const p = parentOf.get(cur);
+      if (p === undefined || p === null) break; // reached a top-level node (or an unknown id)
+      cur = p;
+    }
+    return cur;
+  };
+  const shiftsForAxis = (vertical: boolean): Map<SceneNodeId, number> => {
+    const top = scene.nodes.filter((n) => n.parent === null);
+    if (top.length < 2) return new Map();
+    const lo = (n: SceneNode): number => (vertical ? n.bounds.origin.y : n.bounds.origin.x);
+    const ext = (n: SceneNode): number => (vertical ? n.bounds.size.height : n.bounds.size.width);
+    const ivs = top
+      .map((n) => ({ id: n.id, lo: lo(n), hi: lo(n) + ext(n) }))
+      .sort((a, b) => a.lo - b.lo);
+    const bands: NodeBand[] = [];
+    for (const iv of ivs) {
+      const last = bands[bands.length - 1];
+      if (last !== undefined && iv.lo <= last.hi) {
+        last.hi = Math.max(last.hi, iv.hi);
+        last.ids.add(iv.id);
+      } else bands.push({ lo: iv.lo, hi: iv.hi, ids: new Set([iv.id]) });
+    }
+    if (bands.length < 2) return new Map();
+    const bandOf = new Map<SceneNodeId, number>();
+    for (const [bi, b] of bands.entries()) for (const id of b.ids) bandOf.set(id, bi);
+    const crossing = new Array<number>(bands.length - 1).fill(0); // edges crossing each inter-band gap
+    for (const e of scene.edges) {
+      if (e.from === e.to) continue;
+      const a = bandOf.get(topAncestor(e.from));
+      const b = bandOf.get(topAncestor(e.to));
+      if (a === undefined || b === undefined || a === b) continue;
+      for (let g = Math.min(a, b); g < Math.max(a, b); g++) {
+        const c = crossing[g];
+        if (c === undefined) continue;
+        crossing[g] = c + 1;
+      }
+    }
+    const shiftForBand = new Array<number>(bands.length).fill(0);
+    let cumulative = 0;
+    for (let g = 0; g + 1 < bands.length; g++) {
+      const above = bands[g];
+      const below = bands[g + 1];
+      const c = crossing[g];
+      if (above === undefined || below === undefined || c === undefined) continue;
+      const need = CHANNEL_BASE + c * CHANNEL_LANE;
+      cumulative += Math.max(0, need - (below.lo - above.hi));
+      shiftForBand[g + 1] = cumulative;
+    }
+    const out = new Map<SceneNodeId, number>();
+    for (const n of scene.nodes) {
+      const bi = bandOf.get(topAncestor(n.id));
+      if (bi === undefined) continue;
+      const s = shiftForBand[bi];
+      if (s === undefined || s === 0) continue; // 0 = this band doesn't move
+      out.set(n.id, s);
+    }
+    return out;
+  };
+  const dy = shiftsForAxis(true);
+  const dx = shiftsForAxis(false);
+  if (dy.size === 0 && dx.size === 0) return scene;
+  let maxX = 0;
+  let maxY = 0;
+  const nodes = scene.nodes.map((n): SceneNode => {
+    const sx = dx.get(n.id); // absent = this node's band stays put on x …
+    const sy = dy.get(n.id); // … and on y
+    const nx = sx === undefined ? n.bounds.origin.x : n.bounds.origin.x + sx;
+    const ny = sy === undefined ? n.bounds.origin.y : n.bounds.origin.y + sy;
+    maxX = Math.max(maxX, nx + n.bounds.size.width);
+    maxY = Math.max(maxY, ny + n.bounds.size.height);
+    return { ...n, bounds: { origin: point(nx, ny), size: n.bounds.size } };
+  });
+  return {
+    ...scene,
+    nodes,
+    extent: rect(0, 0, maxX + CHANNEL_MARGIN, maxY + CHANNEL_MARGIN),
+  };
+};
+
+export const spreadPorts = (rawScene: Scene): Scene => {
+  const scene = reserveChannels(rawScene);
   const boxOf = boxOfNode(scene);
   const along = (side: Side, other: RouteBox): number =>
     side === "L" || side === "R" ? other.y + other.h / 2 : other.x + other.w / 2;
@@ -708,7 +1008,9 @@ export const spreadPorts = (scene: Scene): Scene => {
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };
   });
   // Final pass: cut edge-against-edge crossings across the whole diagram (a no-op when there are none).
-  return minimizeCrossings({ ...scene, edges });
+  // Two complementary passes: minimise perpendicular crossings (re-route), then de-stack parallel
+  // overlaps onto separate lanes (nudge) — the second never adds a crossing.
+  return separateOverlaps(minimizeCrossings({ ...scene, edges }));
 };
 
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap

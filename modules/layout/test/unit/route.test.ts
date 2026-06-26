@@ -309,6 +309,31 @@ describe("spreadPorts", () => {
     expect(overlaps(out)).toBe(0); // the two routes were pulled onto separate tracks
   });
 
+  it("reserves channel width by edge density: a busy channel pushes the far band apart", () => {
+    // Three top-row nodes all feed one bottom node through a narrow gap → the channel must widen.
+    const scene = {
+      nodes: [node("a", 0, 0), node("b", 60, 0), node("c", 120, 0), node("d", 60, 40)],
+      edges: [edge("ad", "a", "d"), edge("bd", "b", "d"), edge("cd", "c", "d")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 200, 80),
+    };
+    const out = spreadPorts(scene);
+    const dy = out.nodes.find((n) => n.id === "d")?.bounds.origin.y ?? 0;
+    expect(dy).toBeGreaterThan(40); // the bottom band was shifted down to open the channel
+
+    // A single-edge channel is roomy enough already → no shift (sparse diagrams don't grow).
+    const sparse = {
+      nodes: [node("a", 0, 0), node("d", 0, 80)],
+      edges: [edge("ad", "a", "d")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 60, 120),
+    };
+    const sout = spreadPorts(sparse);
+    expect(sout.nodes.find((n) => n.id === "d")?.bounds.origin.y).toBe(80);
+  });
+
   it("leaves a self-loop / dangling edge untouched", () => {
     const scene = {
       nodes: [node("a", 0, 0)],

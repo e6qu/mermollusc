@@ -92,3 +92,11 @@ perpendicular crossings — the dominant fault on dense architecture diagrams (c
 Possible next: weight overlaps vs crossings (overlaps hide edges, crossings stay readable) if a future
 diagram trades too many crossings for de-stacking; a dedicated channel-lane assignment pass could
 de-overlap without the maze reroute's incidental crossings.
+
+## Channel reservation + lane separation shipped
+The stacked-edge fix is now two cooperating passes in `spreadPorts`: `reserveChannels` (density-sized room)
+then `separateOverlaps` (lane assignment). `CHANNEL_LANE` (reservation width per crossing edge) is tuned;
+the lane optimiser is a greedy heuristic, so its crossing/overlap counts are mildly non-monotonic in that
+constant — re-measure if you retune. Possible next: size reservation by the MAX simultaneous overlap in a
+channel rather than the total crossing count (less over-reservation on wide, sparse channels); extend band
+detection below the top level for diagrams whose stacks live inside a single group.
