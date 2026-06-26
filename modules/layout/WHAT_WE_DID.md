@@ -278,3 +278,9 @@
   requirement), threaded via a `tidy` flag on `layout`/`layoutDiagram`. When off, only the default
   candidate runs → today's exact output. The default candidate is always in the running, so tidy can
   never raise the energy.
+- Energy-aware layout, PR 3: "Tidy" now also reorders gitGraph branch lanes. `layoutGitGraph` is
+  parameterised by a branch→lane map; under `tidy` (≤5 branches) it tries every lane permutation with the
+  first branch (conventionally `main`) pinned to lane 0, filters through `styleOk`, and keeps the
+  lowest-`layoutEnergy` one — so cross-lane merge/branch edges draw with fewer crossings. Default (off) is
+  the declared order, byte-identical to before. Mindmap is left as-is (its disjoint angular sectors are
+  already crossing-free, so reordering has no benefit).

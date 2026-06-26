@@ -3,6 +3,8 @@ import type { GitGraphAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutGitGraph } from "../../src/core/gitgraph.js";
+import { layoutEnergy } from "../../src/core/energy.js";
+import { noSiblingOverlaps } from "../../src/core/invariants.js";
 
 const cid = (s: string) => brand<string, "GitCommitId">(s);
 const bn = (s: string) => brand<string, "GitBranchName">(s);
@@ -116,5 +118,42 @@ describe("layoutGitGraph", () => {
     const n = (id: string) => tb.value.nodes.find((x) => x.id === id);
     expect((n("c2")?.bounds.origin.y ?? 0) > (n("c0")?.bounds.origin.y ?? 0)).toBe(true);
     expect((n("c1")?.bounds.origin.x ?? 0) > (n("c0")?.bounds.origin.x ?? 0)).toBe(true);
+  });
+
+  // A 3-branch graph whose DECLARED lane order makes the `b`-merge cross the middle lane `a`. Tidy
+  // permutes the lanes (main pinned to 0) and should pick an order that avoids that crossing.
+  const crossing: GitGraphAst = {
+    kind: "gitGraph",
+    direction: "LR",
+    branches: [
+      { name: bn("main"), order: 0 },
+      { name: bn("a"), order: 1 },
+      { name: bn("b"), order: 2 },
+    ],
+    commits: [
+      { id: cid("c0"), branch: bn("main"), parents: [], tag: null, commitType: "normal", merge: false },
+      { id: cid("ca"), branch: bn("a"), parents: [cid("c0")], tag: null, commitType: "normal", merge: false },
+      { id: cid("cb"), branch: bn("b"), parents: [cid("c0")], tag: null, commitType: "normal", merge: false },
+      { id: cid("ca2"), branch: bn("a"), parents: [cid("ca")], tag: null, commitType: "normal", merge: false },
+      { id: cid("mb"), branch: bn("main"), parents: [cid("c0"), cid("cb")], tag: null, commitType: "normal", merge: true },
+    ],
+  };
+
+  it("tidy lane-ordering never worsens energy and stays in-style; it improves the crossing case", () => {
+    const base = layoutGitGraph(crossing, heuristicMeasure, false);
+    const tidy = layoutGitGraph(crossing, heuristicMeasure, true);
+    if (!base.ok || !tidy.ok) throw new Error("layout failed");
+    expect(noSiblingOverlaps(tidy.value)).toBe(true); // still a valid gitGraph
+    const eb = layoutEnergy(base.value).total;
+    const et = layoutEnergy(tidy.value).total;
+    expect(et).toBeLessThanOrEqual(eb + 1e-6); // never worse (default is always a candidate)
+    expect(et).toBeLessThan(eb); // and strictly better here — the b-merge no longer crosses lane a
+  });
+
+  it("leaves the declared order untouched when tidy is off (default output is stable)", () => {
+    const off = layoutGitGraph(crossing, heuristicMeasure, false);
+    const explicitOff = layoutGitGraph(crossing, heuristicMeasure);
+    if (!off.ok || !explicitOff.ok) throw new Error("layout failed");
+    expect(off.value).toEqual(explicitOff.value);
   });
 });
