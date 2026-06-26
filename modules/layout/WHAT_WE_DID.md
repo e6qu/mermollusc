@@ -296,3 +296,12 @@
 - Organic layout: `elkLayoutOptions(c, organic)` swaps the layered algorithm for ELK `stress` (force-
   based), threaded as an `organic` flag through `layout`/`layoutDiagram` for flowchart + state only — an
   opt-in free-form look, never a default; the compartment families stay layered.
+- Grid maze router (`maze.ts`): a pure A* over a Hanan grid (lines at every obstacle border ± a margin
+  plus the endpoints), orthogonal moves only, turn-penalised so it prefers few bends — the general
+  multi-bend detour the local Z-repair couldn't do. `spreadPorts` now: keeps a clean staggered route
+  unchanged (no churn); else tries `mazeRoute`; else falls back to the local two-topology repair.
+- Family-context style invariants for the remaining families, each co-located with its layout (only it
+  knows which nodes/edges are which): `sequenceActorsShareHeaderRow`, `timelinePeriodsAdvanceLeftToRight`,
+  `ganttTasksStackInRowOrder` — asserted on the real examples (golden baseline) and with pos/neg units.
+- Cloud separation: a wider `ROW_GAP` (72) than the side-by-side `GAP` (44) between stacked group rows,
+  so cross-row connectors get a roomier vertical channel for the router to spread/detour them.

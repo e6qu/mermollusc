@@ -2,9 +2,12 @@ import {
   containersEncloseMembers,
   heuristicMeasure,
   layoutDiagram,
+  ganttTasksStackInRowOrder,
   layoutEnergy,
   noSiblingOverlaps,
   pieSlicesTileCircle,
+  sequenceActorsShareHeaderRow,
+  timelinePeriodsAdvanceLeftToRight,
 } from "@m/layout";
 import { parseDiagram } from "@m/parser";
 import { toDisplayList } from "@m/renderer";
@@ -146,6 +149,16 @@ describe("layout energy baseline + style invariants", () => {
       expect(noSiblingOverlaps(laid.value)).toBe(true);
       expect(containersEncloseMembers(laid.value)).toBe(true);
       expect(pieSlicesTileCircle(laid.value)).toBe(true); // vacuous off-pie; real on the pie example
+      // Family-context invariants — asserted on the family that owns each (narrowed by kind).
+      if (parsed.value.kind === "sequence") {
+        expect(sequenceActorsShareHeaderRow(laid.value, parsed.value)).toBe(true);
+      }
+      if (parsed.value.kind === "timeline") {
+        expect(timelinePeriodsAdvanceLeftToRight(laid.value, parsed.value)).toBe(true);
+      }
+      if (parsed.value.kind === "gantt") {
+        expect(ganttTasksStackInRowOrder(laid.value, parsed.value)).toBe(true);
+      }
       // Surface the numbers (crossings / edge-node hits) so the metric is visible in the run.
       console.log(
         `energy[${sample.name}] crossings=${e.crossings} edgeNodeHits=${e.edgeNodeHits} total=${e.total.toFixed(1)}`,

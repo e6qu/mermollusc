@@ -75,10 +75,10 @@ Remaining (lower priority): family-specific style invariants need family context
 Also still open: an opt-in ELK `stress` algorithm (a genuinely different, force-like style — only worth
 it if a free-form look is ever wanted; it would NOT be a default, to preserve each family's style).
 
-## Layout-quality batch shipped (obstacle routing + pie invariant + organic)
-Done: obstacle-avoiding spreadPorts routing; the pie family-context invariant; the opt-in ELK `stress`
-"Organic" layout. Remaining, lower priority: the same family-context invariant pattern for sequence
-(actors on one header row), gantt (bars on the day axis), timeline (periods left→right) — each needs its
-family AST, so it lives next to that family's layout like `pieSlicesTileCircle`. The obstacle router is a
-local Z-route repair (two detour topologies); a full grid/visibility maze router remains possible if a
-diagram needs multi-bend detours around several obstacles.
+
+## Routing + family invariants shipped
+Done: the grid/visibility maze router (multi-bend obstacle avoidance behind spreadPorts); family-context
+invariants for sequence/gantt/timeline (alongside pie); cloud inter-row separation. Possible next: route
+the ELK families' edges through the same maze router when Tidy is on; share a single obstacle-clearance
+constant across route.ts + maze.ts; per-edge label de-collision (parallel same-label edges can still
+overlap their labels on very dense diagrams like the AWS cloud example).

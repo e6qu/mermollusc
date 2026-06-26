@@ -3,7 +3,8 @@ import { ganttDate } from "@m/contracts";
 import type { GanttDate, GanttStart, GanttTask, GanttTaskId, GanttAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
-import { layoutGantt } from "../../src/core/gantt.js";
+import { layoutGantt, ganttTasksStackInRowOrder } from "../../src/core/gantt.js";
+import { rect } from "@m/std";
 
 const tid = (s: string) => brand<string, "GanttTaskId">(s);
 // Mint a validated Gantt date for fixtures; an invalid literal is a test-authoring bug, so throw.
@@ -267,5 +268,25 @@ describe("layoutGantt", () => {
     expect(texts).toContain("2024-01-01");
     expect(texts).toContain("Plan");
     expect(texts).toContain("Build");
+  });
+
+  it("ganttTasksStackInRowOrder holds, and fails if two task bars share a row", () => {
+    const g = ast([
+      task({ id: tid("a"), label: "A", start: { kind: "date", date: gd("2024-01-01") }, durationDays: 2 }),
+      task({ id: tid("b"), label: "B", start: { kind: "date", date: gd("2024-01-03") }, durationDays: 2 }),
+    ]);
+    const r = layoutGantt(g, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    expect(ganttTasksStackInRowOrder(r.value, g)).toBe(true);
+    const ay = r.value.nodes.find((n) => n.id === "a")?.bounds.origin.y ?? 0;
+    const collapsed = {
+      ...r.value,
+      nodes: r.value.nodes.map((n) =>
+        n.id === "b"
+          ? { ...n, bounds: rect(n.bounds.origin.x, ay, n.bounds.size.width, n.bounds.size.height) }
+          : n,
+      ),
+    };
+    expect(ganttTasksStackInRowOrder(collapsed, g)).toBe(false);
   });
 });

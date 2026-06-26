@@ -2,7 +2,9 @@ import { brand } from "@m/std";
 import type { SequenceAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
-import { layoutSequence } from "../../src/core/sequence.js";
+import { layoutSequence, sequenceActorsShareHeaderRow } from "../../src/core/sequence.js";
+import { rect } from "@m/std";
+import { sceneNodeId } from "@m/contracts";
 
 const aid = (s: string) => brand<string, "ActorId">(s);
 const mid = (s: string) => brand<string, "MessageId">(s);
@@ -101,5 +103,27 @@ describe("layoutSequence", () => {
     // A `left of` note on the leftmost actor would go negative; the whole scene shifts so x >= 0.
     expect(r.value.nodes.every((n) => n.bounds.origin.x >= 0)).toBe(true);
     expect(r.value.edges.every((e) => e.waypoints.every((p) => p.x >= 0))).toBe(true);
+  });
+
+  it("sequenceActorsShareHeaderRow holds, and fails once an actor leaves the header row", () => {
+    expect(sequenceActorsShareHeaderRow(scene, ast)).toBe(true);
+    const firstId = ast.actors[0] === undefined ? null : sceneNodeId(ast.actors[0].id);
+    const bumped = {
+      ...scene,
+      nodes: scene.nodes.map((n) =>
+        n.id === firstId
+          ? {
+              ...n,
+              bounds: rect(
+                n.bounds.origin.x,
+                n.bounds.origin.y + 40,
+                n.bounds.size.width,
+                n.bounds.size.height,
+              ),
+            }
+          : n,
+      ),
+    };
+    expect(sequenceActorsShareHeaderRow(bumped, ast)).toBe(false);
   });
 });
