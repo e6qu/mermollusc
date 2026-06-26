@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, isOk, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   GitBranchName,
@@ -10,7 +10,27 @@ import type {
   SceneEdge,
   SceneNode,
 } from "@m/contracts";
+import { lowestEnergy } from "./energy.js";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { styleOk } from "./invariants.js";
+
+// Lane-order candidates for "Tidy": permute which lane each branch occupies (keeping the first branch —
+// conventionally `main` — pinned to lane 0), so cross-lane merge/branch edges can be drawn with fewer
+// crossings. Bounded to ≤5 branches (≤24 permutations) to stay cheap and total; larger graphs keep the
+// declared order. The commits stay in creation order and every branch still owns a lane, so the gitGraph
+// style is preserved — `styleOk` + `lowestEnergy` pick the tidiest of the candidates.
+const MAX_TIDY_BRANCHES = 5;
+const permutations = <T>(items: readonly T[]): T[][] => {
+  if (items.length <= 1) return [[...items]];
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i++) {
+    const head = items[i];
+    if (head === undefined) continue;
+    const rest = [...items.slice(0, i), ...items.slice(i + 1)];
+    for (const p of permutations(rest)) out.push([head, ...p]);
+  }
+  return out;
+};
 
 const COMMIT_H = 28;
 const MIN_COMMIT_W = 30;
@@ -38,10 +58,8 @@ const commitShape = (c: GitCommit): NodeShape => (c.commitType === "highlight" ?
 export const layoutGitGraph = (
   ast: GitGraphAst,
   measure: MeasureText,
+  tidy = false,
 ): Result<Scene, LayoutError> => {
-  const lane = new Map<GitBranchName, number>();
-  for (const b of ast.branches) lane.set(b.name, b.order);
-
   const pillW = (c: GitCommit): number =>
     Math.max(MIN_COMMIT_W, measure(commitLabel(c)) + PILL_PAD);
   // reduce, not Math.max(...spread): a spread over every commit/branch would exceed the argument-count
@@ -67,93 +85,117 @@ export const layoutGitGraph = (
   const place = (col: number, l: number): { x: number; y: number } =>
     vertical ? { x: laneCoord(l), y: mainCoord(col) } : { x: mainCoord(col), y: laneCoord(l) };
 
-  const nodes: SceneNode[] = [];
-  const edges: SceneEdge[] = [];
-  const center = new Map<GitCommitId, { readonly x: number; readonly y: number }>();
-  let maxX = 0;
-  let maxY = 0;
-  const grow = (x: number, y: number): void => {
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
+  // Build one scene for a given branch→lane assignment. The candidate selection below reuses it.
+  const build = (laneOf: ReadonlyMap<GitBranchName, number>): Result<Scene, LayoutError> => {
+    const nodes: SceneNode[] = [];
+    const edges: SceneEdge[] = [];
+    const center = new Map<GitCommitId, { readonly x: number; readonly y: number }>();
+    let maxX = 0;
+    let maxY = 0;
+    const grow = (x: number, y: number): void => {
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    };
+
+    for (const b of ast.branches) {
+      const c = place(0, laneOf.get(b.name) ?? b.order);
+      const x = vertical ? c.x - headW / 2 : MARGIN;
+      const y = vertical ? MARGIN : c.y - HEAD_H / 2;
+      nodes.push({
+        id: sceneNodeId(`branch:${b.name}`),
+        bounds: rect(x, y, headW, HEAD_H),
+        label: b.name,
+        shape: "round",
+        parent: null,
+        icon: null,
+        rows: null,
+        rowDivider: null,
+        subtitle: null,
+        accent: "none",
+        role: "normal",
+      });
+      grow(x + headW, y + HEAD_H);
+    }
+
+    for (const [col, commit] of ast.commits.entries()) {
+      const l = laneOf.get(commit.branch);
+      // Every commit's branch is registered in `ast.branches`; a miss means an inconsistent AST.
+      if (l === undefined) {
+        return err({
+          kind: "layout",
+          message: `gitGraph: commit ${commit.id} on undeclared branch ${commit.branch}`,
+        });
+      }
+      const c = place(col, l);
+      center.set(commit.id, c);
+      const w = pillW(commit);
+      nodes.push({
+        id: sceneNodeId(commit.id),
+        bounds: rect(c.x - w / 2, c.y - COMMIT_H / 2, w, COMMIT_H),
+        label: commitLabel(commit),
+        shape: commitShape(commit),
+        parent: null,
+        icon: null,
+        rows: null,
+        rowDivider: null,
+        subtitle: null,
+        accent: "none",
+        role: "normal",
+      });
+      grow(c.x + w / 2, c.y + COMMIT_H / 2);
+    }
+
+    for (const commit of ast.commits) {
+      const to = center.get(commit.id);
+      if (to === undefined) continue;
+      for (const parent of commit.parents) {
+        const from = center.get(parent);
+        // A parent always precedes its child in creation order, so its centre is known; skip defensively.
+        if (from === undefined) continue;
+        edges.push({
+          id: sceneEdgeId(`${parent}->${commit.id}`),
+          from: sceneNodeId(parent),
+          to: sceneNodeId(commit.id),
+          waypoints: [point(from.x, from.y), point(to.x, to.y)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "none",
+          curved: true,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        });
+      }
+    }
+
+    return ok({
+      nodes,
+      edges,
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
+    });
   };
 
-  for (const b of ast.branches) {
-    const c = place(0, b.order);
-    const x = vertical ? c.x - headW / 2 : MARGIN;
-    const y = vertical ? MARGIN : c.y - HEAD_H / 2;
-    nodes.push({
-      id: sceneNodeId(`branch:${b.name}`),
-      bounds: rect(x, y, headW, HEAD_H),
-      label: b.name,
-      shape: "round",
-      parent: null,
-      icon: null,
-      rows: null,
-      rowDivider: null,
-      subtitle: null,
-      accent: "none",
-      role: "normal",
+  const declared = new Map<GitBranchName, number>(ast.branches.map((b) => [b.name, b.order]));
+  const base = build(declared);
+  // Tidy only kicks in for a handful of branches (bounded permutations); larger graphs keep the declared
+  // order. The declared layout is always a candidate, so tidy can only equal or improve the energy.
+  if (!tidy || ast.branches.length < 3 || ast.branches.length > MAX_TIDY_BRANCHES || !isOk(base)) {
+    return base;
+  }
+  const [first, ...rest] = ast.branches;
+  if (first === undefined) return base;
+  const candidates: Scene[] = [base.value];
+  for (const perm of permutations(rest)) {
+    // Keep the first branch (conventionally `main`) on lane 0; permute the rest across the other lanes.
+    const laneOf = new Map<GitBranchName, number>([[first.name, 0]]);
+    perm.forEach((b, i) => {
+      laneOf.set(b.name, i + 1);
     });
-    grow(x + headW, y + HEAD_H);
+    const scene = build(laneOf);
+    if (isOk(scene) && styleOk(scene.value)) candidates.push(scene.value);
   }
-
-  for (const [col, commit] of ast.commits.entries()) {
-    const l = lane.get(commit.branch);
-    // Every commit's branch is registered in `ast.branches`; a miss means an inconsistent AST.
-    if (l === undefined) {
-      return err({
-        kind: "layout",
-        message: `gitGraph: commit ${commit.id} on undeclared branch ${commit.branch}`,
-      });
-    }
-    const c = place(col, l);
-    center.set(commit.id, c);
-    const w = pillW(commit);
-    nodes.push({
-      id: sceneNodeId(commit.id),
-      bounds: rect(c.x - w / 2, c.y - COMMIT_H / 2, w, COMMIT_H),
-      label: commitLabel(commit),
-      shape: commitShape(commit),
-      parent: null,
-      icon: null,
-      rows: null,
-      rowDivider: null,
-      subtitle: null,
-      accent: "none",
-      role: "normal",
-    });
-    grow(c.x + w / 2, c.y + COMMIT_H / 2);
-  }
-
-  for (const commit of ast.commits) {
-    const to = center.get(commit.id);
-    if (to === undefined) continue;
-    for (const parent of commit.parents) {
-      const from = center.get(parent);
-      // A parent always precedes its child in creation order, so its centre is known; skip defensively.
-      if (from === undefined) continue;
-      edges.push({
-        id: sceneEdgeId(`${parent}->${commit.id}`),
-        from: sceneNodeId(parent),
-        to: sceneNodeId(commit.id),
-        waypoints: [point(from.x, from.y), point(to.x, to.y)],
-        label: null,
-        stroke: "solid",
-        fromEnd: "none",
-        toEnd: "none",
-        curved: true,
-        fromLabel: null,
-        toLabel: null,
-        labelPos: null,
-      });
-    }
-  }
-
-  return ok({
-    nodes,
-    edges,
-    wedges: [],
-    decorations: [],
-    extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
-  });
+  return ok(lowestEnergy(candidates) ?? base.value);
 };

@@ -805,3 +805,5 @@
   rendering rounds only the corners, and edge labels follow the edge when its endpoint is dragged.
 - "Tidy layout" toggle (#tidy, persisted): re-lays-out the layered families by picking the lowest-
   crossing of a few deterministic ELK candidates; default (off) is unchanged. Opt-in, like Sketch/Theme.
+- The "Tidy layout" toggle now also tidies gitGraph (branch-lane reordering to cut cross-lane crossings),
+  on top of the layered families.

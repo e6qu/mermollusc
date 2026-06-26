@@ -827,7 +827,7 @@ export const layoutDiagram = async (
     case "requirement":
       return layoutRequirement(ast, measure, tidy);
     case "gitGraph":
-      return layoutGitGraph(ast, measure);
+      return layoutGitGraph(ast, measure, tidy);
     case "timeline":
       return layoutTimeline(ast, measure);
     case "mindmap":

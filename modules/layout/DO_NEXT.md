@@ -72,3 +72,10 @@ Refine the timeline-spine false positive (axis edge) in the metric if it ever dr
 Remaining: family-specific invariants as extra test guards (sequence row, gantt axis, pie 2π — the
 layered families already gate on the generic `styleOk`); gitGraph lane / mindmap angular ordering
 candidates; optional ELK `stress` algorithm; widen the tidy candidate set if measurements warrant.
+
+## Energy-aware layout — after PR 3 (gitGraph lane-tidy shipped)
+Remaining (lower priority): family-specific style invariants need family context the generic Scene lacks
+— e.g. a pie's slice wedges are indistinguishable from its legend-swatch wedges at the Scene level, so a
+"slices tile 2π" guard must live where the family is known (the pie layout/shell), not in `invariants.ts`.
+Also still open: an opt-in ELK `stress` algorithm (a genuinely different, force-like style — only worth
+it if a free-form look is ever wanted; it would NOT be a default, to preserve each family's style).
