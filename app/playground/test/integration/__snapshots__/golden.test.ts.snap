@@ -2,12 +2,12 @@
 
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
-  "polyline 48,20 70,20 70,13 92,13 dashed=false from=l0p0c0 to=l0p1c0",
-  "polyline 92,27 75,27 75,104 48,104 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 48,20 73,20 73,13 98,13 dashed=false from=l0p0c0 to=l0p1c0",
+  "polyline 98,27 78,27 78,104 48,104 dashed=false from=l0p0c0 to=l0p1c0",
   "box 0,0 48x40 r0",
   "label "Web" 24,20 center",
-  "box 92,0 48x40 r0",
-  "label "API" 116,20 center",
+  "box 98,0 48x40 r0",
+  "label "API" 122,20 center",
   "box 0,84 48x40 r0",
   "label "DB" 24,104 center",
 ]
@@ -186,18 +186,18 @@ exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
-  "polyline 88,24 112,24 112,16 136,16 dashed=false from=l0p0c0 to=l0p0c0",
-  "polyline 136,32 117,32 117,120 88,120 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 88,24 113,24 113,16 138,16 dashed=false from=l0p0c0 to=l0p0c0",
+  "polyline 138,32 118,32 118,120 88,120 dashed=false from=l0p0c0 to=l0p0c0",
   "box 0,0 88x48 r0",
   "icon arch/cloud 34,6 20",
   "label "Internet" 44,32 center",
-  "box 136,0 88x48 r0",
-  "icon arch/router 170,6 20",
-  "label "Edge" 180,32 center",
+  "box 138,0 88x48 r0",
+  "icon arch/router 172,6 20",
+  "label "Edge" 182,32 center",
   "box 0,96 88x48 r0",
   "icon arch/server 34,102 20",
   "label "Web" 44,128 center",
-  "label "eth0" 106,81 center",
+  "label "eth0" 107,81 center",
 ]
 `;
 

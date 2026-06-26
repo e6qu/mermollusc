@@ -353,3 +353,17 @@
   now get pulled onto separate tracks via the maze reroute. Measured on a cloud example: parallel overlaps
   25 → 3 (network 5 → 0). De-overlapping trades a few stacks for readable crossings (total conflict still
   drops), so edges become individually traceable instead of merged into one thick line.
+- Channel-width reservation + lane separation (the ROOT fix for stacked architecture edges): the previous
+  conflict-optimiser de-stacked by re-routing, which trades overlaps for crossings. The real cause is node
+  placement — edges funnel through channels too narrow for parallel lanes, so de-stacking *requires* room.
+  `reserveChannels` (runs first in `spreadPorts`) groups top-level nodes into bands per axis, counts edges
+  crossing each inter-band gap, and shifts bands rigidly (groups move whole, containment preserved) so each
+  gap fits a lane per crossing edge. `separateOverlaps` (runs after crossing-min) then nudges collinear
+  stacked segments onto adjacent parallel tracks — a topology-preserving lane assignment that keeps a nudge
+  only when it worsens neither crossings nor node clearance. Measured on a cloud example: 2 crossings / 25
+  overlaps → ~7 / 1; network 0 / 5 → 1 / 0 — dominates the re-route-only result (11 / 3) on both axes.
+  Both passes are no-ops on sparse diagrams (gaps already suffice / nothing stacked), so the small golden
+  examples don't churn beyond the genuinely-denser block + network. Strong-typed throughout: branded
+  `SceneNodeId` band maps, `OverlapSeg`-keyed offset maps (no stringly composite keys), numeric track keys,
+  named constants (`CHANNEL_BASE`/`CHANNEL_LANE`/`LANE_GAP`/`MAX_NEST_DEPTH`/`SEG_AXIS_EPS`), explicit
+  optional handling (no fabricated `?? 0` defaults).

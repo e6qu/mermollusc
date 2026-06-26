@@ -16,6 +16,7 @@ export {
   mazeRerouteEdges,
   decollideEdgeLabels,
   minimizeCrossings,
+  separateOverlaps,
 } from "./route.js";
 export { mazeRoute } from "./maze.js";
 export type { MazeBox } from "./maze.js";
