@@ -374,6 +374,30 @@ const orthSegmentsCross = (a1: Point, a2: Point, b1: Point, b2: Point): boolean 
     h1.y < Math.max(v1.y, v2.y)
   );
 };
+// Do two PARALLEL axis-aligned segments run collinear on top of each other (sharing more than a touch of
+// their interval on the same track)? This is the "overlap" that reads as a single thick stacked line — a
+// distinct fault from a perpendicular crossing, and the dominant one on dense architecture diagrams.
+const OVERLAP_EPS = 1; // tolerance for "same track"
+const OVERLAP_MIN = 2; // shared length beyond which it reads as stacked
+const orthSegmentsOverlap = (a1: Point, a2: Point, b1: Point, b2: Point): boolean => {
+  const aHoriz = a1.y === a2.y;
+  if (aHoriz !== (b1.y === b2.y)) return false; // not the same orientation → can't be collinear
+  if (aHoriz) {
+    if (Math.abs(a1.y - b1.y) > OVERLAP_EPS) return false;
+    const lo = Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x));
+    const hi = Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x));
+    return hi - lo > OVERLAP_MIN;
+  }
+  if (Math.abs(a1.x - b1.x) > OVERLAP_EPS) return false;
+  const lo = Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y));
+  const hi = Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y));
+  return hi - lo > OVERLAP_MIN;
+};
+// A "conflict" between two edge segments: a perpendicular crossing OR a parallel overlap. The optimiser
+// minimises both — the overlap term is what actually de-stacks the heavily-overlapped architecture edges.
+const segmentsConflict = (a1: Point, a2: Point, b1: Point, b2: Point): boolean =>
+  orthSegmentsCross(a1, a2, b1, b2) || orthSegmentsOverlap(a1, a2, b1, b2);
+
 const segmentsOf = (wp: readonly Point[]): ReadonlyArray<readonly [Point, Point]> => {
   const out: [Point, Point][] = [];
   for (let i = 1; i < wp.length; i++) {
@@ -383,20 +407,20 @@ const segmentsOf = (wp: readonly Point[]): ReadonlyArray<readonly [Point, Point]
   }
   return out;
 };
-const crossingsBetween = (
+const conflictsBetween = (
   path: readonly Point[],
   others: ReadonlyArray<readonly [Point, Point]>,
 ): number => {
   let n = 0;
   for (const [a, b] of segmentsOf(path)) {
-    for (const [c, d] of others) if (orthSegmentsCross(a, b, c, d)) n++;
+    for (const [c, d] of others) if (segmentsConflict(a, b, c, d)) n++;
   }
   return n;
 };
 const MAX_CROSS_SWEEPS = 3;
-const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
+const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with conflicts left
 
-const totalCrossings = (edges: readonly SceneEdge[]): number => {
+const totalConflicts = (edges: readonly SceneEdge[]): number => {
   const segs = edges.map((e) => segmentsOf(e.waypoints));
   let n = 0;
   for (let i = 0; i < segs.length; i++) {
@@ -404,7 +428,7 @@ const totalCrossings = (edges: readonly SceneEdge[]): number => {
       const si = segs[i];
       const sj = segs[j];
       if (si === undefined || sj === undefined) continue;
-      for (const [a, b] of si) for (const [c, d] of sj) if (orthSegmentsCross(a, b, c, d)) n++;
+      for (const [a, b] of si) for (const [c, d] of sj) if (segmentsConflict(a, b, c, d)) n++;
     }
   }
   return n;
@@ -476,7 +500,7 @@ const routeCandidates = (
     const oj = edges[j];
     if (j === i || oj === undefined) continue;
     const ojSegs = segmentsOf(oj.waypoints);
-    if (crossingsBetween(e.waypoints, ojSegs) === 0) continue;
+    if (conflictsBetween(e.waypoints, ojSegs) === 0) continue;
     for (const [c, d] of ojSegs) crossedBoxes.push(segBox(c, d));
   }
   // Cull obstacles to those near this edge: a box well outside the endpoints' bounding region can't be on
@@ -503,7 +527,7 @@ const routeCandidates = (
       out.push({
         wp: route,
         hits,
-        cross: crossingsBetween(route, others),
+        cross: conflictsBetween(route, others),
         len: routeLength(route),
       });
     }
@@ -527,7 +551,7 @@ const greedyReduce = (
       const e = edges[i];
       if (e === undefined) continue;
       const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
-      const curCross = crossingsBetween(e.waypoints, others);
+      const curCross = conflictsBetween(e.waypoints, others);
       if (curCross === 0) continue;
       const curHits = routeHits(e.waypoints, obstacleBoxes.get(e.id) ?? []);
       const top = routeCandidates(i, edges, obstacleBoxes, boxById, maze)[0];
@@ -556,7 +580,7 @@ const perturb = (
     const e = edges[i];
     if (e === undefined) continue;
     const others = edges.flatMap((o, j) => (j === i ? [] : segmentsOf(o.waypoints)));
-    const n = crossingsBetween(e.waypoints, others);
+    const n = conflictsBetween(e.waypoints, others);
     if (n > 0) crossing.push({ i, n });
   }
   if (crossing.length === 0) return null;
@@ -580,13 +604,13 @@ const perturb = (
 // Deterministic, bounded, keeps the best → terminates and never makes the picture worse. A crossing-free
 // scene short-circuits to byte-identical output.
 export const minimizeCrossings = (scene: Scene): Scene => {
-  const initial = totalCrossings(scene.edges);
+  const initial = totalConflicts(scene.edges);
   if (initial === 0) return scene;
   const obstacleBoxes = obstaclesForEdges(scene);
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
   const maze = cachedMaze(new Map()); // memo shared across every sweep + kick of this run
   let bestEdges = greedyReduce(scene.edges, obstacleBoxes, boxById, maze);
-  let bestN = totalCrossings(bestEdges);
+  let bestN = totalConflicts(bestEdges);
   // Scale the (costlier) iterated-local-search down on pathologically dense graphs — the greedy already
   // ran; many full-span crossings would otherwise multiply the work without much payoff.
   const kicks = initial > 40 ? 1 : MAX_CROSS_KICKS;
@@ -594,7 +618,7 @@ export const minimizeCrossings = (scene: Scene): Scene => {
     const perturbed = perturb(bestEdges, kick, obstacleBoxes, boxById, maze);
     if (perturbed === null) break;
     const reduced = greedyReduce(perturbed, obstacleBoxes, boxById, maze);
-    const n = totalCrossings(reduced);
+    const n = totalConflicts(reduced);
     if (n < bestN) {
       bestEdges = reduced;
       bestN = n;
