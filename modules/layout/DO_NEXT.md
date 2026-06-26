@@ -85,3 +85,10 @@ it if a free-form look is ever wanted; it would NOT be a default, to preserve ea
 Done: obstacle culling (the effective perf fix — the maze-candidate cache turned out marginal) + density-
 scaled ILS; barycenter lane ordering for gitGraph beyond the brute-force cap. The ELK/spreadPorts families
 already have barycenter ordering, so there's no further complementary pass to add there.
+
+## Edge overlap separation shipped
+The optimiser now treats parallel overlaps (stacked collinear segments) as conflicts, not just
+perpendicular crossings — the dominant fault on dense architecture diagrams (cloud/network/c4/block).
+Possible next: weight overlaps vs crossings (overlaps hide edges, crossings stay readable) if a future
+diagram trades too many crossings for de-stacking; a dedicated channel-lane assignment pass could
+de-overlap without the maze reroute's incidental crossings.

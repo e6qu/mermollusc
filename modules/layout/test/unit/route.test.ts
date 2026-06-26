@@ -267,6 +267,48 @@ describe("spreadPorts", () => {
     expect(a.edges.map((e) => e.waypoints)).toEqual(b.edges.map((e) => e.waypoints));
   });
 
+  // Count parallel OVERLAPS (collinear coincident segments) across all edge pairs — edges stacked on top
+  // of each other, the dominant fault on dense architecture diagrams.
+  const overlaps = (s: ReturnType<typeof spreadPorts>): number => {
+    const par = (a1: { x: number; y: number }, a2: { x: number; y: number }, b1: { x: number; y: number }, b2: { x: number; y: number }): boolean => {
+      const aH = a1.y === a2.y;
+      if (aH !== (b1.y === b2.y)) return false;
+      if (aH) {
+        if (Math.abs(a1.y - b1.y) > 1) return false;
+        return Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x)) - Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x)) > 2;
+      }
+      if (Math.abs(a1.x - b1.x) > 1) return false;
+      return Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y)) - Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y)) > 2;
+    };
+    const segOf = (e: (typeof s.edges)[number]) => {
+      const o: [{ x: number; y: number }, { x: number; y: number }][] = [];
+      for (let i = 1; i < e.waypoints.length; i++) {
+        const a = e.waypoints[i - 1];
+        const b = e.waypoints[i];
+        if (a !== undefined && b !== undefined) o.push([a, b]);
+      }
+      return o;
+    };
+    const S = s.edges.map(segOf);
+    let n = 0;
+    for (let i = 0; i < S.length; i++) for (let j = i + 1; j < S.length; j++)
+      for (const [a, b] of S[i] ?? []) for (const [c, d] of S[j] ?? []) if (par(a, b, c, d)) n++;
+    return n;
+  };
+
+  it("separates edges that would stack on top of each other (parallel-overlap de-collision)", () => {
+    // A and B both connect to D — their cross-channel legs land on the same column and would overlap.
+    const scene = {
+      nodes: [node("a", 0, 0), node("b", 0, 150), node("d", 400, 70)],
+      edges: [edge("ad", "a", "d"), edge("bd", "b", "d")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 460, 220),
+    };
+    const out = spreadPorts(scene);
+    expect(overlaps(out)).toBe(0); // the two routes were pulled onto separate tracks
+  });
+
   it("leaves a self-loop / dangling edge untouched", () => {
     const scene = {
       nodes: [node("a", 0, 0)],

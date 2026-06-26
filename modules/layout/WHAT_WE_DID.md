@@ -346,3 +346,10 @@
   lane 0), compared against the declared order by energy — so a large git-flow declared out of order gets
   untangled (e.g. a mis-declared 6-branch chain: 2 crossings → 0). The ELK layered families already get
   barycenter crossing-min from ELK; spreadPorts already orders ports by the opposite endpoint.
+- Edge OVERLAP separation (the real "heavily overlapped edges" fix): the crossing optimiser now counts a
+  "conflict" as a perpendicular crossing OR a PARALLEL OVERLAP (two collinear segments stacked on the same
+  track), and minimises both. `spreadPorts`'s channel staggering only separated edges sharing one node
+  side; edges from different sources funnelling through the same channel still stacked invisibly — those
+  now get pulled onto separate tracks via the maze reroute. Measured on a cloud example: parallel overlaps
+  25 → 3 (network 5 → 0). De-overlapping trades a few stacks for readable crossings (total conflict still
+  drops), so edges become individually traceable instead of merged into one thick line.
