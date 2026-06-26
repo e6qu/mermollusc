@@ -264,6 +264,13 @@ export const paint = (
         ctx.fill();
         break;
       }
+      case "junction": {
+        ctx.fillStyle = theme.stroke;
+        ctx.beginPath();
+        ctx.arc(cmd.cx, cmd.cy, cmd.radius, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       case "stateEnd": {
         ctx.fillStyle = theme.background;
         ctx.strokeStyle = theme.stroke;

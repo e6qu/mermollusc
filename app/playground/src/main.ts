@@ -205,6 +205,7 @@ const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
 const tidyBtn = document.querySelector<HTMLButtonElement>("#tidy");
 const organicBtn = document.querySelector<HTMLButtonElement>("#organic");
+const busBtn = document.querySelector<HTMLButtonElement>("#bus");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
@@ -307,6 +308,7 @@ if (
   sketchBtn === null ||
   tidyBtn === null ||
   organicBtn === null ||
+  busBtn === null ||
   loadPackEl === null ||
   exampleEl === null ||
   kindEl === null ||
@@ -592,6 +594,7 @@ let shownCacheOverrides: LayoutOverrides | null = null;
 let shownCacheEdgeStyles: EdgeStyles | null = null;
 let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheInteracting = false;
+let shownCacheBus = false;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -632,7 +635,8 @@ const shownScene = (base: Scene): Scene => {
     shownCacheOverrides === ov &&
     shownCacheEdgeStyles === es &&
     shownCacheNodeStyles === ns &&
-    shownCacheInteracting === interacting
+    shownCacheInteracting === interacting &&
+    shownCacheBus === busEnabled
   ) {
     return shownCacheResult;
   }
@@ -640,14 +644,18 @@ const shownScene = (base: Scene): Scene => {
   // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
   // Box-routed families get the FULL router on release (spread lanes + crossing-min), respecting the
-  // hand-placed positions; mid-gesture and the ELK families fall back to the cheap diagonal-snap.
+  // hand-placed positions; mid-gesture and the ELK families fall back to the cheap diagonal-snap. With BUS
+  // on, those families re-route to shared backbones instead (the junction dots are added at paint time).
   const family = ast?.kind ?? null;
+  const spreadFamily = family !== null && SPREAD_FAMILIES.has(family);
   const tidied =
-    ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
-      ? SPREAD_FAMILIES.has(family) && !interacting
-        ? respreadPorts(moved)
-        : retidyRoutes(moved)
-      : moved;
+    busEnabled && spreadFamily
+      ? respreadPorts(moved, true)
+      : ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
+        ? spreadFamily && !interacting
+          ? respreadPorts(moved)
+          : retidyRoutes(moved)
+        : moved;
   // The presentation-only overlay (display only): curved edges + node accents from the document.
   const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
@@ -655,6 +663,7 @@ const shownScene = (base: Scene): Scene => {
   shownCacheEdgeStyles = es;
   shownCacheNodeStyles = ns;
   shownCacheInteracting = interacting;
+  shownCacheBus = busEnabled;
   shownCacheResult = shown;
   return shown;
 };
@@ -699,8 +708,9 @@ const paintScene = (): void => {
   }
   const active = activeTheme();
   canvas.style.backgroundColor = active.background;
-  // Build the display list once and reuse it for both the main canvas and the minimap overview.
-  const cmds = toDisplayList(shown);
+  // Build the display list once and reuse it for both the main canvas and the minimap overview. Junction
+  // dots are drawn only for the box-routed families under the bus rendering option.
+  const cmds = toDisplayList(shown, busEnabled && ast !== null && SPREAD_FAMILIES.has(ast.kind));
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
   ctx.save();
@@ -2153,6 +2163,18 @@ const ORGANIC_KEY = "mermollusc-organic-layout";
 let organicEnabled = ((): boolean => {
   try {
     return localStorage.getItem(ORGANIC_KEY) === "true";
+  } catch {
+    return false;
+  }
+})();
+
+// "Bus": opt-in junction/bus rendering for the box-routed (architecture) families — connectors to a shared
+// endpoint coalesce onto a common backbone with a dot where each branches off, instead of separate lanes.
+// Display-only (a re-route + junction dots, no re-layout), persisted.
+const BUS_KEY = "mermollusc-bus-routing";
+let busEnabled = ((): boolean => {
+  try {
+    return localStorage.getItem(BUS_KEY) === "true";
   } catch {
     return false;
   }
@@ -4658,6 +4680,25 @@ organicBtn.addEventListener("click", () => {
   void renderFromText(editor.value()).then(() =>
     setStatusAndAnnounce("ok", organicEnabled ? "organic layout on" : "organic layout off"),
   );
+});
+
+// Bus rendering: display-only (a re-route to shared backbones + junction dots), so just repaint — no
+// re-layout. The `shownScene`/paint caches key on `busEnabled`, so the repaint picks up the change.
+const syncBusLabel = (): void => {
+  busBtn.setAttribute("aria-pressed", busEnabled ? "true" : "false");
+  busBtn.textContent = busEnabled ? "Bus ✓" : "Bus";
+};
+syncBusLabel();
+busBtn.addEventListener("click", () => {
+  busEnabled = !busEnabled;
+  try {
+    localStorage.setItem(BUS_KEY, busEnabled ? "true" : "false");
+  } catch (e) {
+    console.error("bus-routing persist failed", e);
+  }
+  syncBusLabel();
+  paintScene();
+  setStatusAndAnnounce("ok", busEnabled ? "bus rendering on" : "bus rendering off");
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the

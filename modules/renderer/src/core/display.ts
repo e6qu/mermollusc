@@ -134,6 +134,14 @@ export type DrawCmd =
       readonly startAngle: number;
       readonly endAngle: number;
       readonly colorIndex: number;
+    }
+  | {
+      // A bus junction: a small dot filled in the stroke colour, marking where edges branch off a shared
+      // backbone in the opt-in bus rendering. Only emitted when `toDisplayList` is asked for junctions.
+      readonly kind: "junction";
+      readonly cx: Coordinate;
+      readonly cy: Coordinate;
+      readonly radius: Length;
     };
 
 // Categorical palette for pie slices, cycled by `colorIndex`. Shared by the canvas and SVG backends so
@@ -659,11 +667,82 @@ export const edgeLabelAnchor = (
     : { x: coordinate(first.x), y: coordinate(first.y) };
 };
 
+const JUNCTION_R = 3.2; // radius of a bus-junction dot
+const SEG_EPS = 0.5; // axis-alignment / same-track tolerance for junction detection
+
+// Is `p` strictly inside the axis-aligned segment a–b — on its line, between the ends, not at them?
+const pointInsideSegment = (p: Point, a: Point, b: Point): boolean => {
+  if (Math.abs(a.x - b.x) <= SEG_EPS)
+    return (
+      Math.abs(p.x - a.x) <= 1 &&
+      p.y > Math.min(a.y, b.y) + SEG_EPS &&
+      p.y < Math.max(a.y, b.y) - SEG_EPS
+    );
+  if (Math.abs(a.y - b.y) <= SEG_EPS)
+    return (
+      Math.abs(p.y - a.y) <= 1 &&
+      p.x > Math.min(a.x, b.x) + SEG_EPS &&
+      p.x < Math.max(a.x, b.x) - SEG_EPS
+    );
+  return false;
+};
+
+// Do two axis-aligned segments lie on the SAME line (same orientation, same track)?
+const sameLine = (a0: Point, a1: Point, b0: Point, b1: Point): boolean => {
+  const aVertical = Math.abs(a0.x - a1.x) <= SEG_EPS;
+  if (aVertical !== Math.abs(b0.x - b1.x) <= SEG_EPS) return false;
+  return aVertical ? Math.abs(a0.x - b0.x) <= 1 : Math.abs(a0.y - b0.y) <= 1;
+};
+
+// Bus junctions (opt-in): a dot where one edge branches off a backbone another edge continues along — a
+// waypoint P of edge A that sits inside a segment S of edge B, with one of A's segments at P running
+// collinear with S (A ran along B's line, then turned off here). A plain crossing isn't collinear, so it
+// is not marked. Deduped to one dot per location.
+const busJunctions = (scene: Scene): DrawCmd[] => {
+  const routes = scene.edges.map((e) => e.waypoints);
+  const out: DrawCmd[] = [];
+  const seen = new Set<string>();
+  for (let a = 0; a < routes.length; a++) {
+    const wa = routes[a];
+    if (wa === undefined) continue;
+    for (let i = 0; i < wa.length; i++) {
+      const p = wa[i];
+      if (p === undefined) continue;
+      const before = i > 0 ? wa[i - 1] : undefined;
+      const after = i + 1 < wa.length ? wa[i + 1] : undefined;
+      for (let b = 0; b < routes.length; b++) {
+        const wb = routes[b];
+        if (b === a || wb === undefined) continue;
+        let branches = false;
+        for (let j = 1; j < wb.length && !branches; j++) {
+          const c = wb[j - 1];
+          const d = wb[j];
+          if (c === undefined || d === undefined || !pointInsideSegment(p, c, d)) continue;
+          if (
+            (before !== undefined && sameLine(before, p, c, d)) ||
+            (after !== undefined && sameLine(p, after, c, d))
+          )
+            branches = true;
+        }
+        if (!branches) continue;
+        const key = `${Math.round(p.x)}:${Math.round(p.y)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ kind: "junction", cx: p.x, cy: p.y, radius: length(JUNCTION_R) });
+        }
+        break;
+      }
+    }
+  }
+  return out;
+};
+
 // Three layers, back to front: edge lines + end markers, then nodes, then edge labels. Edges under
 // nodes means a straight centre-to-centre link (network/cloud/block) is cleanly occluded by any node
 // it crosses, rather than slicing visibly across the box; edge labels ride on top (with their plate)
-// so they stay readable even when an edge passes close to a node.
-export const toDisplayList = (scene: Scene): DrawCmd[] => {
+// so they stay readable even when an edge passes close to a node. `drawJunctions` (the opt-in bus
+// rendering) adds a dot wherever edges branch off a shared backbone, drawn just above the edges.
+export const toDisplayList = (scene: Scene, drawJunctions = false): DrawCmd[] => {
   const edges: DrawCmd[] = [];
   const labels: DrawCmd[] = [];
   for (const edge of scene.edges) {
@@ -717,7 +796,8 @@ export const toDisplayList = (scene: Scene): DrawCmd[] => {
   const wedges = scene.wedges.flatMap(wedgeCmds);
   const decorations = scene.decorations.map(decorationCmd);
   // Decorations (axis chrome) draw first, behind everything else.
-  return [...decorations, ...containers, ...wedges, ...edges, ...leaves, ...labels];
+  const junctions = drawJunctions ? busJunctions(scene) : [];
+  return [...decorations, ...containers, ...wedges, ...edges, ...junctions, ...leaves, ...labels];
 };
 
 // Axis chrome → draw commands: a `band` is a filled background rect; a `rule` is a markerless dashed
