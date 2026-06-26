@@ -151,4 +151,21 @@ describe("layout energy baseline + style invariants", () => {
       expect(Number.isFinite(e.total)).toBe(true);
     });
   }
+
+  // "Tidy layout" must never make a layered family WORSE — the default config is always one of the
+  // candidates, so the selected energy is ≤ the default's. (Often equal: ELK's default is already good.)
+  const layeredSamples = SAMPLES.filter((s) =>
+    ["flowchart", "state", "state-composite", "er", "class"].includes(s.name),
+  );
+  for (const sample of layeredSamples) {
+    it(`${sample.name}: tidy layout never raises the energy (≤ default)`, async () => {
+      const parsed = parseDiagram(sample.text);
+      if (!isOk(parsed)) return;
+      const base = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false);
+      const tidy = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), true);
+      if (!isOk(base) || !isOk(tidy)) return;
+      expect(noSiblingOverlaps(tidy.value)).toBe(true); // still a valid, in-style layout
+      expect(layoutEnergy(tidy.value).total).toBeLessThanOrEqual(layoutEnergy(base.value).total + 1e-6);
+    });
+  }
 });

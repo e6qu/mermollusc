@@ -203,6 +203,7 @@ const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
+const tidyBtn = document.querySelector<HTMLButtonElement>("#tidy");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
@@ -303,6 +304,7 @@ if (
   connectBtn === null ||
   themeBtn === null ||
   sketchBtn === null ||
+  tidyBtn === null ||
   loadPackEl === null ||
   exampleEl === null ||
   kindEl === null ||
@@ -2109,6 +2111,17 @@ const persistCollapsed = (): void => {
   }
 };
 
+// "Tidy layout": when on, the layered families pick the lowest-crossing of a few deterministic ELK
+// candidates (default output otherwise). A persisted UI preference, like Sketch/Theme.
+const TIDY_KEY = "mermollusc-tidy-layout";
+let tidyEnabled = ((): boolean => {
+  try {
+    return localStorage.getItem(TIDY_KEY) === "true";
+  } catch {
+    return false;
+  }
+})();
+
 // Node colour cycles through this accent palette (none → blue → grey → red). The styling itself lives in
 // the overlay document (curved edges + node accents), so it persists, serialises into share links, and
 // is undoable like positions — while the Mermaid source stays vanilla (these have no Mermaid syntax).
@@ -2172,7 +2185,7 @@ const renderFromText = async (text: string): Promise<void> => {
   // gates the Add button on it.
   isDotImport = result.family === "dot";
   lastDirection = "direction" in diagram ? diagram.direction : null;
-  const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded());
+  const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded(), tidyEnabled);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
@@ -2315,7 +2328,7 @@ const relax = async (): Promise<void> => {
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
-  const laid = await layout(ast, seed, measureLabel);
+  const laid = await layout(ast, seed, measureLabel, tidyEnabled);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
     setStatusAndAnnounce("error", `relax failed — ${laid.error.message}`);
@@ -4560,6 +4573,26 @@ sketchBtn.addEventListener("click", () => {
   iconImages.clear();
   void renderFromText(editor.value());
   announce(themeCtl.isSketch() ? "sketch mode" : "crisp mode");
+});
+
+// Tidy layout: a re-layout (not just a repaint), so re-run the pipeline from text. Persisted.
+const syncTidyLabel = (): void => {
+  tidyBtn.setAttribute("aria-pressed", tidyEnabled ? "true" : "false");
+  tidyBtn.textContent = tidyEnabled ? "Tidy ✓" : "Tidy";
+};
+syncTidyLabel();
+tidyBtn.addEventListener("click", () => {
+  tidyEnabled = !tidyEnabled;
+  try {
+    localStorage.setItem(TIDY_KEY, tidyEnabled ? "true" : "false");
+  } catch (e) {
+    console.error("tidy-layout persist failed", e);
+  }
+  syncTidyLabel();
+  // Await the re-layout before announcing — `renderFromText` writes the diagram summary to the status.
+  void renderFromText(editor.value()).then(() =>
+    setStatusAndAnnounce("ok", tidyEnabled ? "tidy layout on" : "tidy layout off"),
+  );
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the

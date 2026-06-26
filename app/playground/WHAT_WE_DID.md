@@ -803,3 +803,5 @@
 - Edge route control: the context-bar button now cycles a connector through Square → Straight → Curved
   (was a curve on/off toggle); the route is per-edge overlay state (persists, shares, undoable), curved
   rendering rounds only the corners, and edge labels follow the edge when its endpoint is dragged.
+- "Tidy layout" toggle (#tidy, persisted): re-lays-out the layered families by picking the lowest-
+  crossing of a few deterministic ELK candidates; default (off) is unchanged. Opt-in, like Sketch/Theme.
