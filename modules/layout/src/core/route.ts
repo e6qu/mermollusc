@@ -1,5 +1,6 @@
 import { point, twoOrMore, type Point, type TwoOrMore } from "@m/std";
 import type { Scene, SceneEdge } from "@m/contracts";
+import { mazeRoute } from "./maze.js";
 
 // Build an edge's waypoints (always ≥ 2) from a routing engine's point list. ELK normally returns a
 // full route (each section carries at least its start + end), but a degenerate/unrouted edge can yield
@@ -126,6 +127,30 @@ const routeLength = (pts: readonly Point[]): number => {
   return len;
 };
 const OBSTACLE_SCAN_STEPS = 16; // candidate channel positions tried when a Z-route hits a node
+const OBSTACLE_MARGIN = 10; // clearance the maze router keeps between a detour leg and an obstacle
+
+// The point at the half-way arc length along a multi-segment route — where a mid-route label sits.
+const pathMidpoint = (pts: readonly Point[]): Point => {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    if (a !== undefined && b !== undefined) total += Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+  }
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    if (a === undefined || b === undefined) continue;
+    const seg = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (acc + seg >= total / 2) {
+      const t = seg === 0 ? 0 : (total / 2 - acc) / seg;
+      return point(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+    }
+    acc += seg;
+  }
+  return pts[0] ?? point(0, 0);
+};
 
 // If the default Z-route would cut through an unrelated node, search for an orthogonal detour: two route
 // topologies (the cross-channel leg along the dominant axis, OR transposed so it runs perpendicular — a
@@ -253,10 +278,23 @@ export const spreadPorts = (scene: Scene): Scene => {
     const midY = (p0.y + p3.y) / 2 + (horizontal ? 0 : off);
     const sm1 = horizontal ? point(midX, p0.y) : point(p0.x, midY);
     const sm2 = horizontal ? point(midX, p3.y) : point(p3.x, midY);
-    // Reroute around any non-endpoint, non-container node the staggered channel would cut through.
     const obstacles = obstacleBoxes.get(e.id) ?? [];
+    // Clean staggered route (the overwhelming common case) — unchanged, so clean diagrams don't move.
+    if (routeHits([p0, sm1, sm2, p3], obstacles) === 0) {
+      const labelPos = e.labelPos === null ? null : point((sm1.x + sm2.x) / 2, (sm1.y + sm2.y) / 2);
+      return { ...e, waypoints: twoOrMore(p0, sm1, sm2, p3), labelPos };
+    }
+    // The route would cut through a node. Prefer the maze router (general multi-bend detours); if it
+    // can't find a clear orthogonal path, fall back to the local two-topology channel repair.
+    const maze = mazeRoute(p0, p3, obstacles, OBSTACLE_MARGIN);
+    if (maze !== null && maze.length >= 2 && routeHits(maze, obstacles) === 0) {
+      const [w0, w1, ...wr] = maze;
+      if (w0 !== undefined && w1 !== undefined) {
+        const labelPos = e.labelPos === null ? null : pathMidpoint(maze);
+        return { ...e, waypoints: twoOrMore(w0, w1, ...wr), labelPos };
+      }
+    }
     const { m1, m2 } = avoidObstacles(p0, p3, sm1, sm2, horizontal, obstacles);
-    // A label anchored on the channel leg follows the new route (its old anchor is now stale).
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
     return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };
   });

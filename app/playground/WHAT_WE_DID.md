@@ -811,3 +811,5 @@
   free-form alternative to the layered default. Opt-in, like Tidy/Sketch.
 - Edge routing now avoids obstacles automatically (an edge that would cross an unrelated node detours
   around it), via the layout's `spreadPorts` — no UI, on by default since it only changes crossing routes.
+- Edge routing now bends around multiple obstacles (grid maze router behind `spreadPorts`), and the cloud
+  architecture diagram gets a wider inter-row channel so its cross-tier links separate cleanly.

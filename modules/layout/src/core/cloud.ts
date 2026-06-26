@@ -26,6 +26,10 @@ const KIND_ICON: Record<CloudNodeKind, IconRef> = {
 const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
 const GAP = 44;
+// A wider lane between stacked rows than between side-by-side boxes: cross-row connectors (e.g. an
+// app tier wiring down to a data tier) share that vertical channel, so the extra room lets the router
+// spread and detour them instead of stacking them into one congested band.
+const ROW_GAP = 72;
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
@@ -140,7 +144,7 @@ export const layoutCloud = (
   for (const root of roots) {
     let b = place(root, cx, cy, 0);
     if (cx > 0 && cx + b.w > MAX_ROW_WIDTH) {
-      cy += rowHeight + GAP;
+      cy += rowHeight + ROW_GAP;
       cx = 0;
       rowHeight = 0;
       b = place(root, cx, cy, 0);

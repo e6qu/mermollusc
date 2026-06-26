@@ -13,7 +13,12 @@ export {
   containersEncloseMembers,
   styleOk,
   pieSlicesTileCircle,
+  sequenceActorsShareHeaderRow,
+  timelinePeriodsAdvanceLeftToRight,
+  ganttTasksStackInRowOrder,
+  mazeRoute,
 } from "./core/index.js";
+export type { MazeBox } from "./core/index.js";
 export type {
   LayoutGraph,
   PositionedGraph,

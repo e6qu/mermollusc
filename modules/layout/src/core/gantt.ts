@@ -224,3 +224,18 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
 
   return ok({ nodes, edges: [], wedges: [], decorations, extent: rect(0, 0, width, bottom) });
 };
+
+// Family-context style invariant: a Gantt chart stacks one task per row, top-to-bottom in task order, so
+// each task's bar sits strictly below the previous one. Lives here because only the family knows which
+// nodes are task bars (by id) and their order. Vacuously true for an empty chart.
+export const ganttTasksStackInRowOrder = (scene: Scene, ast: GanttAst): boolean => {
+  const yOf = new Map(scene.nodes.map((n) => [n.id, n.bounds.origin.y]));
+  let prev = Number.NEGATIVE_INFINITY;
+  for (const task of ast.tasks) {
+    const y = yOf.get(sceneNodeId(task.id));
+    if (y === undefined) continue;
+    if (y <= prev) return false;
+    prev = y;
+  }
+  return true;
+};

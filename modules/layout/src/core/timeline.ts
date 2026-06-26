@@ -177,3 +177,18 @@ export const layoutTimeline = (
     extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
   });
 };
+
+// Family-context style invariant: a timeline reads left→right, so each period sits strictly to the right
+// of the previous one (in source order). Lives here because only the family knows which nodes are the
+// periods (by id) and what their order is. Vacuously true for an empty timeline.
+export const timelinePeriodsAdvanceLeftToRight = (scene: Scene, ast: TimelineAst): boolean => {
+  const xOf = new Map(scene.nodes.map((n) => [n.id, n.bounds.origin.x]));
+  let prev = Number.NEGATIVE_INFINITY;
+  for (const period of ast.periods) {
+    const x = xOf.get(sceneNodeId(period.id));
+    if (x === undefined) continue;
+    if (x <= prev) return false;
+    prev = x;
+  }
+  return true;
+};

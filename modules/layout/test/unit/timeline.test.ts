@@ -2,7 +2,8 @@ import { brand } from "@m/std";
 import type { TimelineAst } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { heuristicMeasure } from "../../src/core/graph.js";
-import { layoutTimeline } from "../../src/core/timeline.js";
+import { layoutTimeline, timelinePeriodsAdvanceLeftToRight } from "../../src/core/timeline.js";
+import { rect } from "@m/std";
 
 const pid = (s: string) => brand<string, "TimelinePeriodId">(s);
 const evid = (s: string) => brand<string, "TimelineEventId">(s);
@@ -125,5 +126,20 @@ describe("layoutTimeline", () => {
     );
     if (!flat.ok) throw new Error(flat.error.message);
     expect(flat.value.nodes.some((n) => n.shape === "container")).toBe(false);
+  });
+
+  it("timelinePeriodsAdvanceLeftToRight holds, and fails if two periods share a column", () => {
+    expect(timelinePeriodsAdvanceLeftToRight(scene, ast)).toBe(true);
+    // Slam the second period back onto the first period's x → no longer strictly increasing.
+    const p0x = scene.nodes.find((n) => n.id === "p0")?.bounds.origin.x ?? 0;
+    const collapsed = {
+      ...scene,
+      nodes: scene.nodes.map((n) =>
+        n.id === "p1"
+          ? { ...n, bounds: rect(p0x, n.bounds.origin.y, n.bounds.size.width, n.bounds.size.height) }
+          : n,
+      ),
+    };
+    expect(timelinePeriodsAdvanceLeftToRight(collapsed, ast)).toBe(false);
   });
 });

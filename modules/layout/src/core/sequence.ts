@@ -220,3 +220,21 @@ export const layoutSequence = (
     extent,
   });
 };
+
+// Family-context style invariant: a sequence diagram's actor heads all sit on one top row, and every
+// lifeline drops straight down (a vertical line under its actor). Lives here because only the family
+// knows which nodes are actors (by id) and which edges are lifelines (`lifeline:` prefix). Vacuously
+// true when there are no actors.
+export const sequenceActorsShareHeaderRow = (scene: Scene, ast: SequenceAst): boolean => {
+  const actorIds = new Set(ast.actors.map((a) => sceneNodeId(a.id)));
+  const tops = scene.nodes.filter((n) => actorIds.has(n.id)).map((n) => n.bounds.origin.y);
+  const first = tops[0];
+  if (first === undefined) return true;
+  if (!tops.every((y) => Math.abs(y - first) < 1e-6)) return false;
+  for (const e of scene.edges) {
+    if (!e.id.startsWith("lifeline:")) continue;
+    const x0 = e.waypoints[0]?.x;
+    if (x0 !== undefined && !e.waypoints.every((p) => Math.abs(p.x - x0) < 1e-6)) return false;
+  }
+  return true;
+};
