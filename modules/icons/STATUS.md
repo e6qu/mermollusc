@@ -8,10 +8,16 @@
 - **Categories**: every pack groups its icons (authored packs: arch → compute/data/network/messaging/
   people, bpmn → event/activity/gateway/data; vendored brand packs → `brands`; k8s → `resources`;
   user packs default to `all` or honour a `categories` field).
-- `builtinPack` ("arch"): 12 original AGPL glyphs — server, database, cloud, user, queue, router,
-  switch, firewall, host (network kinds) + compute, storage, cdn (cloud kinds); `defaultRegistry`.
-- `bpmnPack` ("bpmn"): 12 original AGPL BPMN-notation glyphs — start/end/intermediate/message/timer
-  events, task, subprocess, exclusive/parallel/inclusive gateways, data-object, data-store.
+- `builtinPack` ("arch"): 21 original AGPL glyphs — the family node kinds (server, database, cloud,
+  user, queue, router, switch, firewall, host, compute, storage, cdn) + a richer infra palette
+  (load-balancer, gateway, container, microservice, cache, bucket, key, lock), grouped compute/data/
+  network/messaging/security/people; `defaultRegistry`.
+- `bpmnPack` ("bpmn"): 41 original AGPL BPMN-2.0 glyphs — the full element matrix: typed start/
+  intermediate/end events (message/timer/signal/error/escalation/conditional/link/terminate) composed
+  from a ring + trigger symbol; all task types (user/service/script/manual/send/receive/business-rule)
+  + subprocess/call-activity/transaction; exclusive/parallel/inclusive/complex/event gateways; data
+  object/store/input/output/collection; group/annotation/pool/lane artifacts. Categorised event/
+  activity/gateway/data/artifact.
 - `sketchPack` ("sketch"): 6 original AGPL hand-drawn/xkcd-style outline glyphs (person/server/
   database/cloud/note/box) to pair with the renderer's Sketch mode.
 - **In-node rendering is wired**: layout sets a `SceneNode.icon` (`IconRef`); the renderer emits an

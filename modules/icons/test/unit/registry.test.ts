@@ -82,14 +82,44 @@ describe("icons registry", () => {
     expect(isOk(findIcon(defaultRegistry, "sketch", "database"))).toBe(true);
   });
 
-  it("bundles the original AGPL BPMN glyph pack (events / tasks / gateways)", () => {
+  it("bundles the full original AGPL BPMN-2.0 glyph set (typed events / task types / gateways / data)", () => {
     expect(bpmnPack.meta.license).toBe("AGPL-3.0-or-later");
-    for (const name of ["start-event", "end-event", "task", "exclusive-gateway", "data-store"]) {
+    // A spread across every BPMN element family — the typed events, task type markers, the complete
+    // gateway set, the data shapes and the artifacts — each resolving to an SVG.
+    for (const name of [
+      "start-message",
+      "start-timer",
+      "intermediate-error",
+      "intermediate-link",
+      "end-terminate",
+      "user-task",
+      "service-task",
+      "send-task",
+      "business-rule-task",
+      "call-activity",
+      "complex-gateway",
+      "event-gateway",
+      "data-input",
+      "data-collection",
+      "group",
+      "pool",
+    ]) {
       const r = findIcon(defaultRegistry, "bpmn", name);
       expect(isOk(r)).toBe(true);
       if (isOk(r)) expect(r.value).toContain("<svg");
     }
-    expect(packNames(bpmnPack)).toContain("parallel-gateway");
+    expect(categoryNames(bpmnPack)).toEqual(
+      expect.arrayContaining(["event", "activity", "gateway", "data", "artifact"]),
+    );
+  });
+
+  it("categorises every glyph of the authored packs (no orphan icons)", () => {
+    for (const pack of [builtinPack, bpmnPack]) {
+      const categorised = new Set(
+        categoryNames(pack).flatMap((cat) => iconsInCategory(pack, cat)),
+      );
+      for (const name of packNames(pack)) expect(categorised.has(name)).toBe(true);
+    }
   });
 
   it("registerPack adds a pack without mutating the original registry", () => {

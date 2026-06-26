@@ -40,3 +40,13 @@
 - Archived the **full CNCF landscape** (2423 logos, ~64 MB, Apache-2.0) at a pinned commit to
   `vendor/cncf.json` via **git-LFS** (`.gitattributes` + a pre-commit `exclude`). Deliberately *not*
   imported/registered — it'd bloat the bundle and risk the e2e gate; it's an archival asset.
+- Full BPMN-2.0 glyph set + richer arch palette. `bpmnPack` grew 12 → 41 glyphs: the typed event matrix
+  (start/intermediate/end × message/timer/signal/error/escalation/conditional/link/terminate, composed
+  from a ring + trigger symbol so it stays consistent), every task type (user/service/script/manual/send/
+  receive/business-rule + subprocess/call-activity/transaction), the full gateway set (exclusive/parallel/
+  inclusive/complex/event), data object/store/input/output/collection, and group/annotation/pool/lane
+  artifacts — all categorised. `builtinPack` ("arch") grew 12 → 21: added load-balancer, gateway,
+  container, microservice, cache, bucket, key, lock, with a new `security` category. All original AGPL
+  line-art (provenance rule: nothing vendored). Verified each renders through the real pipeline (flowchart
+  `icon "bpmn/..."` + network `icon "arch/..."` screenshots). New test: a spread of the typed BPMN
+  elements resolve, and an invariant that every authored glyph belongs to a category (no orphans).
