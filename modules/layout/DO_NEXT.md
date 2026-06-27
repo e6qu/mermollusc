@@ -52,6 +52,7 @@ nodes; (2) expose `elk.layered.edgeRouting` + edge spacing; (3) per-family `elk.
 Deterministic port assignment (`spreadPorts`) shipped for cloud/block; ELK edge spacing tuned. Remaining:
 extend `spreadPorts` to network/c4 (currently centre-to-centre straight lines), and obstacle-avoidance so
 a spread lane doesn't cross an intervening node (step 3 — the larger piece).
+- *(done)* Prevent massive outer-edge detours around dense diagrams (like Cloud) by replacing lexicographical candidate sorting in crossing minimisation with a balanced crossings-and-length cost function.
 
 
 ## Energy-aware layout — next slices (plan agreed: deterministic candidate-and-select, opt-in)
