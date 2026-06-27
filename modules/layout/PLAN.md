@@ -26,4 +26,4 @@
 - `LayoutOverrides` seeds are consumed by the flowchart relax path.
 - Family post-passes may refine shared layout output when the source carries semantic geometry, such
   as state-note side placement.
-- Edge routing cost function balances crossings and path length (via `CROSSING_COST`) to prevent pathologically long detours.
+- Edge routing cost function balances crossings and path length (via `CROSSING_COST = 75`) in both greedy sweeps and ILS passes to prevent pathologically long detours.

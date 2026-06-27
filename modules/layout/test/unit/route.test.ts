@@ -242,10 +242,20 @@ describe("spreadPorts", () => {
     return n;
   };
 
+  const customNode = (id: string, x: number, y: number, w: number, h: number) => ({
+    ...node(id, x, y),
+    bounds: rect(x, y, w, h),
+  });
+
   it("minimises edge–edge crossings: a horizontal edge re-routes clear of a vertical one it crossed", () => {
     // A→B runs horizontally at y≈115; C(top)→D(bottom) runs vertically through x≈115 — they cross.
     const scene = {
-      nodes: [node("a", 0, 100), node("b", 220, 100), node("c", 95, -90), node("d", 95, 240)],
+      nodes: [
+        customNode("a", 20, 100, 10, 10),
+        customNode("b", 180, 100, 10, 10),
+        customNode("c", 100, 80, 10, 10),
+        customNode("d", 100, 120, 10, 10),
+      ],
       edges: [edge("ab", "a", "b"), edge("cd", "c", "d")],
       wedges: [],
       decorations: [],
@@ -259,9 +269,12 @@ describe("spreadPorts", () => {
     // One horizontal edge crossing TWO separate vertical edges → 2 crossings to clear.
     const build = () => ({
       nodes: [
-        node("a", 0, 100), node("b", 320, 100),
-        node("c", 95, -60), node("d", 95, 250),
-        node("e", 195, -60), node("f", 195, 250),
+        customNode("a", 20, 100, 10, 10),
+        customNode("b", 280, 100, 10, 10),
+        customNode("c", 100, 80, 10, 10),
+        customNode("d", 100, 120, 10, 10),
+        customNode("e", 200, 80, 10, 10),
+        customNode("f", 200, 120, 10, 10),
       ],
       edges: [edge("ab", "a", "b"), edge("cd", "c", "d"), edge("ef", "e", "f")],
       wedges: [],
