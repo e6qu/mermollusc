@@ -418,7 +418,7 @@ const conflictsBetween = (
 };
 const MAX_CROSS_SWEEPS = 3;
 const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
-const CROSSING_COST = 40; // cost penalty per edge crossing/overlap in length pixels
+const CROSSING_COST = 75; // cost penalty per edge crossing/overlap in length pixels
 
 const totalConflicts = (edges: readonly SceneEdge[]): number => {
   const segs = edges.map((e) => segmentsOf(e.waypoints));
@@ -560,9 +560,13 @@ const greedyReduce = (
       if (curCross === 0) continue;
       const curHits = routeHits(e.waypoints, obstacleBoxes.get(e.id) ?? []);
       const top = routeCandidates(i, edges, obstacleBoxes, boxById, maze)[0];
-      if (top !== undefined && (top.cross < curCross || top.hits < curHits)) {
-        edges[i] = applyRoute(e, top.wp);
-        improved = true;
+      if (top !== undefined) {
+        const curScore = curCross * CROSSING_COST + routeLength(e.waypoints);
+        const topScore = top.cross * CROSSING_COST + top.len;
+        if (top.hits < curHits || (top.hits === curHits && topScore < curScore)) {
+          edges[i] = applyRoute(e, top.wp);
+          improved = true;
+        }
       }
     }
     if (!improved) break;
@@ -608,6 +612,9 @@ const perturb = (
 // the local minimum (force one edge onto a different route) and re-descend, keeping the best total seen.
 // Deterministic, bounded, keeps the best → terminates and never makes the picture worse. A crossing-free
 // scene short-circuits to byte-identical output.
+const totalLength = (edges: readonly SceneEdge[]): number =>
+  edges.reduce((acc, e) => acc + routeLength(e.waypoints), 0);
+
 export const minimizeCrossings = (scene: Scene): Scene => {
   const initial = totalConflicts(scene.edges);
   if (initial === 0) return scene;
@@ -615,6 +622,7 @@ export const minimizeCrossings = (scene: Scene): Scene => {
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
   const maze = cachedMaze(new Map()); // memo shared across every sweep + kick of this run
   let bestEdges = greedyReduce(scene.edges, obstacleBoxes, boxById, maze);
+  let bestScore = totalConflicts(bestEdges) * CROSSING_COST + totalLength(bestEdges);
   let bestN = totalConflicts(bestEdges);
   // Scale the (costlier) iterated-local-search down on pathologically dense graphs — the greedy already
   // ran; many full-span crossings would otherwise multiply the work without much payoff.
@@ -623,10 +631,11 @@ export const minimizeCrossings = (scene: Scene): Scene => {
     const perturbed = perturb(bestEdges, kick, obstacleBoxes, boxById, maze);
     if (perturbed === null) break;
     const reduced = greedyReduce(perturbed, obstacleBoxes, boxById, maze);
-    const n = totalConflicts(reduced);
-    if (n < bestN) {
+    const score = totalConflicts(reduced) * CROSSING_COST + totalLength(reduced);
+    if (score < bestScore) {
       bestEdges = reduced;
-      bestN = n;
+      bestScore = score;
+      bestN = totalConflicts(reduced);
     }
   }
   return { ...scene, edges: bestEdges };

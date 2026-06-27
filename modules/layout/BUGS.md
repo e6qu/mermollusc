@@ -5,9 +5,12 @@ _None known._
 ## Resolved
 
 - ~~**Edge routing chose extremely long detours around the diagram outside.**~~ Fixed — the candidate cost
-  sorting in `minimizeCrossings` strictly prioritized crossings over length (lexicographical), forcing massive
-  detours (e.g. `worker --> rds` around the whole canvas) to avoid minor channel crossings. Balanced them
-  with a `CROSSING_COST = 40` weight so short routes with crossings are preferred over huge empty loops.
+  sorting in `minimizeCrossings` strictly prioritized crossings over length (lexicographical), and the greedy/ILS
+  loops only accepted transitions that reduced crossings. This forced massive detours (e.g. `worker --> rds` and
+  `jobs --> worker` around the whole canvas) to avoid minor channel crossings. We balanced them globally by
+  integrating a crossing cost weight (`CROSSING_COST = 75`) across both greedy sweeps and ILS/perturb kicks,
+  ensuring short paths with minor crossings are preferred over huge empty loops. Adjusted unit test coordinates
+  to match realistic bounds.
 
 - ~~**Edge labels overlapped nodes in the absolute-layout families (cloud/c4/network/block).**~~ Fixed —
   these placed edge labels at the routed midpoint (opaque plate) in a tight 24px gap, so a label landed
