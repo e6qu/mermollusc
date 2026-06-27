@@ -387,3 +387,4 @@
   joins). Bigger fans claim their edges first; an edge already in a trunk isn't pulled into another;
   non-fan edges keep the spread routes they came in with. Display-only (respects given positions, no
   channel reservation). Wired to a new "Trunk" toggle in the app, taking precedence over "Bus".
+- Balanced candidate sorting in `minimizeCrossings`: replaced strict lexicographical sorting (crossings first, then length) with a balanced crossing-and-length score using a new `CROSSING_COST = 40` constant. This prevents pathologically long detours around the outside of dense diagrams (like Cloud) by preferring short paths with a few crossings over massive outer loops.

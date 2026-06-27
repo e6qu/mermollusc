@@ -418,6 +418,7 @@ const conflictsBetween = (
 };
 const MAX_CROSS_SWEEPS = 3;
 const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
+const CROSSING_COST = 40; // cost penalty per edge crossing/overlap in length pixels
 
 const totalConflicts = (edges: readonly SceneEdge[]): number => {
   const segs = edges.map((e) => segmentsOf(e.waypoints));
@@ -533,7 +534,10 @@ const routeCandidates = (
       });
     }
   }
-  out.sort((a, b) => a.hits - b.hits || a.cross - b.cross || a.len - b.len);
+  out.sort(
+    (a, b) =>
+      a.hits - b.hits || a.cross * CROSSING_COST + a.len - (b.cross * CROSSING_COST + b.len),
+  );
   return out;
 };
 

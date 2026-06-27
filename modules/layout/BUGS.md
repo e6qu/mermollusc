@@ -4,6 +4,11 @@ _None known._
 
 ## Resolved
 
+- ~~**Edge routing chose extremely long detours around the diagram outside.**~~ Fixed — the candidate cost
+  sorting in `minimizeCrossings` strictly prioritized crossings over length (lexicographical), forcing massive
+  detours (e.g. `worker --> rds` around the whole canvas) to avoid minor channel crossings. Balanced them
+  with a `CROSSING_COST = 40` weight so short routes with crossings are preferred over huge empty loops.
+
 - ~~**Edge labels overlapped nodes in the absolute-layout families (cloud/c4/network/block).**~~ Fixed —
   these placed edge labels at the routed midpoint (opaque plate) in a tight 24px gap, so a label landed
   on a node ("cloud is bunched up"). Widened `GAP` and, for the orthogonal cloud/block routes, anchored

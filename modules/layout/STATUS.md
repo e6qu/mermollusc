@@ -85,3 +85,4 @@
   endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`
   (bounds + totality), `gridGeometry` (order/placement/containment), block/network grids **and the ELK
   flowchart path** preserve ids + fit every box inside the extent).
+- **Candidate Sorting Cost:** replaced strict lexicographical sorting in `minimizeCrossings` with a balanced cost function (`CROSSING_COST = 40`) to prevent outer-edge detours on dense diagrams.
