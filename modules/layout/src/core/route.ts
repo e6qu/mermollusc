@@ -416,9 +416,52 @@ const conflictsBetween = (
   }
   return n;
 };
+
+const countConflicts = (
+  path: readonly Point[],
+  others: ReadonlyArray<readonly [Point, Point]>,
+): [number, number] => {
+  let crossings = 0;
+  let overlaps = 0;
+  for (const [a, b] of segmentsOf(path)) {
+    for (const [c, d] of others) {
+      if (orthSegmentsCross(a, b, c, d)) crossings++;
+      else if (orthSegmentsOverlap(a, b, c, d)) overlaps++;
+    }
+  }
+  return [crossings, overlaps];
+};
+
 const MAX_CROSS_SWEEPS = 3;
 const MAX_CROSS_KICKS = 6; // iterated-local-search restarts when the greedy stalls with crossings left
-const CROSSING_COST = 75; // cost penalty per edge crossing/overlap in length pixels
+const CROSSING_COST = 10; // cost penalty per perpendicular crossing in length pixels
+const OVERLAP_COST = 150; // cost penalty per parallel overlap in length pixels
+
+const conflictCostBetween = (
+  path: readonly Point[],
+  others: ReadonlyArray<readonly [Point, Point]>,
+): number => {
+  const [crossings, overlaps] = countConflicts(path, others);
+  return crossings * CROSSING_COST + overlaps * OVERLAP_COST;
+};
+
+const totalConflictCost = (edges: readonly SceneEdge[]): number => {
+  const segs = edges.map((e) => segmentsOf(e.waypoints));
+  let cost = 0;
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const si = segs[i];
+      const sj = segs[j];
+      if (si === undefined || sj === undefined) continue;
+      for (const [a, b] of si)
+        for (const [c, d] of sj) {
+          if (orthSegmentsCross(a, b, c, d)) cost += CROSSING_COST;
+          else if (orthSegmentsOverlap(a, b, c, d)) cost += OVERLAP_COST;
+        }
+    }
+  }
+  return cost;
+};
 
 const totalConflicts = (edges: readonly SceneEdge[]): number => {
   const segs = edges.map((e) => segmentsOf(e.waypoints));
@@ -529,7 +572,7 @@ const routeCandidates = (
       out.push({
         wp: route,
         hits,
-        cross: conflictsBetween(route, others),
+        cross: conflictCostBetween(route, others),
         len: routeLength(route),
       });
     }
@@ -561,8 +604,8 @@ const greedyReduce = (
       const curHits = routeHits(e.waypoints, obstacleBoxes.get(e.id) ?? []);
       const top = routeCandidates(i, edges, obstacleBoxes, boxById, maze)[0];
       if (top !== undefined) {
-        const curScore = curCross * CROSSING_COST + routeLength(e.waypoints);
-        const topScore = top.cross * CROSSING_COST + top.len;
+        const curScore = conflictCostBetween(e.waypoints, others) + routeLength(e.waypoints);
+        const topScore = top.cross + top.len;
         if (top.hits < curHits || (top.hits === curHits && topScore < curScore)) {
           edges[i] = applyRoute(e, top.wp);
           improved = true;
@@ -622,7 +665,7 @@ export const minimizeCrossings = (scene: Scene): Scene => {
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
   const maze = cachedMaze(new Map()); // memo shared across every sweep + kick of this run
   let bestEdges = greedyReduce(scene.edges, obstacleBoxes, boxById, maze);
-  let bestScore = totalConflicts(bestEdges) * CROSSING_COST + totalLength(bestEdges);
+  let bestScore = totalConflictCost(bestEdges) + totalLength(bestEdges);
   let bestN = totalConflicts(bestEdges);
   // Scale the (costlier) iterated-local-search down on pathologically dense graphs — the greedy already
   // ran; many full-span crossings would otherwise multiply the work without much payoff.
@@ -631,7 +674,7 @@ export const minimizeCrossings = (scene: Scene): Scene => {
     const perturbed = perturb(bestEdges, kick, obstacleBoxes, boxById, maze);
     if (perturbed === null) break;
     const reduced = greedyReduce(perturbed, obstacleBoxes, boxById, maze);
-    const score = totalConflicts(reduced) * CROSSING_COST + totalLength(reduced);
+    const score = totalConflictCost(reduced) + totalLength(reduced);
     if (score < bestScore) {
       bestEdges = reduced;
       bestScore = score;

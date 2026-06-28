@@ -85,4 +85,4 @@
   endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`
   (bounds + totality), `gridGeometry` (order/placement/containment), block/network grids **and the ELK
   flowchart path** preserve ids + fit every box inside the extent).
-- **Candidate Sorting & Optimization Cost:** replaced strict lexicographical sorting and crossings-only ILS evaluations in `minimizeCrossings` with a balanced cost function (`CROSSING_COST = 75`) applied globally across both greedy sweeps and ILS/perturb kicks, completely resolving outer-edge detours on dense diagrams.
+- **Candidate Sorting & Optimization Cost:** Differentiated crossings and overlaps in `minimizeCrossings` with a split cost function (`CROSSING_COST = 10` for perpendicular crossings and `OVERLAP_COST = 150` for parallel overlaps) applied globally across greedy sweeps and ILS passes. This allows short paths with minor crossings while strictly avoiding parallel overlaps.
