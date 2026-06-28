@@ -47,11 +47,12 @@ export interface SourceMap {
   readonly arrows: ReadonlyMap<EdgeId, TextSpan>;
 }
 
-// Editable text spans for a sequence diagram: each actor's label and each message's text.
+// Editable text spans for a sequence diagram: each actor's label, each message's text, and its arrow.
 export interface SequenceSource {
   readonly actors: ReadonlyMap<ActorId, TextSpan>;
   readonly messages: ReadonlyMap<MessageId, TextSpan>;
   readonly notes: ReadonlyMap<SequenceNoteId, TextSpan>;
+  readonly arrows: ReadonlyMap<MessageId, TextSpan>;
 }
 
 // Editable text spans for a C4 diagram: the inner (unquoted) label of each element and relation.

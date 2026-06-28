@@ -42,6 +42,7 @@ import {
   leafNodes,
   addEdgeLabel,
   restyleEdge,
+  restyleSequenceMessage,
   patchSpan,
   shiftGanttStart,
   setGanttDuration,
@@ -66,6 +67,7 @@ import type {
   ReqSource,
   DiagramAst,
   EdgeKind,
+  MessageKind,
   FlowDirection,
   GitGraphSource,
   TimelineSource,
@@ -262,7 +264,7 @@ const stageCol = document.querySelector<HTMLElement>(".stage-col");
 const contextBar = document.querySelector<HTMLElement>("#context-bar");
 const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
 const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
-const ctxColourBtn = document.querySelector<HTMLButtonElement>("#ctx-colour");
+const ctxColourSwatches = document.querySelector<HTMLElement>("#ctx-colour-swatches");
 const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
@@ -281,7 +283,7 @@ if (
   contextBar === null ||
   ctxRelabelBtn === null ||
   ctxShapeBtn === null ||
-  ctxColourBtn === null ||
+  ctxColourSwatches === null ||
   ctxCurveBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
@@ -1246,7 +1248,16 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
   // Colour is a visual-only node preference; show it whenever nodes — and only nodes — are selected.
-  ctxColourBtn.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
+  ctxColourSwatches.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
+  if (!ctxColourSwatches.hidden) {
+    const accents = new Set(selectionOrder.map((id) => doc.nodeStyles().get(id)?.accent ?? "none"));
+    const activeAccent = accents.size === 1 ? [...accents][0] : undefined;
+    for (const swatch of ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch")) {
+      const acc = swatch.getAttribute("data-accent");
+      const checked = acc === activeAccent;
+      swatch.setAttribute("aria-checked", checked ? "true" : "false");
+    }
+  }
   // The route control cycles square → straight → curved; it shows whenever edges — and only edges — are
   // selected, labelled with the current route (or "Route" for a mixed selection).
   ctxCurveBtn.hidden = viewerMode || selection.edges.size === 0 || selectionOrder.length > 0;
@@ -1276,7 +1287,7 @@ const renderContextBar = (caps: CapabilityState): void => {
 // Make `focused` (or the first visible+enabled button) the lone tab stop; the rest are -1.
 const setCtxRoving = (focused: HTMLButtonElement | null): void => {
   const btns = Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
-    (b) => !b.hidden && !b.disabled,
+    (b) => !b.hidden && !b.disabled && b.closest("[hidden]") === null,
   );
   const stop = focused !== null && btns.includes(focused) ? focused : (btns[0] ?? null);
   for (const b of btns) b.tabIndex = b === stop ? 0 : -1;
@@ -2277,10 +2288,9 @@ const updateStyleOptions = (): void => {
   styleSelect.value = active;
 };
 
-// Node colour cycles through this accent palette (none → blue → grey → red). The styling itself lives in
+// The styling itself lives in
 // the overlay document (curved edges + node accents), so it persists, serialises into share links, and
 // is undoable like positions — while the Mermaid source stays vanilla (these have no Mermaid syntax).
-const ACCENT_CYCLE: readonly NodeAccent[] = ["none", "active", "muted", "danger"];
 const collapsedBranded = (): ReadonlySet<NodeId> =>
   new Set([...cloudCollapsed].map((id) => brand<string, "NodeId">(id)));
 
@@ -4414,6 +4424,7 @@ const cycleShape = async (): Promise<void> => {
 
 // Cycle the single selected flowchart/block edge's presentational style by rewriting its arrow token.
 const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick"];
+const SEQ_STYLE_CYCLE: readonly MessageKind[] = ["solid", "dashed", "solidOpen", "dashedOpen"];
 // Toggle the curved/straight presentation of the selected edge(s) — a visual-only preference (no source
 // edit, no re-layout), so just flip the set, persist, and repaint. Curves all if any selected edge is
 // straight, else straightens all.
@@ -4436,11 +4447,8 @@ const cycleEdgeRoute = (): void => {
 
 // Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
 // curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
-const cycleNodeColour = (): void => {
+const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
-  const firstId = selectionOrder[0];
-  const cur = firstId === undefined ? "none" : (doc.nodeStyles().get(firstId)?.accent ?? "none");
-  const adv = ACCENT_CYCLE[(ACCENT_CYCLE.indexOf(cur) + 1) % ACCENT_CYCLE.length] ?? "none";
   doc.record();
   for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
   doc.persist();
@@ -4455,18 +4463,34 @@ const cycleEdgeStyle = async (): Promise<void> => {
   if (edgeId === undefined) return;
   const eid = brand<string, "EdgeId">(edgeId);
   let arrowSpan: TextSpan | undefined;
-  let currentKind: EdgeKind | undefined;
+  let currentKind: EdgeKind | MessageKind | undefined;
   if (ast.kind === "flowchart" && source !== null) {
     arrowSpan = source.arrows.get(eid);
     currentKind = ast.edges.find((e) => e.id === eid)?.kind;
   } else if (ast.kind === "block" && blockSource !== null) {
     arrowSpan = blockSource.arrows.get(eid);
     currentKind = ast.edges.find((e) => e.id === eid)?.kind;
+  } else if (ast.kind === "sequence" && seqSource !== null) {
+    const msgId = brand<string, "MessageId">(edgeId);
+    arrowSpan = seqSource.arrows.get(msgId);
+    currentKind = ast.messages.find((m) => m.id === msgId)?.kind;
   }
   if (arrowSpan === undefined || currentKind === undefined) return;
-  const idx = EDGE_STYLE_CYCLE.indexOf(currentKind);
-  const next = EDGE_STYLE_CYCLE[(idx + 1) % EDGE_STYLE_CYCLE.length] ?? "arrow";
-  const text = restyleEdge(editor.value(), arrowSpan, next);
+
+  let text = "";
+  let nextStyle = "";
+  if (ast.kind === "sequence") {
+    const idx = SEQ_STYLE_CYCLE.indexOf(currentKind as MessageKind);
+    const next = SEQ_STYLE_CYCLE[(idx + 1) % SEQ_STYLE_CYCLE.length] ?? "solid";
+    nextStyle = next;
+    text = restyleSequenceMessage(editor.value(), arrowSpan, next);
+  } else {
+    const idx = EDGE_STYLE_CYCLE.indexOf(currentKind as EdgeKind);
+    const next = EDGE_STYLE_CYCLE[(idx + 1) % EDGE_STYLE_CYCLE.length] ?? "arrow";
+    nextStyle = next;
+    text = restyleEdge(editor.value(), arrowSpan, next);
+  }
+
   editor.setValue(text);
   await renderFromText(text);
   // Keep the edge selected so a repeated press keeps cycling it.
@@ -4474,13 +4498,13 @@ const cycleEdgeStyle = async (): Promise<void> => {
   selectionOrder = [];
   paintScene();
   updateGroupButtons();
-  flashStatus(`edge style: ${next}`);
+  flashStatus(`edge style: ${nextStyle}`);
   canvas.focus({ preventScroll: true });
 };
 
 const ctxButtons = (): HTMLButtonElement[] =>
   Array.from(contextBar.querySelectorAll<HTMLButtonElement>("button")).filter(
-    (b) => !b.hidden && !b.disabled,
+    (b) => !b.hidden && !b.disabled && b.closest("[hidden]") === null,
   );
 
 // Move keyboard focus into the floating action bar (F2 from the navigator), so a keyboard user reaches
@@ -4538,7 +4562,12 @@ ctxShapeBtn.addEventListener(
       ? cycleEdgeStyle()
       : cycleShape()),
 );
-ctxColourBtn.addEventListener("click", () => cycleNodeColour());
+ctxColourSwatches.addEventListener("click", (ev) => {
+  const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(".swatch");
+  if (btn === null) return;
+  const adv = (btn.getAttribute("data-accent") ?? "none") as NodeAccent;
+  setNodeColour(adv);
+});
 ctxCurveBtn.addEventListener("click", () => cycleEdgeRoute());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());

@@ -9,6 +9,7 @@ import type {
   MindmapAst,
   MindmapNodeId,
   MindmapSource,
+  MessageKind,
   ReqEntityId,
   NodeId,
   NodeShape,
@@ -41,6 +42,13 @@ const ARROW: Record<EdgeKind, string> = {
   open: "---",
   dotted: "-.->",
   thick: "==>",
+};
+
+const SEQ_ARROW: Record<MessageKind, string> = {
+  solid: "->>",
+  dashed: "-->>",
+  solidOpen: "->",
+  dashedOpen: "-->",
 };
 
 // The closing delimiter (or delimiters) that would terminate a label token early if it appeared in the
@@ -115,6 +123,12 @@ export const addEdgeLabel = (
 // `==>`) in place. Any `|label|` after it is untouched (the grammar accepts a label after every kind).
 export const restyleEdge = (text: string, arrowSpan: TextSpan, kind: EdgeKind): string =>
   patchSpan(text, arrowSpan, ARROW[kind]);
+
+export const restyleSequenceMessage = (
+  text: string,
+  arrowSpan: TextSpan,
+  kind: MessageKind,
+): string => patchSpan(text, arrowSpan, SEQ_ARROW[kind]);
 
 // Gantt two-way editing: a bar drag rewrites its start date, a resize rewrites its duration, directly in
 // the source (positions/sizes are semantic here, not layout overlay). Date math is pure (UTC, no clock).

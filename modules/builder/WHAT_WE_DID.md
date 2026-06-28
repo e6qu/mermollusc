@@ -147,3 +147,4 @@
 - `applyStyles` applies the edge route: `straight` collapses to a 2-point line, `curved` flags rounded
   rendering, `square` keeps the laid-out route — and `applyOverrides` now BLENDS the edge label position
   with the waypoints on a drag, so labels travel with the edge instead of being left behind.
+- Added `restyleSequenceMessage(text, arrowSpan, kind)` mapping `MessageKind` arrow tokens to cycle sequence message styles.
