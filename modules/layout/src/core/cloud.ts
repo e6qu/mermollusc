@@ -12,7 +12,7 @@ import type {
 } from "@m/contracts";
 import { SIMPLE_ICONS_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
-import { clampedWidth } from "./measure.js";
+import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 
 // Each cloud service kind maps to a representative glyph in the bundled simple-icons (CC0) pack.
 const KIND_ICON: Record<CloudNodeKind, IconRef> = {
@@ -190,18 +190,18 @@ export const layoutCloud = (
     // into the same group (it would become a self-loop on the container).
     const fromId = anchorOf(link.from);
     const toId = anchorOf(link.to);
-    if (fromId === toId) continue;
+    if (link.from !== link.to && fromId === toId) continue;
     const from = boxes.get(fromId);
     const to = boxes.get(toId);
     if (from === undefined || to === undefined) {
       return err({ kind: "layout", message: `cloud: link ${link.id} references an unknown node` });
     }
-    const route = orthogonalRoute(from, to);
+    const isSelf = link.from === link.to;
     edges.push({
       id: sceneEdgeId(link.id),
       from: sceneNodeId(fromId),
       to: sceneNodeId(toId),
-      waypoints: route,
+      waypoints: isSelf ? selfLoopWaypoints(from) : orthogonalRoute(from, to),
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
@@ -211,7 +211,12 @@ export const layoutCloud = (
       toLabel: null,
       // Anchor the label in the route's central channel (between the boxes), not the whole-route
       // midpoint that can land on a node.
-      labelPos: link.label === null ? null : routeChannelMid(route),
+      labelPos:
+        link.label === null
+          ? null
+          : isSelf
+            ? selfLoopLabelPos(from)
+            : routeChannelMid(orthogonalRoute(from, to)),
     });
   }
 

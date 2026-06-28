@@ -1,4 +1,5 @@
 import type { MeasureText } from "./graph.js";
+import { point, type Point } from "@m/std";
 
 // The widest measured line of a (possibly multi-line) label. `reduce`, not `Math.max(...spread)`:
 // a spread over many lines would hit the argument-count limit (and throw) on a pathological label,
@@ -14,3 +15,24 @@ export const clampedWidth = (
   min: number,
   pad: number,
 ): number => Math.max(min, widestLine(text, measure) + pad);
+
+export const selfLoopWaypoints = (b: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}): readonly [Point, Point, Point, Point, Point] => {
+  const LOOP_SIZE = 24;
+  return [
+    point(b.x + b.w * 0.7, b.y),
+    point(b.x + b.w * 0.7, b.y - LOOP_SIZE),
+    point(b.x + b.w + LOOP_SIZE, b.y - LOOP_SIZE),
+    point(b.x + b.w + LOOP_SIZE, b.y + b.h * 0.3),
+    point(b.x + b.w, b.y + b.h * 0.3),
+  ] as const;
+};
+
+export const selfLoopLabelPos = (b: { x: number; y: number; w: number; h: number }): Point => {
+  const LOOP_SIZE = 24;
+  return point(b.x + b.w + LOOP_SIZE, b.y - LOOP_SIZE);
+};
