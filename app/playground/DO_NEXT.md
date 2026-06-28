@@ -16,7 +16,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   while "Flowchart" loads a toy. Promote a richer flowchart as default; relabel/trim BPMN. (Will churn
   golden snapshots — do with `-u`.)
 - **Share-link overwrite (J8) + icon-pack discoverability (J9).** Smaller, independent polish items.
-- **Self-relations (P5, layout).** c4/network render a self-link as a degenerate dot; cloud silently
+- **(done) Self-relations (P5, layout).** c4/network render a self-link as a degenerate dot; cloud silently
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
 ## A11y / UX follow-ups (from the contrast + journey audit)
@@ -43,7 +43,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   arrow-span capture + token map. The **semantic-arrow** families (er crow's-foot, class UML relation,
   state/c4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator encodes
   meaning; they want a typed cardinality/relation picker instead (a separate feature).
-- **Edge labels on skipped-over nodes.** The cloud/c4/network gap+`labelPos` fix clears labels between
+- **(done) Edge labels on skipped-over nodes.** The cloud/c4/network gap+`labelPos` fix clears labels between
   adjacent boxes, but a center-to-center edge that passes *over* a third node can still place its label
   on it — needs real obstacle-avoiding routing.
 - **gitGraph node delete.** Today it's honestly gated ("can't delete this from the canvas"). Implement a
@@ -82,7 +82,7 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   perf trace first — not structural evidence.
 
 ## Accessibility / UX
-- **Mobile / touch (partly done).** The palette + context bar are now reachable and 44px touch-sized at
+- **(done) Mobile / touch (partly done).** The palette + context bar are now reachable and 44px touch-sized at
   phone width, the export cluster is behind an "Export ▾" menu, and the source panel collapses to free
   the canvas. Still wanted, ideally with real-device testing: gesture handling (pinch-zoom vs. pan), a
   bottom-sheet for the editing verbs on very small screens, and a verification pass on physical devices.

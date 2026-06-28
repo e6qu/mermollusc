@@ -12,7 +12,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
-import { clampedWidth } from "./measure.js";
+import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
@@ -125,14 +125,17 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
         message: `c4: relation ${rel.id} references an unknown element`,
       });
     }
+    const isSelf = rel.from === rel.to;
     edges.push({
       id: sceneEdgeId(rel.id),
       from: sceneNodeId(rel.from),
       to: sceneNodeId(rel.to),
-      waypoints: [
-        point(from.x + from.w / 2, from.y + from.h / 2),
-        point(to.x + to.w / 2, to.y + to.h / 2),
-      ],
+      waypoints: isSelf
+        ? selfLoopWaypoints(from)
+        : [
+            point(from.x + from.w / 2, from.y + from.h / 2),
+            point(to.x + to.w / 2, to.y + to.h / 2),
+          ],
       label: rel.label === "" ? null : rel.label,
       stroke: "solid",
       fromEnd: "none",
@@ -140,7 +143,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: null,
+      labelPos: isSelf ? selfLoopLabelPos(from) : null,
     });
   }
 

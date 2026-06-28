@@ -214,3 +214,5 @@
   network-icons + override, structural edit coverage for every family, group outline selection +
   label editing, dpr, load-pack ×2). Specs drive the editor through the `window.__editor` handle.
 - Not yet: HTML-in-Canvas.
+- **Pinch-to-Zoom & Touch Panning:** Added multi-touch pointer event tracking to handle pinch-to-zoom and two-finger pan scrolling on the canvas viewport, avoiding layout and single-finger selection drift.
+- **Mobile Bottom-Sheet Context Menu:** Restyled the selection context bar (`#context-bar`) on small screens (max-width: 500px) as a scrollable bottom-sheet, and added pure CSS rules to automatically hide the overlapping minimap and HUD when the context menu is visible.

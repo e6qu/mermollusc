@@ -13,7 +13,7 @@ import type {
 import { ARCH_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { variableGrid, type Size } from "./grid.js";
-import { clampedWidth } from "./measure.js";
+import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 
 const LABEL_PADDING = 24;
 const NODE_HEIGHT = 48;
@@ -57,6 +57,10 @@ export const layoutNetwork = (
 
   const nodes: SceneNode[] = [];
   const centers = new Map<NodeId, { readonly x: number; readonly y: number }>();
+  const bounds = new Map<
+    NodeId,
+    { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
+  >();
   // The parser only mints acyclic parent graphs, but `layoutNetwork` is a total core function over a
   // branded AST: a hand-built cyclic `parent` would recurse forever, so cap the depth and fail loud.
   let overflow = false;
@@ -106,6 +110,7 @@ export const layoutNetwork = (
         const n = nodeById.get(id);
         if (n === undefined) return;
         centers.set(id, { x: cx + cellWidth / 2, y: cy + NODE_HEIGHT / 2 });
+        bounds.set(id, { x: cx, y: cy, w: cellWidth, h: NODE_HEIGHT });
         nodes.push({
           id: sceneNodeId(id),
           bounds: rect(cx, cy, cellWidth, NODE_HEIGHT),
@@ -122,6 +127,7 @@ export const layoutNetwork = (
         return;
       }
       centers.set(id, { x: cx + size.w / 2, y: cy + size.h / 2 });
+      bounds.set(id, { x: cx, y: cy, w: size.w, h: size.h });
       nodes.push({
         id: sceneNodeId(id),
         bounds: rect(cx, cy, size.w, size.h),
@@ -148,17 +154,19 @@ export const layoutNetwork = (
   for (const link of ast.links) {
     const from = centers.get(link.from);
     const to = centers.get(link.to);
-    if (from === undefined || to === undefined) {
+    const fromBox = bounds.get(link.from);
+    if (from === undefined || to === undefined || fromBox === undefined) {
       return err({
         kind: "layout",
         message: `network: link ${link.id} references an unknown node`,
       });
     }
+    const isSelf = link.from === link.to;
     edges.push({
       id: sceneEdgeId(link.id),
       from: sceneNodeId(link.from),
       to: sceneNodeId(link.to),
-      waypoints: [point(from.x, from.y), point(to.x, to.y)],
+      waypoints: isSelf ? selfLoopWaypoints(fromBox) : [point(from.x, from.y), point(to.x, to.y)],
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
@@ -166,7 +174,7 @@ export const layoutNetwork = (
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: null,
+      labelPos: isSelf ? selfLoopLabelPos(fromBox) : null,
     });
   }
 

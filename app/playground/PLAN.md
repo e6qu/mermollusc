@@ -30,6 +30,8 @@ canvas, and hosts the e2e / golden tests.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
   icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
+- Multi-touch pinch-to-zoom and two-finger panning gesture tracking on the canvas viewport.
+- Mobile-responsive selection context bar acting as a scrollable bottom-sheet, automatically hiding HUD and minimap components on phone viewports.
 
 ## Public API (stable surface)
 

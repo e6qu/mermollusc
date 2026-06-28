@@ -25,7 +25,7 @@ export type { MazeBox } from "./maze.js";
 export { layoutEnergy, lowestEnergy } from "./energy.js";
 export type { EnergyBreakdown } from "./energy.js";
 export { noSiblingOverlaps, containersEncloseMembers, styleOk } from "./invariants.js";
-export { widestLine, clampedWidth } from "./measure.js";
+export { widestLine, clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 export { gridGeometry } from "./grid.js";
 export type { GridCell, GridExtent, GridGeometry } from "./grid.js";
 export type {

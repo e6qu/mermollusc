@@ -331,14 +331,46 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
   const overlaps = (cx: number, cy: number, halfW: number, b: LabelBox): boolean =>
     Math.abs(cx - b.cx) < halfW + b.halfW + LABEL_GAP &&
     Math.abs(cy - b.cy) < LABEL_HEIGHT + LABEL_GAP;
-  const fits = (cx: number, cy: number, halfW: number): boolean =>
-    placed.every((p) => !overlaps(cx, cy, halfW, p));
+
+  const overlapsNode = (cx: number, cy: number, halfW: number, n: SceneNode): boolean => {
+    const lx1 = cx - halfW;
+    const lx2 = cx + halfW;
+    const ly1 = cy - LABEL_HEIGHT / 2;
+    const ly2 = cy + LABEL_HEIGHT / 2;
+    const nx1 = n.bounds.origin.x;
+    const nx2 = n.bounds.origin.x + n.bounds.size.width;
+    const ny1 = n.bounds.origin.y;
+    const ny2 = n.bounds.origin.y + n.bounds.size.height;
+    return lx1 < nx2 && lx2 > nx1 && ly1 < ny2 && ly2 > ny1;
+  };
+
+  const nodesMap = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+
   const edges = scene.edges.map((e): SceneEdge => {
     const anchor = e.labelPos;
     if (e.label === null || anchor === null) return e;
+
+    const related = new Set<string>();
+    let currFrom = nodesMap.get(e.from);
+    while (currFrom !== undefined && currFrom !== null) {
+      related.add(currFrom.id);
+      currFrom = currFrom.parent !== null ? nodesMap.get(currFrom.parent) : undefined;
+    }
+    let currTo = nodesMap.get(e.to);
+    while (currTo !== undefined && currTo !== null) {
+      related.add(currTo.id);
+      currTo = currTo.parent !== null ? nodesMap.get(currTo.parent) : undefined;
+    }
+
+    const obstacles = scene.nodes.filter((n) => !related.has(n.id));
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
     const ax: number = anchor.x;
     const ay: number = anchor.y;
+
+    const fits = (cx: number, cy: number, hw: number): boolean =>
+      placed.every((p) => !overlaps(cx, cy, hw, p)) &&
+      obstacles.every((n) => !overlapsNode(cx, cy, hw, n));
+
     let spot: { readonly cx: number; readonly cy: number } | null = null;
     if (!fits(ax, ay, halfW)) {
       for (let r = DECOLLIDE_STEP; r <= DECOLLIDE_MAX && spot === null; r += DECOLLIDE_STEP) {

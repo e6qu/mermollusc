@@ -2771,8 +2771,50 @@ toolPalette.addEventListener("keydown", (ev) => {
 });
 syncToolPalette();
 
+const activePointers = new Map<number, PointerEvent>();
+let pinchStartDist = 0;
+let pinchStartScale = 1;
+let pinchStartLogicalMidpoint = { x: 0, y: 0 };
+let isPinching = false;
+
+canvas.addEventListener("pointercancel", (ev) => {
+  activePointers.delete(ev.pointerId);
+  if (activePointers.size < 2) {
+    isPinching = false;
+    pinchStartDist = 0;
+  }
+});
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (scene === null) return;
+  activePointers.set(ev.pointerId, ev);
+  if (activePointers.size === 2) {
+    isPinching = true;
+    const pts = Array.from(activePointers.values());
+    const p1 = pts[0];
+    const p2 = pts[1];
+    if (p1 !== undefined && p2 !== undefined) {
+      pinchStartDist = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      pinchStartScale = viewScale;
+
+      const rectBefore = canvas.getBoundingClientRect();
+      const midX = (p1.clientX + p2.clientX) / 2;
+      const midY = (p1.clientY + p2.clientY) / 2;
+      pinchStartLogicalMidpoint = {
+        x: (midX - rectBefore.left) / viewScale,
+        y: (midY - rectBefore.top) / viewScale,
+      };
+    }
+
+    // Cancel other drags/selections
+    drag = null;
+    connectDrag = null;
+    resize = null;
+    pan = null;
+    marquee = null;
+    return;
+  }
+
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
   const shown = shownScene(scene);
   const at = scenePoint(ev);
@@ -2932,6 +2974,30 @@ canvas.addEventListener("pointerdown", (ev) => {
 });
 
 canvas.addEventListener("pointermove", (ev) => {
+  if (activePointers.has(ev.pointerId)) {
+    activePointers.set(ev.pointerId, ev);
+  }
+  if (isPinching && activePointers.size === 2) {
+    const pts = Array.from(activePointers.values());
+    const p1 = pts[0];
+    const p2 = pts[1];
+    if (p1 !== undefined && p2 !== undefined) {
+      const dist = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      if (pinchStartDist > 0) {
+        const nextScale = pinchStartScale * (dist / pinchStartDist);
+        setScale(nextScale);
+
+        const rectAfter = canvas.getBoundingClientRect();
+        const midX = (p1.clientX + p2.clientX) / 2;
+        const midY = (p1.clientY + p2.clientY) / 2;
+
+        stageWrap.scrollLeft += rectAfter.left + pinchStartLogicalMidpoint.x * viewScale - midX;
+        stageWrap.scrollTop += rectAfter.top + pinchStartLogicalMidpoint.y * viewScale - midY;
+      }
+    }
+    return;
+  }
+
   if (connectDrag !== null) {
     const at = scenePoint(ev);
     connectDrag = { ...connectDrag, x: at.x, y: at.y };
@@ -3075,6 +3141,15 @@ const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
 };
 
 canvas.addEventListener("pointerup", (ev) => {
+  activePointers.delete(ev.pointerId);
+  if (isPinching) {
+    if (activePointers.size < 2) {
+      isPinching = false;
+      pinchStartDist = 0;
+    }
+    return;
+  }
+
   if (connectDrag !== null) {
     canvas.releasePointerCapture(ev.pointerId);
     const cd = connectDrag;
