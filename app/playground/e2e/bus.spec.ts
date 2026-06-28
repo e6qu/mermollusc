@@ -13,13 +13,13 @@ test("Bus toggle re-renders the architecture diagram without errors and never ed
     .toBeGreaterThan(0);
   const src = await sourceValue(page);
 
-  const bus = page.locator("#bus");
-  await expect(bus).toHaveAttribute("aria-pressed", "false");
-  await bus.click();
-  await expect(bus).toHaveAttribute("aria-pressed", "true");
+  const styleSelect = page.locator("#layout-style");
+  await expect(styleSelect).toHaveValue("tidy");
+  await styleSelect.selectOption("bus");
+  await expect(styleSelect).toHaveValue("bus");
   // A rendering option never edits the diagram text.
   expect(await sourceValue(page)).toBe(src);
-  await bus.click();
-  await expect(bus).toHaveAttribute("aria-pressed", "false");
+  await styleSelect.selectOption("tidy");
+  await expect(styleSelect).toHaveValue("tidy");
   expect(errors).toEqual([]);
 });

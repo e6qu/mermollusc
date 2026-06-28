@@ -17,7 +17,12 @@ const LABEL_GAP = 8; // swatch → legend-label gap (mirrors the renderer's LEGE
 // renderer draws that as a colour-disc swatch with its label to the right). The legend label carries
 // the slice name, plus the raw value when `showData`. The on-slice label (the renderer adds it) is
 // just the percentage, so even thin slices stay readable. No nodes/edges — only wedges.
-export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, LayoutError> => {
+export const layoutPie = (
+  ast: PieAst,
+  measure: MeasureText,
+  forceDonut = false,
+): Result<Scene, LayoutError> => {
+  const isDonut = ast.donut || forceDonut;
   const total = ast.slices.reduce((sum, s) => sum + s.value, 0);
   const center = point(MARGIN + RADIUS, MARGIN + RADIUS);
   const discSpan = 2 * (MARGIN + RADIUS);
@@ -53,7 +58,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
   // the visual, this is the target. The renderer draws nothing for a `marker` node.
   const PROXY_W = 44;
   const PROXY_H = 26;
-  const labelRadius = ast.donut ? (DONUT_INNER_RADIUS + RADIUS) / 2 : RADIUS * 0.62;
+  const labelRadius = isDonut ? (DONUT_INNER_RADIUS + RADIUS) / 2 : RADIUS * 0.62;
   const nodes: SceneNode[] = [];
 
   const slices: SceneWedge[] = [];
@@ -87,7 +92,7 @@ export const layoutPie = (ast: PieAst, measure: MeasureText): Result<Scene, Layo
     slices.push({
       center,
       radius: RADIUS,
-      innerRadius: ast.donut ? DONUT_INNER_RADIUS : 0,
+      innerRadius: isDonut ? DONUT_INNER_RADIUS : 0,
       startAngle,
       endAngle,
       label: slice.label,

@@ -324,9 +324,10 @@ export const layout = async (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point>,
   measure: MeasureText,
-  tidy = false,
-  organic = false,
+  layoutStyle: string = "tidy",
 ): Promise<Result<Scene, LayoutError>> => {
+  const tidy = layoutStyle === "tidy" || layoutStyle === "bus" || layoutStyle === "trunk";
+  const organic = layoutStyle === "organic";
   try {
     const input = toElkInput(toElkGraph(ast, seed, measure), organic);
     // Organic (stress) is a single force-based layout — the layered tidy candidates don't apply.
@@ -814,12 +815,13 @@ const layoutByFamily = async (
   ast: DiagramAst,
   measure: MeasureText,
   collapsed: ReadonlySet<NodeId>,
-  tidy: boolean,
-  organic: boolean,
+  layoutStyle: string,
 ): Promise<Result<Scene, LayoutError>> => {
+  const tidy = layoutStyle === "tidy" || layoutStyle === "bus" || layoutStyle === "trunk";
+  const classic = layoutStyle === "classic";
   switch (ast.kind) {
     case "flowchart":
-      return layout(ast, new Map(), measure, tidy, organic);
+      return layout(ast, new Map(), measure, layoutStyle);
     case "sequence":
       return layoutSequence(ast, measure);
     case "c4":
@@ -831,7 +833,7 @@ const layoutByFamily = async (
     case "cloud":
       return layoutCloud(ast, measure, collapsed);
     case "state":
-      return map(await layout(stateToFlow(ast), new Map(), measure, tidy, organic), (scene) =>
+      return map(await layout(stateToFlow(ast), new Map(), measure, layoutStyle), (scene) =>
         applyStateSemantics(scene, ast),
       );
     case "er":
@@ -841,13 +843,13 @@ const layoutByFamily = async (
     case "requirement":
       return layoutRequirement(ast, measure, tidy);
     case "gitGraph":
-      return layoutGitGraph(ast, measure, tidy);
+      return layoutGitGraph(ast, measure, tidy, classic);
     case "timeline":
       return layoutTimeline(ast, measure);
     case "mindmap":
       return layoutMindmap(ast, measure);
     case "pie":
-      return layoutPie(ast, measure);
+      return layoutPie(ast, measure, layoutStyle === "donut");
     case "gantt":
       return layoutGantt(ast, measure);
   }
@@ -858,14 +860,10 @@ export const layoutDiagram = async (
   measure: MeasureText,
   // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
   collapsed: ReadonlySet<NodeId> = new Set(),
-  // "Tidy layout": for the layered families, try a few deterministic ELK candidates and keep the
-  // lowest-energy one that preserves the family's style. The fixed-style families ignore it.
-  tidy = false,
-  // "Organic": opt-in force-based (ELK stress) layout for flowchart/state — a deliberately free-form
-  // look, never a default, and only for the two families where a non-hierarchical graph reads well.
-  organic = false,
+  // The layout style name: "tidy" (default), "classic", "organic", "relaxed", "bus", "trunk" etc.
+  layoutStyle = "tidy",
 ): Promise<Result<Scene, LayoutError>> => {
-  const routed = await layoutByFamily(ast, measure, collapsed, tidy, organic);
+  const routed = await layoutByFamily(ast, measure, collapsed, layoutStyle);
   // De-collide mid-edge labels for every family (a no-op when nothing overlaps), so dense diagrams —
   // including the ELK families, whose labels this didn't reach before — don't stack captions.
   return map(routed, (scene) => decollideEdgeLabels(scene, measure));
