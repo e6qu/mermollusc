@@ -2202,9 +2202,10 @@ let busEnabled = ((): boolean => {
 const TRUNK_KEY = "mermollusc-trunk-routing";
 let trunkEnabled = ((): boolean => {
   try {
-    return localStorage.getItem(TRUNK_KEY) === "true";
+    const val = localStorage.getItem(TRUNK_KEY);
+    return val === null ? true : val === "true";
   } catch {
-    return false;
+    return true;
   }
 })();
 

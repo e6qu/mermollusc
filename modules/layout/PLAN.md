@@ -27,3 +27,4 @@
 - Family post-passes may refine shared layout output when the source carries semantic geometry, such
   as state-note side placement.
 - Edge routing cost function splits crossings (low weight, `CROSSING_COST = 10`) and overlaps (high weight, `OVERLAP_COST = 150`) in both greedy sweeps and ILS passes to favor short paths with minor crossings over long outer detours while strictly avoiding parallel line overlaps.
+- Trunk-routing merges fans of incident edges (minimum fan threshold of 2) on a node side into a shared trunk. Approaches from the other nodes to the trunk are routed using the A* maze router to prevent obstacle clipping, and the trunk line is dynamically placed in the middle of the available routing channel between the target node and the source endpoints.

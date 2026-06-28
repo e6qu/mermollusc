@@ -1082,8 +1082,9 @@ export const spreadPorts = (rawScene: Scene): Scene =>
 // leaves connectors sharing a backbone for the junction/bus rendering option.
 export const respreadPorts = (scene: Scene, bus = false): Scene => routeSpread(scene, bus);
 
-const TRUNK_MIN = 3; // a fan needs at least this many edges on one node side to become a trunk
-const TRUNK_GAP = 18; // distance from the node to its trunk line
+const TRUNK_MIN = 2; // a fan needs at least this many edges on one node side to become a trunk
+const TRUNK_GAP = 18; // minimum distance from the node to its trunk line
+
 const samePoint = (a: Point, b: Point): boolean =>
   Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
 const compress = (pts: readonly Point[]): Point[] => {
@@ -1103,6 +1104,7 @@ const compress = (pts: readonly Point[]): Point[] => {
 // in any fan keep the routes they came in with — so callers pass an already-routed scene.
 const trunkMerge = (scene: Scene): Scene => {
   const boxOf = boxOfNode(scene);
+  const obstacleBoxes = obstaclesForEdges(scene);
   const fans = new Map<SceneNodeId, Map<Side, number[]>>();
   const addIncident = (node: SceneNodeId, side: Side, idx: number): void => {
     let bySide = fans.get(node);
@@ -1141,24 +1143,52 @@ const trunkMerge = (scene: Scene): Scene => {
     if (tb === undefined) continue;
     const tPort = portAt(tb, g.side, 0, 1); // single shared port at the side's centre
     const vertical = g.side === "L" || g.side === "R";
-    const trunk =
-      g.side === "R"
-        ? tb.x + tb.w + TRUNK_GAP
-        : g.side === "L"
-          ? tb.x - TRUNK_GAP
-          : g.side === "B"
-            ? tb.y + tb.h + TRUNK_GAP
-            : tb.y - TRUNK_GAP;
-    for (const idx of free) {
-      const e = scene.edges[idx];
-      if (e === undefined) continue;
-      const otherId = e.from === g.node ? e.to : e.from;
-      const ob = boxOf.get(otherId);
-      if (ob === undefined) continue;
-      const oPort = portAt(ob, facingSide(ob, tb), 0, 1);
+
+    const farPorts = free
+      .map((idx) => {
+        const e = scene.edges[idx];
+        if (e === undefined) return null;
+        const otherId = e.from === g.node ? e.to : e.from;
+        const ob = boxOf.get(otherId);
+        if (ob === undefined) return null;
+        const oPort = portAt(ob, facingSide(ob, tb), 0, 1);
+        return { idx, e, oPort };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (farPorts.length < TRUNK_MIN) continue;
+
+    let trunk: number;
+    if (g.side === "R") {
+      const x0 = tb.x + tb.w;
+      const x1 = Math.min(...farPorts.map((p) => p.oPort.x));
+      trunk = Math.max(x0 + TRUNK_GAP, Math.min(x1 - TRUNK_GAP, (x0 + x1) / 2));
+    } else if (g.side === "L") {
+      const x0 = tb.x;
+      const x1 = Math.max(...farPorts.map((p) => p.oPort.x));
+      trunk = Math.min(x0 - TRUNK_GAP, Math.max(x1 + TRUNK_GAP, (x0 + x1) / 2));
+    } else if (g.side === "B") {
+      const y0 = tb.y + tb.h;
+      const y1 = Math.min(...farPorts.map((p) => p.oPort.y));
+      trunk = Math.max(y0 + TRUNK_GAP, Math.min(y1 - TRUNK_GAP, (y0 + y1) / 2));
+    } else {
+      // "T"
+      const y0 = tb.y;
+      const y1 = Math.max(...farPorts.map((p) => p.oPort.y));
+      trunk = Math.min(y0 - TRUNK_GAP, Math.max(y1 + TRUNK_GAP, (y0 + y1) / 2));
+    }
+
+    for (const { idx, e, oPort } of farPorts) {
       const toTrunk = vertical ? point(trunk, oPort.y) : point(oPort.x, trunk);
       const alongTrunk = vertical ? point(trunk, tPort.y) : point(tPort.x, trunk);
-      const fromOther = compress([oPort, toTrunk, alongTrunk, tPort]); // far end → trunk → node
+
+      const approach = mazeRoute(oPort, toTrunk, obstacleBoxes.get(e.id) ?? [], OBSTACLE_CLEARANCE);
+
+      const fromOther =
+        approach !== null && approach.length >= 2
+          ? compress([...approach, alongTrunk, tPort])
+          : compress([oPort, toTrunk, alongTrunk, tPort]);
+
       const ordered = e.from === g.node ? [...fromOther].reverse() : fromOther;
       const [w0, w1, ...wr] = ordered;
       if (w0 === undefined || w1 === undefined) continue;

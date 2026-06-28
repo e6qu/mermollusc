@@ -86,3 +86,4 @@
   (bounds + totality), `gridGeometry` (order/placement/containment), block/network grids **and the ELK
   flowchart path** preserve ids + fit every box inside the extent).
 - **Candidate Sorting & Optimization Cost:** Differentiated crossings and overlaps in `minimizeCrossings` with a split cost function (`CROSSING_COST = 10` for perpendicular crossings and `OVERLAP_COST = 150` for parallel overlaps) applied globally across greedy sweeps and ILS passes. This allows short paths with minor crossings while strictly avoiding parallel overlaps.
+- **Trunk Routing:** Enhanced `trunkMerge` with A* maze-routed approaches for each edge's connection to the trunk backbone (preventing obstacle clipping), dynamic balanced trunk line placement centered within the routing channel (clamped to safe margins), and a minimum fan threshold of `2`. Playground UI defaults `trunkEnabled` to `true` on first load.
