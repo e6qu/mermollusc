@@ -18,12 +18,12 @@ test("the Colour control cycles a node's accent (visual-only) and persists acros
   const box = await page.locator("#stage").boundingBox();
   if (box === null) return;
   await page.mouse.click(box.x + box.width / 2, box.y + 40); // select node A
-  await expect(page.locator("#ctx-colour")).toBeVisible();
-  await page.locator("#ctx-colour").click();
-  await expect.poll(() => accent(page, "A")).toBe("active"); // none → active
+  await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="active"]').click();
+  await expect.poll(() => accent(page, "A")).toBe("active");
 
-  await page.locator("#ctx-colour").click();
-  await expect.poll(() => accent(page, "A")).toBe("muted"); // active → muted
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="muted"]').click();
+  await expect.poll(() => accent(page, "A")).toBe("muted");
 
   // Survives a reload (per-browser visual preference).
   await page.reload();
