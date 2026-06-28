@@ -4,11 +4,20 @@ import { setSource, sourceValue } from "./support/source.js";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 const visibleCtxButtons = (page: Page) =>
-  page.evaluate(() =>
-    [...document.querySelectorAll<HTMLButtonElement>("#context-bar button")]
-      .filter((b) => !b.hidden)
-      .map((b) => b.id.replace("ctx-", "")),
-  );
+  page.evaluate(() => {
+    const list = [];
+    for (const el of document.querySelectorAll("#context-bar > button, #context-bar > div")) {
+      const html = el as HTMLElement;
+      if (html.hidden) continue;
+      const name = html.id.replace("ctx-", "");
+      if (name === "colour-swatches") {
+        list.push("colour");
+      } else {
+        list.push(name);
+      }
+    }
+    return list;
+  });
 
 const ready = async (page: Page) => {
   await page.goto("/");

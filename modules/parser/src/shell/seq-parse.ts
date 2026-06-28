@@ -44,6 +44,7 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
   const actorLabels = new Map<string, string>();
   const actorSpans = new Map<ActorId, TextSpan>();
   const messageSpans = new Map<MessageId, TextSpan>();
+  const arrowSpans = new Map<MessageId, TextSpan>();
   const seeActor = (id: string, label: string | null): void => {
     const current = actorLabels.get(id);
     if (current === undefined) actorLabels.set(id, label ?? id);
@@ -110,6 +111,18 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
     });
     const textToken = childTokens(msg.children, "MsgText")[0];
     if (textToken !== undefined) messageSpans.set(messageId, trimmedSpan(textToken));
+
+    const arrowToken =
+      childTokens(arrow.children, "SolidArrow")[0] ??
+      childTokens(arrow.children, "DashedArrow")[0] ??
+      childTokens(arrow.children, "SolidOpen")[0] ??
+      childTokens(arrow.children, "DashedOpen")[0];
+    if (arrowToken !== undefined) {
+      arrowSpans.set(messageId, {
+        start: arrowToken.startOffset,
+        end: arrowToken.startOffset + arrowToken.image.length,
+      });
+    }
   }
 
   const actors: SequenceActor[] = [...actorLabels].map(([id, label]) => ({
@@ -118,7 +131,7 @@ const buildResult = (cst: CstNode): Result<ParsedSequence, ParseError> => {
   }));
   return ok({
     ast: { kind: "sequence", actors, messages, notes },
-    source: { actors: actorSpans, messages: messageSpans, notes: noteSpans },
+    source: { actors: actorSpans, messages: messageSpans, notes: noteSpans, arrows: arrowSpans },
   });
 };
 

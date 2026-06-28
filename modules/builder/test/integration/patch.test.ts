@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
   addEdgeLabel,
   restyleEdge,
+  restyleSequenceMessage,
   addNode,
   connect,
   connectC4,
@@ -324,6 +325,23 @@ describe("relabelNode", () => {
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.value.ast.messages.filter((m) => m.from === "A" && m.to === "B")).toHaveLength(2);
+  });
+
+  it("restyleSequenceMessage rewrites the arrow token of a sequence message", () => {
+    const text = "sequenceDiagram\n  A->>B: hi\n";
+    const r = parseSequenceWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const arrowSpan = r.value.source.arrows.get(brand("m0"));
+    expect(arrowSpan).toBeDefined();
+    if (arrowSpan === undefined) return;
+    const next = restyleSequenceMessage(text, arrowSpan, "dashedOpen");
+    expect(next).toContain("A-->B: hi");
+    const r2 = parseSequenceWithSource(next);
+    expect(isOk(r2)).toBe(true);
+    if (isOk(r2)) {
+      expect(r2.value.ast.messages[0]?.kind).toBe("dashedOpen");
+    }
   });
 
   it("deleteNode removes the node's declaration and its edges", () => {

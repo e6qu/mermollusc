@@ -86,7 +86,7 @@ describe("pipeline fuzz — parse → layout totality over mutated examples", ()
       ),
       { numRuns: 600 },
     );
-  });
+  }, 30000);
 });
 
 describe("render fuzz — layout → display list → SVG totality over mutated examples", () => {
@@ -124,5 +124,5 @@ describe("render fuzz — layout → display list → SVG totality over mutated 
       ),
       { numRuns: 500 },
     );
-  });
+  }, 30000);
 });

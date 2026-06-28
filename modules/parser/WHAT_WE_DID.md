@@ -267,3 +267,4 @@
 - ER/class relationship labels now strip surrounding quotes (like their endpoint labels already did) and
   point the relabel span at the inner text — `A ||--o{ B : "places many"` stored/edited as `places many`,
   not `"places many"`.
+- Capture sequence message arrow-token spans (`arrows`) in the parsed `SequenceSource` map, enabling sequence edge style cycling.

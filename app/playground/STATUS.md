@@ -216,3 +216,6 @@
 - Not yet: HTML-in-Canvas.
 - **Pinch-to-Zoom & Touch Panning:** Added multi-touch pointer event tracking to handle pinch-to-zoom and two-finger pan scrolling on the canvas viewport, avoiding layout and single-finger selection drift.
 - **Mobile Bottom-Sheet Context Menu:** Restyled the selection context bar (`#context-bar`) on small screens (max-width: 500px) as a scrollable bottom-sheet, and added pure CSS rules to automatically hide the overlapping minimap and HUD when the context menu is visible.
+- **Sequence Message Style Cycling:** Extended edge style cycling to sequence diagram message arrows (toggling through solid `->>`, dashed `-->>`, solid open `->`, and dashed open `-->`).
+- **Visual Color Swatches:** Replaced the single-button colour cycler with a visual swatch picker group (`#ctx-colour-swatches`) on the context bar displaying themed color circles for real-time node fill styling.
+- **Sequence Note Connection Guard:** Prevented connecting sequence notes (preventing invalid message routes to/from note boxes) by restricting connection capabilities.

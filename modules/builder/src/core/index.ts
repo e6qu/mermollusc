@@ -23,6 +23,7 @@ export {
   patchSpan,
   addEdgeLabel,
   restyleEdge,
+  restyleSequenceMessage,
   shiftGanttStart,
   setGanttDuration,
   addNode,
