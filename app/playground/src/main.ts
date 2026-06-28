@@ -1189,6 +1189,7 @@ interface CapabilityState {
   readonly canShape: boolean;
   readonly canStyleEdge: boolean;
   readonly canDuplicate: boolean;
+  readonly duplicateTitle: string;
   readonly canRelabel: boolean;
   readonly canDelete: boolean;
   readonly isEdgeOnly: boolean;
@@ -1271,13 +1272,32 @@ const renderContextBar = (caps: CapabilityState): void => {
   };
   const only = [...routes][0];
   ctxCurveBtn.textContent = routes.size === 1 && only !== undefined ? ROUTE_LABEL[only] : "Route";
-  ctxConnectBtn.hidden = !caps.canConnect;
-  ctxDuplicateBtn.hidden = !caps.canDuplicate;
-  ctxGroupBtn.hidden = !caps.canGroup;
+  const editable = !isDotImport;
+  const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
+  const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
+  const hasNodes = selectionOrder.length > 0;
+
+  ctxConnectBtn.disabled = !caps.canConnect;
+  ctxConnectBtn.title = caps.connectTitle;
+  ctxConnectBtn.hidden = !caps.valid || !connectable || !hasNodes;
+
+  ctxDuplicateBtn.disabled = !caps.canDuplicate;
+  ctxDuplicateBtn.title = caps.duplicateTitle;
+  ctxDuplicateBtn.hidden = !caps.valid || !duplicatable || !hasNodes;
+
+  ctxGroupBtn.disabled = !caps.canGroup;
+  ctxGroupBtn.hidden = !caps.valid || !hasNodes;
+
   ctxUngroupBtn.hidden = !caps.hasGroup;
   ctxLockBtn.hidden = !caps.hasGroup;
   ctxLockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
-  ctxArrangeBtn.hidden = !caps.canArrange;
+
+  ctxArrangeBtn.disabled = !caps.canArrange;
+  ctxArrangeBtn.title = !caps.canArrange
+    ? "select at least two movable nodes to arrange"
+    : "Arrange";
+  ctxArrangeBtn.hidden = !caps.valid || !hasNodes;
+
   ctxDeleteBtn.hidden = !caps.canDelete;
   // Roving tabindex (the ARIA toolbar pattern): exactly one button is a tab stop, arrows move within —
   // so Tab doesn't have to step through all nine. The first visible/enabled button holds the stop.
@@ -1311,6 +1331,7 @@ const computeCapabilities = (): CapabilityState => {
       canShape: false,
       canStyleEdge: false,
       canDuplicate: false,
+      duplicateTitle: blockedTitle,
       canRelabel: false,
       canDelete: false,
       isEdgeOnly: false,
@@ -1330,14 +1351,23 @@ const computeCapabilities = (): CapabilityState => {
   const top = selectedTopGroup();
   const movable = movableUnitCount();
   const totalSelected = selection.nodes.size + selection.edges.size;
+
+  const hasNotesSelected =
+    ast?.kind === "sequence" && selectionOrder.some((id) => id.startsWith("note"));
+  const canConnect = connectable && selectionOrder.length >= 2 && !hasNotesSelected;
+  const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
+  const canDuplicate = duplicatable && selectionOrder.length >= 1;
+
   return {
     valid: true,
-    canConnect: connectable && selectionOrder.length >= 2,
+    canConnect,
     connectTitle: !connectable
       ? `connect isn't available for ${kindLabel}`
-      : selectionOrder.length < 2
-        ? "select two nodes"
-        : "",
+      : hasNotesSelected
+        ? "can't connect to or from notes"
+        : selectionOrder.length < 2
+          ? "select two nodes"
+          : "",
     iconCapable,
     iconTitle: iconCapable
       ? "Insert an icon override on a node"
@@ -1355,8 +1385,12 @@ const computeCapabilities = (): CapabilityState => {
       (ast.kind === "flowchart" || ast.kind === "block") &&
       selectionOrder.length === 0 &&
       selection.edges.size === 1,
-    canDuplicate:
-      editable && ast !== null && familyAffordances(ast.kind).addNode && selectionOrder.length >= 1,
+    canDuplicate,
+    duplicateTitle: !duplicatable
+      ? `duplicate isn't available for ${kindLabel}`
+      : selectionOrder.length === 0
+        ? "select at least one node to duplicate"
+        : "Duplicate (⌘D)",
     canRelabel: editable && totalSelected === 1,
     canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
     isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
@@ -5237,9 +5271,11 @@ const navController = createNavigator({
   paintScene,
   updateGroupButtons,
   setSelection,
+  getSelectionOrder: () => selectionOrder,
   nudgeSelection,
   groupSelection,
   ungroupSelection,
+  duplicateSelection,
   toggleCloudCollapse,
   cycleShape,
   focusContextBar,
