@@ -829,3 +829,5 @@
 - Sequence Message Style Cycling: Extended edge style cycling to sequence diagram message arrows (toggling through solid `->>`, dashed `-->>`, solid open `->`, and dashed open `-->`) by capturing message arrow spans.
 - Visual Color Swatches: Replaced the single-button colour cycler with a visual swatch picker group (`#ctx-colour-swatches`) on the context bar displaying themed color circles for real-time node fill styling.
 - Sequence Note Connection Guard: Prevented connecting sequence notes (preventing invalid message routes to/from note boxes) by restricting connection capabilities.
+- Improved Context Bar Discoverability: Modified context bar buttons (Connect, Duplicate, Group, Arrange) to be visible but disabled with tooltips indicating action requirements when selecting nodes. Edge selection keeps only edge-relevant actions.
+- Keyboard Duplicate Support: Added keyboard shortcut `d`/`D` in the diagram navigator to duplicate selected nodes, including selection state synchronization with the canvas.

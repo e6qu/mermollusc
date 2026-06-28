@@ -102,6 +102,21 @@ test("edges are first-class navigator targets: reachable, announced, relabel + d
   await expect.poll(() => sourceValue(page)).toContain("Alpha");
 });
 
+test("pressing d on the active navigator node duplicates it (keyboard parity)", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "flowchart TD\n  A[Alpha]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  await nav.focus(); // active node A
+  await nav.press("d");
+
+  // The source should now contain duplicated node
+  await expect.poll(() => sourceValue(page)).toContain("n1");
+  await expect.poll(() => sourceValue(page)).toContain("Alpha");
+});
+
 test("the navigator separates navigation from movement: plain arrows navigate, Alt+arrow nudges", async ({
   page,
 }) => {

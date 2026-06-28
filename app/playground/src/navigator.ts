@@ -53,6 +53,8 @@ export interface NavigatorDeps {
     first: SceneNodeId,
     second: SceneNodeId,
   ) => string;
+  readonly getSelectionOrder: () => readonly SceneNodeId[];
+  readonly duplicateSelection: () => void;
   readonly renderFromText: (text: string) => Promise<void>;
 }
 
@@ -142,7 +144,6 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   const rebuild = (): void => {
     // Remember where the keyboard user was so an edit/re-render doesn't dump them back at the top.
     const prevActive = navActive();
-    const prevSelected = navSelectedOrder;
     diagramNav.replaceChildren();
     diagramNav.removeAttribute("aria-activedescendant");
     navIndex = -1;
@@ -178,8 +179,17 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     });
     // Restore the active item + multi-selection by id (silently — re-announcing on every render would
     // spam a screen reader while editing source text). The next arrow press continues from here.
-    navSelectedOrder = prevSelected.filter((id) => scene.nodes.some((n) => n.id === id));
-    if (prevActive !== null) {
+    const currentGlobalOrder = deps.getSelectionOrder();
+    navSelectedOrder = [...currentGlobalOrder].filter((id) => scene.nodes.some((n) => n.id === id));
+    if (navSelectedOrder.length > 0) {
+      const lastSelectedId = navSelectedOrder[navSelectedOrder.length - 1];
+      const idx = navItems.findIndex((it) => it.kind === "node" && it.id === lastSelectedId);
+      if (idx >= 0) {
+        navIndex = idx;
+        const option = diagramNav.children[idx];
+        if (option !== undefined) diagramNav.setAttribute("aria-activedescendant", option.id);
+      }
+    } else if (prevActive !== null) {
       const idx = navItems.findIndex(
         (it) => it.kind === prevActive.kind && it.id === prevActive.id,
       );
@@ -286,6 +296,14 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
     } else if ((ev.key === "u" || ev.key === "U") && !viewerMode) {
       ev.preventDefault();
       deps.ungroupSelection();
+    } else if ((ev.key === "d" || ev.key === "D") && !viewerMode) {
+      ev.preventDefault();
+      const ast = deps.getAst();
+      if (ast !== null && navSelectedOrder.length >= 1) {
+        deps.duplicateSelection();
+      } else {
+        announce("select at least one node to duplicate");
+      }
     } else if ((ev.key === "e" || ev.key === "E") && !viewerMode) {
       ev.preventDefault();
       deps.toggleCloudCollapse(); // collapse/expand a selected cloud group

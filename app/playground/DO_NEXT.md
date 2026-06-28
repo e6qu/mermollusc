@@ -10,7 +10,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   refactor, not a patch.
 - **Node colour/fill restyle (J4).** Only shape + arrow-kind cycling exist; colour is the most-expected
   styling control. Add a swatch writing a `style`/`classDef` patch (flowchart first), or mark as source-only.
-- **Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)
+- **(done) Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)
   rather than shown disabled-with-tooltip; navigator has no Duplicate key. Prefer disabled-with-reason.
 - **Examples framing (E1).** Two flowcharts are menu-labelled "BPMN" (a family the parser doesn't model)
   while "Flowchart" loads a toy. Promote a richer flowchart as default; relabel/trim BPMN. (Will churn
