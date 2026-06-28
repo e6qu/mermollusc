@@ -13,12 +13,12 @@ test("Trunk toggle re-renders the architecture diagram without errors and never 
     .toBeGreaterThan(0);
   const src = await sourceValue(page);
 
-  const trunk = page.locator("#trunk");
-  await expect(trunk).toHaveAttribute("aria-pressed", "false");
-  await trunk.click();
-  await expect(trunk).toHaveAttribute("aria-pressed", "true");
+  const styleSelect = page.locator("#layout-style");
+  await expect(styleSelect).toHaveValue("tidy");
+  await styleSelect.selectOption("trunk");
+  await expect(styleSelect).toHaveValue("trunk");
   expect(await sourceValue(page)).toBe(src); // a rendering option never edits the text
-  await trunk.click();
-  await expect(trunk).toHaveAttribute("aria-pressed", "false");
+  await styleSelect.selectOption("tidy");
+  await expect(styleSelect).toHaveValue("tidy");
   expect(errors).toEqual([]);
 });

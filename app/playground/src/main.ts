@@ -210,10 +210,7 @@ const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
-const tidyBtn = document.querySelector<HTMLButtonElement>("#tidy");
-const organicBtn = document.querySelector<HTMLButtonElement>("#organic");
-const busBtn = document.querySelector<HTMLButtonElement>("#bus");
-const trunkBtn = document.querySelector<HTMLButtonElement>("#trunk");
+const styleSelect = document.querySelector<HTMLSelectElement>("#layout-style");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
@@ -314,10 +311,7 @@ if (
   connectBtn === null ||
   themeBtn === null ||
   sketchBtn === null ||
-  tidyBtn === null ||
-  organicBtn === null ||
-  busBtn === null ||
-  trunkBtn === null ||
+  styleSelect === null ||
   loadPackEl === null ||
   exampleEl === null ||
   kindEl === null ||
@@ -603,8 +597,7 @@ let shownCacheOverrides: LayoutOverrides | null = null;
 let shownCacheEdgeStyles: EdgeStyles | null = null;
 let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheInteracting = false;
-let shownCacheBus = false;
-let shownCacheTrunk = false;
+let shownCacheStyle: string | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -639,6 +632,8 @@ const shownScene = (base: Scene): Scene => {
   // diagram stays put under the cursor; on release we run the full router. The flag is part of the cache
   // key so the release paint re-routes even though the overrides didn't change on the final frame.
   const interacting = isInteracting();
+  const family = ast?.kind ?? null;
+  const activeStyle = family !== null ? getActiveStyle(familyOfKind(family)) : "tidy";
   if (
     shownCacheResult !== null &&
     shownCacheScene === base &&
@@ -646,8 +641,7 @@ const shownScene = (base: Scene): Scene => {
     shownCacheEdgeStyles === es &&
     shownCacheNodeStyles === ns &&
     shownCacheInteracting === interacting &&
-    shownCacheBus === busEnabled &&
-    shownCacheTrunk === trunkEnabled
+    shownCacheStyle === activeStyle
   ) {
     return shownCacheResult;
   }
@@ -657,18 +651,32 @@ const shownScene = (base: Scene): Scene => {
   // Box-routed families get the FULL router on release (spread lanes + crossing-min), respecting the
   // hand-placed positions; mid-gesture and the ELK families fall back to the cheap diagonal-snap. With BUS
   // on, those families re-route to shared backbones instead (the junction dots are added at paint time).
-  const family = ast?.kind ?? null;
   const spreadFamily = family !== null && SPREAD_FAMILIES.has(family);
-  const tidied =
+  let tidied =
     spreadFamily && trunkEnabled
       ? trunkRoutes(moved)
       : spreadFamily && busEnabled
         ? respreadPorts(moved, true)
-        : ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
+        : tidyEnabled && ov.size > 0 && family !== null && TIDY_FAMILIES.has(family)
           ? spreadFamily && !interacting
             ? respreadPorts(moved)
             : retidyRoutes(moved)
           : moved;
+
+  // Diagram-specific style overrides
+  if (family === "sequence" && activeStyle === "relaxed") {
+    tidied = {
+      ...tidied,
+      edges: tidied.edges.map((e) => ({ ...e, curved: true })),
+    };
+  } else if (family === "mindmap" && activeStyle === "classic") {
+    tidied = {
+      ...tidied,
+      nodes: tidied.nodes.map((n) => ({ ...n, shape: "rect" as const })),
+      edges: tidied.edges.map((e) => ({ ...e, curved: false })),
+    };
+  }
+
   // The presentation-only overlay (display only): curved edges + node accents from the document.
   const shown = applyStyles(tidied, es, ns);
   shownCacheScene = base;
@@ -676,8 +684,7 @@ const shownScene = (base: Scene): Scene => {
   shownCacheEdgeStyles = es;
   shownCacheNodeStyles = ns;
   shownCacheInteracting = interacting;
-  shownCacheBus = busEnabled;
-  shownCacheTrunk = trunkEnabled;
+  shownCacheStyle = activeStyle;
   shownCacheResult = shown;
   return shown;
 };
@@ -2164,50 +2171,111 @@ const persistCollapsed = (): void => {
   }
 };
 
-// "Tidy layout": when on, the layered families pick the lowest-crossing of a few deterministic ELK
-// candidates (default output otherwise). A persisted UI preference, like Sketch/Theme.
-const TIDY_KEY = "mermollusc-tidy-layout";
-let tidyEnabled = ((): boolean => {
-  try {
-    return localStorage.getItem(TIDY_KEY) === "true";
-  } catch {
-    return false;
-  }
-})();
+const familyOfKind = (kind: string): string => {
+  if (["flowchart", "state", "er", "class", "requirement"].includes(kind)) return "layered";
+  if (["c4", "cloud"].includes(kind)) return "box";
+  if (["block", "network"].includes(kind)) return "grid";
+  return kind; // sequence, gitGraph, timeline, mindmap, pie, gantt
+};
 
-// "Organic": opt-in force-based (ELK stress) layout for flowchart/state — a free-form look, persisted.
-const ORGANIC_KEY = "mermollusc-organic-layout";
-let organicEnabled = ((): boolean => {
-  try {
-    return localStorage.getItem(ORGANIC_KEY) === "true";
-  } catch {
-    return false;
-  }
-})();
+const defaultStyleForFamily = (family: string): string => {
+  if (family === "sequence" || family === "pie" || family === "gantt") return "classic";
+  if (family === "mindmap") return "radial";
+  if (family === "timeline") return "columns";
+  if (family === "gitGraph") return "pills";
+  return "tidy"; // layered, box, grid
+};
 
-// "Bus": opt-in junction/bus rendering for the box-routed (architecture) families — connectors to a shared
-// endpoint coalesce onto a common backbone with a dot where each branches off, instead of separate lanes.
-// Display-only (a re-route + junction dots, no re-layout), persisted.
-const BUS_KEY = "mermollusc-bus-routing";
-let busEnabled = ((): boolean => {
+const getActiveStyle = (family: string): string => {
   try {
-    return localStorage.getItem(BUS_KEY) === "true";
+    const val = localStorage.getItem(`mermollusc-style-${family}`);
+    return val !== null ? val : defaultStyleForFamily(family);
   } catch {
-    return false;
+    return defaultStyleForFamily(family);
   }
-})();
+};
 
-// "Trunk": the aggressive bus — each fan of connectors at a node side is actively re-routed through one
-// shared trunk + a single port, with junction dots. Display-only, persisted, takes precedence over Bus.
-const TRUNK_KEY = "mermollusc-trunk-routing";
-let trunkEnabled = ((): boolean => {
+const setActiveStyle = (family: string, style: string): void => {
   try {
-    const val = localStorage.getItem(TRUNK_KEY);
-    return val === null ? true : val === "true";
-  } catch {
-    return true;
+    localStorage.setItem(`mermollusc-style-${family}`, style);
+  } catch {}
+};
+
+// Map of styles available per family:
+const FAMILY_STYLES = {
+  layered: [
+    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
+    { value: "classic", label: "Classic Mermaid" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+    { value: "organic", label: "Organic Force" },
+  ],
+  box: [
+    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
+    { value: "classic", label: "Classic Mermaid" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+  ],
+  grid: [
+    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
+    { value: "classic", label: "Classic Mermaid" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+  ],
+  sequence: [
+    { value: "classic", label: "Classic Mermaid" },
+    { value: "relaxed", label: "Relaxed Mollusc" },
+  ],
+  mindmap: [
+    { value: "radial", label: "Radial Spoke (Recommended)" },
+    { value: "classic", label: "Classic Tree" },
+  ],
+  timeline: [
+    { value: "columns", label: "Spine Columns (Recommended)" },
+    { value: "classic", label: "Classic Columns" },
+  ],
+  gitGraph: [
+    { value: "pills", label: "Mollusc Pills (Recommended)" },
+    { value: "classic", label: "Classic Mermaid" },
+  ],
+  pie: [
+    { value: "classic", label: "Classic Pie" },
+    { value: "donut", label: "Donut Chart" },
+  ],
+  gantt: [{ value: "classic", label: "Classic Gantt" }],
+  dot: [
+    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
+    { value: "classic", label: "Classic Mermaid" },
+  ],
+} as const;
+
+let tidyEnabled = true;
+let busEnabled = false;
+let trunkEnabled = false;
+
+const syncStyleFlags = (): void => {
+  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
+  const style = getActiveStyle(family);
+  tidyEnabled = style === "tidy" || style === "bus" || style === "trunk";
+  busEnabled = style === "bus";
+  trunkEnabled = style === "trunk";
+};
+
+const updateStyleOptions = (): void => {
+  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
+  const styles = FAMILY_STYLES[family as keyof typeof FAMILY_STYLES] ?? FAMILY_STYLES.layered;
+
+  styleSelect.innerHTML = "";
+  for (const s of styles) {
+    const opt = document.createElement("option");
+    opt.value = s.value;
+    opt.textContent = s.label;
+    styleSelect.appendChild(opt);
   }
-})();
+
+  const active = getActiveStyle(family);
+  styleSelect.value = active;
+};
 
 // Node colour cycles through this accent palette (none → blue → grey → red). The styling itself lives in
 // the overlay document (curved edges + node accents), so it persists, serialises into share links, and
@@ -2272,13 +2340,10 @@ const renderFromText = async (text: string): Promise<void> => {
   // gates the Add button on it.
   isDotImport = result.family === "dot";
   lastDirection = "direction" in diagram ? diagram.direction : null;
-  const laid = await layoutDiagram(
-    diagram,
-    measureLabel,
-    collapsedBranded(),
-    tidyEnabled,
-    organicEnabled,
-  );
+  updateStyleOptions();
+  syncStyleFlags();
+  const activeStyle = diagram !== null ? getActiveStyle(familyOfKind(diagram.kind)) : "tidy";
+  const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded(), activeStyle);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
     console.error("layout failed:", laid.error.message);
@@ -2421,7 +2486,8 @@ const relax = async (): Promise<void> => {
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
-  const laid = await layout(ast, seed, measureLabel, tidyEnabled, organicEnabled);
+  const activeStyle = ast !== null ? getActiveStyle(familyOfKind(ast.kind)) : "tidy";
+  const laid = await layout(ast, seed, measureLabel, activeStyle);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
     setStatusAndAnnounce("error", `relax failed — ${laid.error.message}`);
@@ -4672,80 +4738,15 @@ sketchBtn.addEventListener("click", () => {
   announce(themeCtl.isSketch() ? "sketch mode" : "crisp mode");
 });
 
-// Tidy layout: a re-layout (not just a repaint), so re-run the pipeline from text. Persisted.
-const syncTidyLabel = (): void => {
-  tidyBtn.setAttribute("aria-pressed", tidyEnabled ? "true" : "false");
-  tidyBtn.textContent = tidyEnabled ? "Tidy ✓" : "Tidy";
-};
-syncTidyLabel();
-tidyBtn.addEventListener("click", () => {
-  tidyEnabled = !tidyEnabled;
-  try {
-    localStorage.setItem(TIDY_KEY, tidyEnabled ? "true" : "false");
-  } catch (e) {
-    console.error("tidy-layout persist failed", e);
-  }
-  syncTidyLabel();
-  // Await the re-layout before announcing — `renderFromText` writes the diagram summary to the status.
-  void renderFromText(editor.value()).then(() =>
-    setStatusAndAnnounce("ok", tidyEnabled ? "tidy layout on" : "tidy layout off"),
-  );
-});
+styleSelect.addEventListener("change", () => {
+  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
+  const newStyle = styleSelect.value;
+  setActiveStyle(family, newStyle);
+  syncStyleFlags();
 
-// Organic (ELK stress) layout for flowchart/state — a re-layout, persisted, opt-in.
-const syncOrganicLabel = (): void => {
-  organicBtn.setAttribute("aria-pressed", organicEnabled ? "true" : "false");
-  organicBtn.textContent = organicEnabled ? "Organic ✓" : "Organic";
-};
-syncOrganicLabel();
-organicBtn.addEventListener("click", () => {
-  organicEnabled = !organicEnabled;
-  try {
-    localStorage.setItem(ORGANIC_KEY, organicEnabled ? "true" : "false");
-  } catch (e) {
-    console.error("organic-layout persist failed", e);
-  }
-  syncOrganicLabel();
-  void renderFromText(editor.value()).then(() =>
-    setStatusAndAnnounce("ok", organicEnabled ? "organic layout on" : "organic layout off"),
-  );
-});
-
-// Bus rendering: display-only (a re-route to shared backbones + junction dots), so just repaint — no
-// re-layout. The `shownScene`/paint caches key on `busEnabled`, so the repaint picks up the change.
-const syncBusLabel = (): void => {
-  busBtn.setAttribute("aria-pressed", busEnabled ? "true" : "false");
-  busBtn.textContent = busEnabled ? "Bus ✓" : "Bus";
-};
-syncBusLabel();
-busBtn.addEventListener("click", () => {
-  busEnabled = !busEnabled;
-  try {
-    localStorage.setItem(BUS_KEY, busEnabled ? "true" : "false");
-  } catch (e) {
-    console.error("bus-routing persist failed", e);
-  }
-  syncBusLabel();
-  paintScene();
-  setStatusAndAnnounce("ok", busEnabled ? "bus rendering on" : "bus rendering off");
-});
-
-// Trunk rendering: the aggressive bus (active fan→trunk merge). Display-only, takes precedence over Bus.
-const syncTrunkLabel = (): void => {
-  trunkBtn.setAttribute("aria-pressed", trunkEnabled ? "true" : "false");
-  trunkBtn.textContent = trunkEnabled ? "Trunk ✓" : "Trunk";
-};
-syncTrunkLabel();
-trunkBtn.addEventListener("click", () => {
-  trunkEnabled = !trunkEnabled;
-  try {
-    localStorage.setItem(TRUNK_KEY, trunkEnabled ? "true" : "false");
-  } catch (e) {
-    console.error("trunk-routing persist failed", e);
-  }
-  syncTrunkLabel();
-  paintScene();
-  setStatusAndAnnounce("ok", trunkEnabled ? "trunk rendering on" : "trunk rendering off");
+  void renderFromText(editor.value()).then(() => {
+    setStatusAndAnnounce("ok", `layout style changed to ${newStyle}`);
+  });
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the

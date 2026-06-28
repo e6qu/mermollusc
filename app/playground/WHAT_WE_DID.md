@@ -823,3 +823,4 @@
   release tags) showcasing the stickman-per-branch, short-SHA, arrowed connectors.
 - Zoom-to-fit on load: the initial render and every example load now call `fitView`, so a wide diagram
   (e.g. the full git-flow) is visible at once. Caps at 100%, so a small diagram is left untouched.
+- Unified Layout Style Dropdown UI: Replaced the isolated `#tidy`, `#organic`, `#bus`, and `#trunk` toolbar buttons with a single dynamic `#layout-style` select dropdown. Options are populated context-sensitively based on the current active diagram's family. Selections are stored and persisted per diagram family in local storage so switching diagram types automatically restores the last chosen layout style. Supported styles include custom modes like classic vs relaxed sequence (curved message lines), radial vs classic mindmaps (straight links and rect nodes), classic vs donut pies, and classic vs pills gitGraph (commit dots and straight lines).

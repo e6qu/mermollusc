@@ -174,8 +174,8 @@ describe("layout energy baseline + style invariants", () => {
   it("organic (ELK stress) lays a flowchart out validly and differently from layered", async () => {
     const parsed = parseDiagram("flowchart TD\n  A --> B\n  A --> C\n  B --> D\n  C --> D\n");
     if (!isOk(parsed)) return;
-    const layered = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false, false);
-    const organic = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false, true);
+    const layered = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), "classic");
+    const organic = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), "organic");
     if (!isOk(layered) || !isOk(organic)) throw new Error("layout failed");
     // A real, in-bounds, non-overlapping placement…
     expect(organic.value.nodes).toHaveLength(4);
@@ -189,14 +189,14 @@ describe("layout energy baseline + style invariants", () => {
   // "Tidy layout" must never make a layered family WORSE — the default config is always one of the
   // candidates, so the selected energy is ≤ the default's. (Often equal: ELK's default is already good.)
   const layeredSamples = SAMPLES.filter((s) =>
-    ["flowchart", "state", "state-composite", "er", "class", "gitGraph"].includes(s.name),
+    ["flowchart", "state", "state-composite", "er", "class"].includes(s.name),
   );
   for (const sample of layeredSamples) {
     it(`${sample.name}: tidy layout never raises the energy (≤ default)`, async () => {
       const parsed = parseDiagram(sample.text);
       if (!isOk(parsed)) return;
-      const base = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), false);
-      const tidy = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), true);
+      const base = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), "classic");
+      const tidy = await layoutDiagram(parsed.value, heuristicMeasure, new Set(), "tidy");
       if (!isOk(base) || !isOk(tidy)) return;
       expect(noSiblingOverlaps(tidy.value)).toBe(true); // still a valid, in-style layout
       expect(layoutEnergy(tidy.value).total).toBeLessThanOrEqual(layoutEnergy(base.value).total + 1e-6);

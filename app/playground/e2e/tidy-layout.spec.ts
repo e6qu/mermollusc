@@ -17,24 +17,23 @@ test("the Tidy toggle re-lays-out, announces, and persists across reload", async
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  const tidy = page.locator("#tidy");
-  await expect(tidy).toHaveAttribute("aria-pressed", "false");
+  const styleSelect = page.locator("#layout-style");
+  await expect(styleSelect).toHaveValue("tidy");
 
-  await tidy.click();
-  await expect(tidy).toHaveAttribute("aria-pressed", "true");
-  await expect(tidy).toHaveText(/Tidy/);
-  await expect(page.locator("#status")).toContainText(/tidy layout on/i);
+  await styleSelect.selectOption("classic");
+  await expect(styleSelect).toHaveValue("classic");
+  await expect(page.locator("#status")).toContainText(/layout style changed to classic/i);
   // The diagram still renders cleanly after the re-layout.
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   // Preference survives a reload.
   await page.reload();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await expect(page.locator("#tidy")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#layout-style")).toHaveValue("classic");
 
-  // And toggles back off.
-  await page.locator("#tidy").click();
-  await expect(page.locator("#tidy")).toHaveAttribute("aria-pressed", "false");
+  // And toggles back.
+  await page.locator("#layout-style").selectOption("tidy");
+  await expect(page.locator("#layout-style")).toHaveValue("tidy");
 
   expect(errors).toEqual([]);
 });

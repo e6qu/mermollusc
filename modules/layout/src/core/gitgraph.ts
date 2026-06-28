@@ -108,13 +108,6 @@ const shortSha = (id: string): string => {
   return h.toString(16).padStart(8, "0").slice(0, 7);
 };
 
-// A commit's display label: its short SHA, with any release tag appended in brackets.
-const commitLabel = (c: GitCommit): string =>
-  c.tag === null ? shortSha(c.id) : `${shortSha(c.id)} [${c.tag}]`;
-
-// `highlight` commits draw as a filled rectangle (Mermaid's highlight box); the rest are rounded pills.
-const commitShape = (c: GitCommit): NodeShape => (c.commitType === "highlight" ? "rect" : "round");
-
 // Deterministic git-graph layout — no ELK. Commits march along the main axis in creation order; each
 // branch owns a lane on the cross axis. `LR` (Mermaid's default) runs commits left→right with lanes
 // stacked top→bottom; `TB`/`BT` swap the axes (BT also flips the commit axis so history grows upward).
@@ -125,9 +118,20 @@ export const layoutGitGraph = (
   ast: GitGraphAst,
   measure: MeasureText,
   tidy = false,
+  classic = false,
 ): Result<Scene, LayoutError> => {
+  const commitLabel = (c: GitCommit): string =>
+    classic ? "" : c.tag === null ? shortSha(c.id) : `${shortSha(c.id)} [${c.tag}]`;
+  const commitShape = (c: GitCommit): NodeShape =>
+    classic
+      ? c.commitType === "highlight"
+        ? "rect"
+        : "circle"
+      : c.commitType === "highlight"
+        ? "rect"
+        : "round";
   const pillW = (c: GitCommit): number =>
-    Math.max(MIN_COMMIT_W, measure(commitLabel(c)) + PILL_PAD);
+    classic ? COMMIT_H : Math.max(MIN_COMMIT_W, measure(commitLabel(c)) + PILL_PAD);
   // reduce, not Math.max(...spread): a spread over every commit/branch would exceed the argument-count
   // limit (and throw) on a very large history — keeping the core total.
   const maxPillW = ast.commits.reduce((m, c) => Math.max(m, pillW(c)), MIN_COMMIT_W);
