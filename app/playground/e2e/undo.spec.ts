@@ -12,6 +12,13 @@ const overrideCount = (page: Page) =>
     return parsed.overrides?.length ?? 0;
   });
 
+const nodeCenter = (page: Page, nodeId: string) =>
+  page.evaluate((id) => {
+    const rect = (window as any).__nodeRect(id);
+    if (rect === null) throw new Error(`node not found: ${id}`);
+    return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+  }, nodeId);
+
 // Select the default flowchart's Start node, then shift-add the Choice node below it.
 const selectPair = async (page: Page, box: { x: number; y: number }) => {
   await page.mouse.click(box.x + 88, box.y + 56);
@@ -87,4 +94,59 @@ test("⌘Z undoes a Group", async ({ page }) => {
   await expect(page.locator("#ungroup")).toBeDisabled(); // group undone
 
   expect(errors).toEqual([]);
+});
+
+test("unifying undo/redo history coordinates text typing, node dragging, and programmatic edits in one stack", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const initialText = await sourceValue(page);
+
+  // 1. Focus editor and type a node label update
+  const editor = page.locator(".cm-content");
+  await editor.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("flowchart TD\n  Start --> Choice\n  Choice -->|yes| Result1\n  Choice -->|no| Result2\n  Extra[Extra]\n");
+  await expect.poll(() => sourceValue(page)).toContain("Extra");
+  // Let the debounce/typing timer clear
+  await page.waitForTimeout(1000);
+
+  // 2. Drag node Choice on the canvas
+  expect(await overrideCount(page)).toBe(0);
+  const choiceCenter = await nodeCenter(page, "Choice");
+  await page.mouse.move(choiceCenter.x, choiceCenter.y);
+  await page.mouse.down();
+  await page.mouse.move(choiceCenter.x + 200, choiceCenter.y + 100, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(() => overrideCount(page)).toBe(1);
+
+  // 3. Connect Start to Result1 (programmatic edit)
+  const startCenter = await nodeCenter(page, "Start");
+  await page.mouse.click(startCenter.x, startCenter.y); // select Start
+  await page.keyboard.down("Shift");
+  const result1Center = await nodeCenter(page, "Result1");
+  await page.mouse.click(result1Center.x, result1Center.y); // select Result1
+  await page.keyboard.up("Shift");
+  const connectBtn = page.locator("#ctx-connect");
+  await expect(connectBtn).toBeEnabled();
+  await connectBtn.click();
+  // An edge line should now be appended
+  await expect.poll(() => sourceValue(page)).toMatch(/Start --> Result1/);
+
+  // --- UNDO ---
+  // Undo 1: should undo the Connect
+  await page.keyboard.press("Control+z");
+  await expect.poll(() => sourceValue(page)).not.toMatch(/Start --> Result1/);
+  await expect.poll(() => overrideCount(page)).toBe(1);
+
+  // Undo 2: should undo the Drag
+  await page.keyboard.press("Control+z");
+  await expect.poll(() => overrideCount(page)).toBe(0);
+
+  // Undo 3: should undo the Typing (back to initialText)
+  await page.keyboard.press("Control+z");
+  await expect.poll(() => sourceValue(page)).toBe(initialText);
 });

@@ -4,10 +4,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
 ## Sweep-round audit backlog (deferred from the multi-agent review)
-- **Undo desync (J1/J2, high).** Structural canvas edits write *text* (CodeMirror history) AND an overlay
-  pin (overlay history) as two separate undoable units, and an editor-undo of a programmatic structural
-  edit doesn't re-render the canvas. Needs a single command history capturing both as one step — a real
-  refactor, not a patch.
 - **Node colour/fill restyle (J4).** Only shape + arrow-kind cycling exist; colour is the most-expected
   styling control. Add a swatch writing a `style`/`classDef` patch (flowchart first), or mark as source-only.
 - **(done) Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)

@@ -76,6 +76,7 @@ import type {
   GanttSource,
   GroupId,
   GroupMember,
+  Groups,
   LayoutOverrides,
   NetworkSource,
   EdgeRoute,
@@ -519,26 +520,199 @@ if (useCollab) {
   });
 }
 
-// Undo/redo for sidecar overlay actions (drag, group/ungroup/lock, group label, regenerate) — the
-// canvas counterpart to CodeMirror's text history (which owns the source text). The history itself
-// lives in the document model; these wrappers add the canvas side effects (repaint + button sync)
-// the doc deliberately stays out of, so undo/redo of a state the doc restored shows on screen.
+interface UnifiedHistoryEntry {
+  readonly text: string;
+  readonly cursor: { readonly from: number; readonly to: number } | null;
+  readonly overrides: LayoutOverrides;
+  readonly groups: Groups;
+  readonly edgeStyles: EdgeStyles;
+  readonly nodeStyles: NodeStyles;
+  readonly selection: Selection;
+  readonly selectionOrder: readonly SceneNodeId[];
+}
+
+let unifiedUndoStack: UnifiedHistoryEntry[] = [];
+let unifiedRedoStack: UnifiedHistoryEntry[] = [];
+let typingSessionActive = false;
+let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastTextSnapshot = "";
+let lastCursorSnapshot: { readonly from: number; readonly to: number } | null = null;
+
+const recordHistory = (): void => {
+  if (collabSession !== null) {
+    const d = doc;
+    d.record();
+    return;
+  }
+  typingSessionActive = false;
+  if (typingTimeout !== null) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
+
+  const currentText = editorReady ? editor.value() : initialSource || "";
+  const currentCursor = editorReady ? editor.selectedRange() : null;
+
+  unifiedUndoStack.push({
+    text: currentText,
+    cursor: currentCursor,
+    overrides: new Map(doc.overrides()),
+    groups: new Map(doc.groups()),
+    edgeStyles: new Map(doc.edgeStyles()),
+    nodeStyles: new Map(doc.nodeStyles()),
+    selection: { nodes: new Set(selection.nodes), edges: new Set(selection.edges) },
+    selectionOrder: [...selectionOrder],
+  });
+
+  if (unifiedUndoStack.length > 100) {
+    unifiedUndoStack.shift();
+  }
+  unifiedRedoStack = [];
+
+  lastTextSnapshot = currentText;
+  lastCursorSnapshot = currentCursor;
+};
+
+const recordTypingStart = (): void => {
+  if (collabSession !== null) return;
+  if (!typingSessionActive) {
+    typingSessionActive = true;
+    unifiedUndoStack.push({
+      text: lastTextSnapshot,
+      cursor: lastCursorSnapshot,
+      overrides: new Map(doc.overrides()),
+      groups: new Map(doc.groups()),
+      edgeStyles: new Map(doc.edgeStyles()),
+      nodeStyles: new Map(doc.nodeStyles()),
+      selection: { nodes: new Set(selection.nodes), edges: new Set(selection.edges) },
+      selectionOrder: [...selectionOrder],
+    });
+    if (unifiedUndoStack.length > 100) {
+      unifiedUndoStack.shift();
+    }
+    unifiedRedoStack = [];
+  }
+  if (typingTimeout !== null) {
+    clearTimeout(typingTimeout);
+  }
+  typingTimeout = setTimeout(() => {
+    typingSessionActive = false;
+    typingTimeout = null;
+    lastTextSnapshot = editor.value();
+    lastCursorSnapshot = editor.selectedRange();
+  }, 800);
+};
+
+const clearUnifiedHistory = (): void => {
+  unifiedUndoStack = [];
+  unifiedRedoStack = [];
+  typingSessionActive = false;
+  if (typingTimeout !== null) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
+  if (editorReady) {
+    lastTextSnapshot = editor.value();
+    lastCursorSnapshot = editor.selectedRange();
+  }
+};
+
 const applyRestored = (): void => {
-  nudging = false; // a fresh nudge run after undo/redo starts its own undo entry
+  nudging = false;
   doc.persist();
   paintScene();
   updateGroupButtons();
 };
+
 const undoOverlay = (): void => {
-  if (doc.undo()) {
-    applyRestored();
-    setStatusAndAnnounce("ok", "layout undone");
+  if (collabSession !== null) {
+    if (doc.undo()) {
+      applyRestored();
+      setStatusAndAnnounce("ok", "layout undone");
+    }
+    return;
+  }
+
+  const entry = unifiedUndoStack.pop();
+  if (entry === undefined) return;
+
+  unifiedRedoStack.push({
+    text: editorReady ? editor.value() : lastTextSnapshot,
+    cursor: editorReady ? editor.selectedRange() : lastCursorSnapshot,
+    overrides: new Map(doc.overrides()),
+    groups: new Map(doc.groups()),
+    edgeStyles: new Map(doc.edgeStyles()),
+    nodeStyles: new Map(doc.nodeStyles()),
+    selection: { nodes: new Set(selection.nodes), edges: new Set(selection.edges) },
+    selectionOrder: [...selectionOrder],
+  });
+
+  doc.replace(entry.overrides, entry.groups, entry.edgeStyles, entry.nodeStyles);
+
+  if (editorReady && editor.value() !== entry.text) {
+    editor.setValue(entry.text);
+  }
+  if (editorReady && entry.cursor !== null) {
+    editor.select(entry.cursor.from, entry.cursor.to);
+  }
+
+  selection = { nodes: new Set(entry.selection.nodes), edges: new Set(entry.selection.edges) };
+  selectionOrder = [...entry.selectionOrder];
+
+  lastTextSnapshot = entry.text;
+  lastCursorSnapshot = entry.cursor;
+  typingSessionActive = false;
+
+  applyRestored();
+  setStatusAndAnnounce("ok", "undone");
+  if (editorReady) {
+    void renderFromText(entry.text);
   }
 };
+
 const redoOverlay = (): void => {
-  if (doc.redo()) {
-    applyRestored();
-    setStatusAndAnnounce("ok", "layout redone");
+  if (collabSession !== null) {
+    if (doc.redo()) {
+      applyRestored();
+      setStatusAndAnnounce("ok", "layout redone");
+    }
+    return;
+  }
+
+  const entry = unifiedRedoStack.pop();
+  if (entry === undefined) return;
+
+  unifiedUndoStack.push({
+    text: editorReady ? editor.value() : lastTextSnapshot,
+    cursor: editorReady ? editor.selectedRange() : lastCursorSnapshot,
+    overrides: new Map(doc.overrides()),
+    groups: new Map(doc.groups()),
+    edgeStyles: new Map(doc.edgeStyles()),
+    nodeStyles: new Map(doc.nodeStyles()),
+    selection: { nodes: new Set(selection.nodes), edges: new Set(selection.edges) },
+    selectionOrder: [...selectionOrder],
+  });
+
+  doc.replace(entry.overrides, entry.groups, entry.edgeStyles, entry.nodeStyles);
+
+  if (editorReady && editor.value() !== entry.text) {
+    editor.setValue(entry.text);
+  }
+  if (editorReady && entry.cursor !== null) {
+    editor.select(entry.cursor.from, entry.cursor.to);
+  }
+
+  selection = { nodes: new Set(entry.selection.nodes), edges: new Set(entry.selection.edges) };
+  selectionOrder = [...entry.selectionOrder];
+
+  lastTextSnapshot = entry.text;
+  lastCursorSnapshot = entry.cursor;
+  typingSessionActive = false;
+
+  applyRestored();
+  setStatusAndAnnounce("ok", "redone");
+  if (editorReady) {
+    void renderFromText(entry.text);
   }
 };
 
@@ -1671,7 +1845,7 @@ const applyArrange = (kind: AlignKind): void => {
     return;
   }
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
-  doc.record();
+  recordHistory();
   for (const [id, d] of moved) {
     const at = origin.get(id);
     if (at !== undefined) doc.moveNode(id, point(at.x + d.dx, at.y + d.dy));
@@ -1768,6 +1942,7 @@ const groupSelection = (): void => {
     }
     const next = wrapCloudGroup(editor.value(), lineIdxs, "Group");
     if (next === editor.value()) return;
+    recordHistory();
     editor.setValue(next);
     void renderFromText(next);
     announce(`grouped ${lineIdxs.length} services — double-click the group title to rename`);
@@ -1784,7 +1959,7 @@ const groupSelection = (): void => {
     units.push(member);
   }
   if (units.length < 2) return;
-  doc.record();
+  recordHistory();
   doc.groupNodes(units);
   updateGroupButtons();
   doc.persist();
@@ -1797,7 +1972,7 @@ const ungroupSelection = (): void => {
   if (viewerMode) return;
   const top = selectedTopGroup();
   if (top === null) return;
-  doc.record();
+  recordHistory();
   doc.ungroupAt(top);
   updateGroupButtons();
   doc.persist();
@@ -1811,7 +1986,7 @@ const toggleLockSelection = (): void => {
   const top = selectedTopGroup();
   const g = top === null ? undefined : doc.groups().get(top);
   if (top === null || g === undefined) return;
-  doc.record();
+  recordHistory();
   doc.setGroupLocked(top, !g.locked);
   updateGroupButtons();
   doc.persist();
@@ -2432,7 +2607,7 @@ const renderFromText = async (text: string): Promise<void> => {
   if (!useCollab) {
     const kept = new Map([...doc.overrides()].filter(([id]) => liveIds.has(id)));
     if (kept.size !== doc.overrides().size) {
-      doc.record();
+      recordHistory();
       doc.replaceOverrides(kept);
       doc.persist();
     }
@@ -2777,12 +2952,12 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   const { id, label } = newNodeIdLabel(ast.kind, used);
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
+  recordHistory();
   editor.setValue(next);
   await renderFromText(next);
   if (scene === null) return;
   const sid = brand<string, "SceneNodeId">(id);
   // Pin the new node where it was dropped (the override moves it for any family, deterministic or not).
-  doc.record();
   doc.moveNode(sid, at);
   doc.persist();
   selection = { nodes: new Set([sid]), edges: new Set() };
@@ -3051,7 +3226,7 @@ canvas.addEventListener("pointermove", (ev) => {
   if (resize !== null) {
     const at = scenePoint(ev);
     if (!resizeRecorded) {
-      doc.record();
+      recordHistory();
       resizeRecorded = true;
     }
     const rawW = at.x - resize.anchorX;
@@ -3113,7 +3288,7 @@ canvas.addEventListener("pointermove", (ev) => {
   // preview tracks the date axis instead of floating the bar off its row until the release snap-back.
   let dy = ast?.kind === "gantt" ? 0 : at.y - drag.pointerY;
   if (!dragRecorded && (dx !== 0 || dy !== 0)) {
-    doc.record();
+    recordHistory();
     dragRecorded = true;
   }
   // Single-node drag snaps its edges/centre to nearby nodes' lines; the snapped lines become guides.
@@ -3159,7 +3334,7 @@ const ganttRescheduleDrag = (id: SceneNodeId, deltaDays: number): boolean => {
   const span = ganttSource.taskStart.get(gid);
   const task = ast.tasks.find((t) => t.id === gid);
   if (span === undefined || task === undefined || task.start.kind !== "date") return false;
-  doc.record();
+  recordHistory();
   doc.replaceOverrides(clearOverride(doc.overrides(), id)); // the source move supersedes the drag preview
   const next = shiftGanttStart(editor.value(), span, task.start.date, deltaDays);
   doc.persist();
@@ -3174,7 +3349,7 @@ const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
   const span = ganttSource.taskDuration.get(gid);
   if (span === undefined) return false;
   const days = Math.max(1, Math.round(widthPx / GANTT_DAY_WIDTH));
-  doc.record();
+  recordHistory();
   doc.replaceOverrides(clearOverride(doc.overrides(), id));
   const next = setGanttDuration(editor.value(), span, days);
   doc.persist();
@@ -3207,6 +3382,7 @@ canvas.addEventListener("pointerup", (ev) => {
       if (next !== editor.value()) {
         const label = (id: SceneNodeId): string =>
           scene?.nodes.find((n) => n.id === id)?.label ?? "node";
+        recordHistory();
         editor.setValue(next);
         void renderFromText(next);
         announce(describeConnect(ast.kind, label(cd.from), label(target.id)));
@@ -3437,6 +3613,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
         return;
       }
+      recordHistory();
       editor.setValue(patchSpan(editor.value(), span, next));
       void renderFromText(editor.value());
     },
@@ -3457,6 +3634,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         return;
       }
       const id = editor.value().slice(idSpan.start, idSpan.end);
+      recordHistory();
       editor.setValue(patchSpan(editor.value(), idSpan, wrap(id, next)));
       void renderFromText(editor.value());
     },
@@ -3475,6 +3653,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         setStatusAndAnnounce("error", `can't label edge — ${out.error.message}`);
         return;
       }
+      recordHistory();
       editor.setValue(out.value);
       void renderFromText(editor.value());
     },
@@ -3492,7 +3671,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         text: g.label,
         commit: (next) => {
           if (next === g.label) return;
-          doc.record();
+          recordHistory();
           doc.setGroupLabel(groupHit, next);
           doc.persist();
           paintScene();
@@ -3520,6 +3699,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
             setStatusAndAnnounce("error", `can't rename — ${patched.error.message}`);
             return;
           }
+          recordHistory();
           editor.setValue(patched.value);
           void renderFromText(patched.value);
         },
@@ -3558,6 +3738,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
               return;
             }
             const renamed = renameBlockId(editor.value(), current, next);
+            recordHistory();
             editor.setValue(renamed);
             void renderFromText(renamed);
           },
@@ -3799,11 +3980,11 @@ const duplicateSelection = async (): Promise<void> => {
     pairs.push({ from: id, to: brand<string, "SceneNodeId">(newId) });
   }
   if (pairs.length === 0) return;
+  recordHistory();
   editor.setValue(text);
   await renderFromText(text);
   if (scene === null) return;
   const posById = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd.bounds.origin]));
-  doc.record();
   for (const { from, to } of pairs) {
     const p = posById.get(from);
     if (p !== undefined) doc.moveNode(to, point(p.x + 28, p.y + 28));
@@ -3868,9 +4049,9 @@ const pasteClipboard = async (): Promise<void> => {
   }
   if (created.length === 0) return;
   pasteSeq += 1;
+  recordHistory();
   editor.setValue(text);
   await renderFromText(text);
-  doc.record();
   const off = 28 * pasteSeq;
   for (const c of created) {
     doc.moveNode(c.id, point(origin.x + off + c.dx, origin.y + off + c.dy));
@@ -3903,6 +4084,7 @@ connectBtn.addEventListener("click", () => {
     flashStatus("connect made no change");
     return;
   }
+  recordHistory();
   editor.setValue(text);
   void renderFromText(text);
   flashStatus(connectedMessage(ast.kind, selectionOrder.length - 1));
@@ -4290,6 +4472,7 @@ const deleteSelection = async (): Promise<void> => {
     setStatusAndAnnounce("warning", "can't delete this from the canvas — remove it in the source");
     return;
   }
+  recordHistory();
   selection = emptySelection;
   selectionOrder = [];
   editor.setValue(text);
@@ -4337,45 +4520,50 @@ window.addEventListener("keydown", (ev) => {
 // when the editor isn't focused, so CodeMirror keeps ⌘Z for the source text; the two histories don't
 // fight (text in CodeMirror, layout/groups here).
 window.addEventListener("keydown", (ev) => {
-  if (editor.hasFocus()) return;
   if (!ev.metaKey && !ev.ctrlKey) return;
   const key = ev.key.toLowerCase();
-  if ((key === "z" || key === "y") && viewerMode) return; // a viewer has no overlay edits to undo/redo
-  if (key === "z" && !ev.shiftKey) {
-    ev.preventDefault();
-    undoOverlay();
-  } else if (key === "y" || (key === "z" && ev.shiftKey)) {
-    ev.preventDefault();
-    redoOverlay();
-  } else if (key === "a") {
-    // Select every node (⌘A in the canvas; CodeMirror keeps it for the text when it's focused).
-    if (scene === null) return;
-    ev.preventDefault();
-    const ids = scene.nodes.map((n) => n.id);
-    selection = { nodes: new Set(ids), edges: new Set() };
-    selectionOrder = ids;
-    nudging = false;
-    paintScene();
-    updateGroupButtons();
-  } else if (key === "d") {
-    // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
-    // can add a node, else we'd swallow the keystroke and silently do nothing.
-    if (viewerMode || selectionOrder.length === 0) return;
-    if (ast === null || isDotImport || !familyAffordances(ast.kind).addNode) return;
-    ev.preventDefault();
-    void duplicateSelection();
-  } else if (key === "c") {
-    // Copy the selected flowchart node(s) to the in-memory clipboard. With nothing selected (or off
-    // flowchart) we don't preventDefault, so the browser's own copy still works.
-    if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0)
-      return;
-    ev.preventDefault();
-    copySelection();
-  } else if (key === "v") {
-    // Paste the clipboard's node(s) as fresh-id copies; left to the browser when the clipboard is empty.
-    if (viewerMode || nodeClipboard === null) return;
-    ev.preventDefault();
-    void pasteClipboard();
+  if (key === "z" || key === "y") {
+    if (collabSession !== null && editor.hasFocus()) return;
+    if (viewerMode) return;
+    if (key === "z" && !ev.shiftKey) {
+      ev.preventDefault();
+      undoOverlay();
+    } else if (key === "y" || (key === "z" && ev.shiftKey)) {
+      ev.preventDefault();
+      redoOverlay();
+    }
+  } else {
+    if (editor.hasFocus()) return;
+    if (key === "a") {
+      // Select every node (⌘A in the canvas; CodeMirror keeps it for the text when it's focused).
+      if (scene === null) return;
+      ev.preventDefault();
+      const ids = scene.nodes.map((n) => n.id);
+      selection = { nodes: new Set(ids), edges: new Set() };
+      selectionOrder = ids;
+      nudging = false;
+      paintScene();
+      updateGroupButtons();
+    } else if (key === "d") {
+      // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
+      // can add a node, else we'd swallow the keystroke and silently do nothing.
+      if (viewerMode || selectionOrder.length === 0) return;
+      if (ast === null || isDotImport || !familyAffordances(ast.kind).addNode) return;
+      ev.preventDefault();
+      void duplicateSelection();
+    } else if (key === "c") {
+      // Copy the selected flowchart node(s) to the in-memory clipboard. With nothing selected (or off
+      // flowchart) we don't preventDefault, so the browser's own copy still works.
+      if (viewerMode || ast === null || ast.kind !== "flowchart" || selectionOrder.length === 0)
+        return;
+      ev.preventDefault();
+      copySelection();
+    } else if (key === "v") {
+      // Paste the clipboard's node(s) as fresh-id copies; left to the browser when the clipboard is empty.
+      if (viewerMode || nodeClipboard === null) return;
+      ev.preventDefault();
+      void pasteClipboard();
+    }
   }
 });
 
@@ -4403,7 +4591,7 @@ const nudgeSelection = (dx: number, dy: number): void => {
   const shown = shownScene(scene);
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
   if (!nudging) {
-    doc.record();
+    recordHistory();
     nudging = true;
   }
   for (const id of ids) {
@@ -4443,6 +4631,7 @@ const cycleShape = async (): Promise<void> => {
     if (isOk(out)) text = out.value;
   }
   const keep = selectionOrder.map((id) => brand<string, "SceneNodeId">(id));
+  recordHistory();
   editor.setValue(text);
   await renderFromText(text);
   selection = { nodes: new Set(keep), edges: new Set() };
@@ -4469,7 +4658,7 @@ const cycleEdgeRoute = (): void => {
   const cur = firstId === undefined ? "square" : (doc.edgeStyles().get(firstId)?.route ?? "square");
   const next =
     EDGE_ROUTE_CYCLE[(EDGE_ROUTE_CYCLE.indexOf(cur) + 1) % EDGE_ROUTE_CYCLE.length] ?? "square";
-  doc.record();
+  recordHistory();
   // `square` is the default route → store no style (a clean overlay); the others are explicit.
   for (const id of selection.edges)
     doc.setEdgeStyle(id, next === "square" ? null : { route: next });
@@ -4483,7 +4672,7 @@ const cycleEdgeRoute = (): void => {
 // curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
-  doc.record();
+  recordHistory();
   for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
   doc.persist();
   paintScene();
@@ -4525,6 +4714,7 @@ const cycleEdgeStyle = async (): Promise<void> => {
     text = restyleEdge(editor.value(), arrowSpan, next);
   }
 
+  recordHistory();
   editor.setValue(text);
   await renderFromText(text);
   // Keep the edge selected so a repeated press keeps cycling it.
@@ -4784,7 +4974,7 @@ const resetPositions = async (): Promise<void> => {
     flashStatus("already at the default layout");
     return;
   }
-  doc.record();
+  recordHistory();
   doc.clearOverrides();
   doc.persist();
   // Await the re-render before announcing — `renderFromText` writes the diagram summary to the status
@@ -4854,7 +5044,8 @@ exampleEl.addEventListener("change", () => {
     return;
   }
   doc.clearOverrides();
-  doc.clearHistory(); // a different diagram — the old positions/history no longer apply
+  doc.clearHistory();
+  clearUnifiedHistory(); // a different diagram — the old positions/history no longer apply
   doc.persist();
   editor.setValue(text);
   // Fit the freshly loaded example in the viewport (a wide one like the git-flow shouldn't run off-edge).
@@ -5191,6 +5382,7 @@ const fromHash = hashValue("src");
 const exampleParam = new URLSearchParams(location.search).get("example");
 const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam) ?? null);
 const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
+lastTextSnapshot = initialSource;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
 // source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
@@ -5228,6 +5420,7 @@ if (!useCollab) {
 // because this closes over `renderFromText`; in collab mode it starts empty and the `Y.Text` binding
 // fills it (seeded below).
 const onTextChange = (text: string): void => {
+  recordTypingStart();
   // Persist immediately so a reload (or a crash) right after the last keystroke never loses it. Then
   // either render now (leading edge of a burst) or queue a trailing render for when the cooldown ends.
   saveSource(text);
@@ -5244,7 +5437,7 @@ editor =
         extra: [collabSession.sourceBinding()],
         textHistory: false,
       })
-    : createEditor(editorMount, initialSource, onTextChange);
+    : createEditor(editorMount, initialSource, onTextChange, { textHistory: false });
 editorReady = true;
 
 // The keyboard diagram navigator (a focusable listbox over the scene's nodes/edges) lives in
