@@ -8,6 +8,9 @@
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
   glyph above the label — for nodes carrying a `SceneNode.icon`). Emitted in three layers — edge
   lines + markers, then nodes, then edge labels — so nodes occlude crossing links while labels stay on top.
+- core pathing: `src/core/path.ts` owns bezier controls, rounded routed corners, crossing detection,
+  and visual hop `PathCmd`s. `toDisplayList` asks it for edge paths, keeping scene-to-display
+  layering separate from route geometry.
 - **Pie wedges:** a `wedge` `DrawCmd` (filled circular sector) renders `scene.wedges` — the canvas
   painter draws an `arc` sector (or annular sector for donuts), the SVG backend a `<path>` sector,
   both filled from a shared categorical palette (`wedgeColor(colorIndex)`) so a slice matches across
@@ -55,5 +58,6 @@
 - `htmlInCanvasSupported()`: feature-detects the experimental "HTML in Canvas" API (Chromium-flag
   only; false everywhere stable) so a host could opt into a richer backend if it ships — detection
   only, the default `paint` path is always used.
-- tests (see `make test`): display-list unit incl. icon/edge-label anchor; paint mock —
-  drawImage/theme/sketch; html-in-canvas detect; `toSvg` — shapes/escaping/icon `<image>`.
+- tests (see `make test`): display-list/path unit incl. icon/edge-label anchor and crossing hops;
+  paint mock — drawImage/theme/sketch; html-in-canvas detect; `toSvg` — shapes/escaping/icon
+  `<image>`.

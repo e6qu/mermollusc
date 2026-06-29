@@ -59,3 +59,5 @@ Checked while placing state notes by side and adding pie donut inner radii.
 Checked while adding the empty-graph / self-loop layout robustness suite (no crashes found).
 Checked while implementing obstacle-avoidance and dynamic channel-based trunk routing.
 Checked while implementing unified layout style dropdown UI and per-family custom styles.
+Checked while tightening network/cloud starter readability with ingress-first network ordering and
+narrower cloud tier wrapping.

@@ -17,6 +17,8 @@
 - `toSvg(cmds, opts): string` shares the display list with the canvas backend for export.
 - `Canvas2D` — structural subset of `CanvasRenderingContext2D`; a real context is assignable.
 - Pie/donut wedges render through the same display-list `wedge` command in canvas and SVG.
+- Edge route paths are built once in `src/core/path.ts` as backend-agnostic `PathCmd`s, including
+  curved edges and crossing hops, then consumed by both canvas and SVG.
 
 ## Notes
 

@@ -94,6 +94,12 @@ Possible next: weight overlaps vs crossings (overlaps hide edges, crossings stay
 diagram trades too many crossings for de-stacking; a dedicated channel-lane assignment pass could
 de-overlap without the maze reroute's incidental crossings.
 
+## Architecture starter layout polish shipped
+Network now places ungrouped ingress nodes ahead of grouped zones, and cloud wraps top-level boxes at a
+narrower row budget with larger inter-row channels. Remaining visual debt: connector routes that enter a
+container can still cross the container title band; fix that in routing/label painting rather than by
+adding more source-only workarounds.
+
 ## Channel reservation + lane separation shipped
 The stacked-edge fix is now two cooperating passes in `spreadPorts`: `reserveChannels` (density-sized room)
 then `separateOverlaps` (lane assignment). `CHANNEL_LANE` (reservation width per crossing edge) is tuned;

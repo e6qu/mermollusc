@@ -37,14 +37,15 @@
   of the collaborative-editor plan
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
-- **Examples are real, not gibberish:** the catalog includes a realistic tiered AWS architecture
-  (cloud, with directed traffic paths CloudFront→WAF→ALB/API-Gateway→ECS→data and authentic gilbarbara
-  AWS icons) and two BPMN-style swimlane workflows (order-to-cash, incident response) whose branches
+- **Examples are real, not gibberish:** the catalog includes a readable tiered AWS architecture
+  (cloud, with directed traffic paths CloudFront→WAF→ALB→ECS services→data/identity/operations and
+  coherent built-in architecture glyphs), a compact network perimeter example, and two BPMN-style swimlane workflows (order-to-cash, incident response) whose branches
   are semantically coherent (a declined payment cancels — it doesn't refund a charge that never
   happened). A **Reset** control (topbar) clears the persisted state and reloads a fresh demo.
 - **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the catalog lives in
-  `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses; the kind badge shows the
+  `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses, lays out,
+  lowers to `DrawCmd`s, and exports as SVG, with explicit `network`/`cloud` catalog guards; the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
   preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s) and **⌘C / ⌘V**

@@ -167,6 +167,14 @@ Checked interactive-control accessible names and canvas labelling (a11y pass).
 
 Checked while adding the ER-diagram family.
 Checked while preserving pinned overrides on Regenerate and adding donut/state-note visual coverage.
+Checked while tightening Examples menu rendering parity; network and cloud remain explicit catalog
+entries and render through the shared display-list/SVG pipeline.
+
+Checked while reducing the GitHub Pages demo network/cloud starters to readable tiered source diagrams
+and replacing the cloud starter's vendor-logo tiles with built-in architecture glyphs.
+
+Checked while making repeated edge-style keyboard cycling derive the current arrow from the editor text
+span, so a rapid second `S` press cannot reuse a stale AST edge kind.
 
 Resolved (Miro-like round, 2026-06-23):
 

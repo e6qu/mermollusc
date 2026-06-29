@@ -82,7 +82,7 @@ describe("toSvg", () => {
   it("maps each shape kind to its SVG element", () => {
     expect(svg).toContain("<rect"); // the rect node (+ background)
     expect(svg).toContain("<polygon"); // the diamond node
-    expect(svg).toContain("<polyline"); // the edge
+    expect(svg).toContain("<path"); // the edge
     expect(svg).toContain(`<polygon points`); // the diamond and the filled arrowhead
     expect(svg).toContain(`fill="${defaultTheme.stroke}"`); // the arrowhead is filled with the stroke colour
     expect(svg).toContain("<text"); // labels
@@ -203,8 +203,8 @@ describe("toSvg", () => {
     expect(out).toMatch(
       new RegExp(`<polygon points="[^"]*" fill="${defaultTheme.background}" stroke="${defaultTheme.stroke}"`),
     );
-    // Title divider + inner field/method divider → at least two markerless <polyline>s.
-    expect((out.match(/<polyline/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    // Title divider + inner field/method divider → at least two markerless <path>s.
+    expect((out.match(/<path/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect(out).toContain(">+int age</tspan>");
   });
 

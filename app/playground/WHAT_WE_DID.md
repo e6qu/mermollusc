@@ -843,3 +843,18 @@
 - gitGraph node delete: Added support for deleting commits and branch lanes in gitGraph diagrams. Extended `GitGraphSource` to track commit and branch statement text spans during parsing. Created two new builder functions, `deleteGitCommit` and `deleteGitBranch` (which also deletes commits belonging to the deleted branch), and wired them up to the canvas and keyboard delete handlers in the application shell. Updated existing tests to verify successful deletion.
 - DOT two-way editing: Implemented `parseDotWithSource` to build a precise `SourceMap` during Graphviz DOT parsing, capturing node identifiers, labels, declarations, and bracketed attributes, as well as edge arrow operators and attributes. Integrated this source map with `relabelNode` and `reshapeNode` to patch the original DOT source syntax instead of injecting flowchart syntax, and ungated all canvas/keyboard edit affordances (place, connect, delete, duplicate, shape cycling) for DOT imports. Added comprehensive integration tests.
 - Smart auto-routing: Added a "Reroute" button to the selection context bar on the canvas, allowing users to cycle through alternative, obstacle-avoiding A* route options for square and curved edges. This cycles a stored `routeOption` index which A* uses to select alternative mount point combinations around obstacles. Applied trunk/bus routing automatically in `layoutDiagram` for all spread-based families (network, cloud, block, c4).
+- Demo parity guard: upgraded `test/integration/examples.test.ts` from parse-only to parse → layout →
+  `toDisplayList` → `toSvg` for every Examples menu entry, and added explicit assertions that
+  `network` and `cloud` remain in the catalog.
+- Cleaned up the public cloud demo example icons: replaced the forced `gilbarbara/aws-*` logo tiles
+  with built-in monochrome `arch/*` glyphs so the starter renders as a coherent diagram while keeping
+  vendor logo packs available through the icon picker.
+- Reduced cloud starter edge congestion by keeping representative cross-tier links instead of routing
+  every service to every downstream dependency; the example still shows edge/routing/service/data/
+  identity tiers without overloading the public demo rendering.
+- Simplified the public network starter to one representative edge per tier (Internet → DMZ → app →
+  data) and verified the local before/after screenshot no longer shows the previous parallel web and
+  replica routes crossing through the whole canvas.
+- Hardened edge-style cycling after the pre-push Playwright gate caught repeated `S` keypresses stopping
+  at the open-arrow token; the app now reads the current arrow token from the editor source span before
+  choosing the next style.

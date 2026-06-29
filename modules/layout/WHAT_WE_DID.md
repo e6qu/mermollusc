@@ -395,3 +395,11 @@
 - Standardized self-loops in `c4`, `network`, and `cloud` layouts to render as a 5-point right-angle loop at the top-right corner of the node, with the label positioned at the outer corner, resolving silent drops (Cloud) and degenerate dots (C4/Network).
 - Added node and group bounds to the edge label decollision search (`decollideEdgeLabels`), excluding direct endpoint ancestors of each edge to prevent labels from being pushed away from their own connections.
 - Implemented smart A* auto-routing option selection in `mazeAroundObstacles`: updated A* routing to generate up to 16 unique candidate paths from all combinations of node boundary mount points, sorting them by obstacle hits, bends, and length. Let callers specify a `routeOption` index to cycle through these candidate paths. Exported new routing helpers from the layout module. Applied trunk and bus layout styles automatically to all spread diagram families (network, cloud, block, c4) in `layoutDiagram`.
+- Restricted trunk merging in `trunkMerge` to only group edges that share their destination node (`e.to`), matching electronics board routing patterns. Updated corresponding test cases.
+
+- Improved spread-family demo readability: network layout now places ungrouped/external nodes before
+  groups so ingress nodes stay near the front of the diagram, and cloud layout reserves larger
+  inter-service/inter-row gaps for dense architecture routes.
+- Tightened the cloud top-level row budget again so the public AWS starter falls into ingress,
+  services, and data/identity/operations tiers instead of keeping too many groups on one horizontal
+  band.

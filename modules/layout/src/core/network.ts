@@ -39,7 +39,8 @@ export const layoutNetwork = (
     MIN_CELL_WIDTH,
   );
 
-  // Direct children (groups first, then nodes — mirrors the cloud ordering) per container id.
+  // Direct children per container id. Put ungrouped/external leaf nodes before groups so a network's
+  // ingress node (for example `cloud net "Internet"`) stays visually before the zones it connects to.
   const childrenOf = new Map<string, NodeId[]>();
   const rootIds: NodeId[] = [];
   const pushChild = (parent: NodeId | null, id: NodeId): void => {
@@ -51,8 +52,8 @@ export const layoutNetwork = (
     kids.push(id);
     childrenOf.set(parent, kids);
   };
-  for (const g of ast.groups) pushChild(g.parent, g.id);
   for (const n of ast.nodes) pushChild(n.parent, n.id);
+  for (const g of ast.groups) pushChild(g.parent, g.id);
 
   const columnsFor = (count: number): number => Math.max(1, Math.ceil(Math.sqrt(count)));
 
