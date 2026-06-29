@@ -5513,6 +5513,9 @@ const navController = createNavigator({
   getScene: () => scene,
   getRenderedScene: () => lastRender?.scene ?? null,
   getAst: () => ast,
+  onFocusChange: (focused) => {
+    taskStatusText.parentElement?.setAttribute("aria-live", focused ? "off" : "polite");
+  },
   canConnect: (kind) => familyAffordances(kind).connect && !isDotImport,
   describeConnect,
   isViewerMode: () => viewerMode,

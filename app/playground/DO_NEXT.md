@@ -13,9 +13,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
 ## A11y / UX follow-ups (from the contrast + journey audit)
-- **Navigator double-announce.** A navigator arrow step writes both `#diagram-live` (via `announce`) and
-  `#task-status` (via `updateTask`) when the selection category changes — two polite regions, two
-  announcements per keypress. Skip the `updateTask` write while the navigator drives selection.
 - **Connect over-chains re-parent/merge families.** The Connect button chains every `connect:true`
   family at 3+ selections, including gitGraph (merge), mindmap (re-parent), timeline (event→period). Cap
   those three to 2-node Connect, or report per-pair outcomes.
