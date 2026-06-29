@@ -12,6 +12,8 @@
 - HTML-in-Canvas: `htmlInCanvasSupported()` detection is in; build the actual rich-label backend
   once the API ships in stable Chromium (it's flag-only today, so unverifiable here).
 - Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
+- *(done)* Edge-label plates are padded in both canvas and SVG so labelled network/cloud connectors read
+  as callouts, not text stamped directly onto the stroke.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label
   placement.
 - *(done)* State-diagram `[*]` pseudo-states render as filled initial / ringed final markers; fork/join

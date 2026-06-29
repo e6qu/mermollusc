@@ -14,6 +14,7 @@ class RecordingCtx implements Canvas2D {
   textBaseline: CanvasTextBaseline = "alphabetic";
   readonly calls: string[] = [];
   readonly fillTextFonts: string[] = [];
+  readonly fillRects: { readonly w: number; readonly h: number }[] = [];
   beginPath(): void {
     this.calls.push("beginPath");
   }
@@ -42,8 +43,9 @@ class RecordingCtx implements Canvas2D {
     this.calls.push(`fillText:${text}`);
     this.fillTextFonts.push(this.font);
   }
-  fillRect(): void {
+  fillRect(_x: number, _y: number, w: number, h: number): void {
     this.calls.push(`fillRect:${String(this.fillStyle)}`);
+    this.fillRects.push({ w, h });
   }
   measureText(text: string): { readonly width: number } {
     return { width: text.length * 7 };
@@ -161,6 +163,33 @@ describe("paint", () => {
     expect(sketchy.calls.filter((c) => c === "stroke").length).toBeGreaterThan(
       ctx.calls.filter((c) => c === "stroke").length,
     );
+  });
+
+  it("draws padded plates behind edge labels", () => {
+    const labelled: Scene = {
+      ...scene,
+      edges: [
+        {
+          id: seid("e0"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(30, 40), point(30, 80)],
+          label: "edge",
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(labelled), new Map(), { ...defaultTheme, font: "14px sans-serif" });
+    const plate = ctx.fillRects.find((r) => r.w === 40);
+    if (plate === undefined) throw new Error("missing edge label plate");
+    expect(plate.h).toBeGreaterThan(18);
   });
 
   it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {
