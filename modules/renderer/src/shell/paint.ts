@@ -422,11 +422,12 @@ export const paint = (
           // it. Measured against the base font (the widest line wins); the box is centred on x.
           ctx.font = theme.font;
           const widest = lines.reduce((w, l) => Math.max(w, ctx.measureText(l).width), 0);
-          const padX = 3;
+          const padX = 6;
+          const padY = 3;
           const boxW = widest + padX * 2;
-          const boxH = lines.length * lh;
+          const boxH = lines.length * lh + padY * 2;
           ctx.fillStyle = theme.background;
-          ctx.fillRect(cmd.x - boxW / 2, top - lh / 2, boxW, boxH);
+          ctx.fillRect(cmd.x - boxW / 2, top - lh / 2 - padY, boxW, boxH);
         }
         for (const [i, line] of lines.entries()) {
           if (i === 0) {

@@ -88,6 +88,11 @@ describe("toSvg", () => {
     expect(svg).toContain("<text"); // labels
   });
 
+  it("renders edge-label plates as padded rounded callouts", () => {
+    expect(svg).toContain(`rx="3" fill="${defaultTheme.background}"`);
+    expect(svg).toMatch(/<rect x="[-0-9.]+" y="[-0-9.]+" width="28\.80" height="24\.20" rx="3"/);
+  });
+
   it("exports state pseudo-node commands as SVG primitives", () => {
     const stateSvg = toSvg(
       [

@@ -143,9 +143,11 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       // metrics in a pure string backend); a slightly generous box just masks the line cleanly.
       const fontPx = labelLineHeight(theme.font) / 1.3;
       const widest = lines.reduce((w, l) => Math.max(w, l.length), 0);
-      const boxW = widest * fontPx * 0.6 + 6;
-      const boxH = lines.length * lh;
-      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2)}" width="${num(boxW)}" height="${num(boxH)}" fill="${theme.background}"/>`;
+      const padX = 6;
+      const padY = 3;
+      const boxW = widest * fontPx * 0.6 + padX * 2;
+      const boxH = lines.length * lh + padY * 2;
+      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}"/>`;
       return `${rect}${text}`;
     }
     case "wedge": {
