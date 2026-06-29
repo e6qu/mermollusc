@@ -11,12 +11,39 @@ import { point, rect, twoOrMore, type Point, type Size } from "@m/std";
 
 // Apply the presentation-only overlay (curved edges, coloured nodes) to a laid-out scene — display only,
 // like `applyOverrides`. Kept separate so it composes after geometry without changing that signature.
+import {
+  mazeAroundObstacles,
+  obstaclesForEdges,
+  routeBoxOf,
+  pathMidpoint,
+  type RouteBox,
+  snapSceneEdgesToMountPoints,
+} from "@m/layout";
+
 export const applyStyles = (
   scene: Scene,
   edgeStyles: EdgeStyles,
   nodeStyles: NodeStyles,
 ): Scene => {
   if (edgeStyles.size === 0 && nodeStyles.size === 0) return scene;
+
+  let obstacleBoxes: Map<string, readonly RouteBox[]> | null = null;
+  let boxById: Map<string, RouteBox> | null = null;
+
+  const getObstacles = () => {
+    if (obstacleBoxes === null) {
+      obstacleBoxes = obstaclesForEdges(scene);
+    }
+    return obstacleBoxes;
+  };
+
+  const getBoxById = () => {
+    if (boxById === null) {
+      boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+    }
+    return boxById;
+  };
+
   const edges =
     edgeStyles.size === 0
       ? scene.edges
@@ -36,6 +63,36 @@ export const applyStyles = (
               labelPos: e.labelPos === null ? null : point((a.x + b.x) / 2, (a.y + b.y) / 2),
             };
           }
+
+          const routeOption = s.routeOption;
+          if (routeOption !== null) {
+            const obstacles = getObstacles().get(e.id) ?? [];
+            const start = e.waypoints[0];
+            const end = e.waypoints[e.waypoints.length - 1];
+            if (start !== undefined && end !== undefined && e.from !== e.to) {
+              const path = mazeAroundObstacles(
+                getBoxById().get(e.from) ?? null,
+                getBoxById().get(e.to) ?? null,
+                start,
+                end,
+                e.waypoints,
+                obstacles,
+                routeOption,
+              );
+              if (path !== null) {
+                const [w0, w1, ...wr] = path;
+                if (w0 !== undefined && w1 !== undefined) {
+                  return {
+                    ...e,
+                    curved: s.route === "curved",
+                    waypoints: twoOrMore(w0, w1, ...wr),
+                    labelPos: e.labelPos === null ? null : pathMidpoint(path),
+                  };
+                }
+              }
+            }
+          }
+
           const curved = s.route === "curved";
           return curved !== e.curved ? { ...e, curved } : e;
         });
@@ -46,7 +103,7 @@ export const applyStyles = (
           const s = nodeStyles.get(n.id);
           return s !== undefined && s.accent !== n.accent ? { ...n, accent: s.accent } : n;
         });
-  return { ...scene, nodes, edges };
+  return snapSceneEdgesToMountPoints({ ...scene, nodes, edges });
 };
 
 export const moveNode = (

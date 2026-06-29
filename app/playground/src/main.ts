@@ -269,6 +269,7 @@ const ctxRelabelBtn = document.querySelector<HTMLButtonElement>("#ctx-relabel");
 const ctxShapeBtn = document.querySelector<HTMLButtonElement>("#ctx-shape");
 const ctxColourSwatches = document.querySelector<HTMLElement>("#ctx-colour-swatches");
 const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
+const ctxRerouteBtn = document.querySelector<HTMLButtonElement>("#ctx-reroute");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
 const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
@@ -288,6 +289,7 @@ if (
   ctxShapeBtn === null ||
   ctxColourSwatches === null ||
   ctxCurveBtn === null ||
+  ctxRerouteBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
   ctxGroupBtn === null ||
@@ -1457,6 +1459,18 @@ const renderContextBar = (caps: CapabilityState): void => {
   };
   const only = [...routes][0];
   ctxCurveBtn.textContent = routes.size === 1 && only !== undefined ? ROUTE_LABEL[only] : "Route";
+
+  ctxRerouteBtn.hidden =
+    viewerMode ||
+    selection.edges.size === 0 ||
+    selectionOrder.length > 0 ||
+    [...selection.edges].some((id) => doc.edgeStyles().get(id)?.route === "straight");
+  const options = new Set(
+    [...selection.edges].map((id) => doc.edgeStyles().get(id)?.routeOption ?? 0),
+  );
+  const onlyOpt = [...options][0];
+  ctxRerouteBtn.textContent =
+    options.size === 1 && onlyOpt !== undefined ? `Reroute (${onlyOpt})` : "Reroute";
   const editable = true;
   const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
   const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
@@ -4777,12 +4791,37 @@ const cycleEdgeRoute = (): void => {
     EDGE_ROUTE_CYCLE[(EDGE_ROUTE_CYCLE.indexOf(cur) + 1) % EDGE_ROUTE_CYCLE.length] ?? "square";
   recordHistory();
   // `square` is the default route → store no style (a clean overlay); the others are explicit.
-  for (const id of selection.edges)
-    doc.setEdgeStyle(id, next === "square" ? null : { route: next });
+  for (const id of selection.edges) {
+    const existing = doc.edgeStyles().get(id);
+    const opt = existing?.routeOption ?? null;
+    if (next === "square" && opt === null) {
+      doc.setEdgeStyle(id, null);
+    } else {
+      doc.setEdgeStyle(id, { route: next, routeOption: opt });
+    }
+  }
   doc.persist();
   paintScene();
   updateGroupButtons(); // refresh the route label for the new state
   setStatusAndAnnounce("ok", `edge route: ${next}`);
+};
+
+const cycleEdgeOption = (): void => {
+  if (viewerMode || selection.edges.size === 0) return;
+  recordHistory();
+  for (const id of selection.edges) {
+    const existing = doc.edgeStyles().get(id);
+    const curOpt = existing?.routeOption ?? null;
+    const nextOpt = curOpt === null ? 1 : curOpt + 1;
+    doc.setEdgeStyle(id, {
+      route: existing?.route ?? "square",
+      routeOption: nextOpt,
+    });
+  }
+  doc.persist();
+  paintScene();
+  updateGroupButtons();
+  setStatusAndAnnounce("ok", "rerouted connector");
 };
 
 // Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
@@ -4910,6 +4949,7 @@ ctxColourSwatches.addEventListener("click", (ev) => {
   setNodeColour(adv);
 });
 ctxCurveBtn.addEventListener("click", () => cycleEdgeRoute());
+ctxRerouteBtn.addEventListener("click", () => cycleEdgeOption());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());

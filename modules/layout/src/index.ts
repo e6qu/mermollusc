@@ -19,8 +19,14 @@ export {
   timelinePeriodsAdvanceLeftToRight,
   ganttTasksStackInRowOrder,
   mazeRoute,
+  pathMidpoint,
+  obstaclesForEdges,
+  routeBoxOf,
+  sideMounts,
+  mazeAroundObstacles,
+  snapSceneEdgesToMountPoints,
 } from "./core/index.js";
-export type { MazeBox } from "./core/index.js";
+export type { MazeBox, RouteBox } from "./core/index.js";
 export type {
   LayoutGraph,
   PositionedGraph,

@@ -19,9 +19,16 @@ export {
   decollideEdgeLabels,
   minimizeCrossings,
   separateOverlaps,
+  pathMidpoint,
+  obstaclesForEdges,
+  routeBoxOf,
+  sideMounts,
+  mazeAroundObstacles,
+  snapSceneEdgesToMountPoints,
 } from "./route.js";
 export { mazeRoute } from "./maze.js";
 export type { MazeBox } from "./maze.js";
+export type { RouteBox } from "./route.js";
 export { layoutEnergy, lowestEnergy } from "./energy.js";
 export type { EnergyBreakdown } from "./energy.js";
 export { noSiblingOverlaps, containersEncloseMembers, styleOk } from "./invariants.js";

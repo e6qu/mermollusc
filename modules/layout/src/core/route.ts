@@ -11,12 +11,53 @@ export const routeWaypoints = (
   raw: readonly { readonly x: number; readonly y: number }[],
   fromCenter: Point,
   toCenter: Point,
+  fromBox: RouteBox | null = null,
+  toBox: RouteBox | null = null,
 ): TwoOrMore<Point> => {
   const pts = raw.map((p) => point(p.x, p.y));
   const [first, second, ...rest] = pts;
-  return first !== undefined && second !== undefined
-    ? twoOrMore(first, second, ...rest)
-    : twoOrMore(fromCenter, toCenter);
+  const initial =
+    first !== undefined && second !== undefined
+      ? twoOrMore(first, second, ...rest)
+      : twoOrMore(fromCenter, toCenter);
+
+  const snapped = [...initial];
+  if (fromBox !== null && snapped.length >= 2) {
+    const s = snapped[1];
+    if (s !== undefined) {
+      snapped[0] = snapToMountPoint(fromBox, s);
+    }
+  }
+  if (toBox !== null && snapped.length >= 2) {
+    const lastIdx = snapped.length - 1;
+    const prev = snapped[lastIdx - 1];
+    if (prev !== undefined) {
+      snapped[lastIdx] = snapToMountPoint(toBox, prev);
+    }
+  }
+
+  const [w0, w1, ...wr] = snapped;
+  if (w0 !== undefined && w1 !== undefined) {
+    return twoOrMore(w0, w1, ...wr);
+  }
+  return initial;
+};
+
+const snapToMountPoint = (box: RouteBox, ref: Point): Point => {
+  const mounts = sideMounts(box);
+  let best = mounts[0] ?? point(0, 0);
+  let minD = Infinity;
+  for (const p of mounts) {
+    if (p === undefined) continue;
+    const dx = p.x - ref.x;
+    const dy = p.y - ref.y;
+    const d = dx * dx + dy * dy;
+    if (d < minD) {
+      minD = d;
+      best = p;
+    }
+  }
+  return best;
 };
 
 // The centre of a positioned box (origin + half its extent) — the straight-line fallback's anchor.
@@ -156,7 +197,7 @@ const routeLength = (pts: readonly Point[]): number => {
 const OBSTACLE_SCAN_STEPS = 16; // candidate channel positions tried when a Z-route hits a node
 
 // The point at the half-way arc length along a multi-segment route — where a mid-route label sits.
-const pathMidpoint = (pts: readonly Point[]): Point => {
+export const pathMidpoint = (pts: readonly Point[]): Point => {
   let total = 0;
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1];
@@ -233,7 +274,7 @@ const avoidObstacles = (
 // the edge's existing endpoints (unlike `spreadPorts`, which also re-assigns ports). For already-routed
 // scenes — the ELK families under "Tidy" — so their edges bend around residual obstacles too. Edges that
 // already clear every box are returned untouched, so this changes nothing when nothing crosses.
-const routeBoxOf = (n: Scene["nodes"][number]): RouteBox => ({
+export const routeBoxOf = (n: Scene["nodes"][number]): RouteBox => ({
   x: n.bounds.origin.x,
   y: n.bounds.origin.y,
   w: n.bounds.size.width,
@@ -244,7 +285,7 @@ const routeBoxOf = (n: Scene["nodes"][number]): RouteBox => ({
 // endpoint. A group CONTAINER is an obstacle UNLESS the edge enters it (an endpoint is that container or
 // nested inside it), so edges keep out of groups they don't belong to but can still reach an element
 // inside one. A tendency, not a guarantee: if no clear route exists, the routers fall back.
-const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]> => {
+export const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]> => {
   const parentOf = new Map<string, string | null>(scene.nodes.map((n) => [n.id, n.parent]));
   const ancestorsOf = (id: string): ReadonlySet<string> => {
     const out = new Set<string>();
@@ -272,7 +313,7 @@ const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]> => {
 
 // The four side-centre mount points of a box (right, left, bottom, top) — so a detour can leave/enter a
 // node on whichever side gives the clearest route, instead of always the one the layout first picked.
-const sideMounts = (b: RouteBox): readonly Point[] => [
+export const sideMounts = (b: RouteBox): readonly Point[] => [
   point(b.x + b.w, b.y + b.h / 2),
   point(b.x, b.y + b.h / 2),
   point(b.x + b.w / 2, b.y + b.h),
@@ -282,30 +323,57 @@ const sideMounts = (b: RouteBox): readonly Point[] => [
 // Route an obstacle-crossing edge with the maze router, trying every (from-side, to-side) mount-point
 // pair and keeping the path with the fewest obstacle hits, then the shortest. Returns null when the
 // edge already clears everything or no better orthogonal path is found.
-const mazeAroundObstacles = (
+export const mazeAroundObstacles = (
   fromBox: RouteBox | null,
   toBox: RouteBox | null,
   start: Point,
   end: Point,
   current: readonly Point[],
   obstacles: readonly RouteBox[],
+  routeOption: number | null = null,
 ): readonly Point[] | null => {
-  if (routeHits(current, obstacles) === 0) return null;
+  if (routeOption === null && routeHits(current, obstacles) === 0) return null;
   const starts = fromBox === null ? [start] : sideMounts(fromBox);
   const ends = toBox === null ? [end] : sideMounts(toBox);
-  let best: { path: readonly Point[]; hits: number; len: number } | null = null;
+
+  interface Candidate {
+    readonly path: readonly Point[];
+    readonly hits: number;
+    readonly len: number;
+    readonly bends: number;
+  }
+  const candidates: Candidate[] = [];
+  const seenPaths = new Set<string>();
+
   for (const s of starts) {
     for (const t of ends) {
       const maze = mazeRoute(s, t, obstacles, OBSTACLE_CLEARANCE);
       if (maze === null || maze.length < 2) continue;
+
+      const key = maze.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(";");
+      if (seenPaths.has(key)) continue;
+      seenPaths.add(key);
+
       const hits = routeHits(maze, obstacles);
       const len = routeLength(maze);
-      if (best === null || hits < best.hits || (hits === best.hits && len < best.len)) {
-        best = { path: maze, hits, len };
-      }
+      const bends = maze.length;
+      candidates.push({ path: maze, hits, len, bends });
     }
   }
-  return best === null ? null : best.path;
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    if (a.hits !== b.hits) return a.hits - b.hits;
+    if (a.bends !== b.bends) return a.bends - b.bends;
+    return a.len - b.len;
+  });
+
+  if (routeOption === null) {
+    return candidates[0]?.path ?? null;
+  }
+  const idx = Math.max(0, routeOption) % candidates.length;
+  return candidates[idx]?.path ?? null;
 };
 
 export const mazeRerouteEdges = (scene: Scene): Scene => {
@@ -1325,4 +1393,38 @@ export const retidyRoutes = (scene: Scene): Scene => {
     return { ...edge, waypoints: twoOrMore(w0, w1, w2, w3) };
   });
   return changed ? { ...scene, edges } : scene;
+};
+
+export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const edges = scene.edges.map((e): SceneEdge => {
+    const fromBox = boxById.get(e.from);
+    const toBox = boxById.get(e.to);
+    if (fromBox === undefined || toBox === undefined || e.from === e.to) return e;
+    const pts = [...e.waypoints];
+    if (pts.length >= 2) {
+      const first = pts[0];
+      const second = pts[1];
+      if (first !== undefined && second !== undefined) {
+        pts[0] = snapToMountPoint(fromBox, first);
+      }
+      const lastIdx = pts.length - 1;
+      const last = pts[lastIdx];
+      const prev = pts[lastIdx - 1];
+      if (last !== undefined && prev !== undefined) {
+        pts[lastIdx] = snapToMountPoint(toBox, last);
+      }
+    }
+    const [w0, w1, ...wr] = pts;
+    if (w0 !== undefined && w1 !== undefined) {
+      const snappedWaypoints = twoOrMore(w0, w1, ...wr);
+      return {
+        ...e,
+        waypoints: snappedWaypoints,
+        labelPos: e.labelPos === null ? null : pathMidpoint(snappedWaypoints),
+      };
+    }
+    return e;
+  });
+  return { ...scene, edges };
 };
