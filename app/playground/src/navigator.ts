@@ -16,6 +16,7 @@ export interface NavigatorDeps {
   // The scene that was last painted (used for centring); usually identical to getScene().
   readonly getRenderedScene: () => Scene | null;
   readonly getAst: () => DiagramAst | null;
+  readonly onFocusChange?: ((focused: boolean) => void) | undefined;
   // Whether the family's grammar can accept a new edge — so keyboard Connect (`c`) doesn't arm a source
   // and walk the user into a two-step gesture that can't commit. Mirrors the palette/button gating.
   readonly canConnect: (kind: DiagramAst["kind"]) => boolean;
@@ -259,10 +260,12 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
   diagramNav.addEventListener("focus", () => {
     // Ring the stage so a sighted keyboard user sees focus is in the diagram (the navigator is hidden).
     stageWrap.classList.add("kbd-focus");
+    deps.onFocusChange?.(true);
     if (navIndex < 0) setNavActive(0);
   });
   diagramNav.addEventListener("blur", () => {
     stageWrap.classList.remove("kbd-focus");
+    deps.onFocusChange?.(false);
     navConnectSource = null; // an in-progress Connect doesn't outlive focus leaving the navigator
   });
 
