@@ -34,6 +34,9 @@
 - Container-aware routing treats a container's visible title label as an obstacle even when an edge
   legitimately enters that container to reach a member, preventing connectors from cutting through group
   titles without forcing large detours around the whole container.
+- Cross-boundary grouped-child edges choose sides from the containing group and ports from the actual
+  child, so architecture links enter a tier from the tier-facing side while preserving precise child
+  anchoring.
 - Network and cloud demo-oriented layouts keep architecture diagrams tiered: ungrouped ingress nodes
   are placed before grouped zones in network layouts, and cloud top-level boxes wrap on a narrower row
   budget with larger inter-row lanes so public starter diagrams do not collapse into one congested band.

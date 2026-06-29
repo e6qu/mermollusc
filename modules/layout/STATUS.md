@@ -83,6 +83,10 @@
 - **Container-title routing guard:** `edgesAvoidContainerHeaders(scene)` rejects routes that cut through
   a container's visible title label. Tidy ELK candidates are maze-rerouted before `styleOk` selection, so
   flowchart subgraphs/swimlanes get the same title-protection as spread-routed architecture families.
+- **Cross-boundary child routes:** `spreadPorts` chooses entry/exit sides using a child node's containing
+  group when the other endpoint is outside that group, then anchors on the real child box. This keeps
+  grouped architecture links entering tiers from the expected side without changing sibling-in-group
+  routing.
 - tests: 82 unit + 15 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown

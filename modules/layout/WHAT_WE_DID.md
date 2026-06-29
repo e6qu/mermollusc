@@ -406,3 +406,7 @@
 - Added container-title-aware routing: entered containers no longer exempt their visible title label from
   obstacle avoidance, `styleOk` now rejects edges through container titles, and ELK tidy candidates are
   maze-rerouted before candidate selection so swimlane/subgraph examples honor the same guard.
+- Improved cross-boundary grouped-child routing: side selection now uses the containing group as the
+  orientation box when an edge crosses a group boundary, while the port itself remains on the child node.
+  The cloud starter's ALB-to-service connector now enters the services tier from above instead of tracing
+  along the tier title.

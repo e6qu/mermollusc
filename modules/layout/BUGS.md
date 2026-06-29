@@ -63,3 +63,5 @@ Checked while tightening network/cloud starter readability with ingress-first ne
 narrower cloud tier wrapping.
 Checked while adding the container-title route invariant and applying header-aware maze rerouting before
 ELK tidy candidate selection.
+Checked while changing cross-boundary grouped-child side selection to use the containing group for
+orientation and the child box for the final port.
