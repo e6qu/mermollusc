@@ -1,5 +1,10 @@
 # @m/builder — work log
 
+## 2026-06-30 — Gantt dependency drag rewrite helper
+
+- Added and exported `setGanttStartFromDay(text, span, day)`.
+- Covered conversion of an `after ...` start field into `YYYY-MM-DD`.
+
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - core: `hitTest` (pure) — node bounds via `rectContains`, edge proximity via point-to-segment
   distance, nodes preferred over edges. 4 unit tests.

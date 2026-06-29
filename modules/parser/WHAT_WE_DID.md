@@ -1,5 +1,13 @@
 # @m/parser — work log
 
+## 2026-06-30 — Gantt start-field spans
+
+- Captured the full source span for every parsed Gantt task start field.
+- Kept explicit date spans separate so existing date-shift edits and dependency materialization use the
+  correct span.
+- Preserved DOT `style=rounded` on box-like nodes during import so export→import→export reaches a stable
+  fixed point for richer examples with rounded/composite nodes.
+
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - Added Chevrotain (catalog 12.0.0).
 - Built the flowchart lexer (multi-mode for shapes/edge labels) and grammar in `src/shell`.

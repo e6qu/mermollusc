@@ -82,6 +82,12 @@ describe("layoutCloud", () => {
     expect(byId.get("g0")?.icon).toBeNull();
   });
 
+  it("assigns semantic accents so cloud diagrams keep architecture colours", () => {
+    expect(byId.get("web")?.accent).toBe("compute");
+    expect(byId.get("db")?.accent).toBe("data");
+    expect(byId.get("g0")?.accent).toBe("muted");
+  });
+
   it("connects links undirected (no arrowhead)", () => {
     expect(scene.edges).toHaveLength(1);
     expect(scene.edges[0]?.toEnd).toBe("none");

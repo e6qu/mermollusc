@@ -47,6 +47,7 @@ import {
   restyleSequenceMessage,
   patchSpan,
   shiftGanttStart,
+  setGanttStartFromDay,
   setGanttDuration,
   pathLocked,
   relabelNode,
@@ -99,6 +100,7 @@ import type {
 import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import {
   GANTT_DAY_WIDTH,
+  GANTT_LEFT_GUTTER,
   layout,
   layoutDiagram,
   respreadPorts,
@@ -148,6 +150,8 @@ import { createThemeController } from "./theme.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
+
+const GANTT_DAY_MS = 86_400_000;
 
 declare global {
   interface Window {
@@ -2451,8 +2455,9 @@ const persistCollapsed = (): void => {
 
 const familyOfKind = (kind: string): string => {
   if (["flowchart", "state", "er", "class", "requirement"].includes(kind)) return "layered";
-  if (["c4", "cloud"].includes(kind)) return "box";
-  if (["block", "network"].includes(kind)) return "grid";
+  if (kind === "cloud" || kind === "network") return kind;
+  if (kind === "c4") return "box";
+  if (kind === "block") return "grid";
   return kind; // sequence, gitGraph, timeline, mindmap, pie, gantt
 };
 
@@ -2461,6 +2466,7 @@ const defaultStyleForFamily = (family: string): string => {
   if (family === "mindmap") return "radial";
   if (family === "timeline") return "columns";
   if (family === "gitGraph") return "pills";
+  if (family === "cloud") return "trunk";
   return "tidy"; // layered, box, grid
 };
 
@@ -2499,6 +2505,18 @@ const FAMILY_STYLES = {
     { value: "classic", label: "Classic Mermaid" },
     { value: "bus", label: "Bus Routing" },
     { value: "trunk", label: "Trunk Routing" },
+  ],
+  network: [
+    { value: "tidy", label: "Network Tidy (Recommended)" },
+    { value: "bus", label: "Network Bus Routing" },
+    { value: "trunk", label: "Network Trunk Routing" },
+    { value: "classic", label: "Classic Mermaid" },
+  ],
+  cloud: [
+    { value: "trunk", label: "Cloud Trunk Routing (Recommended)" },
+    { value: "tidy", label: "Cloud Tidy" },
+    { value: "bus", label: "Cloud Bus Routing" },
+    { value: "classic", label: "Classic Mermaid" },
   ],
   sequence: [
     { value: "classic", label: "Classic Mermaid" },
@@ -3399,17 +3417,47 @@ canvas.addEventListener("pointerleave", () => {
 
 // Gantt two-way editing: a bar's x-position is its start date and its width is its duration, both in the
 // source — so a drag/resize rewrites the text instead of leaving a layout overlay. Returns true when it
-// handled the gesture (caller then skips the overlay persist). Only explicit-date tasks reschedule; an
-// `after`-chain task has no calendar anchor to slide, so it falls back to the overlay.
+// handled the gesture (caller then skips the overlay persist). `after`-chain tasks materialize to an
+// explicit date when dragged, because the layout has already resolved their calendar position.
+const ganttDayOf = (iso: string): number =>
+  Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) /
+  GANTT_DAY_MS;
+
+const ganttChartMinDay = (): number | null => {
+  if (ast === null || ast.kind !== "gantt") return null;
+  let min = Number.POSITIVE_INFINITY;
+  for (const task of ast.tasks) {
+    if (task.start.kind === "date") min = Math.min(min, ganttDayOf(task.start.date));
+  }
+  return Number.isFinite(min) ? min : null;
+};
+
+const ganttNodeStartDay = (id: SceneNodeId, deltaDays: number): number | null => {
+  const minDay = ganttChartMinDay();
+  const node = scene?.nodes.find((n) => n.id === id);
+  if (minDay === null || node === undefined) return null;
+  return (
+    minDay + Math.round((node.bounds.origin.x - GANTT_LEFT_GUTTER) / GANTT_DAY_WIDTH) + deltaDays
+  );
+};
+
 const ganttRescheduleDrag = (id: SceneNodeId, deltaDays: number): boolean => {
   if (ast === null || ast.kind !== "gantt" || ganttSource === null || deltaDays === 0) return false;
   const gid = brand<string, "GanttTaskId">(id);
-  const span = ganttSource.taskStart.get(gid);
+  const explicitSpan = ganttSource.taskStart.get(gid);
+  const fieldSpan = ganttSource.taskStartField.get(gid);
   const task = ast.tasks.find((t) => t.id === gid);
-  if (span === undefined || task === undefined || task.start.kind !== "date") return false;
+  if (fieldSpan === undefined || task === undefined) return false;
   recordHistory();
   doc.replaceOverrides(clearOverride(doc.overrides(), id)); // the source move supersedes the drag preview
-  const next = shiftGanttStart(editor.value(), span, task.start.date, deltaDays);
+  const startDay = ganttNodeStartDay(id, deltaDays);
+  const next =
+    task.start.kind === "date" && explicitSpan !== undefined
+      ? shiftGanttStart(editor.value(), explicitSpan, task.start.date, deltaDays)
+      : startDay === null
+        ? editor.value()
+        : setGanttStartFromDay(editor.value(), fieldSpan, startDay);
+  if (next === editor.value()) return false;
   doc.persist();
   editor.setValue(next);
   void renderFromText(next);
@@ -3537,13 +3585,11 @@ canvas.addEventListener("pointerup", (ev) => {
         ? 0
         : Math.round((scenePoint(ev).x - finished.pointerX) / GANTT_DAY_WIDTH);
     if (taskId !== undefined && ganttRescheduleDrag(taskId, deltaDays)) return;
-    // A gantt bar that actually MOVED but couldn't reschedule (an `after`-chain task has no calendar
-    // anchor to slide) must not keep a raw 2D overlay that floats it off the grid — snap it back and
-    // explain why. A zero-delta "drag" is just a click/select, so it falls through normally (otherwise it
-    // would re-render on every click and clobber the double-click relabel).
+    // A gantt bar that actually moved but could not reschedule must not keep a raw 2D overlay that floats
+    // it off the grid. A zero-delta "drag" is just a click/select, so it falls through normally.
     if (taskId !== undefined && ast?.kind === "gantt" && deltaDays !== 0) {
       doc.replaceOverrides(clearOverride(doc.overrides(), taskId));
-      flashStatus("this task is scheduled by its dependency — edit the `after` chain");
+      flashStatus("this task could not be rescheduled from its source span");
       void renderFromText(editor.value());
       return;
     }

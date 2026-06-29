@@ -32,3 +32,5 @@
   re-emit as `cluster_*` subgraphs)*.
 - route path cleanup: *(done — edge path construction, rounded routed corners, and crossing hops live
   in `src/core/path.ts`; both canvas and SVG consume the same `PathCmd`s)*.
+- *(done)* Architecture accents now render for both leaves and containers, restoring colour to cloud and
+  network diagrams without special-casing them in paint code.

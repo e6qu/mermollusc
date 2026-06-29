@@ -27,3 +27,5 @@ Checked while adding donut wedge rendering.
 Checked while splitting renderer route geometry into `src/core/path.ts` and preserving crossing-hop
 coverage.
 Checked while widening edge-label plates in the canvas and SVG backends.
+
+Checked while adding semantic architecture accent fills and container accent propagation.

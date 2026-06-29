@@ -3,6 +3,11 @@
 `text → AST` and `AST → text` (printer) for Mermaid-like diagram families; round-trip tested where
 the family has a printer.
 
+## Gantt source maps
+
+- Preserve edit spans for the full Gantt start field, not only explicit date tokens, so UI gestures can
+  convert `after ...` tasks into explicit calendar starts from parser-provided provenance.
+
 ## Responsibility
 
 - Owns the grammars (one per family, Chevrotain) and the CST→AST conversion.

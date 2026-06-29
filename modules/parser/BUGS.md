@@ -46,3 +46,7 @@ Checked while adding the cross-family malformed-input robustness suite (no crash
 
 Checked while centralising the CST adapter (`cst.ts`), the forward header-sniff scan, the O(S) subgraph
 ordering walk, and `parseDiagramWithSource` — all behaviour-preserving; existing + new parity tests pass.
+
+Checked while adding Gantt full start-field source spans.
+
+Checked while preserving DOT `style=rounded` through import so repeated export/import is stable.

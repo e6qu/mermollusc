@@ -4,7 +4,9 @@ import { spreadPorts } from "./route.js";
 import type {
   NetworkAst,
   NetworkGroup,
+  NetworkNodeKind,
   NetworkNode,
+  NodeAccent,
   NodeId,
   Scene,
   SceneEdge,
@@ -23,6 +25,25 @@ const GAP = 48;
 const GROUP_PAD = 16; // inner padding around a subnet/zone's content
 const GROUP_HEADER = 26; // subnet/zone title band
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
+
+const KIND_ACCENT: Record<NetworkNodeKind, NodeAccent> = {
+  server: "compute",
+  database: "data",
+  cloud: "network",
+  router: "network",
+  switch: "network",
+  firewall: "security",
+  host: "muted",
+};
+
+const groupAccent = (label: string): NodeAccent => {
+  const l = label.toLowerCase();
+  if (l.includes("dmz") || l.includes("edge") || l.includes("security")) return "security";
+  if (l.includes("data") || l.includes("db")) return "data";
+  if (l.includes("app") || l.includes("service") || l.includes("compute")) return "compute";
+  if (l.includes("network") || l.includes("zone") || l.includes("subnet")) return "network";
+  return "muted";
+};
 
 // Nested squarish-grid layout. Leaf nodes fill a `ceil(sqrt n)`-wide grid in a uniform cell; a
 // subnet/zone `group "…" { … }` lays its own members out the same way and is placed as a single larger
@@ -99,7 +120,11 @@ export const layoutNetwork = (
       return;
     }
     const sizes = childIds.map((id) => sizeOf(id, depth));
-    const grid = variableGrid(sizes, columnsFor(childIds.length), GAP);
+    const grid = variableGrid(
+      sizes,
+      parent === null ? childIds.length : columnsFor(childIds.length),
+      GAP,
+    );
     childIds.forEach((id, i) => {
       const cell = grid.cells[i];
       const size = sizes[i];
@@ -123,7 +148,7 @@ export const layoutNetwork = (
           rows: null,
           rowDivider: null,
           subtitle: null,
-          accent: "none",
+          accent: KIND_ACCENT[n.kind],
           role: "normal",
         });
         return;
@@ -140,7 +165,7 @@ export const layoutNetwork = (
         rows: null,
         rowDivider: null,
         subtitle: null,
-        accent: "none",
+        accent: groupAccent(g.label),
         role: "normal",
       });
       place(childrenOf.get(id) ?? [], cx + GROUP_PAD, cy + GROUP_HEADER, id, depth + 1);

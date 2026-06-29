@@ -21,11 +21,11 @@ const STATUS_ACCENT: Record<GanttStatus, NodeAccent> = {
 };
 
 export const DAY_WIDTH = 16; // px per day on the time axis (exported so a bar drag can map px↔days)
+export const LEFT_GUTTER = 96; // exported with DAY_WIDTH so source rewrites use layout geometry
 const ROW_HEIGHT = 30;
 const BAR_HEIGHT = 22;
 const LABEL_PAD = 12;
 const TOP_AXIS = 22; // band above the bars for the date captions
-const LEFT_GUTTER = 96; // band left of the bars for the section captions
 
 // A validated `GanttDate` (ISO `YYYY-MM-DD`, a real calendar day) → a whole-day number (days since the
 // epoch, UTC so it's timezone-stable). Total: the `ganttDate` smart constructor already guaranteed the

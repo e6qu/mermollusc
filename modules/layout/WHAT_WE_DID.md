@@ -1,5 +1,15 @@
 # @m/layout — work log
 
+## 2026-06-30 — First-class architecture layout cleanup
+
+- Added semantic accents to cloud and network nodes/groups.
+- Changed network root placement from square packing to a left-to-right zone row, while nested subnet
+  contents remain compact.
+- Widened the cloud top-level row budget for tiered architecture demos and marked async/event groups as
+  ops-accented.
+- Converted timeline period-to-event connectors from decorations to real edges so drag overrides carry
+  the connectors with event nodes.
+
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - Confirmed `elkjs@0.11.1` ships its own TypeScript types (`lib/elk-api.d.ts`); used the bundled
   node-safe entry `elkjs/lib/elk.bundled.js`.

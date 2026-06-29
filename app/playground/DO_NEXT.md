@@ -100,3 +100,8 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 
 ## Startup weight
 - Icon and ELK layout chunks are large. Do a real lazy-load / size-budget pass — not warning suppression.
+
+## Demo visual follow-up
+- Dense cloud route labels can still be improved by the layout/renderer instead of removing labels from
+  examples. The current catalog is visually cleaner and gated by parse→layout→display→SVG tests, but a
+  route-label placement pass for trunk paths would make future complex cloud diagrams more robust.

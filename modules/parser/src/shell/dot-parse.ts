@@ -61,6 +61,14 @@ const shapeOf = (value: string | undefined): NodeShape | null => {
   }
 };
 
+const nodeShapeOf = (attrs: ReadonlyMap<string, string>, fallback: NodeShape): NodeShape => {
+  const base = shapeOf(attrs.get("shape")) ?? fallback;
+  const style = attrs.get("style")?.toLowerCase() ?? "";
+  return (base === "rect" || base === "round" || base === "stadium") && style.includes("rounded")
+    ? "round"
+    : base;
+};
+
 const dirOf = (value: string): FlowDirection | null => {
   switch (value.toUpperCase()) {
     case "TB":
@@ -212,7 +220,7 @@ const buildResultWithSource = (
       if (attrStmt !== undefined) {
         const attrs = attrsOf(childNodes(attrStmt.children, "attrList")[0]);
         if (childTokens(attrStmt.children, "NodeKw").length > 0) {
-          defaultShape = shapeOf(attrs.get("shape")) ?? defaultShape;
+          defaultShape = nodeShapeOf(attrs, defaultShape);
         } else if (childTokens(attrStmt.children, "Graph").length > 0) {
           const rd = attrs.get("rankdir");
           if (rd !== undefined) direction = dirOf(rd) ?? direction;
@@ -299,7 +307,7 @@ const buildResultWithSource = (
       const data = nodes.get(headText);
       if (data !== undefined) {
         data.label = attrs.get("label") ?? data.label;
-        data.shape = shapeOf(attrs.get("shape")) ?? data.shape;
+        data.shape = nodeShapeOf(attrs, data.shape);
 
         const nodeId = brand<string, "NodeId">(headText);
         const labelTok = findAttrValueToken(childNodes(idStmt.children, "attrList")[0], "label");

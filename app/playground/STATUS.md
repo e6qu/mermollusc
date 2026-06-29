@@ -2,6 +2,10 @@
 
 **State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; pie donuts; gantt task bars on a day axis with `after`-chains); `make check` green.
 
+**Current demo-parity note:** cloud and network have first-class style buckets; cloud defaults to trunk
+routing; examples are richer across families; BPMN starters use real BPMN icons for banking and
+insurance-adjusting workflows; Gantt `after ...` bars and timeline events work when dragged.
+
 - **Design:** a computational notebook/workbench UI — compact command groups in the header, a framed
   **source/input** panel, a labelled **output** stage, quieter graph-paper geometry, and a status bar.
   The palette is neutral technical chrome with a controlled red/orange accent and teal success/action

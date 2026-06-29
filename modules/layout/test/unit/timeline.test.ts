@@ -49,14 +49,15 @@ describe("layoutTimeline", () => {
     expect(ox("p2")).toBeGreaterThan(ox("p1"));
   });
 
-  it("draws a vertical connector (rule decoration) from each period with events down its column", () => {
-    const rules = scene.decorations.filter((d) => d.kind === "rule");
-    // p0, p1, p2 all have events → three column connectors, each vertical (from.x === to.x).
-    expect(rules).toHaveLength(3);
-    for (const r of rules) {
-      if (r.kind !== "rule") continue;
-      expect(r.from.x).toBe(r.to.x);
-      expect(r.to.y).toBeGreaterThan(r.from.y); // runs downward into the event stack
+  it("draws event connectors as real edges so dragged timeline nodes carry their links", () => {
+    const eventEdges = scene.edges.filter((e) => e.id.startsWith("event:"));
+    expect(eventEdges).toHaveLength(4);
+    for (const edge of eventEdges) {
+      expect(edge.waypoints).toHaveLength(2);
+      const from = edge.waypoints[0];
+      const to = edge.waypoints[1];
+      expect(from?.x).toBe(to?.x);
+      expect((to?.y ?? 0) > (from?.y ?? 0)).toBe(true);
     }
   });
 

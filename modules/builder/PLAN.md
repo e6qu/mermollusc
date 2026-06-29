@@ -2,6 +2,11 @@
 
 Hit-testing, selection, drag, and text↔diagram two-way sync.
 
+## Gantt source rewrites
+
+- Keep Gantt drag helpers pure and source-span based. Explicit dates shift in place; dependency starts
+  materialize through `setGanttStartFromDay`.
+
 ## Responsibility
 
 - Hit-test the rendered Scene (geometric, via `@m/std` `rectContains` and edge proximity).

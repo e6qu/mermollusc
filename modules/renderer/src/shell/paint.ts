@@ -57,8 +57,9 @@ const isDarkTheme = (theme: Theme): boolean => {
 };
 
 // A node's semantic fill accent → a concrete colour (theme-aware). `none` is the ordinary node fill;
-// the rest tint a Gantt bar by status (done muted, active highlighted, crit flagged). Exhaustive, so a
-// new accent must be handled here.
+// muted/active/danger cover generic status, and the architecture accents let cloud/network diagrams
+// keep provider/service roles visible without embedding raw colours in layout. Exhaustive, so a new
+// accent must be handled here.
 export const accentFill = (accent: NodeAccent, theme: Theme): string => {
   const dark = isDarkTheme(theme);
   switch (accent) {
@@ -70,6 +71,16 @@ export const accentFill = (accent: NodeAccent, theme: Theme): string => {
       return dark ? "#1d4ed8" : "#bfdbfe";
     case "danger":
       return dark ? "#b91c1c" : "#fecaca";
+    case "compute":
+      return dark ? "#14532d" : "#dcfce7";
+    case "data":
+      return dark ? "#713f12" : "#fef3c7";
+    case "network":
+      return dark ? "#164e63" : "#cffafe";
+    case "security":
+      return dark ? "#7f1d1d" : "#fee2e2";
+    case "ops":
+      return dark ? "#4c1d95" : "#ede9fe";
     default:
       return assertNever(accent);
   }

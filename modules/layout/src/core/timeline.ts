@@ -84,7 +84,6 @@ export const layoutTimeline = (
     const colCenterX = cursor + w / 2;
     centers.push({ x: colCenterX, y: periodY + PERIOD_H / 2 });
     let ey = Math.max(eventsY0, periodY + pH + ROW_GAP);
-    let lastEventCenterY: number | null = null;
     for (const event of period.events) {
       const eH = boxHeight(event.text, EVENT_H);
       nodes.push({
@@ -100,18 +99,22 @@ export const layoutTimeline = (
         accent: "none",
         role: "normal",
       });
-      lastEventCenterY = ey + eH / 2;
+      edges.push({
+        id: sceneEdgeId(`event:${event.id}`),
+        from: sceneNodeId(period.id),
+        to: sceneNodeId(event.id),
+        waypoints: twoOrMore(point(colCenterX, periodY + pH), point(colCenterX, ey + eH / 2)),
+        label: null,
+        stroke: "solid",
+        fromEnd: "none",
+        toEnd: "none",
+        curved: false,
+        fromLabel: null,
+        toLabel: null,
+        labelPos: null,
+      });
       grow(cursor + w, ey + eH);
       ey += eH + ROW_GAP;
-    }
-    // A vertical connector strings a period to its event stack (drawn behind the boxes, so it shows in
-    // the gaps) — otherwise the events float free below the spine and the timeline looks disconnected.
-    if (lastEventCenterY !== null) {
-      decorations.push({
-        kind: "rule",
-        from: point(colCenterX, periodY + pH),
-        to: point(colCenterX, lastEventCenterY),
-      });
     }
     grow(cursor + w, periodY + pH);
     cursor += w + COL_GAP;

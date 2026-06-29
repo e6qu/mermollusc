@@ -8,6 +8,7 @@ import {
   deleteNode,
   patchSpan,
   setGanttDuration,
+  setGanttStartFromDay,
   shiftGanttStart,
   validateLabel,
 } from "../../src/core/patch.js";
@@ -153,6 +154,13 @@ describe("gantt two-way editing — shiftGanttStart / setGanttDuration", () => {
   it("a zero-day shift leaves the text byte-identical", () => {
     const t = "gantt\n  Task : a, 2014-01-06, 3d\n";
     expect(shiftGanttStart(t, span(t, "2014-01-06"), "2014-01-06", 0)).toBe(t);
+  });
+  it("rewrites a resolved `after` start field to an explicit calendar date", () => {
+    const t = "gantt\n  Review : rev, after build, 3d\n";
+    const day = Date.UTC(2014, 0, 9) / 86_400_000;
+    expect(setGanttStartFromDay(t, span(t, "after build"), day)).toBe(
+      "gantt\n  Review : rev, 2014-01-09, 3d\n",
+    );
   });
   it("rewrites the duration to Nd, clamped to at least one day", () => {
     const t = "gantt\n  Task : a, 2014-01-06, 3d\n";

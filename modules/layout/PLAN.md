@@ -2,6 +2,13 @@
 
 `AST → positioned SceneGraph`, with ELK behind a typed, decoded shell facade.
 
+## Architecture diagram layout
+
+- Treat network and cloud as first-class architecture families: network root zones read left-to-right,
+  while cloud keeps wider tier rows for edge/routing/service/data/security/ops demos.
+- Keep timeline event connectors as real scene edges so manual drag overrides move visible links with the
+  event nodes.
+
 ## Responsibility
 
 - Owns graph layout: turns a `@m/contracts` AST into a positioned `Scene`.

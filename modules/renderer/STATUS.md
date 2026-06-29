@@ -2,6 +2,9 @@
 
 **State:** Canvas2D renderer implemented; `make check` green.
 
+**Current architecture note:** container display boxes now honor `SceneNode.accent`, and the palette maps
+semantic cloud/network accents to theme-aware colours.
+
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
   `edgeLabelAnchor` at the midpoint *along the routed polyline* — perpendicular-nudged, so a bent

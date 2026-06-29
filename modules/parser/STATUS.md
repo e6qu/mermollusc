@@ -2,6 +2,9 @@
 
 **State:** flowchart subset + source spans implemented; `make check` green.
 
+**Current Gantt note:** `parseGanttWithSource` records `taskStartField` for both explicit dates and
+`after ...` dependencies, while retaining `taskStart` for explicit-date-only edits.
+
 - `parse(text)` → `Result<FlowchartAst, ParseError>` (shell): Chevrotain lexer+grammar → CST → AST.
 - `parseWithSource(text)` → `Result<{ ast, source: SourceMap }, ParseError>`: also returns per-node
   id/label text spans **and per-edge `|label|` spans** (for the builder's two-way patching). `parse`

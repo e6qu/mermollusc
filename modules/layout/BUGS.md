@@ -65,3 +65,6 @@ Checked while adding the container-title route invariant and applying header-awa
 ELK tidy candidate selection.
 Checked while changing cross-boundary grouped-child side selection to use the containing group for
 orientation and the child box for the final port.
+
+Checked while making cloud/network architecture accents first-class, changing network root-zone ordering,
+and converting timeline event connectors to real edges.

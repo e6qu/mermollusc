@@ -422,7 +422,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         width: size.width,
         height: size.height,
         radius: length(4),
-        accent: "none",
+        accent: node.accent,
       },
       {
         kind: "label",

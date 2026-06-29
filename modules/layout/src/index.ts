@@ -9,6 +9,7 @@ export {
   respreadPorts,
   trunkRoutes,
   GANTT_DAY_WIDTH,
+  GANTT_LEFT_GUTTER,
   layoutEnergy,
   lowestEnergy,
   noSiblingOverlaps,

@@ -74,3 +74,7 @@
 - DOT (Graphviz): *(done — import of a `graph`/`digraph` subset → flowchart, incl. `cluster*` subgraphs
   → `FlowSubgraph`; export via `toDot` with `rankdir`)*. Still: HTML-label handling; DOT-export of
   clusters (from `FlowSubgraph`); ports.
+- Gantt: *(done)* source maps now include the full start field for both explicit dates and `after ...`
+  dependencies, enabling drag-to-date edits without source guessing.
+- DOT: *(done)* `style=rounded` imports as a rounded node for box-like shapes, preserving exporter
+  idempotence across richer examples.
