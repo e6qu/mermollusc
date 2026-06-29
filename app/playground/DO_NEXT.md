@@ -22,7 +22,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   meaning; they want a typed cardinality/relation picker instead (a separate feature).
 
 
-- **DOT as an editable family.** DOT imports load read-only (Add/Connect/Shape gated on `isDotImport`).
+- **(done) DOT as an editable family.** DOT imports load read-only (Add/Connect/Shape gated on `isDotImport`).
   Add `parseDotWithSource` so edits patch the `digraph{…}` body directly instead of injecting flowchart
   syntax; then ungate the affordances for DOT.
 - **Sequence notes (makes a dead branch live).** The sequence parser has no `note` token, so

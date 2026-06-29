@@ -29,6 +29,6 @@ export { parsePie, parsePieWithSource } from "./pie-parse.js";
 export type { ParsedPie } from "./pie-parse.js";
 export { parseGantt, parseGanttWithSource } from "./gantt-parse.js";
 export type { ParsedGantt } from "./gantt-parse.js";
-export { parseDot } from "./dot-parse.js";
+export { parseDot, parseDotWithSource } from "./dot-parse.js";
 export { parseDiagram, parseDiagramWithSource } from "./diagram.js";
 export type { ParsedWithSource } from "./diagram.js";

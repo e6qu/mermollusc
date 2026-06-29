@@ -14,7 +14,7 @@ export { parseTimeline, parseTimelineWithSource } from "./shell/index.js";
 export { parseMindmap, parseMindmapWithSource } from "./shell/index.js";
 export { parsePie, parsePieWithSource } from "./shell/index.js";
 export { parseGantt, parseGanttWithSource } from "./shell/index.js";
-export { parseDot } from "./shell/index.js";
+export { parseDot, parseDotWithSource } from "./shell/index.js";
 export { parseDiagram, parseDiagramWithSource } from "./shell/index.js";
 export type {
   ParsedWithSource,

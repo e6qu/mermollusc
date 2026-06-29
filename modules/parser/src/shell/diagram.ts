@@ -39,7 +39,7 @@ import { parseCloud, parseCloudWithSource } from "./cloud-parse.js";
 import { parseEr, parseErWithSource } from "./er-parse.js";
 import { parseGantt, parseGanttWithSource } from "./gantt-parse.js";
 import { parseGitGraph, parseGitGraphWithSource } from "./git-parse.js";
-import { parseDot } from "./dot-parse.js";
+import { parseDot, parseDotWithSource } from "./dot-parse.js";
 import { parseMindmap, parseMindmapWithSource } from "./mindmap-parse.js";
 import { parseNetwork, parseNetworkWithSource } from "./net-parse.js";
 import { parsePie, parsePieWithSource } from "./pie-parse.js";
@@ -120,8 +120,6 @@ export type ParsedWithSource =
   | { readonly family: "pie"; readonly ast: PieAst; readonly source: PieSource }
   | { readonly family: "gantt"; readonly ast: GanttAst; readonly source: GanttSource };
 
-const EMPTY_SOURCE_MAP: SourceMap = { nodes: new Map(), edges: new Map(), arrows: new Map() };
-
 // Same header sniff as `parseDiagram`, but routes to each family's source-capturing parser so a single
 // pass yields both the AST and the editable spans — the app no longer parses each family twice (once to
 // detect the family, once for the source map). `parseDiagram`/`parseWithSource` stay as the ast-only /
@@ -161,7 +159,7 @@ export const parseDiagramWithSource = (text: string): Result<ParsedWithSource, P
     header.startsWith("strict") ||
     (header.startsWith("graph") && header.includes("{"))
   ) {
-    return map(parseDot(text), (ast) => ({ family: "dot", ast, source: EMPTY_SOURCE_MAP }));
+    return map(parseDotWithSource(text), (parsed) => ({ family: "dot", ...parsed }));
   }
   return map(parseWithSource(text), (p) => ({ family: "flowchart", ...p }));
 };
