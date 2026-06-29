@@ -9,6 +9,7 @@ import type {
   ClassRelId,
   EdgeId,
   GitCommitId,
+  GitBranchName,
   MindmapNodeId,
   PieSliceId,
   TimelineEventId,
@@ -116,6 +117,8 @@ export interface ReqSource {
 // with an auto-generated id (no `id:`) have no entry; branch names and tags aren't editable inline.
 export interface GitGraphSource {
   readonly commits: ReadonlyMap<GitCommitId, TextSpan>;
+  readonly commitStatements: ReadonlyMap<GitCommitId, TextSpan> | null;
+  readonly branchStatements: ReadonlyMap<GitBranchName, readonly TextSpan[]> | null;
 }
 
 // Editable text spans for a timeline: each period's text and each event's text. Section names aren't

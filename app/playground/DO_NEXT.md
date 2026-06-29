@@ -21,9 +21,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   state/c4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator encodes
   meaning; they want a typed cardinality/relation picker instead (a separate feature).
 
-- **gitGraph node delete.** Today it's honestly gated ("can't delete this from the canvas"). Implement a
-  real commit-span / branch-lane delete in `@m/builder`, then flip the affordance on. Optionally make the
-  navigator visually distinguish inert vs. actionable gitGraph/timeline items.
+
 - **DOT as an editable family.** DOT imports load read-only (Add/Connect/Shape gated on `isDotImport`).
   Add `parseDotWithSource` so edits patch the `digraph{…}` body directly instead of injecting flowchart
   syntax; then ungate the affordances for DOT.

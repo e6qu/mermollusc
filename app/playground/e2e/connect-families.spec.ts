@@ -44,9 +44,8 @@ test("timeline connect re-parents an event under a different period", async ({ p
   await expectSourceMatches(page, "timeline\n  2001 : Alpha\n  2002 : Gamma : Beta\n");
 });
 
-// Deleting a node whose id isn't a removable source line (a gitGraph branch lane) must say so, not
-// claim a delete that didn't happen.
-test("deleting a gitGraph branch lane reports honestly instead of faking success", async ({
+// Deleting a gitGraph branch lane deletes the branch and all commits on it.
+test("deleting a gitGraph branch lane removes it and its commits", async ({
   page,
 }) => {
   await page.goto("/");
@@ -64,8 +63,8 @@ test("deleting a gitGraph branch lane reports honestly instead of faking success
     await page.keyboard.press("ArrowDown");
   }
   await page.keyboard.press("Delete");
-  await expect(page.locator("#status")).toHaveText(/can't delete this from the canvas/);
-  await expectSourceMatches(page, src); // source untouched — no fake "deleted 1 item"
+  await expect(page.locator("#status")).toHaveText(/deleted 1 item/);
+  await expectSourceMatches(page, "gitGraph\n  commit\n  checkout main\n  commit\n");
 });
 
 test("timeline delete removes an event from the source (real, not a no-op)", async ({ page }) => {

@@ -48,6 +48,8 @@ import {
   wrapCloudGroup,
   deleteLineAt,
   deleteMessage,
+  deleteGitCommit,
+  deleteGitBranch,
   deleteNode,
   deleteRequirementEntity,
   deleteRequirementRel,
@@ -814,5 +816,29 @@ describe("edge label + style edits", () => {
       const re = parseWithSource(text);
       expect(isOk(re) && re.value.ast.edges[0]?.kind).toBe(kind);
     }
+  });
+
+  it("deletes a gitGraph commit statement line", () => {
+    const text = "gitGraph\n  commit id: \"c0\"\n  commit id: \"c1\"\n";
+    const parsed = parseGitGraphWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const next = deleteGitCommit(text, parsed.value.source.commitStatements, brand("c1"));
+    expect(next).toBe("gitGraph\n  commit id: \"c0\"\n");
+  });
+
+  it("deletes a gitGraph branch and all commits on it", () => {
+    const text = "gitGraph\n  commit\n  branch develop\n  commit id: \"dev1\"\n  checkout main\n  commit\n";
+    const parsed = parseGitGraphWithSource(text);
+    expect(isOk(parsed)).toBe(true);
+    if (!isOk(parsed)) return;
+    const next = deleteGitBranch(
+      text,
+      parsed.value.source.branchStatements,
+      brand("develop"),
+      [brand("dev1")],
+      parsed.value.source.commitStatements,
+    );
+    expect(next).toBe("gitGraph\n  commit\n  checkout main\n  commit\n");
   });
 });
