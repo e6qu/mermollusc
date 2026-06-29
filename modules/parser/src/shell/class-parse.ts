@@ -126,6 +126,11 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
       const name = childTokens(decl.children, "ClassIdentifier")[0];
       if (name === undefined) continue;
       see(name.image, tokenSpan(name));
+      const stereoTok = childTokens(decl.children, "ClassStereotype")[0];
+      if (stereoTok !== undefined) {
+        const inner = stereoTok.image.slice(2, -2).trim();
+        stereoById.set(name.image, inner);
+      }
       const block = childNodes(decl.children, "classBlock")[0];
       if (block !== undefined) {
         const members: ClassMember[] = [];
@@ -139,6 +144,18 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
           if (m !== null) members.push(m);
         }
         addMembers(name.image, members);
+      }
+      continue;
+    }
+
+    const stDecl = childNodes(stmt.children, "classStereotypeDecl")[0];
+    if (stDecl !== undefined) {
+      const stereoTok = childTokens(stDecl.children, "ClassStereotype")[0];
+      const name = childTokens(stDecl.children, "ClassIdentifier")[0];
+      if (stereoTok !== undefined && name !== undefined) {
+        const inner = stereoTok.image.slice(2, -2).trim();
+        stereoById.set(name.image, inner);
+        see(name.image, tokenSpan(name));
       }
       continue;
     }

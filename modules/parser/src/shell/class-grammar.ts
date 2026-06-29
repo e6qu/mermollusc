@@ -33,14 +33,21 @@ class ClassParser extends CstParser {
     this.OR([
       { ALT: () => this.SUBRULE(this.classDecl) },
       { ALT: () => this.SUBRULE(this.relOrMember) },
+      { ALT: () => this.SUBRULE(this.stereotypeDecl) },
     ]),
   );
 
-  // `class Foo` or `class Foo { <members> }`.
+  // `class Foo` or `class Foo <<interface>>` or `class Foo <<interface>> { <members> }`.
   private readonly classDecl = this.RULE("classDecl", () => {
     this.CONSUME(ClassTok.ClassKw);
     this.CONSUME(ClassTok.Identifier);
-    this.OPTION(() => this.SUBRULE(this.block));
+    this.OPTION(() => this.CONSUME(ClassTok.Stereotype));
+    this.OPTION2(() => this.SUBRULE(this.block));
+  });
+
+  private readonly stereotypeDecl = this.RULE("classStereotypeDecl", () => {
+    this.CONSUME(ClassTok.Stereotype);
+    this.CONSUME(ClassTok.Identifier);
   });
 
   private readonly block = this.RULE("classBlock", () => {

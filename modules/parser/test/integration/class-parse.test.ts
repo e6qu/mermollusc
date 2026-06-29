@@ -106,4 +106,23 @@ describe("parseClass", () => {
     expect(r.value.relationships[0]?.from).toBe("Box~T~");
     expect(r.value.entities.find((e) => e.id === "Box~T~")?.label).toBe("Box<T>");
   });
+
+  it("parses stereotypes declared on class headers or standalone", () => {
+    const text = `classDiagram
+      class Animal <<interface>>
+      class Vehicle <<abstract>> {
+        +int speed
+      }
+      <<service>> CustomerService
+    `;
+    const r = parseClass(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const animal = r.value.entities.find((e) => e.id === "Animal");
+    const vehicle = r.value.entities.find((e) => e.id === "Vehicle");
+    const service = r.value.entities.find((e) => e.id === "CustomerService");
+    expect(animal?.stereotype).toBe("interface");
+    expect(vehicle?.stereotype).toBe("abstract");
+    expect(service?.stereotype).toBe("service");
+  });
 });
