@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
   MindmapAst,
@@ -10,6 +10,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { optimalMountPoints, type RouteBox } from "./route.js";
 import { clampedWidth } from "./measure.js";
 
 const RING = 150; // radial distance between successive depth levels
@@ -139,14 +140,14 @@ export const layoutMindmap = (
   const dy = MARGIN - minY;
 
   const nodes: SceneNode[] = [];
-  const centerOf = new Map<string, XY>();
+  const bounds = new Map<string, RouteBox>();
   for (const node of ast.nodes) {
     const p = pos.get(node.id);
     if (p === undefined) continue;
     const { w, h } = sizeOf(node);
     const cx = p.x + dx;
     const cy = p.y + dy;
-    centerOf.set(node.id, { x: cx, y: cy });
+    bounds.set(node.id, { x: cx - w / 2, y: cy - h / 2, w, h });
     nodes.push({
       id: sceneNodeId(node.id),
       bounds: rect(cx - w / 2, cy - h / 2, w, h),
@@ -165,14 +166,15 @@ export const layoutMindmap = (
   const edges: SceneEdge[] = [];
   for (const node of ast.nodes) {
     if (node.parent === null) continue;
-    const from = centerOf.get(node.parent);
-    const to = centerOf.get(node.id);
-    if (from === undefined || to === undefined) continue;
+    const fromBox = bounds.get(node.parent);
+    const toBox = bounds.get(node.id);
+    if (fromBox === undefined || toBox === undefined) continue;
+    const [pFrom, pTo] = optimalMountPoints(fromBox, toBox);
     edges.push({
       id: sceneEdgeId(`mm:${node.id}`),
       from: sceneNodeId(node.parent),
       to: sceneNodeId(node.id),
-      waypoints: [point(from.x, from.y), point(to.x, to.y)],
+      waypoints: [pFrom, pTo],
       label: null,
       stroke: "solid",
       fromEnd: "none",

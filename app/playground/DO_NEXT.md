@@ -12,9 +12,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 - **(done) Self-relations (P5, layout).** c4/network render a self-link as a degenerate dot; cloud silently
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
-## A11y / UX follow-ups (from the contrast + journey audit)
-- **Arrange popup focus**: move focus into the menu on open and restore to the actual opener (today
-  Escape always returns to the toolbar `#arrange`, even when opened from the on-canvas `#ctx-arrange`).
 
 ## Editing breadth
 - **Edge rename + restyle for the remaining families.** Flowchart + block now support adding a label to

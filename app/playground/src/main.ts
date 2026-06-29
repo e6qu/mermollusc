@@ -1719,7 +1719,7 @@ const updateGroupButtons = (): void => {
   arrangeBtn.disabled = !caps.canArrange;
   if (distHBtn !== null) distHBtn.disabled = !caps.canDistribute;
   if (distVBtn !== null) distVBtn.disabled = !caps.canDistribute;
-  if (!caps.canArrange) closeArrange();
+  if (!caps.canArrange) closeArrange(false);
   connectBtn.disabled = !caps.canConnect;
   connectBtn.title = caps.connectTitle;
   iconsToggle.disabled = !caps.iconCapable;
@@ -1873,18 +1873,30 @@ const applyArrange = (kind: AlignKind): void => {
   announce(`arranged ${units.length} item${units.length === 1 ? "" : "s"}`);
 };
 
-const closeArrange = (): void => {
+let arrangeOpener: HTMLButtonElement | null = null;
+const arrangeItems = (): HTMLButtonElement[] => Array.from(arrangeMenu.querySelectorAll("button"));
+
+const closeArrange = (restoreFocus = true): void => {
+  const restore =
+    restoreFocus &&
+    arrangeOpener !== null &&
+    (arrangeMenu.contains(document.activeElement) || document.activeElement === document.body);
   arrangeMenu.hidden = true;
   arrangeBtn.setAttribute("aria-expanded", "false");
   ctxArrangeBtn.setAttribute("aria-expanded", "false");
   // Drop any fixed placement so the next editor-toolbar open uses the CSS-default anchored position.
   arrangeMenu.style.cssText = "";
+  if (restore && arrangeOpener !== null) {
+    arrangeOpener.focus();
+  }
+  arrangeOpener = null;
 };
 // Open the align/distribute menu near the control that invoked it. The editor-toolbar button uses the
 // CSS-default anchored placement (anchor=null); the on-canvas context-bar button positions it next to
 // itself with fixed coords, instead of opening it across the workbench at the editor pane.
 const openArrangeMenu = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
   arrangeMenu.hidden = false;
+  arrangeOpener = expander;
   if (anchor !== null) {
     const r = anchor.getBoundingClientRect();
     const mh = arrangeMenu.offsetHeight;
@@ -1896,6 +1908,7 @@ const openArrangeMenu = (anchor: HTMLButtonElement | null, expander: HTMLButtonE
     arrangeMenu.style.top = `${above > 4 ? above : r.bottom + 6}px`;
   }
   expander.setAttribute("aria-expanded", "true");
+  arrangeItems()[0]?.focus();
 };
 const toggleArrange = (anchor: HTMLButtonElement | null, expander: HTMLButtonElement): void => {
   if (arrangeMenu.hidden) openArrangeMenu(anchor, expander);
@@ -1905,12 +1918,27 @@ arrangeBtn.addEventListener("click", (ev) => {
   ev.stopPropagation();
   toggleArrange(null, arrangeBtn);
 });
+arrangeMenu.addEventListener("keydown", (ev) => {
+  const items = arrangeItems();
+  const active = document.activeElement;
+  const i = active instanceof HTMLButtonElement ? items.indexOf(active) : -1;
+  if (ev.key === "Escape") {
+    ev.preventDefault();
+    closeArrange();
+  } else if (ev.key === "ArrowDown" && items.length > 0) {
+    ev.preventDefault();
+    items[(i + 1) % items.length]?.focus();
+  } else if (ev.key === "ArrowUp" && items.length > 0) {
+    ev.preventDefault();
+    items[(i - 1 + items.length) % items.length]?.focus();
+  }
+});
 document.addEventListener("pointerdown", (ev) => {
   if (arrangeMenu.hidden) return;
   const t = ev.target;
   if (t instanceof Node && (arrangeMenu.contains(t) || t === arrangeBtn || t === ctxArrangeBtn))
     return;
-  closeArrange();
+  closeArrange(false);
 });
 
 const ARRANGE_ACTIONS: ReadonlyArray<{ readonly id: string; readonly kind: AlignKind }> = [
@@ -4849,7 +4877,6 @@ window.addEventListener("keydown", (ev) => {
     if (!arrangeMenu.hidden) {
       ev.preventDefault();
       closeArrange();
-      arrangeBtn.focus();
       return;
     }
     // Escape first disarms a non-default tool (back to Select); a second Escape clears the selection.

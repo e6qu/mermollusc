@@ -169,10 +169,10 @@ exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
 [
-  "polyline 359,171 284,301 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 284,301 509,431 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 284,301 59,171 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 359,171 434,41 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 359,188 327,301 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 327,301 474,431 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 241,301 94,171 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 359,154 391,41 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 332,154 54x34 r17",
   "label "Root" 359,171 center",
   "box 241,284 86x34 r8",

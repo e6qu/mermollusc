@@ -54,6 +54,41 @@ export const orthogonalRoute = (
   return [point(acx, ay), point(acx, midY), point(bcx, midY), point(bcx, by)];
 };
 
+// Choose the optimal pair of mount points (top, bottom, left, right) on two bounding boxes
+// that minimizes the Euclidean distance between them.
+export const optimalMountPoints = (a: RouteBox, b: RouteBox): [Point, Point] => {
+  const mountA: [Point, Point, Point, Point] = [
+    point(a.x + a.w / 2, a.y),
+    point(a.x + a.w / 2, a.y + a.h),
+    point(a.x, a.y + a.h / 2),
+    point(a.x + a.w, a.y + a.h / 2),
+  ];
+  const mountB: [Point, Point, Point, Point] = [
+    point(b.x + b.w / 2, b.y),
+    point(b.x + b.w / 2, b.y + b.h),
+    point(b.x, b.y + b.h / 2),
+    point(b.x + b.w, b.y + b.h / 2),
+  ];
+  let minD = Infinity;
+  let bestA = mountA[0];
+  let bestB = mountB[0];
+  for (const pa of mountA) {
+    if (pa === undefined) continue;
+    for (const pb of mountB) {
+      if (pb === undefined) continue;
+      const dx = pa.x - pb.x;
+      const dy = pa.y - pb.y;
+      const d = dx * dx + dy * dy;
+      if (d < minD) {
+        minD = d;
+        bestA = pa;
+        bestB = pb;
+      }
+    }
+  }
+  return [bestA, bestB];
+};
+
 // Port spreading: when several connectors touch the same side of a node they otherwise all exit/enter at
 // that side's centre and stack into one thick line. This recomputes every box→box edge as a right-angle
 // route whose endpoints are spread into distinct *lanes* along each shared side (ordered by the opposite
