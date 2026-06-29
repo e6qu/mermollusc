@@ -365,8 +365,7 @@ let timelineSource: TimelineSource | null = null;
 let mindmapSource: MindmapSource | null = null;
 let pieSource: PieSource | null = null;
 let ganttSource: GanttSource | null = null;
-// A DOT import parses into a flowchart AST but has no editable source spans (no `parseDotWithSource`), so
-// canvas edits can't patch it. Track it to gate those affordances off rather than let them fail post-click.
+// A DOT import parses into a flowchart AST and carries editable source spans via `parseDotWithSource`.
 let isDotImport = false;
 // The current diagram's flow direction, when it has one (flowchart / imported DOT); carried into DOT export.
 let lastDirection: FlowDirection | null = null;
@@ -1397,7 +1396,7 @@ const syncToolPalette = (): void => {
     select: true,
     hand: true,
     connect: !viewerMode && ast !== null && familyAffordances(ast.kind).connect,
-    place: !viewerMode && !isDotImport && ast !== null && familyAffordances(ast.kind).addNode,
+    place: !viewerMode && ast !== null && familyAffordances(ast.kind).addNode,
   };
   if (!available[activeTool]) {
     activeTool = "select";
@@ -1458,7 +1457,7 @@ const renderContextBar = (caps: CapabilityState): void => {
   };
   const only = [...routes][0];
   ctxCurveBtn.textContent = routes.size === 1 && only !== undefined ? ROUTE_LABEL[only] : "Route";
-  const editable = !isDotImport;
+  const editable = true;
   const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
   const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
   const hasNodes = selectionOrder.length > 0;
@@ -1524,8 +1523,8 @@ const computeCapabilities = (): CapabilityState => {
     };
   }
   const kindLabel = isDotImport ? "DOT import" : ast === null ? "this diagram" : ast.kind;
-  // A DOT import has no editable source spans, so every text-patching action is off for it.
-  const editable = !isDotImport;
+  // A DOT import carries editable source spans, so it is editable.
+  const editable = true;
   const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
   const iconCapable = editable && ast !== null && familyAffordances(ast.kind).iconOverride;
   const isFlowchart = editable && ast !== null && ast.kind === "flowchart";
@@ -2367,16 +2366,13 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
   regenBtn.disabled = !currentRenderValid || viewerMode;
   regenBtn.title = currentRenderValid ? "" : "fix source first";
   resetPosBtn.disabled = !currentRenderValid || viewerMode;
-  const canAdd =
-    currentRenderValid && familyAffordances(kind).addNode && !isDotImport && !viewerMode;
+  const canAdd = currentRenderValid && familyAffordances(kind).addNode && !viewerMode;
   addBtn.disabled = !canAdd;
   addBtn.title = canAdd
     ? ""
-    : isDotImport
-      ? "DOT import is read-only — edit the source text"
-      : currentRenderValid
-        ? `adding nodes isn't available for ${kind}`
-        : "fix source first";
+    : currentRenderValid
+      ? `adding nodes isn't available for ${kind}`
+      : "fix source first";
 };
 
 const reconcileSelection = (rendered: Scene): void => {
@@ -2993,7 +2989,7 @@ const setTool = (t: Tool): void => {
     flashStatus(`the connect tool isn't available for ${ast === null ? "this diagram" : ast.kind}`);
     return;
   }
-  if (t === "place" && !(!isDotImport && ast !== null && familyAffordances(ast.kind).addNode)) {
+  if (t === "place" && !(ast !== null && familyAffordances(ast.kind).addNode)) {
     flashStatus(`placing nodes isn't available for ${ast === null ? "this diagram" : ast.kind}`);
     return;
   }
@@ -3756,7 +3752,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       pending = {
         text: shown.nodes.find((n) => n.id === hit.id)?.label ?? "",
         commit: (next) => {
-          const patched = relabelNode(editor.value(), src, nodeId, next);
+          const patched = relabelNode(editor.value(), src, nodeId, next, isDotImport);
           if (!isOk(patched)) {
             console.error("relabel failed:", patched.error.message);
             setStatusAndAnnounce("error", `can't rename — ${patched.error.message}`);
@@ -3924,6 +3920,28 @@ canvas.addEventListener("dblclick", (ev) => {
 // `appendEdge`). `id` is a fresh unique identifier; `label` its display text; `shape` only applies to
 // flowchart. Families gated off in `familyAffordances` (mindmap/gitGraph/timeline/pie/gantt — no
 // standalone node declaration) return the text unchanged.
+const escapeDotLabel = (s: string): string => s.replace(/(["\\])/g, "\\$1");
+const dotShape = (shape: NodeShape): string => {
+  switch (shape) {
+    case "rect":
+      return "box";
+    case "round":
+      return "oval";
+    case "circle":
+      return "circle";
+    case "diamond":
+      return "diamond";
+    default:
+      return "box";
+  }
+};
+const insertBeforeLastBrace = (text: string, statement: string): string => {
+  const idx = text.lastIndexOf("}");
+  if (idx === -1) return `${text}\n${statement}`;
+  return `${text.slice(0, idx)}${statement}${text.slice(idx)}`;
+};
+const isDirectedDot = (text: string): boolean => /digraph/i.test(text);
+
 const appendNode = (
   kind: DiagramAst["kind"],
   text: string,
@@ -3934,6 +3952,12 @@ const appendNode = (
   const body = text === "" || text.endsWith("\n") ? text : `${text}\n`;
   switch (kind) {
     case "flowchart":
+      if (isDotImport) {
+        const escaped = escapeDotLabel(label);
+        const dShape = dotShape(shape);
+        const stmt = `  ${id} [label="${escaped}" shape=${dShape}]\n`;
+        return insertBeforeLastBrace(text, stmt);
+      }
       return addNode(text, brand<string, "NodeId">(id), label, shape);
     case "block":
       return `${body}  ${id}["${label}"]\n`;
@@ -4250,6 +4274,16 @@ const appendEdge = (
       );
     // The flowchart `A --> B` arrow syntax — valid in the families whose node ids it can name.
     case "flowchart":
+      if (isDotImport) {
+        const op = isDirectedDot(text) ? "->" : "--";
+        return insertBeforeLastBrace(text, `  ${first} ${op} ${second}\n`);
+      }
+      return connect(
+        text,
+        brand<string, "NodeId">(first),
+        brand<string, "NodeId">(second),
+        "arrow",
+      );
     case "block":
     case "state":
       return connect(
@@ -4631,7 +4665,7 @@ window.addEventListener("keydown", (ev) => {
       // Duplicate the selected node(s), overriding the browser's ⌘D bookmark — but only for families that
       // can add a node, else we'd swallow the keystroke and silently do nothing.
       if (viewerMode || selectionOrder.length === 0) return;
-      if (ast === null || isDotImport || !familyAffordances(ast.kind).addNode) return;
+      if (ast === null || !familyAffordances(ast.kind).addNode) return;
       ev.preventDefault();
       void duplicateSelection();
     } else if (key === "c") {
@@ -4710,7 +4744,7 @@ const cycleShape = async (): Promise<void> => {
     const idx = SHAPE_CYCLE.indexOf(t.node.shape);
     const next = SHAPE_CYCLE[(idx + 1) % SHAPE_CYCLE.length] ?? "rect";
     lastShape = next;
-    const out = reshapeNode(text, src, t.nid, t.node.label, next);
+    const out = reshapeNode(text, src, t.nid, t.node.label, next, isDotImport);
     if (isOk(out)) text = out.value;
   }
   const keep = selectionOrder.map((id) => brand<string, "SceneNodeId">(id));
@@ -4986,13 +5020,9 @@ window.addEventListener("keydown", (ev) => {
       if (selectionOrder.length === 0) return;
       // With a node selection, explain why nothing happens off-flowchart instead of a silent no-op
       // (parity with the navigator). `isDotImport` parses to flowchart but with an empty source map.
-      if (ast.kind !== "flowchart" || isDotImport) {
+      if (ast.kind !== "flowchart") {
         ev.preventDefault();
-        flashStatus(
-          isDotImport
-            ? "DOT import is read-only — edit the source text"
-            : "shape change is only available for flowchart",
-        );
+        flashStatus("shape change is only available for flowchart");
         return;
       }
       ev.preventDefault();
@@ -5573,7 +5603,7 @@ const navController = createNavigator({
   onFocusChange: (focused) => {
     taskStatusText.parentElement?.setAttribute("aria-live", focused ? "off" : "polite");
   },
-  canConnect: (kind) => familyAffordances(kind).connect && !isDotImport,
+  canConnect: (kind) => familyAffordances(kind).connect,
   describeConnect,
   isViewerMode: () => viewerMode,
   editor,

@@ -12,6 +12,7 @@ import {
   parseStateWithSource,
   parseMindmapWithSource,
   parseTimelineWithSource,
+  parseDotWithSource,
   parseWithSource,
 } from "@m/parser";
 import { describe, expect, it } from "vitest";
@@ -840,5 +841,40 @@ describe("edge label + style edits", () => {
       parsed.value.source.commitStatements,
     );
     expect(next).toBe("gitGraph\n  commit\n  checkout main\n  commit\n");
+  });
+});
+
+describe("DOT diagram editing", () => {
+  const dotSourceOf = (text: string) => {
+    const r = parseDotWithSource(text);
+    if (!isOk(r)) throw new Error(`DOT parse failed: ${r.error.errors.join("; ")}`);
+    return r.value.source;
+  };
+
+  it("relabelNode: patches DOT label attribute", () => {
+    const text = 'digraph {\n  a [label="Start" shape=box]\n  b\n}';
+    const r = relabelNode(text, dotSourceOf(text), nid("a"), "Begin", true);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value).toBe('digraph {\n  a [label="Begin" shape=box]\n  b\n}');
+    }
+  });
+
+  it("relabelNode: wraps bare node into bracketed label attribute", () => {
+    const text = "digraph {\n  a\n}";
+    const r = relabelNode(text, dotSourceOf(text), nid("a"), "Hello World", true);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value).toBe('digraph {\n  a [label="Hello World"]\n}');
+    }
+  });
+
+  it("reshapeNode: reshapes DOT node to diamond or rect", () => {
+    const text = 'digraph {\n  a [label="Start" shape=box]\n}';
+    const r = reshapeNode(text, dotSourceOf(text), nid("a"), "Start", "diamond", true);
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      expect(r.value).toBe('digraph {\n  a [label="Start" shape=diamond]\n}');
+    }
   });
 });

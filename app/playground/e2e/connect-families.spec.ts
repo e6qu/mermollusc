@@ -81,20 +81,16 @@ test("timeline delete removes an event from the source (real, not a no-op)", asy
   await expectSourceMatches(page, "timeline\n  2001 : Alpha\n  2002 : Gamma\n");
 });
 
-test("a DOT import is read-only on the canvas (edits disabled, not failing after a click)", async ({
+test("a DOT import is editable on the canvas (edits enabled)", async ({
   page,
 }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await setSource(page, "digraph G {\n  a -> b;\n  b -> c;\n}\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  // Add is disabled with an honest title; the Place tool is disabled; the renders is valid.
-  await expect(page.locator("#add-node")).toBeDisabled();
-  await expect(page.locator("#add-node")).toHaveAttribute("title", /DOT import is read-only/);
-  await expect(page.locator("#tool-place")).toBeDisabled();
-  // Switching to an editable family re-enables editing.
-  await setSource(page, "flowchart TD\n  A --> B\n");
+  // Add is enabled; the Place tool is enabled; the render is valid.
   await expect(page.locator("#add-node")).toBeEnabled();
+  await expect(page.locator("#tool-place")).toBeEnabled();
 });
 
 test("connect button is disabled for 3+ selected items in capped families", async ({ page }) => {

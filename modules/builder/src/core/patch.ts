@@ -830,6 +830,23 @@ export const deleteEdge = (text: string, from: NodeId, to: NodeId): string => {
   return lines.join("\n");
 };
 
+const escapeDotLabel = (s: string): string => s.replace(/(["\\])/g, "\\$1");
+
+const dotShape = (shape: NodeShape): string => {
+  switch (shape) {
+    case "rect":
+      return "box";
+    case "round":
+      return "oval";
+    case "circle":
+      return "circle";
+    case "diamond":
+      return "diamond";
+    default:
+      return "box";
+  }
+};
+
 // Two-way edit: rewrite a node's label in the source text, touching only its span so the rest of
 // the file (formatting, comments, ordering) is preserved. A bare node gets wrapped in brackets.
 export const relabelNode = (
@@ -837,12 +854,28 @@ export const relabelNode = (
   source: SourceMap,
   id: NodeId,
   label: string,
+  isDot = false,
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
   // An empty label would write `A[]`, which the grammar rejects — clearing a label must fail loudly, not
   // silently break the diagram (delete the node to remove it instead).
   if (label.trim().length === 0) return err({ kind: "patch", message: "label can't be empty" });
+
+  if (isDot) {
+    const escaped = escapeDotLabel(label);
+    let replacement = escaped;
+    if (spans.bracketed) {
+      const isQuoted = text[spans.label.start - 1] === '"' && text[spans.label.end] === '"';
+      if (!isQuoted && /[^\w.]/.test(label)) {
+        replacement = `"${escaped}"`;
+      }
+    } else {
+      replacement = `${id} [label="${escaped}"]`;
+    }
+    return ok(patchSpan(text, spans.label, replacement));
+  }
+
   // The existing wrapper could be any flowchart shape (the span doesn't record which), so reject every
   // bracket closer — any one would terminate some shape's bracket early and corrupt the source.
   const bad = forbiddenChar(label, FORBIDDEN.flowchartBracket);
@@ -883,10 +916,17 @@ export const reshapeNode = (
   id: NodeId,
   label: string,
   shape: NodeShape,
+  isDot = false,
 ): Result<string, PatchError> => {
   const spans = source.nodes.get(id);
   if (spans === undefined) return err({ kind: "patch", message: `unknown node: ${id}` });
   if (label.trim().length === 0) return err({ kind: "patch", message: "label can't be empty" });
+
+  if (isDot) {
+    const replacement = `${id} [label="${escapeDotLabel(label)}" shape=${dotShape(shape)}]`;
+    return ok(patchSpan(text, spans.decl, replacement));
+  }
+
   // The label is re-wrapped in the target shape's brackets, so reject any bracket (opener or closer) or
   // newline — any of them would terminate the wrapper early and write un-parseable source.
   const bad = forbiddenChar(label, FORBIDDEN.flowchartBracket);

@@ -1,14 +1,19 @@
-import type { CstNode } from "chevrotain";
-import { childNodes, childTokens } from "./cst.js";
-import { brand, err, ok, type Result } from "@m/std";
+import type { CstNode, IToken } from "chevrotain";
+import { childNodes, childTokens, spanOf } from "./cst.js";
+import { brand, err, map, ok, type Result } from "@m/std";
 import type {
+  EdgeId,
   EdgeKind,
   FlowDirection,
   FlowEdge,
   FlowNode,
   FlowSubgraph,
   FlowchartAst,
+  NodeId,
   NodeShape,
+  NodeSpans,
+  SourceMap,
+  TextSpan,
 } from "@m/contracts";
 import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
@@ -23,6 +28,14 @@ const idText = (node: CstNode): string => {
   if (quoted !== undefined) return quoted.image.slice(1, -1).replace(/\\(["\\])/g, "$1");
   const num = childTokens(node.children, "NumberLit")[0];
   return num === undefined ? "" : num.image;
+};
+
+// Extracts the token representing the ID (to get its precise source range).
+const idToken = (idNode: CstNode): IToken | undefined => {
+  const c = idNode.children;
+  return (
+    childTokens(c, "Id")[0] ?? childTokens(c, "QuotedString")[0] ?? childTokens(c, "NumberLit")[0]
+  );
 };
 
 // A DOT shape name → the nearest SceneGraph shape; null when unknown (keep the running default).
@@ -78,6 +91,47 @@ const attrsOf = (attrList: CstNode | undefined): ReadonlyMap<string, string> => 
   return out;
 };
 
+const findAttrValueToken = (attrList: CstNode | undefined, name: string): IToken | null => {
+  if (attrList === undefined) return null;
+  for (const item of childNodes(attrList.children, "aItem")) {
+    const ids = childNodes(item.children, "id");
+    const key = ids[0];
+    const value = ids[1];
+    if (key !== undefined && value !== undefined && idText(key).toLowerCase() === name) {
+      const tok = idToken(value);
+      if (tok !== undefined) return tok;
+    }
+  }
+  return null;
+};
+
+const innerSpan = (t: IToken): TextSpan => ({
+  start: t.startOffset + 1,
+  end: t.startOffset + t.image.length - 1,
+});
+
+const cstSpan = (node: CstNode): TextSpan => {
+  let minStart = Infinity;
+  let maxEnd = -Infinity;
+  const traverse = (n: CstNode | IToken) => {
+    if ("image" in n) {
+      minStart = Math.min(minStart, n.startOffset);
+      maxEnd = Math.max(maxEnd, n.startOffset + n.image.length);
+    } else if (n.children) {
+      for (const key in n.children) {
+        const list = n.children[key];
+        if (list) {
+          for (const child of list) {
+            traverse(child);
+          }
+        }
+      }
+    }
+  };
+  traverse(node);
+  return { start: minStart === Infinity ? 0 : minStart, end: maxEnd === -Infinity ? 0 : maxEnd };
+};
+
 const edgeKindOf = (attrs: ReadonlyMap<string, string>, directed: boolean): EdgeKind => {
   const style = attrs.get("style")?.toLowerCase();
   if (style === "dashed" || style === "dotted") return directed ? "dotted" : "open";
@@ -98,7 +152,9 @@ interface ClusterRec {
   readonly nodes: string[];
 }
 
-const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
+const buildResultWithSource = (
+  cst: CstNode,
+): Result<{ readonly ast: FlowchartAst; readonly source: SourceMap }, ParseError> => {
   const directed = childTokens(cst.children, "Digraph").length > 0;
   let direction: FlowDirection = "TB";
   let defaultShape: NodeShape = "round";
@@ -107,11 +163,24 @@ const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
   const clusters: ClusterRec[] = [];
   let anon = 0;
 
+  const nodeSpans = new Map<NodeId, NodeSpans>();
+  const edgeSpans = new Map<EdgeId, TextSpan>();
+  const arrowSpans = new Map<EdgeId, TextSpan>();
+
   // First sighting of a node fixes its cluster membership (DOT scoping); later references don't move it.
-  const ensureNode = (id: string, cluster: ClusterRec | null): void => {
+  const ensureNode = (id: string, cluster: ClusterRec | null, idTok?: IToken): void => {
     if (nodes.has(id)) return;
     nodes.set(id, { label: id, shape: defaultShape });
     if (cluster !== null) cluster.nodes.push(id);
+
+    const nodeId = brand<string, "NodeId">(id);
+    const fallbackSpan = idTok !== undefined ? spanOf(idTok) : { start: 0, end: 0 };
+    nodeSpans.set(nodeId, {
+      id: fallbackSpan,
+      label: fallbackSpan,
+      decl: fallbackSpan,
+      bracketed: false,
+    });
   };
 
   // Walks a statement list within an enclosing cluster (null at the top level), recursing into nested
@@ -159,6 +228,7 @@ const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
       const head = ids[0];
       if (head === undefined) continue;
       const headText = idText(head);
+      const headTok = idToken(head);
       const hasEq = childTokens(idStmt.children, "Eq").length > 0;
       const edgeRHS = childNodes(idStmt.children, "edgeRHS")[0];
       const attrs = attrsOf(childNodes(idStmt.children, "attrList")[0]);
@@ -176,31 +246,79 @@ const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
       }
 
       if (edgeRHS !== undefined) {
-        const chain = [headText, ...childNodes(edgeRHS.children, "id").map(idText)];
-        for (const id of chain) ensureNode(id, cluster);
+        const idsInRHS = childNodes(edgeRHS.children, "id");
+        const chain = [headText, ...idsInRHS.map(idText)];
+        const chainToks = [headTok, ...idsInRHS.map(idToken)].filter(
+          (t): t is IToken => t !== undefined,
+        );
+        for (let idx = 0; idx < chain.length; idx++) {
+          const item = chain[idx];
+          const t = chainToks[idx];
+          if (item !== undefined) ensureNode(item, cluster, t);
+        }
+
         const kind = edgeKindOf(attrs, directed);
         const label = attrs.get("label") ?? null;
+
+        const opTokens = [
+          ...(childTokens(edgeRHS.children, "Arrow") ?? []),
+          ...(childTokens(edgeRHS.children, "DashDash") ?? []),
+        ].sort((a, b) => a.startOffset - b.startOffset);
+
         for (let i = 0; i + 1 < chain.length; i++) {
           const from = chain[i];
           const to = chain[i + 1];
           if (from === undefined || to === undefined) continue;
+          const edgeId = brand<string, "EdgeId">(`e${edges.length}`);
           edges.push({
-            id: brand<string, "EdgeId">(`e${edges.length}`),
+            id: edgeId,
             from: brand<string, "NodeId">(from),
             to: brand<string, "NodeId">(to),
             kind,
             label,
           });
+
+          const arrowTok = opTokens[i];
+          if (arrowTok !== undefined) {
+            arrowSpans.set(edgeId, spanOf(arrowTok));
+          }
+
+          const labelTok = findAttrValueToken(childNodes(idStmt.children, "attrList")[0], "label");
+          if (labelTok !== null) {
+            const labelSpan = labelTok.image.startsWith('"')
+              ? innerSpan(labelTok)
+              : spanOf(labelTok);
+            edgeSpans.set(edgeId, labelSpan);
+          }
         }
         continue;
       }
 
       // A node statement: create it (if new) and apply any explicit label/shape.
-      ensureNode(headText, cluster);
+      ensureNode(headText, cluster, headTok);
       const data = nodes.get(headText);
       if (data !== undefined) {
         data.label = attrs.get("label") ?? data.label;
         data.shape = shapeOf(attrs.get("shape")) ?? data.shape;
+
+        const nodeId = brand<string, "NodeId">(headText);
+        const labelTok = findAttrValueToken(childNodes(idStmt.children, "attrList")[0], "label");
+        const idSpan = headTok !== undefined ? spanOf(headTok) : { start: 0, end: 0 };
+        const labelSpan =
+          labelTok === null
+            ? idSpan
+            : labelTok.image.startsWith('"')
+              ? innerSpan(labelTok)
+              : spanOf(labelTok);
+        const declSpan = cstSpan(stmt);
+        const bracketed = childNodes(idStmt.children, "attrList")[0] !== undefined;
+
+        nodeSpans.set(nodeId, {
+          id: idSpan,
+          label: labelSpan,
+          decl: declSpan,
+          bracketed,
+        });
       }
     }
   };
@@ -220,13 +338,15 @@ const buildResult = (cst: CstNode): Result<FlowchartAst, ParseError> => {
     nodes: c.nodes.map((n) => brand<string, "NodeId">(n)),
   }));
 
-  return ok({ kind: "flowchart", direction, nodes: flowNodes, edges, subgraphs });
+  return ok({
+    ast: { kind: "flowchart", direction, nodes: flowNodes, edges, subgraphs },
+    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans },
+  });
 };
 
-// Imports a Graphviz DOT graph as a flowchart AST, so it renders + lays out through the existing
-// flowchart pipeline. A subset: `cluster*` subgraphs become flowchart subgraphs (boxes); ports and
-// HTML labels are unsupported (and a non-`cluster` subgraph is transparent — layout grouping only).
-export const parseDot = (text: string): Result<FlowchartAst, ParseError> => {
+export const parseDotWithSource = (
+  text: string,
+): Result<{ readonly ast: FlowchartAst; readonly source: SourceMap }, ParseError> => {
   const lexed = dotLexer.tokenize(text);
   if (lexed.errors.length > 0) {
     return err(lexingError(lexed.errors));
@@ -236,5 +356,11 @@ export const parseDot = (text: string): Result<FlowchartAst, ParseError> => {
   if (dotParser.errors.length > 0) {
     return err(recognitionError(dotParser.errors));
   }
-  return buildResult(cst);
+  return buildResultWithSource(cst);
 };
+
+// Imports a Graphviz DOT graph as a flowchart AST, so it renders + lays out through the existing
+// flowchart pipeline. A subset: `cluster*` subgraphs become flowchart subgraphs (boxes); ports and
+// HTML labels are unsupported (and a non-`cluster` subgraph is transparent — layout grouping only).
+export const parseDot = (text: string): Result<FlowchartAst, ParseError> =>
+  map(parseDotWithSource(text), (parsed) => parsed.ast);
