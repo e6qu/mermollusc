@@ -14,3 +14,7 @@ playwright-report/
 # Non-redistributable icon packs — populate locally; never committed (see vendor/restricted/README.md).
 modules/icons/vendor/restricted/*
 !modules/icons/vendor/restricted/README.md
+
+# Temporary test outputs
+sweep_temp.json
+app/playground/sweep_temp.json

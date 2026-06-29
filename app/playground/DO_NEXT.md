@@ -13,11 +13,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
 ## A11y / UX follow-ups (from the contrast + journey audit)
-- **Overlay reload identity (IO-02 residual).** Loading an example clears the overlay, but manually
-  replacing the whole source with a *different* diagram that reuses ids (`A`,`B`,…) leaves the persisted
-  overlay to apply its positions to the new nodes on reload. A strict source-hash guard would wrongly
-  drop the overlay on legitimate edits (the "survives edits" feature), so this needs a real diagram
-  identity, not a content hash. Bounded; id-reuse only.
 - **Navigator double-announce.** A navigator arrow step writes both `#diagram-live` (via `announce`) and
   `#task-status` (via `updateTask`) when the selection category changes — two polite regions, two
   announcements per keypress. Skip the `updateTask` write while the navigator drives selection.

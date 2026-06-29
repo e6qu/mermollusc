@@ -21,6 +21,7 @@ export interface Overlay {
   readonly groups: Groups;
   readonly edgeStyles: EdgeStyles;
   readonly nodeStyles: NodeStyles;
+  readonly identity?: readonly string[] | undefined;
 }
 
 // `z.number()` already rejects NaN/Infinity; a size must additionally be non-negative — otherwise
@@ -51,6 +52,7 @@ const OverlayZ = z.object({
   // Optional on the wire so older share-links / persisted overlays (no styling) still decode.
   edgeStyles: z.array(z.tuple([z.string(), EdgeStyleZ])).default([]),
   nodeStyles: z.array(z.tuple([z.string(), NodeStyleZ])).default([]),
+  identity: z.array(z.string()).optional(),
 });
 
 // Per-entry wire encoders, branded values flattened to plain numbers/strings. The
@@ -84,12 +86,14 @@ export const serializeOverlay = (
   groups: Groups,
   edgeStyles: EdgeStyles,
   nodeStyles: NodeStyles,
+  identity?: readonly string[],
 ): string =>
   JSON.stringify({
     overrides: [...overrides].map(([id, o]) => [id, encodeOverrideEntry(o)]),
     groups: [...groups].map(([id, g]) => [id, encodeGroupEntry(g)]),
     edgeStyles: [...edgeStyles].map(([id, s]) => [id, encodeEdgeStyleEntry(s)]),
     nodeStyles: [...nodeStyles].map(([id, s]) => [id, encodeNodeStyleEntry(s)]),
+    identity,
   });
 
 // Decode an untyped overlay payload (e.g. `JSON.parse(localStorage…)`) back into branded maps.
@@ -127,4 +131,5 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
     nodeStyles: new Map(
       j.nodeStyles.map(([id, s]) => [brand<string, "SceneNodeId">(id), { accent: s.accent }]),
     ),
+    identity: j.identity,
   }));
