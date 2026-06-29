@@ -20,9 +20,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   arrow-span capture + token map. The **semantic-arrow** families (er crow's-foot, class UML relation,
   state/c4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator encodes
   meaning; they want a typed cardinality/relation picker instead (a separate feature).
-- **(done) Edge labels on skipped-over nodes.** The cloud/c4/network gap+`labelPos` fix clears labels between
-  adjacent boxes, but a center-to-center edge that passes *over* a third node can still place its label
-  on it — needs real obstacle-avoiding routing.
+
 - **gitGraph node delete.** Today it's honestly gated ("can't delete this from the canvas"). Implement a
   real commit-span / branch-lane delete in `@m/builder`, then flip the affordance on. Optionally make the
   navigator visually distinguish inert vs. actionable gitGraph/timeline items.
