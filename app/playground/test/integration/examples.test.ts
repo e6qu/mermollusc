@@ -1,4 +1,4 @@
-import { heuristicMeasure, layoutDiagram } from "@m/layout";
+import { edgesAvoidContainerHeaders, heuristicMeasure, layoutDiagram } from "@m/layout";
 import { parseDiagram } from "@m/parser";
 import { defaultTheme, toDisplayList, toSvg } from "@m/renderer";
 import { isOk, isErr } from "@m/std";
@@ -17,6 +17,9 @@ describe("playground examples", () => {
       if (!isOk(parsed)) throw new Error(parsed.error.errors.join("; "));
       const laid = await layoutDiagram(parsed.value, heuristicMeasure);
       if (isErr(laid)) throw new Error(laid.error.message);
+      if (!edgesAvoidContainerHeaders(laid.value)) {
+        throw new Error(`${name} routes an edge through a container title band`);
+      }
       const cmds = toDisplayList(laid.value);
       if (cmds.length === 0) throw new Error(`${name} rendered an empty display list`);
       const svg = toSvg(cmds, {

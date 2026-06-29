@@ -858,3 +858,9 @@
 - Hardened edge-style cycling after the pre-push Playwright gate caught repeated `S` keypresses stopping
   at the open-arrow token; the app now reads the current arrow token from the editor source span before
   choosing the next style.
+- Added a visual-structure guard to the Examples menu integration test: every starter must now avoid
+  routing edges through container title labels in addition to parsing, laying out, lowering to display
+  commands, and exporting as SVG.
+- Audited the local demo screenshots for every starter and trimmed the public cloud and BPMN-style
+  workflow sources: cloud now keeps only meaningful grouped tiers, while the workflows are single-pass
+  readable starters rather than loop-heavy routing stress fixtures.

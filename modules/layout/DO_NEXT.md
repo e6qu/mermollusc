@@ -96,9 +96,12 @@ de-overlap without the maze reroute's incidental crossings.
 
 ## Architecture starter layout polish shipped
 Network now places ungrouped ingress nodes ahead of grouped zones, and cloud wraps top-level boxes at a
-narrower row budget with larger inter-row channels. Remaining visual debt: connector routes that enter a
-container can still cross the container title band; fix that in routing/label painting rather than by
-adding more source-only workarounds.
+narrower row budget with larger inter-row channels.
+
+## Container-title routing guard shipped
+Edges now avoid the visible title-label area of containers they enter, and `styleOk` enforces that guard.
+Remaining visual debt: choose cleaner side ports for routes entering a child inside a group, so cloud
+connectors take shorter, less surprising bends while still avoiding titles.
 
 ## Channel reservation + lane separation shipped
 The stacked-edge fix is now two cooperating passes in `spreadPorts`: `reserveChannels` (density-sized room)

@@ -16,20 +16,14 @@ const CLOUD_AWS = `cloud
   group "Routing" {
     compute alb "App Load Balancer" icon "arch/load-balancer"
   }
-  group "ECS services" {
+  group "Services" {
     compute web "web service" icon "arch/microservice"
     compute orders "orders service" icon "arch/microservice"
     compute worker "worker" icon "arch/container"
   }
-  group "Data tier" {
-    database rds "Aurora" icon "arch/database"
-  }
-  group "Identity" {
-    compute cognito "Cognito" icon "arch/key"
-  }
-  group "Operations" {
-    compute cw "CloudWatch" icon "arch/server"
-  }
+  database rds "Aurora" icon "arch/database"
+  compute cognito "Cognito" icon "arch/key"
+  compute cw "CloudWatch" icon "arch/server"
   cf --> waf : "public"
   waf --> alb : "web"
   alb --> web : "HTTP"
@@ -40,45 +34,38 @@ const CLOUD_AWS = `cloud
   worker --> cw : "logs"
 `;
 
-// A BPMN-style order-to-cash workflow drawn as a flowchart: swimlanes via subgraphs, circle events
-// (start/end), diamond gateways (decisions), rounded-rect tasks, and labelled sequence flows. The
-// branches are semantically real: out-of-stock items are backordered before charging; a declined
-// payment cancels the order (you can't refund a charge that never succeeded); a shipped order both
-// completes and notifies the customer.
+// A BPMN-style order-to-cash workflow drawn as a flowchart: lane-like subgraphs, circle events, a payment
+// gateway, task glyphs, and labelled sequence flows. It stays intentionally compact so the public demo is
+// readable; deeper workflow branches belong in regression fixtures, not the starter menu.
 const BPMN_ORDER = `flowchart TD
-  subgraph Customer
+  subgraph Intake
     placed((Order placed)) icon "bpmn/start-event"
-    notify([Receive notification]) icon "bpmn/message-event"
-  end
-  subgraph Fulfilment
     validate([Validate order]) icon "bpmn/task"
-    stock{In stock?} icon "bpmn/exclusive-gateway"
-    backorder([Create backorder]) icon "bpmn/task"
-    pick([Pick & pack]) icon "bpmn/task"
-    ship([Ship order]) icon "bpmn/task"
-    fulfilled((Order fulfilled)) icon "bpmn/end-event"
   end
   subgraph Payment
     charge([Charge card]) icon "bpmn/task"
     approved{Payment approved?} icon "bpmn/exclusive-gateway"
     cancel([Cancel order]) icon "bpmn/task"
   end
+  subgraph Fulfilment
+    pick([Pick & pack]) icon "bpmn/task"
+    ship([Ship order]) icon "bpmn/task"
+    notify([Notify customer]) icon "bpmn/message-event"
+    fulfilled((Order fulfilled)) icon "bpmn/end-event"
+  end
   placed --> validate
-  validate --> stock
-  stock -->|in stock| charge
-  stock -->|backordered| backorder
-  backorder --> charge
+  validate --> charge
   charge --> approved
   approved -->|approved| pick
   approved -->|declined| cancel
   pick --> ship
-  ship --> fulfilled
   ship --> notify
+  notify --> fulfilled
   cancel --> notify
 `;
 
-// A second BPMN flow: an incident-response process with an escalation loop and a timer-style timeout
-// branch, showing gateways feeding back into earlier tasks.
+// A second BPMN flow: an incident-response process with severity branching and a closeout handoff. It
+// avoids feedback loops in the starter so the diagram demonstrates the family without edge clutter.
 const BPMN_INCIDENT = `flowchart TD
   subgraph Detection
     alert((Alert raised)) icon "bpmn/start-event"
@@ -87,9 +74,7 @@ const BPMN_INCIDENT = `flowchart TD
   end
   subgraph Response
     page([Page on-call]) icon "bpmn/message-event"
-    ack{Acked in 5m?} icon "bpmn/timer-event"
     mitigate([Mitigate]) icon "bpmn/task"
-    escalate([Escalate to lead]) icon "bpmn/task"
     verify{Resolved?} icon "bpmn/exclusive-gateway"
   end
   subgraph Closeout
@@ -99,13 +84,9 @@ const BPMN_INCIDENT = `flowchart TD
   alert --> triage --> sev
   sev -->|sev1| page
   sev -->|sev2/3| mitigate
-  page --> ack
-  ack -->|yes| mitigate
-  ack -->|no| escalate
-  escalate --> mitigate
+  page --> mitigate
   mitigate --> verify
-  verify -->|no| escalate
-  verify -->|yes| postmortem
+  verify -->|resolved| postmortem
   postmortem --> closed
 `;
 

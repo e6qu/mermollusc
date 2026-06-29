@@ -176,6 +176,9 @@ and replacing the cloud starter's vendor-logo tiles with built-in architecture g
 Checked while making repeated edge-style keyboard cycling derive the current arrow from the editor text
 span, so a rapid second `S` press cannot reuse a stale AST edge kind.
 
+Checked while auditing all demo example screenshots and trimming the cloud/BPMN starters so the public
+catalog stays readable under the container-title routing guard.
+
 Resolved (Miro-like round, 2026-06-23):
 
 - ~~**A tool-change announcement overwrote the canvas's diagram aria-label.**~~ Caught while building

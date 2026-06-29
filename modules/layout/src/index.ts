@@ -13,6 +13,7 @@ export {
   lowestEnergy,
   noSiblingOverlaps,
   containersEncloseMembers,
+  edgesAvoidContainerHeaders,
   styleOk,
   pieSlicesTileCircle,
   sequenceActorsShareHeaderRow,
