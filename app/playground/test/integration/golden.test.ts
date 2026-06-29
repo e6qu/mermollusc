@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 // miss (e.g. an edge label drifting onto a node). Sub-pixel jitter is rounded away; a real
 // coordinate change updates the snapshot and fails the diff. Refresh intentionally with `-u`.
 const SAMPLES: ReadonlyArray<{ readonly name: string; readonly text: string }> = [
-  { name: "flowchart", text: "flowchart TD\n  A[Start] --> B{Choice}\n  B -->|yes| C(Process)\n  B -->|no| D(End)\n  C --> D\n" },
+  { name: "flowchart", text: "flowchart TD\n  A[Start] --> B{Authorized?} icon \"arch/firewall\"\n  B -->|yes| C[Process] icon \"arch/server\"\n  B -->|no| D[End] icon \"arch/firewall\"\n  C --> D\n" },
   { name: "sequence", text: "sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello\n  B-->>A: Hi there\n" },
   {
     name: "c4",
