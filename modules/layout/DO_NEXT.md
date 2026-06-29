@@ -100,8 +100,11 @@ narrower row budget with larger inter-row channels.
 
 ## Container-title routing guard shipped
 Edges now avoid the visible title-label area of containers they enter, and `styleOk` enforces that guard.
-Remaining visual debt: choose cleaner side ports for routes entering a child inside a group, so cloud
-connectors take shorter, less surprising bends while still avoiding titles.
+
+## Cross-boundary child port selection shipped
+Routes that cross a group boundary now choose their side from the containing group but still anchor on the
+actual child box. Remaining visual debt: choose shorter channel positions for long cross-tier connectors,
+so cloud ingress links do not reserve more horizontal distance than necessary.
 
 ## Channel reservation + lane separation shipped
 The stacked-edge fix is now two cooperating passes in `spreadPorts`: `reserveChannels` (density-sized room)

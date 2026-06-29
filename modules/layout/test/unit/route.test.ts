@@ -230,6 +230,24 @@ describe("spreadPorts", () => {
     expect(edgesAvoidContainerHeaders(mazeRerouteEdges(scene))).toBe(true);
   });
 
+  it("uses the containing group to choose cross-boundary child ports", () => {
+    const outside = node("outside", 120, 0);
+    const g = { ...container("g", 0, 100, 300, 120), label: "Services" };
+    const member = { ...node("member", 110, 140), parent: brand<string, "SceneNodeId">("g") };
+    const scene = {
+      nodes: [outside, g, member],
+      edges: [edge("e0", "outside", "member")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 320, 240),
+    };
+    const out = spreadPorts(scene);
+    const routed = out.edges[0];
+    if (routed === undefined) throw new Error("missing routed edge");
+    const last = routed.waypoints[routed.waypoints.length - 1];
+    expect(last?.y).toBe(member.bounds.origin.y);
+  });
+
   // Count proper crossings of axis-aligned segments across all edge pairs in a routed scene.
   const orthCross = (a1: { x: number; y: number }, a2: { x: number; y: number }, b1: { x: number; y: number }, b2: { x: number; y: number }): boolean => {
     const aH = a1.y === a2.y;

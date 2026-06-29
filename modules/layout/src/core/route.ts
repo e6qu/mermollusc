@@ -1144,19 +1144,41 @@ const reserveChannels = (scene: Scene): Scene => {
 // channel room first. Shared by initial layout (`spreadPorts`) and post-drag re-routing (`respreadPorts`).
 const routeSpread = (scene: Scene, bus: boolean): Scene => {
   const boxOf = boxOfNode(scene);
+  const parentOf = new Map<string, string | null>(scene.nodes.map((n) => [n.id, n.parent]));
+  const ancestorsOf = (id: string): ReadonlySet<string> => {
+    const out = new Set<string>();
+    let p = parentOf.get(id) ?? null;
+    for (let depth = 0; p !== null && depth < MAX_NEST_DEPTH; depth++) {
+      out.add(p);
+      p = parentOf.get(p) ?? null;
+    }
+    return out;
+  };
+  const orientationBox = (id: string, other: string, own: RouteBox): RouteBox => {
+    const parent = parentOf.get(id) ?? null;
+    if (parent === null) return own;
+    if ((parentOf.get(other) ?? null) === parent || ancestorsOf(other).has(parent)) return own;
+    return boxOf.get(parent) ?? own;
+  };
   const along = (side: Side, other: RouteBox): number =>
     side === "L" || side === "R" ? other.y + other.h / 2 : other.x + other.w / 2;
-  const stubs = scene.edges.map((e): { from: PortStub; to: PortStub } | null => {
-    const a = boxOf.get(e.from);
-    const b = boxOf.get(e.to);
-    if (a === undefined || b === undefined || e.from === e.to) return null;
-    const fs = facingSide(a, b);
-    const ts = facingSide(b, a);
-    return {
-      from: { key: `${e.from}:${fs}`, perp: along(fs, b) },
-      to: { key: `${e.to}:${ts}`, perp: along(ts, a) },
-    };
-  });
+  const stubs = scene.edges.map(
+    (e): { from: PortStub; to: PortStub; fs: Side; ts: Side } | null => {
+      const a = boxOf.get(e.from);
+      const b = boxOf.get(e.to);
+      if (a === undefined || b === undefined || e.from === e.to) return null;
+      const ar = orientationBox(e.from, e.to, a);
+      const br = orientationBox(e.to, e.from, b);
+      const fs = facingSide(ar, br);
+      const ts = facingSide(br, ar);
+      return {
+        from: { key: `${e.from}:${fs}`, perp: along(fs, br) },
+        to: { key: `${e.to}:${ts}`, perp: along(ts, ar) },
+        fs,
+        ts,
+      };
+    },
+  );
   const lanes = new Map<string, PortStub[]>();
   const addToLane = (stub: PortStub): void => {
     const g = lanes.get(stub.key);
@@ -1186,9 +1208,9 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
     const fr = rankOf.get(s.from);
     const tr = rankOf.get(s.to);
     if (fr === undefined || tr === undefined) return e;
-    const fs = facingSide(a, b);
+    const fs = s.fs;
     const p0 = portAt(a, fs, fr.rank, fr.count);
-    const p3 = portAt(b, facingSide(b, a), tr.rank, tr.count);
+    const p3 = portAt(b, s.ts, tr.rank, tr.count);
     // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v): the two
     // mid points sit on the central cross-channel leg. Stagger that leg per source-lane so parallel edges
     // (e.g. several A→B) don't lay their cross-channel legs on top of each other; clamp into the gap so
