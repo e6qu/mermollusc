@@ -13,8 +13,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
 ## A11y / UX follow-ups (from the contrast + journey audit)
-- **Add a `prefers-contrast: more` query** that bumps the border tokens further, for users who request
-  more contrast without OS forced-colors.
 - **Arrange popup focus**: move focus into the menu on open and restore to the actual opener (today
   Escape always returns to the toolbar `#arrange`, even when opened from the on-canvas `#ctx-arrange`).
 
