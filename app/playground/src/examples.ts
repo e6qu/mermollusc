@@ -1,7 +1,7 @@
 export const SAMPLE = `flowchart TD
-  A[Start] --> B{Choice}
-  B -->|yes| C(Process)
-  B -->|no| D(End)
+  A[Start] --> B{Authorized?} icon "arch/firewall"
+  B -->|yes| C[Process] icon "arch/server"
+  B -->|no| D[End] icon "arch/firewall"
   C --> D
 `;
 
