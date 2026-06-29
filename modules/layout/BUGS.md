@@ -61,3 +61,5 @@ Checked while implementing obstacle-avoidance and dynamic channel-based trunk ro
 Checked while implementing unified layout style dropdown UI and per-family custom styles.
 Checked while tightening network/cloud starter readability with ingress-first network ordering and
 narrower cloud tier wrapping.
+Checked while adding the container-title route invariant and applying header-aware maze rerouting before
+ELK tidy candidate selection.

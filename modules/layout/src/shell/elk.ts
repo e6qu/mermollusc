@@ -310,16 +310,15 @@ const elkSelectBest = async (
       });
       continue;
     }
-    const scene = buildScene(toPositioned(decoded.value));
+    const scene = map(buildScene(toPositioned(decoded.value)), (value) =>
+      tidy ? separateOverlaps(minimizeCrossings(mazeRerouteEdges(value))) : value,
+    );
     fallback ??= scene; // the default candidate (index 0) is the fallback
     if (scene.ok && styleOk(scene.value)) passing.push(scene.value);
   }
   const best = lowestEnergy(passing);
   if (best === null) return fallback ?? err({ kind: "layout", message: "no layout produced" });
-  // Under Tidy, bend any ELK edge that still cuts through a node around it (maze reroute), then run the
-  // global edge–edge crossing minimiser over the result — ELK already minimises crossings, but a dense
-  // hierarchy can leave residual ones. Both are no-ops where there's nothing to fix; clean edges stay put.
-  return ok(tidy ? separateOverlaps(minimizeCrossings(mazeRerouteEdges(best))) : best);
+  return ok(best);
 };
 
 export const layout = async (

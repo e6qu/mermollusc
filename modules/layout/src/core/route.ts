@@ -71,6 +71,21 @@ export interface RouteBox {
   readonly h: number;
 }
 
+const CONTAINER_TITLE_CHAR_WIDTH = 7;
+const CONTAINER_TITLE_PADDING = 18;
+const CONTAINER_TITLE_HEIGHT = 18;
+const CONTAINER_TITLE_Y = 3;
+
+export const containerHeaderBox = (box: RouteBox, label: string): RouteBox => ({
+  x:
+    box.x +
+    (box.w - Math.min(box.w, label.length * CONTAINER_TITLE_CHAR_WIDTH + CONTAINER_TITLE_PADDING)) /
+      2,
+  y: box.y + CONTAINER_TITLE_Y,
+  w: Math.min(box.w, label.length * CONTAINER_TITLE_CHAR_WIDTH + CONTAINER_TITLE_PADDING),
+  h: Math.min(CONTAINER_TITLE_HEIGHT, box.h),
+});
+
 // A right-angle (orthogonal) route between two boxes: exit/enter the sides that face each other with a
 // Z-bend through the mid-channel, so the connector reads like an architecture/block link and its
 // arrowhead sits at the target border (vs a diagonal centre-to-centre line that clips intervening
@@ -284,7 +299,9 @@ export const routeBoxOf = (n: Scene["nodes"][number]): RouteBox => ({
 // Per-edge obstacle boxes — what an edge should avoid. A leaf node is an obstacle unless it's an
 // endpoint. A group CONTAINER is an obstacle UNLESS the edge enters it (an endpoint is that container or
 // nested inside it), so edges keep out of groups they don't belong to but can still reach an element
-// inside one. A tendency, not a guarantee: if no clear route exists, the routers fall back.
+// inside one. Even for entered containers, the title label remains an obstacle unless the container itself
+// is an endpoint: edges to members should not cut through the visible group label. A tendency, not a
+// guarantee: if no clear route exists, the routers fall back.
 export const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]> => {
   const parentOf = new Map<string, string | null>(scene.nodes.map((n) => [n.id, n.parent]));
   const ancestorsOf = (id: string): ReadonlySet<string> => {
@@ -306,7 +323,12 @@ export const obstaclesForEdges = (scene: Scene): Map<string, readonly RouteBox[]
           return true;
         })
         .map(routeBoxOf);
-      return [e.id, boxes];
+      const enteredHeaders = scene.nodes
+        .filter(
+          (n) => n.shape === "container" && n.id !== e.from && n.id !== e.to && entered.has(n.id),
+        )
+        .map((n) => containerHeaderBox(routeBoxOf(n), n.label));
+      return [e.id, [...boxes, ...enteredHeaders]];
     }),
   );
 };

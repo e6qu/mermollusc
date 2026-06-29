@@ -10,6 +10,7 @@ import {
   spreadPorts,
   trunkRoutes,
 } from "../../src/core/route.js";
+import { edgesAvoidContainerHeaders } from "../../src/core/invariants.js";
 
 describe("routeWaypoints", () => {
   it("passes a full route through unchanged (≥2 points)", () => {
@@ -208,6 +209,25 @@ describe("spreadPorts", () => {
     // It reaches the inner node (endpoints preserved); g is not treated as a wall for its own member.
     const wp = out2.edges[0]?.waypoints ?? [];
     expect(wp[wp.length - 1]).toEqual(point(180, 145));
+  });
+
+  it("keeps member-entering routes out of the container title band", () => {
+    const outside = node("outside", 120, 0);
+    const g = { ...container("g", 0, 100, 300, 120), label: "Group title" };
+    const member = { ...node("member", 110, 140), parent: brand<string, "SceneNodeId">("g") };
+    const crossingHeader = {
+      ...edge("e0", "outside", "member"),
+      waypoints: twoOrMore(point(150, 30), point(150, 112), point(130, 140)),
+    };
+    const scene = {
+      nodes: [outside, g, member],
+      edges: [crossingHeader],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 320, 240),
+    };
+    expect(edgesAvoidContainerHeaders(scene)).toBe(false);
+    expect(edgesAvoidContainerHeaders(mazeRerouteEdges(scene))).toBe(true);
   });
 
   // Count proper crossings of axis-aligned segments across all edge pairs in a routed scene.

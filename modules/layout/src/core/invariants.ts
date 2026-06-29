@@ -1,5 +1,7 @@
 import type { Rect } from "@m/std";
 import type { Scene } from "@m/contracts";
+import { containerHeaderBox, routeBoxOf } from "./route.js";
+import { segmentThroughBox } from "./maze.js";
 
 // Style invariants a laid-out scene must keep — the mechanical guard behind "energy-aware layout must not
 // break a diagram type's expected style." These are pure predicates: the candidate-and-select step keeps
@@ -58,6 +60,25 @@ export const containersEncloseMembers = (scene: Scene): boolean => {
   return true;
 };
 
+export const edgesAvoidContainerHeaders = (scene: Scene): boolean => {
+  const headers = scene.nodes
+    .filter((n) => n.shape === "container")
+    .map((n) => ({ id: n.id, box: containerHeaderBox(routeBoxOf(n), n.label) }));
+  if (headers.length === 0) return true;
+  for (const edge of scene.edges) {
+    for (let i = 1; i < edge.waypoints.length; i++) {
+      const a = edge.waypoints[i - 1];
+      const b = edge.waypoints[i];
+      if (a === undefined || b === undefined) continue;
+      for (const header of headers) {
+        if (header.id === edge.from || header.id === edge.to) continue;
+        if (segmentThroughBox(a, b, header.box)) return false;
+      }
+    }
+  }
+  return true;
+};
+
 // The family-agnostic style gate: a candidate layout that fails either is rejected before selection.
 export const styleOk = (scene: Scene): boolean =>
-  noSiblingOverlaps(scene) && containersEncloseMembers(scene);
+  noSiblingOverlaps(scene) && containersEncloseMembers(scene) && edgesAvoidContainerHeaders(scene);

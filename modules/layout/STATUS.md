@@ -80,6 +80,9 @@
   `*Width`/`widestLine` idioms (block/network/cloud/c4/transform/sequence/mindmap/timeline) now route
   through these, each keeping its own `MIN_*`/`PAD` constants. The shell error idiom in `elk.ts` uses
   `messageOf` from `@m/std`.
+- **Container-title routing guard:** `edgesAvoidContainerHeaders(scene)` rejects routes that cut through
+  a container's visible title label. Tidy ELK candidates are maze-rerouted before `styleOk` selection, so
+  flowchart subgraphs/swimlanes get the same title-protection as spread-routed architecture families.
 - tests: 82 unit + 15 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown

@@ -403,3 +403,6 @@
 - Tightened the cloud top-level row budget again so the public AWS starter falls into ingress,
   services, and data/identity/operations tiers instead of keeping too many groups on one horizontal
   band.
+- Added container-title-aware routing: entered containers no longer exempt their visible title label from
+  obstacle avoidance, `styleOk` now rejects edges through container titles, and ELK tidy candidates are
+  maze-rerouted before candidate selection so swimlane/subgraph examples honor the same guard.
