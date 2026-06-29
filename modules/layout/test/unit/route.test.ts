@@ -343,7 +343,7 @@ describe("spreadPorts", () => {
         node("c", 500, 240),
         node("d", 500, 340),
       ],
-      edges: [edge("ha", "h", "a"), edge("hb", "h", "b"), edge("hc", "h", "c"), edge("hd", "h", "d")],
+      edges: [edge("ah", "a", "h"), edge("bh", "b", "h"), edge("ch", "c", "h"), edge("dh", "d", "h")],
       wedges: [],
       decorations: [],
       extent: rect(0, 0, 620, 420),

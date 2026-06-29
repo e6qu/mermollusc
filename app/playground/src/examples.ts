@@ -5,52 +5,38 @@ export const SAMPLE = `flowchart TD
   C --> D
 `;
 
-// A realistic AWS web architecture with directed traffic paths. CloudFront serves static assets from
-// S3 and forwards dynamic requests through AWS WAF, which splits to the ALB (web app) and API Gateway
-// (the /api/* path); services read the data tier; the orders service fans async work onto SQS for a
-// worker to consume; everything ships logs to CloudWatch. Service glyphs are the bundled gilbarbara
-// AWS logos; WAF reuses the built-in firewall glyph.
+// A tiered AWS-style architecture with enough routing to show cloud groups, icons, labels, and async
+// work without turning the public demo into an unreadable edge stress test. Vendor logo packs remain
+// available from the icon picker; the starter uses built-in line-art glyphs for visual coherence.
 const CLOUD_AWS = `cloud
   group "Edge" {
-    storage assets "S3 static" icon "gilbarbara/aws-s3"
-    cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
+    cdn cf "CloudFront" icon "arch/cdn"
     compute waf "AWS WAF" icon "arch/firewall"
   }
   group "Routing" {
-    compute alb "App Load Balancer" icon "gilbarbara/aws-elb"
-    compute apigw "API Gateway" icon "gilbarbara/aws-api-gateway"
+    compute alb "App Load Balancer" icon "arch/load-balancer"
   }
   group "ECS services" {
-    compute web "web service" icon "gilbarbara/aws-ecs"
-    compute orders "orders service" icon "gilbarbara/aws-fargate"
-    compute auth "auth service" icon "gilbarbara/aws-ecs"
-    compute worker "worker" icon "gilbarbara/aws-ecs"
+    compute web "web service" icon "arch/microservice"
+    compute orders "orders service" icon "arch/microservice"
+    compute worker "worker" icon "arch/container"
   }
   group "Data tier" {
-    database rds "Aurora" icon "gilbarbara/aws-rds"
-    database ddb "DynamoDB" icon "gilbarbara/aws-dynamodb"
-    queue jobs "SQS jobs" icon "gilbarbara/aws-sqs"
+    database rds "Aurora" icon "arch/database"
   }
-  group "Identity & ops" {
-    compute cognito "Cognito" icon "gilbarbara/aws-cognito"
-    compute cw "CloudWatch" icon "gilbarbara/aws-cloudwatch"
+  group "Identity" {
+    compute cognito "Cognito" icon "arch/key"
   }
-  cf --> assets : "static"
-  cf --> waf : "dynamic"
+  group "Operations" {
+    compute cw "CloudWatch" icon "arch/server"
+  }
+  cf --> waf : "public"
   waf --> alb : "web"
-  waf --> apigw : "/api/*"
   alb --> web : "HTTP"
-  apigw --> orders : "REST"
-  apigw --> auth : "REST"
-  auth --> cognito : "verify JWT"
-  web --> rds : "SQL"
+  web --> orders : "orders"
+  orders --> cognito : "auth"
   orders --> rds : "SQL"
-  orders --> ddb : "sessions"
-  orders --> jobs : "enqueue"
-  jobs --> worker : "consume"
-  worker --> rds : "SQL"
-  web --> cw : "logs"
-  orders --> cw : "logs"
+  orders --> worker : "async"
   worker --> cw : "logs"
 `;
 
@@ -141,7 +127,7 @@ export const EXAMPLES = new Map<string, string>([
   ],
   [
     "network",
-    'network\n  cloud net "Internet"\n  group "DMZ" {\n    firewall fw "Edge firewall"\n    server lb "Load balancer"\n  }\n  group "App tier" {\n    server web1 "web-01"\n    server web2 "web-02"\n  }\n  group "Data tier" {\n    database db "Postgres primary"\n    database replica "Postgres replica"\n  }\n  net -- fw : "WAN"\n  fw -- lb : "443/tcp"\n  lb -- web1\n  lb -- web2\n  web1 -- db\n  web2 -- db\n  db -- replica : "streaming"\n',
+    'network\n  cloud net "Internet"\n  group "DMZ" {\n    firewall fw "Edge firewall"\n    server lb "Load balancer"\n  }\n  group "App tier" {\n    server web "web service"\n  }\n  group "Data tier" {\n    database db "Postgres"\n  }\n  net -- fw : "WAN"\n  fw -- lb : "443/tcp"\n  lb -- web : "HTTPS"\n  web -- db : "SQL"\n',
   ],
   ["cloud", CLOUD_AWS],
   [

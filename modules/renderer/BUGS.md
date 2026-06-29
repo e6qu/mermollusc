@@ -24,3 +24,5 @@ Checked while layering edges beneath nodes (link occlusion polish).
 Checked while wobbling sketch-mode edge markers + verifying compartments in dark/sketch (no bug found).
 Checked while adding state marker commands and sketch box fills.
 Checked while adding donut wedge rendering.
+Checked while splitting renderer route geometry into `src/core/path.ts` and preserving crossing-hop
+coverage.

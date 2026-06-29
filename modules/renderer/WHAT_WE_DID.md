@@ -164,3 +164,8 @@
   inside a collinear segment of B. A plain crossing isn't collinear, so it isn't marked. New `junction`
   DrawCmd, drawn by both backends (a stroke-coloured dot). Off by default — only the app's Bus toggle asks
   for it.
+- Crossing Cues / visual hops: Added a new `PathCmd` type. `toDisplayList` now finds intersections between non-joining edges, and generates a visual crossing hop (crossover) using a quadratic Bezier curve on horizontal segments. Both canvas (`paint.ts`) and SVG (`svg.ts`) backends render the consolidated vector paths. Added unit tests for crossing hops.
+- Renderer core cleanup: moved route/path geometry out of `display.ts` into `src/core/path.ts`.
+  `display.ts` now stays focused on lowering `Scene` nodes/decorations/edges into layered `DrawCmd`s,
+  while `path.ts` owns `PathCmd`, bezier controls, rounded routed corners, crossing detection, and hop
+  construction. Existing canvas/SVG parity tests and crossing-hop coverage stay green.

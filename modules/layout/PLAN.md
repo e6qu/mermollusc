@@ -31,3 +31,6 @@
 - Unified `layoutStyle` options parameter on `layout` and `layoutDiagram` allowing diagram family-specific rendering modes (such as Classic Mermaid empty circles and straight lines for gitGraph, Relaxed message curves for sequence, Classic rects and straight spokes for mindmaps, and Donut charts for pie).
 - Self-relations in c4/network/cloud are standardized to draw a 5-point right-angle loop at the top-right corner of the node, with the label positioned at the outer corner.
 - Edge label decollision search in decollideEdgeLabels checks for overlaps against unrelated node and container group boundaries in the scene (excluding direct endpoint ancestors of each edge) to prevent labels from being placed directly over intervening nodes.
+- Network and cloud demo-oriented layouts keep architecture diagrams tiered: ungrouped ingress nodes
+  are placed before grouped zones in network layouts, and cloud top-level boxes wrap on a narrower row
+  budget with larger inter-row lanes so public starter diagrams do not collapse into one congested band.

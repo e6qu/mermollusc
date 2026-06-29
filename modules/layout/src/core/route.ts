@@ -1256,7 +1256,6 @@ const trunkMerge = (scene: Scene): Scene => {
     const fb = boxOf.get(e.from);
     const tb = boxOf.get(e.to);
     if (fb === undefined || tb === undefined) return;
-    addIncident(e.from, facingSide(fb, tb), idx);
     addIncident(e.to, facingSide(tb, fb), idx);
   });
   const groups: {

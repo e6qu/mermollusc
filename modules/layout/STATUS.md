@@ -25,11 +25,12 @@
   straight centre-to-centre edges.
 - `layoutBlock(ast)` (pure): row-major grid in a `columns`-wide uniform cell; straight
   centre-to-centre edges.
-- `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; undirected (arrowless) centre-to-centre
-  links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
+- `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; ungrouped/external leaf nodes are placed
+  before grouped zones so ingress nodes stay visually ahead of the subnets they connect to; undirected
+  (arrowless) links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
-  top-level boxes wrap to a new row past a soft width budget so a large architecture stays roughly
-  square rather than one wide strip; each service leaf's kind maps to a vendored simple-icons glyph
+  top-level boxes wrap to a new row past a narrow soft width budget with larger inter-row lanes, so
+  tiered architectures stay readable rather than one wide strip; each service leaf's kind maps to a vendored simple-icons glyph
   (`docker`/`postgresql`/`apachekafka`/`cloudflare`/`googlecloudstorage`); undirected `--` links plus
   directed `-->` traffic edges, **orthogonally routed** (right-angle Z-bend, exiting/entering the facing
   sides so the arrowhead sits at the target border and the label anchor lands in the channel rather than

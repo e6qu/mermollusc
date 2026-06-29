@@ -11,6 +11,11 @@ import type {
   SceneNode,
   SceneWedge,
 } from "@m/contracts";
+import { buildEdgePath, edgeCrossings } from "./path.js";
+import type { PathCmd } from "./path.js";
+
+export { bezierControls, roundedCorners, smoothSegments } from "./path.js";
+export type { PathCmd } from "./path.js";
 
 const ICON_SIZE = 20;
 
@@ -95,6 +100,7 @@ export type DrawCmd =
       // Draw as a smooth bezier bowed along the dominant axis (a 2-point mindmap/gitGraph connector)
       // rather than straight segments. Markers are unused on curved edges (they're arrowless).
       readonly curved: boolean;
+      readonly path: readonly PathCmd[];
     }
   | {
       readonly kind: "icon";
@@ -305,83 +311,6 @@ const directionHints = (
   return hints;
 };
 
-// Two cubic-bezier control points for a smooth curve from `a` to `b`, bowed along the dominant axis
-// (the curve leaves `a` and arrives `b` parallel to that axis — an S-curve). Shared by the canvas and
-// SVG backends so a curved edge looks identical in both. Used for mindmap spokes / gitGraph connectors.
-export const bezierControls = (a: Point, b: Point): readonly [Point, Point] => {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return [point(a.x + dx * 0.5, a.y), point(b.x - dx * 0.5, b.y)];
-  }
-  return [point(a.x, a.y + dy * 0.5), point(b.x, b.y - dy * 0.5)];
-};
-
-// A rounded-corner path: straight legs with a quadratic arc at each bend, so the curve is *only at the
-// corners* (not a continuous spline). The path starts at `points[0]`; each op is either a straight line
-// (`ctrl: null`) or a quadratic bezier whose control point is the original corner. Segments shorter than
-// twice the radius round less, so a tight dog-leg still reads cleanly. Endpoints stay exact (arrowheads
-// don't move). Used for the "curved" edge route style over an orthogonal route.
-export interface CornerOp {
-  readonly ctrl: Point | null;
-  readonly to: Point;
-}
-export const roundedCorners = (points: readonly Point[], radius: number): readonly CornerOp[] => {
-  const ops: CornerOp[] = [];
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const cur = points[i];
-    if (prev === undefined || cur === undefined) continue;
-    const next = points[i + 1];
-    if (next === undefined) {
-      ops.push({ ctrl: null, to: cur }); // last point: a straight finish onto the endpoint
-      break;
-    }
-    const d1 = Math.hypot(cur.x - prev.x, cur.y - prev.y);
-    const d2 = Math.hypot(next.x - cur.x, next.y - cur.y);
-    const r = Math.min(radius, d1 / 2, d2 / 2);
-    if (r < 0.5 || d1 === 0 || d2 === 0) {
-      ops.push({ ctrl: null, to: cur }); // negligible/degenerate corner → keep it sharp
-      continue;
-    }
-    ops.push({
-      ctrl: null,
-      to: point(cur.x - ((cur.x - prev.x) / d1) * r, cur.y - ((cur.y - prev.y) / d1) * r),
-    });
-    ops.push({
-      ctrl: cur,
-      to: point(cur.x + ((next.x - cur.x) / d2) * r, cur.y + ((next.y - cur.y) / d2) * r),
-    });
-  }
-  return ops;
-};
-
-// A smooth cubic-bezier spline through every waypoint (Catmull-Rom → bezier), so a multi-segment routed
-// edge can render as one flowing curve instead of straight dog-legs, while still ending exactly on the
-// last waypoint (the arrowhead stays put). Each segment carries the two control points + its endpoint;
-// the path starts at `points[0]`. Endpoints are duplicated so the curve doesn't overshoot at the ends.
-export interface CurveSegment {
-  readonly c1: Point;
-  readonly c2: Point;
-  readonly to: Point;
-}
-export const smoothSegments = (points: readonly Point[]): readonly CurveSegment[] => {
-  const segs: CurveSegment[] = [];
-  for (let i = 0; i + 1 < points.length; i++) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? points[i + 1];
-    if (p0 === undefined || p1 === undefined || p2 === undefined || p3 === undefined) continue;
-    segs.push({
-      c1: point(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6),
-      c2: point(p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6),
-      to: point(p2.x, p2.y),
-    });
-  }
-  return segs;
-};
-
 // Unit vector from `b` toward `a`; falls back to +x for a degenerate (zero-length) segment so a
 // collapsed waypoint pair never yields NaN coordinates.
 const awayUnit = (a: Point, b: Point): Point => {
@@ -530,6 +459,11 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         toMarker: EMPTY_MARKER,
         midMarkers: [],
         curved: false,
+        path: [
+          { kind: "moveTo", x: origin.x + size.width - fold, y: origin.y },
+          { kind: "lineTo", x: origin.x + size.width - fold, y: origin.y + fold },
+          { kind: "lineTo", x: origin.x + size.width, y: origin.y + fold },
+        ],
       },
       label,
     ];
@@ -608,6 +542,10 @@ const dividerAt = (x: number, y: number, width: number): DrawCmd => ({
   toMarker: EMPTY_MARKER,
   midMarkers: [],
   curved: false,
+  path: [
+    { kind: "moveTo", x, y },
+    { kind: "lineTo", x: x + width, y },
+  ],
 });
 
 const END_LABEL_INSET = 18; // distance from the endpoint, along the edge, for a per-end label
@@ -743,9 +681,13 @@ const busJunctions = (scene: Scene): DrawCmd[] => {
 // so they stay readable even when an edge passes close to a node. `drawJunctions` (the opt-in bus
 // rendering) adds a dot wherever edges branch off a shared backbone, drawn just above the edges.
 export const toDisplayList = (scene: Scene, drawJunctions = false): DrawCmd[] => {
+  const crossingsMap = edgeCrossings(scene.edges);
+
   const edges: DrawCmd[] = [];
   const labels: DrawCmd[] = [];
-  for (const edge of scene.edges) {
+  for (let idx = 0; idx < scene.edges.length; idx++) {
+    const edge = scene.edges[idx];
+    if (edge === undefined) continue;
     const pts = edge.waypoints;
     // `waypoints` is `TwoOrMore`, so the first two points are always present (no length guard needed).
     const first = pts[0];
@@ -765,6 +707,7 @@ export const toDisplayList = (scene: Scene, drawJunctions = false): DrawCmd[] =>
       toMarker,
       midMarkers: directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved),
       curved: edge.curved,
+      path: buildEdgePath(pts, edge.curved, crossingsMap.get(idx) ?? []),
     });
     if (edge.label !== null) {
       // A router that reserved space for the label (ELK) supplies its centre; otherwise derive it from
@@ -822,6 +765,10 @@ const decorationCmd = (d: Decoration): DrawCmd => {
         toMarker: EMPTY_MARKER,
         midMarkers: [],
         curved: false,
+        path: [
+          { kind: "moveTo", x: d.from.x, y: d.from.y },
+          { kind: "lineTo", x: d.to.x, y: d.to.y },
+        ],
       };
     case "caption":
       return { kind: "label", x: d.at.x, y: d.at.y, text: d.text, align: d.align, plate: false };

@@ -1,10 +1,7 @@
 import { assertNever } from "@m/std";
 import type { BandFill, NodeAccent } from "@m/contracts";
-import { bezierControls, roundedCorners, wedgeColor } from "../core/index.js";
+import { wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
-
-// Corner radius for a rounded ("curved") edge route — the arc size at each bend.
-const CORNER_RADIUS = 9;
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
 // 2D context is assignable to this; tests pass a recording mock.
@@ -363,35 +360,7 @@ export const paint = (
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
         ctx.strokeStyle = theme.stroke;
-        // A curved 2-point connector (mindmap spoke / gitGraph branch) — a smooth bezier, no markers.
-        const last = cmd.points[cmd.points.length - 1];
-        if (cmd.curved && cmd.points.length === 2 && last !== undefined) {
-          const [c1, c2] = bezierControls(first, last);
-          ctx.setLineDash(cmd.dashed ? [6, 4] : []);
-          ctx.beginPath();
-          ctx.moveTo(first.x, first.y);
-          ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, last.x, last.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          break;
-        }
-        // A curved multi-segment edge: straight legs with a rounded arc at each corner (the curve is only
-        // at the bends, not throughout), keeping its arrowhead. Markers point along the final segment.
-        if (cmd.curved && cmd.points.length > 2) {
-          ctx.setLineDash(cmd.dashed ? [6, 4] : []);
-          ctx.beginPath();
-          ctx.moveTo(first.x, first.y);
-          for (const op of roundedCorners(cmd.points, CORNER_RADIUS)) {
-            if (op.ctrl === null) ctx.lineTo(op.to.x, op.to.y);
-            else ctx.quadraticCurveTo(op.ctrl.x, op.ctrl.y, op.to.x, op.to.y);
-          }
-          ctx.stroke();
-          ctx.setLineDash([]);
-          drawMarker(ctx, cmd.fromMarker, theme);
-          drawMarker(ctx, cmd.toMarker, theme);
-          for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
-          break;
-        }
+
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
         if (theme.sketch && !cmd.dashed) {
           let prev = first;
@@ -405,10 +374,27 @@ export const paint = (
           for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
           break;
         }
+
         ctx.setLineDash(cmd.dashed ? [6, 4] : []);
         ctx.beginPath();
-        ctx.moveTo(first.x, first.y);
-        for (const p of rest) ctx.lineTo(p.x, p.y);
+        for (const p of cmd.path) {
+          switch (p.kind) {
+            case "moveTo":
+              ctx.moveTo(p.x, p.y);
+              break;
+            case "lineTo":
+              ctx.lineTo(p.x, p.y);
+              break;
+            case "quadTo":
+              ctx.quadraticCurveTo(p.cx, p.cy, p.x, p.y);
+              break;
+            case "cubicTo":
+              ctx.bezierCurveTo(p.c1x, p.c1y, p.c2x, p.c2y, p.x, p.y);
+              break;
+            default:
+              assertNever(p);
+          }
+        }
         ctx.stroke();
         ctx.setLineDash([]);
         drawMarker(ctx, cmd.fromMarker, theme);

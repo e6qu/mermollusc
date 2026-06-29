@@ -48,15 +48,15 @@ exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 [
-  "box 0,0 236x98 r4",
-  "label "AWS" 118,12 center",
-  "polyline 96,54 118,54 118,54 140,54 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "box 0,0 276x98 r4",
+  "label "AWS" 138,12 center",
+  "polyline 96,54 138,54 138,54 180,54 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 16,26 80x56 r0",
   "icon simpleicons/docker 46,32 20",
   "label "Web" 56,58 center",
-  "box 140,26 80x56 r0",
-  "icon simpleicons/googlecloudstorage 170,32 20",
-  "label "Assets" 180,58 center",
+  "box 180,26 80x56 r0",
+  "icon simpleicons/googlecloudstorage 210,32 20",
+  "label "Assets" 220,58 center",
 ]
 `;
 

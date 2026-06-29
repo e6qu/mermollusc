@@ -4779,6 +4779,20 @@ const cycleShape = async (): Promise<void> => {
 // Cycle the single selected flowchart/block edge's presentational style by rewriting its arrow token.
 const EDGE_STYLE_CYCLE: readonly EdgeKind[] = ["arrow", "open", "dotted", "thick"];
 const SEQ_STYLE_CYCLE: readonly MessageKind[] = ["solid", "dashed", "solidOpen", "dashedOpen"];
+const edgeKindForToken = (token: string): EdgeKind | null => {
+  if (token === "-->") return "arrow";
+  if (token === "---") return "open";
+  if (token === "-.->") return "dotted";
+  if (token === "==>") return "thick";
+  return null;
+};
+const messageKindForToken = (token: string): MessageKind | null => {
+  if (token === "->>") return "solid";
+  if (token === "-->>") return "dashed";
+  if (token === "->") return "solidOpen";
+  if (token === "-->") return "dashedOpen";
+  return null;
+};
 // Toggle the curved/straight presentation of the selected edge(s) — a visual-only preference (no source
 // edit, no re-layout), so just flip the set, persist, and repaint. Curves all if any selected edge is
 // straight, else straightens all.
@@ -4856,15 +4870,26 @@ const cycleEdgeStyle = async (): Promise<void> => {
   }
   if (arrowSpan === undefined || currentKind === undefined) return;
 
+  const token = editor.value().slice(arrowSpan.start, arrowSpan.end);
   let text = "";
   let nextStyle = "";
   if (ast.kind === "sequence") {
-    const idx = SEQ_STYLE_CYCLE.indexOf(currentKind as MessageKind);
+    const current = messageKindForToken(token);
+    if (current === null) {
+      flashStatus(`edge style failed: unknown message arrow ${token}`);
+      return;
+    }
+    const idx = SEQ_STYLE_CYCLE.indexOf(current);
     const next = SEQ_STYLE_CYCLE[(idx + 1) % SEQ_STYLE_CYCLE.length] ?? "solid";
     nextStyle = next;
     text = restyleSequenceMessage(editor.value(), arrowSpan, next);
   } else {
-    const idx = EDGE_STYLE_CYCLE.indexOf(currentKind as EdgeKind);
+    const current = edgeKindForToken(token);
+    if (current === null) {
+      flashStatus(`edge style failed: unknown edge arrow ${token}`);
+      return;
+    }
+    const idx = EDGE_STYLE_CYCLE.indexOf(current);
     const next = EDGE_STYLE_CYCLE[(idx + 1) % EDGE_STYLE_CYCLE.length] ?? "arrow";
     nextStyle = next;
     text = restyleEdge(editor.value(), arrowSpan, next);

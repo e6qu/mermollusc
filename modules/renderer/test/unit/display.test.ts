@@ -689,4 +689,61 @@ describe("roundedCorners", () => {
     const quad = ops.find((o) => o.ctrl !== null);
     expect(quad?.ctrl).toEqual(point(4, 0));
   });
+  it("detects edge crossings and generates crossing hops on horizontal segments", () => {
+    const crossoverScene: Scene = {
+      nodes: [],
+      edges: [
+        {
+          id: seid("e1"),
+          from: snid("n1"),
+          to: snid("n2"),
+          waypoints: [point(0, 20), point(40, 20)],
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          fromLabel: null,
+          toLabel: null,
+          label: null,
+          labelPos: null,
+          curved: false,
+        },
+        {
+          id: seid("e2"),
+          from: snid("n3"),
+          to: snid("n4"),
+          waypoints: [point(20, 0), point(20, 40)],
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          fromLabel: null,
+          toLabel: null,
+          label: null,
+          labelPos: null,
+          curved: false,
+        },
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 100, 100),
+    };
+    const out = toDisplayList(crossoverScene);
+    const polylines = out.filter((c) => c.kind === "polyline");
+    expect(polylines).toHaveLength(2);
+
+    const horizontalEdgeCmd = polylines.find((p) => p.kind === "polyline" && p.points[0]?.y === 20);
+    const verticalEdgeCmd = polylines.find((p) => p.kind === "polyline" && p.points[0]?.x === 20);
+
+    expect(horizontalEdgeCmd).toBeDefined();
+    expect(verticalEdgeCmd).toBeDefined();
+
+    if (horizontalEdgeCmd?.kind === "polyline") {
+      const pathKinds = horizontalEdgeCmd.path.map((p) => p.kind);
+      expect(pathKinds).toContain("quadTo");
+    }
+
+    if (verticalEdgeCmd?.kind === "polyline") {
+      const pathKinds = verticalEdgeCmd.path.map((p) => p.kind);
+      expect(pathKinds).not.toContain("quadTo");
+    }
+  });
 });

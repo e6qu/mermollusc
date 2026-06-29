@@ -25,17 +25,17 @@ const KIND_ICON: Record<CloudNodeKind, IconRef> = {
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
-const GAP = 44;
+const GAP = 84;
 // A wider lane between stacked rows than between side-by-side boxes: cross-row connectors (e.g. an
 // app tier wiring down to a data tier) share that vertical channel, so the extra room lets the router
 // spread and detour them instead of stacking them into one congested band.
-const ROW_GAP = 72;
+const ROW_GAP = 160;
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
 // Soft width budget for a row of top-level boxes before wrapping to the next row (keeps a large
 // architecture roughly square rather than one very wide strip).
-const MAX_ROW_WIDTH = 900;
+const MAX_ROW_WIDTH = 620;
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
 interface Box {

@@ -42,6 +42,10 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
    Research-grade; deliver as a best-effort pass, not exact.
 
 ## Layout / rendering
+- **Examples parity guard:** Done for parse → layout → display-list → SVG across every catalog entry,
+  with explicit network/cloud catalog assertions. Network/cloud starters are now curated for public
+  demo readability; future source changes should be checked with before/after screenshots, not only
+  parser/layout tests.
 - **c4 + network edge labels overlap node labels on busy diagrams.** Both use a simple absolute layout
   with a fixed ~24px inter-node gap, so a wide edge label on a short segment bleeds into neighbouring
   boxes (worked around in the menu examples with short labels). Reserve horizontal room for edge labels,

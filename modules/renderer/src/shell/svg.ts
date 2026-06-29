@@ -1,4 +1,4 @@
-import { bezierControls, roundedCorners, wedgeColor } from "../core/index.js";
+import { wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { accentFill, bandFill, defaultTheme, type Theme } from "./paint.js";
 
@@ -99,30 +99,24 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
     }
     case "polyline": {
       const dash = cmd.dashed ? ' stroke-dasharray="6 4"' : "";
-      const a = cmd.points[0];
-      const b = cmd.points[cmd.points.length - 1];
-      // A curved 2-point connector — a bezier path, matching the canvas painter; no markers.
-      if (cmd.curved && cmd.points.length === 2 && a !== undefined && b !== undefined) {
-        const [c1, c2] = bezierControls(a, b);
-        const d = `M ${num(a.x)} ${num(a.y)} C ${num(c1.x)} ${num(c1.y)}, ${num(c2.x)} ${num(c2.y)}, ${num(b.x)} ${num(b.y)}`;
-        return `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
-      }
-      // A curved multi-segment edge — straight legs with a rounded arc at each corner, keeping its markers.
-      if (cmd.curved && cmd.points.length > 2 && a !== undefined) {
-        const d = `M ${num(a.x)} ${num(a.y)} ${roundedCorners(cmd.points, 9)
-          .map((op) =>
-            op.ctrl === null
-              ? `L ${num(op.to.x)} ${num(op.to.y)}`
-              : `Q ${num(op.ctrl.x)} ${num(op.ctrl.y)}, ${num(op.to.x)} ${num(op.to.y)}`,
-          )
-          .join(" ")}`;
-        const path = `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
-        return `${path}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}`;
-      }
-      const pts = cmd.points.map((p) => `${num(p.x)},${num(p.y)}`).join(" ");
-      const line = `<polyline points="${pts}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
+      const d = cmd.path
+        .map((p) => {
+          switch (p.kind) {
+            case "moveTo":
+              return `M ${num(p.x)} ${num(p.y)}`;
+            case "lineTo":
+              return `L ${num(p.x)} ${num(p.y)}`;
+            case "quadTo":
+              return `Q ${num(p.cx)} ${num(p.cy)}, ${num(p.x)} ${num(p.y)}`;
+            case "cubicTo":
+              return `C ${num(p.c1x)} ${num(p.c1y)}, ${num(p.c2x)} ${num(p.c2y)}, ${num(p.x)} ${num(p.y)}`;
+          }
+          return "";
+        })
+        .join(" ");
+      const path = `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
       const mids = cmd.midMarkers.map((m) => markerToSvg(m, theme)).join("");
-      return `${line}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}${mids}`;
+      return `${path}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}${mids}`;
     }
     case "icon": {
       const href = icons.get(`${cmd.ref.pack}/${cmd.ref.name}`);

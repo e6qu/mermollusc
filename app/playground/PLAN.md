@@ -24,7 +24,8 @@ canvas, and hosts the e2e / golden tests.
   user-facing workflows should update that story map and add deterministic Playwright/Vitest coverage
   or an explicit visual-review shot.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
-  same starter diagrams; every menu entry must parse through `parseDiagram`.
+  same starter diagrams; every menu entry must parse, lay out, lower to a display list, and export as
+  SVG. Network and cloud examples are explicit catalog requirements.
 - Support the backend-free GitHub Pages demo build at `/demo/`: the app stays single-user/local-only
   there even if a visitor appends `?collab`.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
