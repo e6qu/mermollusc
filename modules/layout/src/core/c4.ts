@@ -1,4 +1,4 @@
-import { err, ok, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { spreadPorts } from "./route.js";
 import type {
@@ -139,7 +139,15 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: isSelf ? selfLoopLabelPos(from) : null,
+      labelPos:
+        rel.label === ""
+          ? null
+          : isSelf
+            ? selfLoopLabelPos(from)
+            : point(
+                (from.x + from.w / 2 + to.x + to.w / 2) / 2,
+                (from.y + from.h / 2 + to.y + to.h / 2) / 2,
+              ),
     });
   }
 

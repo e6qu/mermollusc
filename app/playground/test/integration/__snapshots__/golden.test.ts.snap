@@ -24,7 +24,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
   "label "API" 180,54 center",
   "box 264,26 88x56 r0",
   "label "Database" 308,54 center",
-  "label "uses" 99,41 center",
+  "label "uses" 110,41 center",
 ]
 `;
 
@@ -199,7 +199,7 @@ exports[`pipeline goldens > lays out network to a stable display list 1`] = `
   "box 0,96 88x48 r0",
   "icon arch/server 34,102 20",
   "label "Web" 44,128 center",
-  "label "eth0" 107,81 center",
+  "label "eth0" 118,76 center",
 ]
 `;
 

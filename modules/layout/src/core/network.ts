@@ -1,4 +1,4 @@
-import { err, ok, rect, type Result } from "@m/std";
+import { err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { spreadPorts } from "./route.js";
 import type {
@@ -174,7 +174,15 @@ export const layoutNetwork = (
       curved: false,
       fromLabel: null,
       toLabel: null,
-      labelPos: isSelf ? selfLoopLabelPos(fromBox) : null,
+      labelPos:
+        link.label === null
+          ? null
+          : isSelf
+            ? selfLoopLabelPos(fromBox)
+            : point(
+                (fromBox.x + fromBox.w / 2 + toBox.x + toBox.w / 2) / 2,
+                (fromBox.y + fromBox.h / 2 + toBox.y + toBox.h / 2) / 2,
+              ),
     });
   }
 
