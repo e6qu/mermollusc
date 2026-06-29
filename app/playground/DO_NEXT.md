@@ -28,7 +28,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 - **(done) Sequence notes (makes a dead branch live).** The sequence parser has no `note` token, so
   `deleteActor`'s `SEQ_NOTE` branch is unreachable (see `modules/builder/BUGS.md`). Add note support
   across parser → layout → renderer to make it real — then the sequence example can show a `note over`.
-- **Class diagram, parser-led.** Stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
+- *(done)* **Class diagram, parser-led.** Stereotypes (`<<interface>>`), per-end multiplicity labels, generics.
 
 ## Connectors (scoped next phase — sequenced)
 The renderer already supports curved edges (bezier) and `labelPos`. Build in this order:
