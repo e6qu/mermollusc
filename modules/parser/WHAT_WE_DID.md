@@ -268,3 +268,4 @@
   point the relabel span at the inner text — `A ||--o{ B : "places many"` stored/edited as `places many`,
   not `"places many"`.
 - Capture sequence message arrow-token spans (`arrows`) in the parsed `SequenceSource` map, enabling sequence edge style cycling.
+- Class diagram stereotype parsing: added a new `ClassStereotype` token (`<<...>>`) and supported parsing class header stereotypes (e.g., `class Foo <<interface>>`) as well as standalone stereotype declarations (e.g., `<<service>> CustomerService`). Integrated these with the parser source map.

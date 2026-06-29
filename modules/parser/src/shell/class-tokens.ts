@@ -23,6 +23,10 @@ const Relationship = createToken({
   pattern: /(?:<\||<|\*|o)?(?:--|\.\.)(?:\|>|>|\*|o)?/,
 });
 const QuotedString = createToken({ name: "ClassQuotedString", pattern: /"(?:[^"\\]|\\.)*"/ });
+const Stereotype = createToken({
+  name: "ClassStereotype",
+  pattern: /<<[^>\n]+>>/,
+});
 const NewLine = createToken({ name: "ClassNewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "ClassSemicolon", pattern: /;/ });
 const WhiteSpace = createToken({
@@ -62,6 +66,7 @@ export const classLexer = new Lexer({
       LBrace,
       Colon,
       QuotedString,
+      Stereotype,
       Identifier,
     ],
     body: [RBrace, BodyNewLine, MemberText],
@@ -76,6 +81,7 @@ export const ClassTok = {
   ClassKw,
   Relationship,
   QuotedString,
+  Stereotype,
   NewLine,
   Semicolon,
   LBrace,
@@ -103,5 +109,6 @@ export const classAllTokens: TokenType[] = [
   LabelEnd,
   LabelText,
   QuotedString,
+  Stereotype,
   Identifier,
 ];
