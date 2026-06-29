@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { spreadPorts } from "./route.js";
 import type {
@@ -12,6 +12,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { optimalMountPoints } from "./route.js";
 import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 
 const PADDING = 16;
@@ -130,12 +131,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       id: sceneEdgeId(rel.id),
       from: sceneNodeId(rel.from),
       to: sceneNodeId(rel.to),
-      waypoints: isSelf
-        ? selfLoopWaypoints(from)
-        : [
-            point(from.x + from.w / 2, from.y + from.h / 2),
-            point(to.x + to.w / 2, to.y + to.h / 2),
-          ],
+      waypoints: isSelf ? selfLoopWaypoints(from) : optimalMountPoints(from, to),
       label: rel.label === "" ? null : rel.label,
       stroke: "solid",
       fromEnd: "none",

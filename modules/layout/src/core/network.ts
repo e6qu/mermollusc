@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { err, ok, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { spreadPorts } from "./route.js";
 import type {
@@ -13,6 +13,7 @@ import type {
 import { ARCH_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { variableGrid, type Size } from "./grid.js";
+import { optimalMountPoints } from "./route.js";
 import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
 
 const LABEL_PADDING = 24;
@@ -152,10 +153,9 @@ export const layoutNetwork = (
 
   const edges: SceneEdge[] = [];
   for (const link of ast.links) {
-    const from = centers.get(link.from);
-    const to = centers.get(link.to);
     const fromBox = bounds.get(link.from);
-    if (from === undefined || to === undefined || fromBox === undefined) {
+    const toBox = bounds.get(link.to);
+    if (fromBox === undefined || toBox === undefined) {
       return err({
         kind: "layout",
         message: `network: link ${link.id} references an unknown node`,
@@ -166,7 +166,7 @@ export const layoutNetwork = (
       id: sceneEdgeId(link.id),
       from: sceneNodeId(link.from),
       to: sceneNodeId(link.to),
-      waypoints: isSelf ? selfLoopWaypoints(fromBox) : [point(from.x, from.y), point(to.x, to.y)],
+      waypoints: isSelf ? selfLoopWaypoints(fromBox) : optimalMountPoints(fromBox, toBox),
       label: link.label,
       stroke: "solid",
       fromEnd: "none",
