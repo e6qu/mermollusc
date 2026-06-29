@@ -1538,7 +1538,13 @@ const computeCapabilities = (): CapabilityState => {
 
   const hasNotesSelected =
     ast?.kind === "sequence" && selectionOrder.some((id) => id.startsWith("note"));
-  const canConnect = connectable && selectionOrder.length >= 2 && !hasNotesSelected;
+  const isCappedFamily =
+    ast !== null && (ast.kind === "gitGraph" || ast.kind === "mindmap" || ast.kind === "timeline");
+  const canConnect =
+    connectable &&
+    selectionOrder.length >= 2 &&
+    !hasNotesSelected &&
+    (!isCappedFamily || selectionOrder.length === 2);
   const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
   const canDuplicate = duplicatable && selectionOrder.length >= 1;
 
@@ -1549,9 +1555,11 @@ const computeCapabilities = (): CapabilityState => {
       ? `connect isn't available for ${kindLabel}`
       : hasNotesSelected
         ? "can't connect to or from notes"
-        : selectionOrder.length < 2
-          ? "select two nodes"
-          : "",
+        : isCappedFamily && selectionOrder.length > 2
+          ? "select exactly two nodes"
+          : selectionOrder.length < 2
+            ? "select two nodes"
+            : "",
     iconCapable,
     iconTitle: iconCapable
       ? "Insert an icon override on a node"
@@ -4095,6 +4103,9 @@ const pasteClipboard = async (): Promise<void> => {
 // edge (the common case); 3+ builds the whole chain in one action.
 connectBtn.addEventListener("click", () => {
   if (viewerMode || ast === null || selectionOrder.length < 2) return;
+  const isCappedFamily =
+    ast.kind === "gitGraph" || ast.kind === "mindmap" || ast.kind === "timeline";
+  if (isCappedFamily && selectionOrder.length > 2) return;
   const before = editor.value();
   let text = editor.value();
   for (let i = 0; i + 1 < selectionOrder.length; i++) {

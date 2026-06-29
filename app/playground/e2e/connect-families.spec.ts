@@ -97,3 +97,34 @@ test("a DOT import is read-only on the canvas (edits disabled, not failing after
   await setSource(page, "flowchart TD\n  A --> B\n");
   await expect(page.locator("#add-node")).toBeEnabled();
 });
+
+test("connect button is disabled for 3+ selected items in capped families", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  // 1. In a flowchart (uncapped), 3 selected items allows Connect
+  await setSource(page, "flowchart TD\n  A\n  B\n  C\n");
+
+  await expect(page.locator("#diagram-nav")).toContainText("A");
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Home"); // selects A
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("ArrowDown"); // adds B to selection
+  await page.keyboard.press("ArrowDown"); // adds C to selection
+  await page.keyboard.up("Shift");
+
+  await expect(page.locator("#connect")).toBeEnabled();
+
+  // 2. In a gitGraph (capped), 3 selected items disables Connect
+  await setSource(page, "gitGraph\n  commit\n  branch develop\n  commit\n  branch feature\n  commit\n");
+  await expect(page.locator("#diagram-nav")).toContainText("main");
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Home"); // selects main
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("ArrowDown"); // adds develop
+  await page.keyboard.press("ArrowDown"); // adds feature
+  await page.keyboard.up("Shift");
+
+  await expect(page.locator("#connect")).toBeDisabled();
+  await expect(page.locator("#connect")).toHaveAttribute("title", /exactly two nodes/);
+});
