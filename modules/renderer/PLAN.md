@@ -2,6 +2,11 @@
 
 `Scene → pixels` on an HTML canvas.
 
+## Architecture accents
+
+- Preserve semantic architecture colour intent from `SceneNode.accent` for leaves and containers,
+  including cloud/network compute, data, network, security, and ops roles.
+
 ## Responsibility
 
 - Owns turning a positioned `Scene` into drawing operations and executing them.

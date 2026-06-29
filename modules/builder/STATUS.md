@@ -2,6 +2,9 @@
 
 **State:** hit-testing, selection, overrides, and two-way text patching; `make check` green.
 
+**Current Gantt note:** `setGanttStartFromDay` rewrites an `after ...` start field into an explicit date
+for drag gestures that already know the resolved calendar day.
+
 - core: `hitTest`; `Selection` (`selectOnly`/`toggle`/`isSelected`); overrides
   (`moveNode`/`resizeNode`/`clearOverride`/`applyOverrides` — moving nodes re-anchors their connectors
   and grows the extent so dragged-out nodes aren't clipped; `resizeNode` pins position + size for

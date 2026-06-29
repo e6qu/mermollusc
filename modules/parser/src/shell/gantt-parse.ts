@@ -72,6 +72,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
   const excludeDates: GanttDate[] = [];
   const tasks: GanttTask[] = [];
   const taskSpans = new Map<GanttTaskId, TextSpan>();
+  const startFieldSpans = new Map<GanttTaskId, TextSpan>();
   const startSpans = new Map<GanttTaskId, TextSpan>();
   const durationSpans = new Map<GanttTaskId, TextSpan>();
 
@@ -238,6 +239,7 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       const durTok = fieldToks[fieldToks.length - 1];
       const startTok = fieldToks[fieldToks.length - 2];
       if (durTok !== undefined) durationSpans.set(id, trimmedSpan(durTok));
+      if (startTok !== undefined) startFieldSpans.set(id, trimmedSpan(startTok));
       if (start.kind === "date" && startTok !== undefined)
         startSpans.set(id, trimmedSpan(startTok));
     }
@@ -253,7 +255,12 @@ const buildResult = (cst: CstNode, text: string): Result<ParsedGantt, ParseError
       excludeDates,
       tasks,
     },
-    source: { tasks: taskSpans, taskStart: startSpans, taskDuration: durationSpans },
+    source: {
+      tasks: taskSpans,
+      taskStartField: startFieldSpans,
+      taskStart: startSpans,
+      taskDuration: durationSpans,
+    },
   });
 };
 

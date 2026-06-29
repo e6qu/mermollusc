@@ -124,3 +124,8 @@ trunk (route them to one shared port / backbone, branch with junctions) — the 
 
 ## Trunk merging shipped (the aggressive bus, opt-in "Trunk" toggle, now enhanced)
 `trunkRoutes` = spread the non-fan edges, then merge each ≥2 fan onto a shared trunk + single port. Enhanced to place the trunk line dynamically in the center of the available routing channel (balanced) and to maze-route each edge's approach to the trunk around obstacles (avoiding clipping). Defaulted playground UI toggle to true on first load.
+
+## First-class architecture cleanup shipped
+Network roots now read left-to-right as zones, cloud rows have room for tiered routing demos, and
+timeline event connectors are real edges so dragged events keep visible links. Remaining visual debt:
+route-label placement on dense cloud trunks can still improve without removing source labels.

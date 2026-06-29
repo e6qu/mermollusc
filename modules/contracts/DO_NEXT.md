@@ -10,3 +10,5 @@
   overloading generic shapes for initial/final/fork/join/note glyphs.
 - *(done)* State notes now carry `side` (`right`/`left`/`over`), and pie wedges carry `innerRadius` for
   donut slices.
+- *(done)* Architecture scene nodes carry semantic accents, and Gantt source maps expose full start-field
+  spans for drag-to-date edits.

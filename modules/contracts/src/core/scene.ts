@@ -10,7 +10,16 @@ export type EdgeStroke = "solid" | "dashed";
 // A semantic node-fill accent the renderer maps to a theme-aware colour (Gantt task status today).
 // `none` is the ordinary node fill — an explicit member, not an implicit/absent default, so every node
 // states its accent and the renderer handles every case exhaustively.
-export type NodeAccent = "none" | "muted" | "active" | "danger";
+export type NodeAccent =
+  | "none"
+  | "muted"
+  | "active"
+  | "danger"
+  | "compute"
+  | "data"
+  | "network"
+  | "security"
+  | "ops";
 // Semantic node roles that need family-specific drawing while keeping layout geometry generic.
 // `normal` is the common case; state roles preserve pseudo-states and notes after state diagrams are
 // laid out through the flowchart engine.

@@ -3,6 +3,12 @@
 The web app that wires the full pipeline (parser → layout → renderer → builder) to an HTML
 canvas, and hosts the e2e / golden tests.
 
+## Demo rendering parity
+
+- Keep the demo catalog at parity with renderer/layout capabilities. Cloud and network are first-class
+  style families, cloud defaults to trunk routing, and examples exercise architecture colours, crossing
+  hints, Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
+
 ## Responsibility
 
 - Mount the builder onto a canvas; provide the text editor and the diagram surface, with a cohesive

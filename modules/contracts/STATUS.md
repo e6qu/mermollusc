@@ -2,6 +2,9 @@
 
 **State:** AST + SceneGraph IR defined (types only); `make check` green.
 
+**Current rendering-contract note:** semantic architecture accents are in `NodeAccent`, and
+`GanttSource` includes `taskStartField` for explicit and dependency start rewrites.
+
 - AST: all fifteen family variants — flowchart + sequence + C4 + block + network + cloud + state + ER
   + class + requirement + gitGraph + timeline + mindmap + pie + Gantt (`FlowchartAst` incl.
   `FlowSubgraph` grouping, `SequenceAst`, `C4Ast` with nesting + optional `C4Element.description`,

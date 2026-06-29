@@ -154,6 +154,9 @@ export const shiftGanttStart = (
     ? text
     : patchSpan(text, startSpan, ganttISOofDay(ganttDayOf(oldISO) + deltaDays));
 
+export const setGanttStartFromDay = (text: string, startSpan: TextSpan, day: number): string =>
+  patchSpan(text, startSpan, ganttISOofDay(day));
+
 // Rewrite a task's duration field to `Nd` (at least 1 day, so a task never collapses to a milestone).
 export const setGanttDuration = (text: string, durationSpan: TextSpan, days: number): string =>
   patchSpan(text, durationSpan, `${Math.max(1, Math.round(days))}d`);

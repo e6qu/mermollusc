@@ -188,18 +188,18 @@ exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
-  "polyline 88,24 113,24 113,16 138,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 138,24 118,32 118,120 88,120 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 88,24 112,24 112,24 136,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 224,24 248,24 248,24 272,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 0,0 88x48 r0",
   "icon arch/cloud 34,6 20",
   "label "Internet" 44,32 center",
-  "box 138,0 88x48 r0",
-  "icon arch/router 172,6 20",
-  "label "Edge" 182,32 center",
-  "box 0,96 88x48 r0",
-  "icon arch/server 34,102 20",
-  "label "Web" 44,128 center",
-  "label "eth0" 118,77 center",
+  "box 136,0 88x48 r0",
+  "icon arch/router 170,6 20",
+  "label "Edge" 180,32 center",
+  "box 272,0 88x48 r0",
+  "icon arch/server 306,6 20",
+  "label "Web" 316,32 center",
+  "label "eth0" 248,24 center",
 ]
 `;
 
@@ -293,13 +293,14 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
 
 exports[`pipeline goldens > lays out timeline to a stable display list 1`] = `
 [
-  "polyline 62,88 62,116 dashed=true from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 172,88 172,160 dashed=true from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 282,88 282,116 dashed=true from=l0p0c0 to=l0p0c0 mid=0",
   "box 16,16 202x26 r4",
   "label "Early" 117,28 center",
   "box 236,16 92x26 r4",
   "label "Growth" 282,28 center",
+  "polyline 62,88 62,132 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 172,88 172,132 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 172,88 172,176 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 282,88 282,132 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "polyline 62,88 172,70 282,88 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 16,52 92x36 r8",
   "label "2002" 62,70 center",

@@ -34,22 +34,28 @@ describe("layoutNetwork", () => {
     expect(layoutNetwork(bad, heuristicMeasure).ok).toBe(false);
   });
 
-  it("places nodes in a squarish grid (3 nodes → 2 columns)", () => {
+  it("places root network nodes left-to-right", () => {
     const a = byId.get("a")?.bounds;
     const b = byId.get("b")?.bounds;
     const c = byId.get("c")?.bounds;
     if (a === undefined || b === undefined || c === undefined) throw new Error("missing nodes");
-    // a, b share the first row; c wraps to the next row at the first column.
+    // Root-level zones read left-to-right; nested groups still use compact grids.
     expect(a.origin.y).toBe(b.origin.y);
     expect(b.origin.x).toBeGreaterThan(a.origin.x);
-    expect(c.origin.x).toBe(a.origin.x);
-    expect(c.origin.y).toBeGreaterThan(a.origin.y);
+    expect(c.origin.y).toBe(a.origin.y);
+    expect(c.origin.x).toBeGreaterThan(b.origin.x);
   });
 
   it("renders links undirected (no arrowhead)", () => {
     expect(scene.edges).toHaveLength(1);
     expect(scene.edges[0]?.toEnd).toBe("none");
     expect(scene.edges[0]?.stroke).toBe("solid");
+  });
+
+  it("assigns semantic accents by network device kind", () => {
+    expect(byId.get("a")?.accent).toBe("compute");
+    expect(byId.get("b")?.accent).toBe("data");
+    expect(byId.get("c")?.accent).toBe("network");
   });
 });
 

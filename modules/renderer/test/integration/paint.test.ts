@@ -489,7 +489,17 @@ const contrast = (a: string, b: string): number => {
 
 describe("palette contrast (WCAG AA)", () => {
   const themes = [defaultTheme, darkTheme];
-  const accents = ["none", "muted", "active", "danger"] as const;
+  const accents = [
+    "none",
+    "muted",
+    "active",
+    "danger",
+    "compute",
+    "data",
+    "network",
+    "security",
+    "ops",
+  ] as const;
 
   it("a node label clears 4.5:1 against every accent fill, in both themes (1.4.3)", () => {
     for (const theme of themes) {
@@ -509,15 +519,25 @@ describe("palette contrast (WCAG AA)", () => {
 });
 
 describe("accentFill", () => {
-  it("maps `none` to the theme node fill and each status accent to a distinct, theme-aware colour", () => {
+  it("maps `none` to the theme node fill and each semantic accent to a distinct, theme-aware colour", () => {
     expect(accentFill("none", defaultTheme)).toBe(defaultTheme.nodeFill);
     expect(accentFill("none", darkTheme)).toBe(darkTheme.nodeFill);
 
-    const light = (["muted", "active", "danger"] as const).map((a) => accentFill(a, defaultTheme));
-    const dark = (["muted", "active", "danger"] as const).map((a) => accentFill(a, darkTheme));
+    const semantic = [
+      "muted",
+      "active",
+      "danger",
+      "compute",
+      "data",
+      "network",
+      "security",
+      "ops",
+    ] as const;
+    const light = semantic.map((a) => accentFill(a, defaultTheme));
+    const dark = semantic.map((a) => accentFill(a, darkTheme));
     // each accent is distinct from the plain fill and from the others, in both themes
-    expect(new Set([defaultTheme.nodeFill, ...light]).size).toBe(4);
-    expect(new Set([darkTheme.nodeFill, ...dark]).size).toBe(4);
+    expect(new Set([defaultTheme.nodeFill, ...light]).size).toBe(semantic.length + 1);
+    expect(new Set([darkTheme.nodeFill, ...dark]).size).toBe(semantic.length + 1);
     // dark-theme accents differ from light-theme ones (the luminance branch is exercised)
     expect(dark).not.toEqual(light);
   });

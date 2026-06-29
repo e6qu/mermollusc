@@ -2,6 +2,9 @@
 
 **State:** flowchart layout + relax (semi-interactive) implemented; `make check` green.
 
+**Current architecture note:** network root zones now lay out left-to-right, cloud uses semantic
+architecture accents with a wider tier row budget, and timeline event connectors are real edges.
+
 - `layout(ast, seed?)` → `Promise<Result<Scene, LayoutError>>` (shell). A non-empty `seed`
   (node → current position) runs ELK semi-interactive layered layout — relaxing around the
   manual positions; an empty seed (the default) is a clean layout (regenerate).

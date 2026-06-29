@@ -5,6 +5,7 @@ import type {
   CloudAst,
   CloudNodeKind,
   IconRef,
+  NodeAccent,
   NodeId,
   Scene,
   SceneEdge,
@@ -23,6 +24,25 @@ const KIND_ICON: Record<CloudNodeKind, IconRef> = {
   cdn: { pack: SIMPLE_ICONS_PACK, name: "cloudflare" },
 };
 
+const KIND_ACCENT: Record<CloudNodeKind, NodeAccent> = {
+  compute: "compute",
+  storage: "data",
+  database: "data",
+  queue: "ops",
+  cdn: "network",
+};
+
+const groupAccent = (label: string): NodeAccent => {
+  const l = label.toLowerCase();
+  if (l.includes("edge") || l.includes("routing") || l.includes("network")) return "network";
+  if (l.includes("security") || l.includes("identity") || l.includes("auth")) return "security";
+  if (l.includes("data") || l.includes("storage")) return "data";
+  if (l.includes("ops") || l.includes("observ") || l.includes("async") || l.includes("event"))
+    return "ops";
+  if (l.includes("service") || l.includes("compute")) return "compute";
+  return "muted";
+};
+
 const PADDING = 16;
 const HEADER = 26; // space at the top of a group for its label
 const GAP = 84;
@@ -35,7 +55,7 @@ const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;
 // Soft width budget for a row of top-level boxes before wrapping to the next row (keeps a large
 // architecture roughly square rather than one very wide strip).
-const MAX_ROW_WIDTH = 620;
+const MAX_ROW_WIDTH = 1200;
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
 interface Box {
@@ -50,6 +70,7 @@ interface Elem {
   readonly label: string;
   readonly parent: NodeId | null;
   readonly icon: IconRef | null;
+  readonly accent: NodeAccent;
   readonly group: boolean;
 }
 
@@ -69,6 +90,7 @@ export const layoutCloud = (
       label: g.label,
       parent: g.parent,
       icon: null,
+      accent: groupAccent(g.label),
       group: true,
     })),
     ...ast.nodes.map((n) => ({
@@ -77,6 +99,7 @@ export const layoutCloud = (
       parent: n.parent,
       // An explicit `icon "<pack>/<name>"` override wins; otherwise the kind's default glyph.
       icon: n.icon ?? KIND_ICON[n.kind],
+      accent: KIND_ACCENT[n.kind],
       group: false,
     })),
   ];
@@ -179,7 +202,7 @@ export const layoutCloud = (
       rows: null,
       rowDivider: null,
       subtitle: null,
-      accent: "none",
+      accent: el.accent,
       role: "normal",
     });
   }

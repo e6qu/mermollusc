@@ -179,6 +179,9 @@ span, so a rapid second `S` press cannot reuse a stale AST edge kind.
 Checked while auditing all demo example screenshots and trimming the cloud/BPMN starters so the public
 catalog stays readable under the container-title routing guard.
 
+Checked while making cloud/network style buckets first-class, restoring architecture colours, enriching
+the demo catalog, and fixing dragged Gantt dependency tasks plus timeline events.
+
 Resolved (Miro-like round, 2026-06-23):
 
 - ~~**A tool-change announcement overwrote the canvas's diagram aria-label.**~~ Caught while building

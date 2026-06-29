@@ -15,3 +15,5 @@
 - *(done)* Sidecar group labels (`setGroupLabel`) persist through the overlay codec.
 - *(done)* Property coverage for `relabelNode` (span-accurate relabel, others untouched) and
   `connect` (appends exactly one edge, nodes preserved).
+- *(done)* Gantt dependency-start drag support: `setGanttStartFromDay` rewrites `after ...` spans to an
+  explicit date when the app has a resolved calendar day.

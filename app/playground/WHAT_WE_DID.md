@@ -1,5 +1,17 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Demo parity, architecture, and drag fixes
+
+- Made cloud and network first-class style families in the UI, with cloud defaulting to trunk routing.
+- Expanded the demo catalog across families, including a more complex cloud topology that shows trunked
+  cross-tier routing and a left-to-right network perimeter.
+- Replaced placeholder BPMN starters with realistic retail-banking onboarding and insurance-adjusting
+  workflows using built-in BPMN event/task/gateway icons.
+- Wired Gantt drag so `after ...` tasks materialize to explicit dates, and added timeline drag coverage
+  now that connectors are real edges.
+- Captured and reviewed local demo screenshots in `/tmp/mermollusc-review-final` for cloud, network,
+  BPMN, Gantt, and timeline.
+
 - Scaffolded the Vite app: index.html, canvas placeholder entry, Makefile with Vite
   build/run/stop overrides, five doc files.
 - Added `@m/std`/`@m/contracts`/`@m/parser`/`@m/layout`/`@m/renderer`/`@m/builder` dependencies.

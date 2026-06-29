@@ -47,3 +47,5 @@ Checked while adding resizeNode (manual node sizing).
 Checked while adding pruneGroups (drop groups whose nodes the text removed).
 
 Checked while adding the ER connect/delete patchers.
+
+Checked while adding the Gantt dependency-start rewrite helper.

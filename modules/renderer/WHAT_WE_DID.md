@@ -1,5 +1,11 @@
 # @m/renderer — work log
 
+## 2026-06-30 — Architecture accent rendering
+
+- Added compute/data/network/security/ops accent fills.
+- Preserved container accents in the display list so cloud/network groups regain colour.
+- Extended contrast coverage for the expanded accent set.
+
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - core: `DrawCmd` union + `toDisplayList` (Scene → display list); shapes by `SceneNode.shape`,
   centered labels, edge polylines.

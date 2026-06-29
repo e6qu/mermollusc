@@ -7,7 +7,12 @@ export { layoutCloud } from "./cloud.js";
 export { layoutGitGraph } from "./gitgraph.js";
 export { layoutTimeline, timelinePeriodsAdvanceLeftToRight } from "./timeline.js";
 export { layoutPie, pieSlicesTileCircle } from "./pie.js";
-export { layoutGantt, ganttTasksStackInRowOrder, DAY_WIDTH as GANTT_DAY_WIDTH } from "./gantt.js";
+export {
+  layoutGantt,
+  ganttTasksStackInRowOrder,
+  DAY_WIDTH as GANTT_DAY_WIDTH,
+  LEFT_GUTTER as GANTT_LEFT_GUTTER,
+} from "./gantt.js";
 export { layoutMindmap } from "./mindmap.js";
 export { heuristicMeasure } from "./graph.js";
 export {

@@ -25,6 +25,7 @@ export {
   restyleEdge,
   restyleSequenceMessage,
   shiftGanttStart,
+  setGanttStartFromDay,
   setGanttDuration,
   addNode,
   connect,

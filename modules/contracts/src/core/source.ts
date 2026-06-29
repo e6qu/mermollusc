@@ -142,8 +142,10 @@ export interface PieSource {
 // Editable text spans for a Gantt chart: each task's label (the text before its `:`).
 export interface GanttSource {
   readonly tasks: ReadonlyMap<GanttTaskId, TextSpan>;
-  // The start-date field span (only for tasks with an explicit `YYYY-MM-DD` start, not an `after` chain)
-  // and the duration field span, so a drag/resize on the bar can rewrite them in the source.
+  // The full start field span for every task (`YYYY-MM-DD` or `after ...`), the start-date span for
+  // tasks with an explicit date, and the duration field span. A drag can slide an explicit date or
+  // replace an `after` field with a concrete date; a resize rewrites the duration.
+  readonly taskStartField: ReadonlyMap<GanttTaskId, TextSpan>;
   readonly taskStart: ReadonlyMap<GanttTaskId, TextSpan>;
   readonly taskDuration: ReadonlyMap<GanttTaskId, TextSpan>;
 }

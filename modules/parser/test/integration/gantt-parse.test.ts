@@ -74,6 +74,26 @@ describe("parseGantt", () => {
     if (span !== undefined) expect(text.slice(span.start, span.end)).toBe("A task");
   });
 
+  it("tracks the full start field for explicit dates and `after` dependencies", () => {
+    const text = "gantt\n  A : a, 2024-01-01, 2d\n  B : b, after a, 3d\n";
+    const r = parseGanttWithSource(text);
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    const a = r.value.ast.tasks[0]?.id;
+    const b = r.value.ast.tasks[1]?.id;
+    if (a === undefined || b === undefined) throw new Error("gantt source span test setup failed");
+    const aField = r.value.source.taskStartField.get(a);
+    const bField = r.value.source.taskStartField.get(b);
+    const aDate = r.value.source.taskStart.get(a);
+    expect(aField).toBeDefined();
+    expect(bField).toBeDefined();
+    expect(aDate).toBeDefined();
+    if (aField !== undefined) expect(text.slice(aField.start, aField.end)).toBe("2024-01-01");
+    if (bField !== undefined) expect(text.slice(bField.start, bField.end)).toBe("after a");
+    if (aDate !== undefined) expect(text.slice(aDate.start, aDate.end)).toBe("2024-01-01");
+    expect(r.value.source.taskStart.get(b)).toBeUndefined();
+  });
+
   it("fails loudly when a task is missing a start or duration", () => {
     expect(isOk(parseGantt("gantt\n  Lonely : 5d\n"))).toBe(false);
   });

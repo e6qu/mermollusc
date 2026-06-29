@@ -34,6 +34,34 @@ test("dragging a gantt bar rewrites its start date in the source", async ({ page
   await expect(page.locator("#status")).not.toHaveAttribute("data-level", "error");
 });
 
+test("dragging an `after` gantt bar materializes its resolved start date in the source", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(
+    page,
+    "gantt\n  dateFormat YYYY-MM-DD\n  section S\n  Build : a, 2014-01-06, 4d\n  Review : b, after a, 2d\n",
+  );
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  expect(await sourceValue(page)).toContain("after a");
+
+  const rect = await page.evaluate(() => window.__nodeRect?.("b") ?? null);
+  expect(rect).not.toBeNull();
+  if (rect === null) return;
+  const cy = rect.y + rect.h / 2;
+  await page.mouse.move(rect.x + rect.w / 2, cy);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.w / 2 + 16 * 2, cy, { steps: 6 });
+  await page.mouse.up();
+
+  await expect.poll(() => sourceValue(page)).not.toContain("after a");
+  const after = await sourceValue(page);
+  const m = /Review : b, (\d{4}-\d{2}-\d{2}), 2d/.exec(after);
+  expect(m).not.toBeNull();
+  if (m !== null)
+    expect(new Date(m[1] ?? "").getTime()).toBeGreaterThan(new Date("2014-01-09").getTime());
+  await expect(page.locator("#status")).not.toHaveAttribute("data-level", "error");
+});
+
 test("resizing a gantt bar rewrites its duration in the source", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
