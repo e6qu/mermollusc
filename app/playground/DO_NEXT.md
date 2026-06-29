@@ -13,9 +13,6 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 
 ## A11y / UX follow-ups (from the contrast + journey audit)
-- **Connect over-chains re-parent/merge families.** The Connect button chains every `connect:true`
-  family at 3+ selections, including gitGraph (merge), mindmap (re-parent), timeline (event→period). Cap
-  those three to 2-node Connect, or report per-pair outcomes.
 - **Add a `prefers-contrast: more` query** that bumps the border tokens further, for users who request
   more contrast without OS forced-colors.
 - **Arrange popup focus**: move focus into the menu on open and restore to the actual opener (today
