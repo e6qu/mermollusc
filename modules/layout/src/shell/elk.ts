@@ -13,7 +13,7 @@ import {
   type Rect,
   type Result,
 } from "@m/std";
-import { boxCenter, routeWaypoints } from "../core/route.js";
+import { boxCenter, routeWaypoints, snapSceneEdgesToMountPoints } from "../core/route.js";
 import type {
   ClassAst,
   ClassMember,
@@ -54,6 +54,8 @@ import {
   styleOk,
   toElkGraph,
   toScene,
+  trunkRoutes,
+  respreadPorts,
 } from "../core/index.js";
 import type {
   LayoutConfig,
@@ -864,7 +866,17 @@ export const layoutDiagram = async (
   layoutStyle = "tidy",
 ): Promise<Result<Scene, LayoutError>> => {
   const routed = await layoutByFamily(ast, measure, collapsed, layoutStyle);
-  // De-collide mid-edge labels for every family (a no-op when nothing overlaps), so dense diagrams —
-  // including the ELK families, whose labels this didn't reach before — don't stack captions.
-  return map(routed, (scene) => decollideEdgeLabels(scene, measure));
+  return map(routed, (scene) => {
+    let finalScene = scene;
+    const isSpread =
+      ast.kind === "block" || ast.kind === "network" || ast.kind === "cloud" || ast.kind === "c4";
+    if (isSpread) {
+      if (layoutStyle === "trunk") {
+        finalScene = trunkRoutes(finalScene);
+      } else if (layoutStyle === "bus") {
+        finalScene = respreadPorts(finalScene, true);
+      }
+    }
+    return snapSceneEdgesToMountPoints(decollideEdgeLabels(finalScene, measure));
+  });
 };

@@ -25,7 +25,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 - **(done) DOT as an editable family.** DOT imports load read-only (Add/Connect/Shape gated on `isDotImport`).
   Add `parseDotWithSource` so edits patch the `digraph{…}` body directly instead of injecting flowchart
   syntax; then ungate the affordances for DOT.
-- **Sequence notes (makes a dead branch live).** The sequence parser has no `note` token, so
+- **(done) Sequence notes (makes a dead branch live).** The sequence parser has no `note` token, so
   `deleteActor`'s `SEQ_NOTE` branch is unreachable (see `modules/builder/BUGS.md`). Add note support
   across parser → layout → renderer to make it real — then the sequence example can show a `note over`.
 - **Class diagram, parser-led.** Stereotypes (`<<interface>>`), per-end multiplicity labels, generics.

@@ -43,8 +43,15 @@ const EdgeStyleZ = z
   .object({
     route: z.enum(["square", "straight", "curved"]).optional(),
     curved: z.boolean().optional(),
+    routeOption: z.number().nullable().optional(),
   })
-  .transform((o) => ({ route: o.route ?? (o.curved === true ? "curved" : "square") }) as const);
+  .transform(
+    (o) =>
+      ({
+        route: o.route ?? (o.curved === true ? "curved" : "square"),
+        routeOption: o.routeOption ?? null,
+      }) as const,
+  );
 const NodeStyleZ = z.object({ accent: z.enum(["none", "muted", "active", "danger"]) });
 const OverlayZ = z.object({
   overrides: z.array(z.tuple([z.string(), OverrideZ])),
@@ -76,7 +83,10 @@ export const encodeGroupEntry = (g: Group) =>
   }) satisfies Record<keyof Group, unknown>;
 
 export const encodeEdgeStyleEntry = (s: EdgeStyle) =>
-  ({ route: s.route }) satisfies Record<keyof EdgeStyle, unknown>;
+  ({
+    route: s.route,
+    routeOption: s.routeOption,
+  }) satisfies Record<keyof EdgeStyle, unknown>;
 export const encodeNodeStyleEntry = (s: NodeStyle) =>
   ({ accent: s.accent }) satisfies Record<keyof NodeStyle, unknown>;
 
@@ -126,7 +136,10 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
       ]),
     ),
     edgeStyles: new Map(
-      j.edgeStyles.map(([id, s]) => [brand<string, "SceneEdgeId">(id), { route: s.route }]),
+      j.edgeStyles.map(([id, s]) => [
+        brand<string, "SceneEdgeId">(id),
+        { route: s.route, routeOption: s.routeOption },
+      ]),
     ),
     nodeStyles: new Map(
       j.nodeStyles.map(([id, s]) => [brand<string, "SceneNodeId">(id), { accent: s.accent }]),

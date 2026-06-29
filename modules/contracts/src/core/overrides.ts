@@ -20,6 +20,7 @@ export type LayoutOverrides = ReadonlyMap<SceneNodeId, NodeOverride>;
 export type EdgeRoute = "square" | "straight" | "curved";
 export interface EdgeStyle {
   readonly route: EdgeRoute;
+  readonly routeOption: number | null;
 }
 export interface NodeStyle {
   readonly accent: NodeAccent;

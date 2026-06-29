@@ -75,7 +75,7 @@ test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Styl
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown");
   await page.locator("#diagram-nav").press("ArrowDown"); // onto an edge item
-  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "curve", "delete"]);
+  expect(await visibleCtxButtons(page)).toEqual(["relabel", "shape", "curve", "reroute", "delete"]);
 });
 
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({

@@ -148,3 +148,4 @@
   rendering, `square` keeps the laid-out route — and `applyOverrides` now BLENDS the edge label position
   with the waypoints on a drag, so labels travel with the edge instead of being left behind.
 - Added `restyleSequenceMessage(text, arrowSpan, kind)` mapping `MessageKind` arrow tokens to cycle sequence message styles.
+- Updated `applyStyles` to support custom smart A* routing options: if an edge style contains a non-null `routeOption`, it runs the layout's A* maze router around obstacle boxes to find and select that specific path option. Updated the overlay Zod schema and serialization encoders to support and round-trip `routeOption` correctly.

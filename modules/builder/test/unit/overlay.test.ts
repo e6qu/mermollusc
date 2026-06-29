@@ -32,7 +32,7 @@ describe("overlay codec", () => {
       ],
     ]);
 
-    const edgeStyles = new Map([[brand<string, "SceneEdgeId">("e0"), { route: "curved" as const }]]);
+    const edgeStyles = new Map([[brand<string, "SceneEdgeId">("e0"), { route: "curved" as const, routeOption: null }]]);
     const nodeStyles = new Map([[snid("A"), { accent: "active" as const }]]);
     const decoded = decodeOverlay(
       JSON.parse(serializeOverlay(overrides, groups, edgeStyles, nodeStyles)),
