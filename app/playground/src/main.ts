@@ -34,6 +34,8 @@ import {
   deleteRequirementEntity,
   deleteRequirementRel,
   deleteStateEntity,
+  deleteGitCommit,
+  deleteGitBranch,
   descendantsOf,
   emptySelection,
   hitTest,
@@ -4370,10 +4372,27 @@ const removeNode = (kind: DiagramAst["kind"], text: string, id: SceneNodeId): st
       }
       return deleteNode(text, flowId);
     }
-    // gitGraph commits are single declaration lines; branch lanes / synthetic ids aren't removable here
-    // (deleteSelection reports that honestly).
-    case "gitGraph":
-      return deleteNode(text, brand<string, "NodeId">(id));
+    case "gitGraph": {
+      if (id.startsWith("branch:")) {
+        const branchName = id.slice("branch:".length);
+        const branchCommits =
+          ast !== null && ast.kind === "gitGraph"
+            ? ast.commits.filter((c) => c.branch === branchName).map((c) => c.id)
+            : [];
+        return deleteGitBranch(
+          text,
+          gitSource?.branchStatements ?? null,
+          brand<string, "GitBranchName">(branchName),
+          branchCommits,
+          gitSource?.commitStatements ?? null,
+        );
+      }
+      return deleteGitCommit(
+        text,
+        gitSource?.commitStatements ?? null,
+        brand<string, "GitCommitId">(id),
+      );
+    }
     // A timeline period/event has a synthetic id, so dispatch by the source spans: an event drops its
     // `: <event>` segment, a period drops its line + its `:`-continuation lines (and its events).
     case "timeline": {

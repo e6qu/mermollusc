@@ -59,5 +59,7 @@ export {
   deleteClassEntity,
   deleteRequirementEntity,
   deleteStateEntity,
+  deleteGitCommit,
+  deleteGitBranch,
 } from "./patch.js";
 export type { PatchError, LabelContext } from "./patch.js";

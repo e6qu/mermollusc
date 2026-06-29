@@ -4,6 +4,7 @@ import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   GitBranch,
+  GitBranchName,
   GitCommit,
   GitCommitId,
   GitCommitType,
@@ -92,6 +93,28 @@ const optsOf = (stmt: Children): CommitOpts => {
   return { id, idSpan, tag, commitType };
 };
 
+const cstSpan = (node: CstNode): TextSpan => {
+  let minStart = Infinity;
+  let maxEnd = -Infinity;
+  const traverse = (n: CstNode | IToken) => {
+    if ("image" in n) {
+      minStart = Math.min(minStart, n.startOffset);
+      maxEnd = Math.max(maxEnd, n.startOffset + n.image.length);
+    } else if (n.children) {
+      for (const key in n.children) {
+        const list = n.children[key];
+        if (list) {
+          for (const child of list) {
+            traverse(child);
+          }
+        }
+      }
+    }
+  };
+  traverse(node);
+  return { start: minStart === Infinity ? 0 : minStart, end: maxEnd === -Infinity ? 0 : maxEnd };
+};
+
 const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
   const root = cst.children;
   const direction = directionOf(root);
@@ -102,6 +125,16 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
 
   const commits: GitCommit[] = [];
   const commitSpans = new Map<GitCommitId, TextSpan>();
+  const commitStatements = new Map<GitCommitId, TextSpan>();
+  const branchStatements = new Map<GitBranchName, TextSpan[]>();
+  const addBranchStmt = (name: GitBranchName, span: TextSpan) => {
+    let list = branchStatements.get(name);
+    if (list === undefined) {
+      list = [];
+      branchStatements.set(name, list);
+    }
+    list.push(span);
+  };
   const usedIds = new Set<string>();
 
   // Resolves a commit id: an explicit `id:` must be unique (a duplicate is a loud error, as in real
@@ -127,6 +160,7 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
 
   for (const stmt of childNodes(root, "statement")) {
     const sc = stmt.children;
+    const stmtSpan = cstSpan(stmt);
 
     const commit = childNodes(sc, "commitStmt")[0];
     if (commit !== undefined) {
@@ -143,6 +177,7 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
         merge: false,
       });
       tip.set(current, minted.value);
+      commitStatements.set(minted.value, stmtSpan);
       if (opts.idSpan !== null) commitSpans.set(minted.value, opts.idSpan);
       continue;
     }
@@ -163,6 +198,7 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
       branchOrder.set(ref.name, branchOrder.size);
       tip.set(ref.name, tip.get(current) ?? null);
       current = ref.name; // Mermaid's `branch` creates and checks out in one step.
+      addBranchStmt(brand<string, "GitBranchName">(ref.name), stmtSpan);
       continue;
     }
 
@@ -180,6 +216,7 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
         );
       }
       current = ref.name;
+      addBranchStmt(brand<string, "GitBranchName">(ref.name), stmtSpan);
       continue;
     }
 
@@ -220,6 +257,8 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
         merge: true,
       });
       tip.set(current, minted.value);
+      commitStatements.set(minted.value, stmtSpan);
+      addBranchStmt(brand<string, "GitBranchName">(ref.name), stmtSpan);
       if (opts.idSpan !== null) commitSpans.set(minted.value, opts.idSpan);
     }
   }
@@ -230,7 +269,7 @@ const buildResult = (cst: CstNode): Result<ParsedGitGraph, ParseError> => {
 
   return ok({
     ast: { kind: "gitGraph", direction, branches, commits },
-    source: { commits: commitSpans },
+    source: { commits: commitSpans, commitStatements, branchStatements },
   });
 };
 

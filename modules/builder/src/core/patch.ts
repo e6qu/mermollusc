@@ -6,6 +6,7 @@ import type {
   EdgeKind,
   ErEntityId,
   GitBranchName,
+  GitCommitId,
   MindmapAst,
   MindmapNodeId,
   MindmapSource,
@@ -892,4 +893,42 @@ export const reshapeNode = (
   if (bad !== null)
     return err({ kind: "patch", message: `label may not contain '${renderChar(bad)}'` });
   return ok(patchSpan(text, spans.decl, `${id}${wrapShape(shape, label)}`));
+};
+
+export const deleteGitCommit = (
+  text: string,
+  commitStatements: ReadonlyMap<GitCommitId, TextSpan> | null,
+  id: GitCommitId,
+): string => {
+  if (commitStatements === null) return text;
+  const span = commitStatements.get(id);
+  return span === undefined ? text : deleteLineAt(text, span);
+};
+
+export const deleteGitBranch = (
+  text: string,
+  branchStatements: ReadonlyMap<GitBranchName, readonly TextSpan[]> | null,
+  name: GitBranchName,
+  branchCommits: readonly GitCommitId[],
+  commitStatements: ReadonlyMap<GitCommitId, TextSpan> | null,
+): string => {
+  const spans: TextSpan[] = [];
+  if (branchStatements !== null) {
+    const list = branchStatements.get(name);
+    if (list !== undefined) spans.push(...list);
+  }
+  if (commitStatements !== null) {
+    for (const c of branchCommits) {
+      const span = commitStatements.get(c);
+      if (span !== undefined) spans.push(span);
+    }
+  }
+  if (spans.length === 0) return text;
+
+  const sorted = [...spans].sort((a, b) => b.start - a.start);
+  let result = text;
+  for (const span of sorted) {
+    result = deleteLineAt(result, span);
+  }
+  return result;
 };
