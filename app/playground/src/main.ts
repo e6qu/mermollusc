@@ -516,7 +516,17 @@ if (useCollab) {
     initialGroups: new Map(),
     initialEdgeStyles: new Map(),
     initialNodeStyles: new Map(),
-    save: saveOverlay,
+    save: (serialized: string) => {
+      try {
+        const payload = JSON.parse(serialized);
+        if (scene !== null && ast !== null) {
+          payload.identity = getDiagramFeatures(scene.nodes, scene.edges, ast.kind);
+        }
+        saveOverlay(JSON.stringify(payload));
+      } catch {
+        saveOverlay(serialized);
+      }
+    },
   });
 }
 
@@ -2599,6 +2609,21 @@ const renderFromText = async (text: string): Promise<void> => {
   // editing one node's label no longer discards the layout of every other node, and the prune is
   // undoable. In collab mode the shared room owns the overlay (stale overrides are inert and a peer may
   // still hold the node), so we leave it untouched there.
+  if (!useCollab) {
+    const currentFeatures = getDiagramFeatures(laid.value.nodes, laid.value.edges, diagram.kind);
+    const targetIdentity = loadedOverlayIdentity ?? activeOverlayIdentity;
+    if (targetIdentity !== null && (doc.overrides().size > 0 || doc.groups().size > 0)) {
+      const similarity = getFeaturesSimilarity(currentFeatures, targetIdentity);
+      if (similarity < 0.5) {
+        console.warn("Clearing stale overlay overrides: Jaccard similarity is", similarity);
+        doc.replace(new Map(), new Map(), new Map(), new Map());
+        clearUnifiedHistory();
+        doc.persist();
+      }
+    }
+    activeOverlayIdentity = currentFeatures;
+    loadedOverlayIdentity = null;
+  }
   const liveIds = new Set(laid.value.nodes.map((n) => n.id));
   if (doc.pruneGroupsTo(liveIds)) {
     doc.persist();
@@ -5332,7 +5357,11 @@ const shareUrl = (): string => {
   if (overrides.size === 0 && groups.size === 0 && edgeStyles.size === 0 && nodeStyles.size === 0) {
     return base;
   }
-  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups, edgeStyles, nodeStyles))}`;
+  const identity =
+    scene !== null && ast !== null
+      ? getDiagramFeatures(scene.nodes, scene.edges, ast.kind)
+      : undefined;
+  return `${base}&overlay=${encodeURIComponent(serializeOverlay(overrides, groups, edgeStyles, nodeStyles, identity))}`;
 };
 
 // Past this the URL risks silent truncation when pasted into chat/email clients (the `#src=` hash isn't
@@ -5376,6 +5405,33 @@ resetCacheBtn.addEventListener("click", () => {
   location.replace(location.pathname);
 });
 
+let loadedOverlayIdentity: readonly string[] | null = null;
+let activeOverlayIdentity: readonly string[] | null = null;
+
+const getDiagramFeatures = (
+  nodes: readonly { readonly id: string }[],
+  edges: readonly { readonly from: string; readonly to: string }[],
+  kind: string,
+): string[] => {
+  const features: string[] = [`family:${kind}`];
+  for (const node of nodes) {
+    features.push(`node:${node.id}`);
+  }
+  for (const edge of edges) {
+    features.push(`edge:${edge.from}->${edge.to}`);
+  }
+  return features;
+};
+
+const getFeaturesSimilarity = (a: readonly string[], b: readonly string[]): number => {
+  const setA = new Set(a);
+  const setB = new Set(b);
+  const intersection = new Set([...setA].filter((x) => setB.has(x)));
+  const union = new Set([...setA, ...setB]);
+  if (union.size === 0) return 1.0;
+  return intersection.size / union.size;
+};
+
 // Resolution order: a `#src=…` hash (a shared custom diagram) wins, then a `?example=<name>` link (a
 // shared example), then the persisted source, then the sample.
 const fromHash = hashValue("src");
@@ -5390,14 +5446,16 @@ lastTextSnapshot = initialSource;
 const applyOverlayJson = (raw: string, whence: string): void => {
   try {
     const decoded = decodeOverlay(JSON.parse(raw));
-    if (isOk(decoded))
+    if (isOk(decoded)) {
       doc.replace(
         decoded.value.overrides,
         decoded.value.groups,
         decoded.value.edgeStyles,
         decoded.value.nodeStyles,
       );
-    else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
+      loadedOverlayIdentity = decoded.value.identity ?? null;
+      activeOverlayIdentity = decoded.value.identity ?? null;
+    } else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
   } catch (e) {
     console.error("ignoring corrupt overlay from", whence, messageOf(e));
   }
