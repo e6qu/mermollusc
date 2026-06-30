@@ -9,7 +9,8 @@ canvas, and hosts the e2e / golden tests.
   style families, cloud defaults to trunk routing, and examples exercise architecture colours, crossing
   hints, Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
 - Keep edge labels as first-class canvas objects: label hit-testing, dragging, selection handles, inline
-  editors, and export coordinates must all use the same route-relative anchor.
+  editors, selected-edge route handles, and export coordinates must all use the same route-relative
+  anchor.
 - Show selected-node cardinal mount points in the canvas, keep them visible in light and dark themes,
   and keep routed graph endpoints attached to those mounts after Relax, drag rerenders, and style
   overlays.

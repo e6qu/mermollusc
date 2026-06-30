@@ -11,6 +11,8 @@ Resolved (mount-point and label pass, 2026-06-30):
   routed catalog and bus/trunk architecture display variants.
 - ~~**Selected nodes did not reveal their connection mounts.**~~ Fixed — the canvas selection overlay now
   draws the four cardinal mount points for selected nodes.
+- ~~**Selected-edge route handles were only screenshot-reviewed.**~~ Fixed — the e2e suite now selects a
+  labelled edge and samples the canvas pixel at the painted label-anchor handle.
 - ~~**Edge-label drag support was not proven across graph families.**~~ Fixed — the e2e suite now drags
   labelled edges through the UI across every graph family that emits edge labels.
 
