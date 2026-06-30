@@ -99,6 +99,15 @@ const FLOWS: readonly Flow[] = [
     },
   },
   {
+    name: "03-dark-node-selected",
+    about: "dark theme with a selected node showing mount handles",
+    drive: async (page) => {
+      await settled(page);
+      await page.locator("#theme").click();
+      await clickNode(page, "A");
+    },
+  },
+  {
     name: "04-sketch",
     about: "hand-drawn sketch mode",
     drive: async (page) => {

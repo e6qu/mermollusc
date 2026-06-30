@@ -1,5 +1,10 @@
 # @m/builder — work log
 
+- Added a no-style `applyStyles(..., snapToMountPoints)` unit regression so display-only mount snapping
+  stays covered even when the overlay has no edge/node style entries.
+- Cleaned stale builder docs now that app inline relabel commits validate source spans through
+  `validateLabel`, including colon-delimited timeline/gantt labels, and app snap geometry imports from
+  builder core.
 - `EdgeStyle` overlay serialization now round-trips `labelT`, a route-relative label position. Legacy
   overlays default it to `null`.
 - `applyStyles` now reapplies `labelT` after straightening, curved rendering, or A* route-option changes,

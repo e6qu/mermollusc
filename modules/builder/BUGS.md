@@ -36,11 +36,11 @@ Resolved (external review, codex `gpt-5.5`, 2026-06-19):
   the source. `relabelNode`/`reshapeNode` now validate the label first (reshape against the target
   shape's closer; relabel against all bracket closers, since the span doesn't carry the existing shape)
   and return a loud `PatchError`. The edge/element label path (which the app shell spliced raw) is now
-  guarded by the new pure `validateLabel(label, context)`, keyed on a closed context union
-  (`flowchartBracket`/`pipe`/`quoted`/`plain`). (+property test: relabel on hostile labels round-trips
-  or errs, never corrupts; +per-context `validateLabel` rejection tests.) **App wiring note:** the shell
-  must call `validateLabel` before committing an inline edge/element label edit (flowchart/network/cloud/
-  block pipe labels → `pipe`; C4 quoted labels → `quoted`; the rest → `plain`) and surface the error.
+  guarded by the pure `validateLabel(label, context)`, keyed on a closed context union
+  (`flowchartBracket`/`pipe`/`quoted`/`colon`/`plain`). (+property test: relabel on hostile labels
+  round-trips or errs, never corrupts; +per-context `validateLabel` rejection tests.) The app shell calls
+  the guard before committing inline span edits, including timeline/gantt colon-delimited labels, and
+  surfaces the `PatchError` in the status HUD.
 
 Checked while adding family-specific C4 and sequence delete patchers.
 

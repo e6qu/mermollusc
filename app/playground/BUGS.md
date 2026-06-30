@@ -2,6 +2,9 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Mount-point handles had only geometric coverage.**~~ Fixed — the screenshot harness now captures a
+  selected node in both light and dark themes, so theme contrast regressions are reviewable from
+  generated demo shots.
 - ~~**Relax could display flowchart diamond edges attached to arbitrary side points.**~~ Fixed — Relax
   now feeds the laid-out scene through cardinal mount snapping, and the displayed no-style path also
   honors mount snapping.
