@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Catalog cardinal-mount gate
+
+- The Examples integration test now fails any routed catalog diagram whose edge endpoints are off the
+  top/bottom/left/right node mounts, with edge/node/end diagnostics. The sweep covers normal layout and
+  bus/trunk variants for C4, block, network, and cloud.
+
 ## 2026-06-30 — Selected mount visual guard
 
 - Added a dark-theme selected-node screenshot flow so cardinal mount handles are visually reviewed in

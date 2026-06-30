@@ -5,8 +5,9 @@
 **Current architecture note:** network root zones now lay out left-to-right with vendored default
 icons, cloud uses semantic architecture accents with vendored default icons and a wider tier row budget,
 state diagrams honor source direction, timeline event connectors are real edges, and graph endpoints use
-cardinal mount points across the box/diamond families. C4 boundaries wrap larger child sets into compact
-rows instead of a single horizontal strip.
+cardinal mount points across the box/diamond families. The exported `cardinalMountViolations` invariant
+now backs catalog checks for normal, bus, and trunk display routes. C4 boundaries wrap larger child sets
+into compact rows instead of a single horizontal strip.
 
 - `layout(ast, seed?)` → `Promise<Result<Scene, LayoutError>>` (shell). A non-empty `seed`
   (node → current position) runs ELK semi-interactive layered layout — relaxing around the
@@ -96,7 +97,10 @@ rows instead of a single horizontal strip.
 - **Side-centre mount cleanup:** `layoutDiagram` applies `snapSceneEdgesToMountPoints` only to
   flowchart/ER/class/requirement, moving corner-ish edge endpoints to top/bottom/left/right side centres
   while leaving architecture spread families and semantic families untouched.
-- tests: 133 unit + 18 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- **Cardinal mount invariant:** `cardinalMountViolations(scene)` reports edge/node/end/endpoint details
+  for any non-self edge whose first or last waypoint is not on a node's top/bottom/left/right mount;
+  `edgesUseCardinalMounts(scene)` is the boolean form.
+- tests: 134 unit + 18 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`

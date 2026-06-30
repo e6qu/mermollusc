@@ -15,6 +15,8 @@ export {
   noSiblingOverlaps,
   containersEncloseMembers,
   edgesAvoidContainerHeaders,
+  cardinalMountViolations,
+  edgesUseCardinalMounts,
   styleOk,
   pieSlicesTileCircle,
   sequenceActorsShareHeaderRow,

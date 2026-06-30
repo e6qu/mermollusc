@@ -1,6 +1,6 @@
-import type { Rect } from "@m/std";
-import type { Scene } from "@m/contracts";
-import { containerHeaderBox, routeBoxOf } from "./route.js";
+import type { Point, Rect } from "@m/std";
+import type { Scene, SceneEdgeId, SceneNodeId } from "@m/contracts";
+import { containerHeaderBox, routeBoxOf, sideMounts } from "./route.js";
 import { segmentThroughBox } from "./maze.js";
 
 // Style invariants a laid-out scene must keep — the mechanical guard behind "energy-aware layout must not
@@ -78,6 +78,40 @@ export const edgesAvoidContainerHeaders = (scene: Scene): boolean => {
   }
   return true;
 };
+
+export interface CardinalMountViolation {
+  readonly edgeId: SceneEdgeId;
+  readonly nodeId: SceneNodeId;
+  readonly end: "from" | "to";
+  readonly endpoint: Point;
+}
+
+const POINT_EPS = 0.5;
+
+const pointOnMount = (p: Point, mounts: readonly Point[]): boolean =>
+  mounts.some((m) => Math.abs(m.x - p.x) <= POINT_EPS && Math.abs(m.y - p.y) <= POINT_EPS);
+
+export const cardinalMountViolations = (scene: Scene): readonly CardinalMountViolation[] => {
+  const boxById = new Map(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const violations: CardinalMountViolation[] = [];
+  for (const edge of scene.edges) {
+    if (edge.from === edge.to) continue;
+    const [first, second, ...rest] = edge.waypoints;
+    const last = rest[rest.length - 1] ?? second;
+    const fromBox = boxById.get(edge.from);
+    const toBox = boxById.get(edge.to);
+    if (fromBox === undefined || !pointOnMount(first, sideMounts(fromBox))) {
+      violations.push({ edgeId: edge.id, nodeId: edge.from, end: "from", endpoint: first });
+    }
+    if (toBox === undefined || !pointOnMount(last, sideMounts(toBox))) {
+      violations.push({ edgeId: edge.id, nodeId: edge.to, end: "to", endpoint: last });
+    }
+  }
+  return violations;
+};
+
+export const edgesUseCardinalMounts = (scene: Scene): boolean =>
+  cardinalMountViolations(scene).length === 0;
 
 // The family-agnostic style gate: a candidate layout that fails either is rejected before selection.
 export const styleOk = (scene: Scene): boolean =>

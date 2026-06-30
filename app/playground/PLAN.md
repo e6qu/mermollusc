@@ -40,8 +40,8 @@ canvas, and hosts the e2e / golden tests.
   or an explicit visual-review shot.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
-  lower to a display list, and export as SVG. Network and cloud examples are explicit catalog
-  requirements.
+  pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as
+  SVG. Network and cloud examples are explicit catalog requirements.
 - Support the backend-free GitHub Pages demo build at `/demo/`: the app stays single-user/local-only
   there even if a visitor appends `?collab`.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,

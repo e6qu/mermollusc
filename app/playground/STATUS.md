@@ -52,7 +52,8 @@ snap connector endpoints to those mounts after Relax and display rerenders.
 - **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
   families (plus a **DOT/Graphviz import** entry that renders as a flowchart); the catalog lives in
   `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses, lays out,
-  lowers to `DrawCmd`s, avoids container-title crossings, and exports as SVG, with explicit `network`/`cloud` catalog guards; the kind badge shows the
+  lowers to `DrawCmd`s, avoids container-title crossings, uses cardinal endpoint mounts for routed
+  families (including bus/trunk architecture variants), and exports as SVG, with explicit `network`/`cloud` catalog guards; the kind badge shows the
   active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
   preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s) and **⌘C / ⌘V**

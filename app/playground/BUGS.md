@@ -7,7 +7,8 @@ Resolved (mount-point and label pass, 2026-06-30):
   generated demo shots.
 - ~~**Relax could display flowchart diamond edges attached to arbitrary side points.**~~ Fixed — Relax
   now feeds the laid-out scene through cardinal mount snapping, and the displayed no-style path also
-  honors mount snapping.
+  honors mount snapping. The Examples integration test now hard-fails off-mount endpoints across the
+  routed catalog and bus/trunk architecture display variants.
 - ~~**Selected nodes did not reveal their connection mounts.**~~ Fixed — the canvas selection overlay now
   draws the four cardinal mount points for selected nodes.
 - ~~**Edge-label drag support was not proven across graph families.**~~ Fixed — the e2e suite now drags

@@ -1,9 +1,41 @@
-import { edgesAvoidContainerHeaders, heuristicMeasure, layoutDiagram } from "@m/layout";
+import {
+  cardinalMountViolations,
+  edgesAvoidContainerHeaders,
+  heuristicMeasure,
+  layoutDiagram,
+  respreadPorts,
+  trunkRoutes,
+} from "@m/layout";
+import type { Scene } from "@m/contracts";
 import { parseDiagram } from "@m/parser";
 import { defaultTheme, toDisplayList, toSvg } from "@m/renderer";
 import { isOk, isErr } from "@m/std";
 import { describe, it } from "vitest";
 import { EXAMPLES } from "../../src/examples.js";
+
+const MOUNT_POINT_EXAMPLES = new Set([
+  "flowchart",
+  "c4",
+  "block",
+  "network",
+  "cloud",
+  "state",
+  "er",
+  "class",
+  "requirement",
+]);
+
+const BOX_ROUTED_EXAMPLES = new Set(["c4", "block", "network", "cloud"]);
+
+const assertCardinalMounts = (name: string, variant: string, scene: Scene): void => {
+  const violations = cardinalMountViolations(scene);
+  if (violations.length === 0) return;
+  throw new Error(
+    `${name} ${variant} has off-mount edge endpoints: ${violations
+      .map((v) => `${v.edgeId}:${v.end}:${v.nodeId}@${v.endpoint.x},${v.endpoint.y}`)
+      .join("; ")}`,
+  );
+};
 
 describe("playground examples", () => {
   it("keeps network and cloud in the demo catalog", () => {
@@ -19,6 +51,13 @@ describe("playground examples", () => {
       if (isErr(laid)) throw new Error(laid.error.message);
       if (!edgesAvoidContainerHeaders(laid.value)) {
         throw new Error(`${name} routes an edge through a container title band`);
+      }
+      if (MOUNT_POINT_EXAMPLES.has(name)) {
+        assertCardinalMounts(name, "layout", laid.value);
+        if (BOX_ROUTED_EXAMPLES.has(name)) {
+          assertCardinalMounts(name, "bus", respreadPorts(laid.value, true));
+          assertCardinalMounts(name, "trunk", trunkRoutes(laid.value));
+        }
       }
       const cmds = toDisplayList(laid.value);
       if (cmds.length === 0) throw new Error(`${name} rendered an empty display list`);

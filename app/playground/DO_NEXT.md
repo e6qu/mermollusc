@@ -45,8 +45,9 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 
 ## Layout / rendering
 - **Examples parity guard:** Done for parse → layout → display-list → SVG across every catalog entry,
-  with explicit network/cloud catalog assertions. Network/cloud starters are now curated for public
-  demo readability; future source changes should be checked with before/after screenshots, not only
+  with explicit network/cloud catalog assertions and cardinal endpoint mount checks across the routed
+  families plus bus/trunk architecture variants. Network/cloud starters are now curated for public demo
+  readability; future source changes should be checked with before/after screenshots, not only
   parser/layout tests.
 - *(done)* Edge labels are draggable on the canvas, persist their relative route position, move with
   rerenders, and render literal `\n` as multiline labels.

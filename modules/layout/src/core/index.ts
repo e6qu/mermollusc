@@ -41,6 +41,8 @@ export {
   noSiblingOverlaps,
   containersEncloseMembers,
   edgesAvoidContainerHeaders,
+  cardinalMountViolations,
+  edgesUseCardinalMounts,
   styleOk,
 } from "./invariants.js";
 export { widestLine, clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js";
