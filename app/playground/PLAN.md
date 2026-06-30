@@ -11,6 +11,8 @@ canvas, and hosts the e2e / golden tests.
 - Keep edge labels as first-class canvas objects: label hit-testing, dragging, selection handles, inline
   editors, selected-edge route handles, and export coordinates must all use the same route-relative
   anchor.
+- Keep Regenerate semantics covered end to end for both overlay sources: manual pinned positions remain,
+  imported unpinned positions are discarded, and the public hash/share path follows the same rule.
 - Show selected-node cardinal mount points in the canvas, keep them visible in light and dark themes,
   and keep routed graph endpoints attached to those mounts after Relax, drag rerenders, and style
   overlays.

@@ -15,6 +15,8 @@ Resolved (mount-point and label pass, 2026-06-30):
   labelled edge and samples the canvas pixel at the painted label-anchor handle.
 - ~~**Edge-label drag support was not proven across graph families.**~~ Fixed — the e2e suite now drags
   labelled edges through the UI across every graph family that emits edge labels.
+- ~~**Regenerate clearing imported unpinned overrides was not proven end to end.**~~ Fixed — the toolbar
+  e2e imports a hash/share overlay with an unpinned node position and asserts Regenerate removes it.
 
 Resolved (multi-dimension audit omnibus, 2026-06-23):
 

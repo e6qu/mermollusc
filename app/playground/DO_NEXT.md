@@ -98,7 +98,7 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 ## Test-coverage gaps (behaviour is real; the assertion is the gap)
 - *(done)* **CAN-01a** — assert the edge route-highlight / label-anchor draw call. The Playwright test
   selects a labelled edge and samples the canvas pixel at the painted anchor handle.
-- **CAN-08** — end-to-end assert that Regenerate clears an imported *unpinned* override (today only the
+- *(done)* **CAN-08** — end-to-end assert that Regenerate clears an imported *unpinned* override (today only the
   `pinnedOverrides` filter + the preserves-pinned assertion; the clears-unpinned path needs an imported
   overlay, since drag/resize always pin).
 - **`e2e/network-icons.spec.ts`** asserts only `errors == []`; assert painted pixels / registry
