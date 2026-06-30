@@ -4,6 +4,12 @@
 
 - `layoutNetwork` now maps node-kind defaults to bundled vendor icon packs (`devicon`/`k8s`) instead of
   authored `arch` placeholders; explicit `icon "<pack>/<name>"` overrides still win.
+- Cardinal mount points are now the endpoint contract for box-like graph families: flowchart, C4, block,
+  network, cloud, state, ER, class, and requirement routes snap to side midpoints or diamond vertices.
+- `spreadPorts` and trunk routing now keep fan-out lanes outside the node boundary instead of treating
+  arbitrary side coordinates as valid connector endpoints.
+- C4 boundaries now wrap larger child sets into compact rows instead of forcing every contained element
+  into one long strip.
 - State diagrams now pass `StateAst.direction` through `stateToFlow`, so `direction LR/RL/BT/TB` affects
   ELK layout.
 - Shared label measurement now treats literal `\n` sequences as line breaks, matching renderer output.

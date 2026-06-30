@@ -2,8 +2,9 @@
 
 **State:** Canvas2D renderer implemented; `make check` green.
 
-**Current architecture note:** container display boxes now honor `SceneNode.accent`, and the palette maps
-semantic cloud/network accents to theme-aware colours.
+**Current architecture note:** container display boxes now honor `SceneNode.accent`, the palette maps
+semantic cloud/network accents to theme-aware colours, and plated edge labels render at 66% opacity in
+canvas and SVG.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported

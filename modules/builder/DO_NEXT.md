@@ -12,6 +12,8 @@
   the `PatchError` (the relabel/reshape node paths already validate internally).
 - Wire `app/main.ts` to import `snapAxis` / `snapCandidates` / `SNAP_T` from `@m/builder` and delete the
   in-file copies (the core is now the single source).
+- Add unit coverage for `applyStyles(scene, emptyEdgeStyles, emptyNodeStyles, true)` so the no-style
+  branch continues to honor mount snapping.
 - *(done)* Sidecar group labels (`setGroupLabel`) persist through the overlay codec.
 - *(done)* Property coverage for `relabelNode` (span-accurate relabel, others untouched) and
   `connect` (appends exactly one edge, nodes preserved).

@@ -27,7 +27,9 @@ export const applyStyles = (
   nodeStyles: NodeStyles,
   snapToMountPoints = false,
 ): Scene => {
-  if (edgeStyles.size === 0 && nodeStyles.size === 0) return scene;
+  if (edgeStyles.size === 0 && nodeStyles.size === 0) {
+    return snapToMountPoints ? snapSceneEdgesToMountPoints(scene) : scene;
+  }
 
   let obstacleBoxes: Map<string, readonly RouteBox[]> | null = null;
   let boxById: Map<string, RouteBox> | null = null;

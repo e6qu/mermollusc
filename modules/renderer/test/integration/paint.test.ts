@@ -14,7 +14,8 @@ class RecordingCtx implements Canvas2D {
   textBaseline: CanvasTextBaseline = "alphabetic";
   readonly calls: string[] = [];
   readonly fillTextFonts: string[] = [];
-  readonly fillRects: { readonly w: number; readonly h: number }[] = [];
+  readonly fillTexts: { readonly text: string; readonly alpha: number }[] = [];
+  readonly fillRects: { readonly w: number; readonly h: number; readonly alpha: number }[] = [];
   beginPath(): void {
     this.calls.push("beginPath");
   }
@@ -42,10 +43,11 @@ class RecordingCtx implements Canvas2D {
   fillText(text: string): void {
     this.calls.push(`fillText:${text}`);
     this.fillTextFonts.push(this.font);
+    this.fillTexts.push({ text, alpha: this.globalAlpha });
   }
   fillRect(_x: number, _y: number, w: number, h: number): void {
     this.calls.push(`fillRect:${String(this.fillStyle)}`);
-    this.fillRects.push({ w, h });
+    this.fillRects.push({ w, h, alpha: this.globalAlpha });
   }
   measureText(text: string): { readonly width: number } {
     return { width: text.length * 7 };
@@ -190,6 +192,9 @@ describe("paint", () => {
     const plate = ctx.fillRects.find((r) => r.w === 40);
     if (plate === undefined) throw new Error("missing edge label plate");
     expect(plate.h).toBeGreaterThan(18);
+    expect(plate.alpha).toBe(0.66);
+    const edgeText = ctx.fillTexts.find((t) => t.text === "edge");
+    expect(edgeText?.alpha).toBe(0.66);
   });
 
   it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {

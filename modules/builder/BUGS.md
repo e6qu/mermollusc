@@ -4,6 +4,10 @@ _None known._
 
 ## Resolved
 
+- ~~**The no-style display path bypassed mount snapping.**~~ Fixed — `applyStyles` now honors
+  `snapToMountPoints` before its empty-style early return, so graphs with no edge/node style sidecar still
+  render connector endpoints on cardinal mounts.
+
 - ~~**`deleteActor`'s `SEQ_NOTE` branch was unreachable.**~~ Fixed by making sequence notes real: the
   parser now lexes/parses `note (left of|right of|over) <actors> : text` into `SequenceAst.notes`, the
   layout stacks them as `stateNote` boxes interleaved by source order, and the renderer draws them. So a

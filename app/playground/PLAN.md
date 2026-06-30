@@ -10,10 +10,12 @@ canvas, and hosts the e2e / golden tests.
   hints, Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
 - Keep edge labels as first-class canvas objects: label hit-testing, dragging, selection handles, inline
   editors, and export coordinates must all use the same route-relative anchor.
+- Show selected-node cardinal mount points in the canvas and keep routed graph endpoints attached to
+  those mounts after Relax, drag rerenders, and style overlays.
 - Use provenance-tracked original vendor icon packs for public cloud/network starters and defaults when
   the bundled registry contains the needed glyphs.
-- Gate side-centre mount snapping by diagram family so ELK/compartment box diagrams get clean ports
-  while cloud/network/trunk-routed architecture diagrams and semantic families keep their own anchors.
+- Gate mount snapping by diagram family only where the family has no routed node-to-node connector
+  semantics; architecture and compartment families use the same cardinal endpoint contract.
 
 ## Responsibility
 

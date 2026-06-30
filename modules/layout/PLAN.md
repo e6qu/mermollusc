@@ -11,6 +11,8 @@
 - Preserve state-diagram `direction` through the shared flowchart/ELK layout path.
 - Keep timeline event connectors as real scene edges so manual drag overrides move visible links with the
   event nodes.
+- Keep connector endpoints on cardinal node mounts. Parallel fan-out belongs in external lanes and
+  trunks, not on arbitrary side coordinates.
 
 ## Responsibility
 

@@ -106,6 +106,7 @@ import {
   layoutDiagram,
   respreadPorts,
   retidyRoutes,
+  snapSceneEdgesToMountPoints,
   trunkRoutes,
 } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
@@ -168,6 +169,9 @@ declare global {
     // e2e hook: the displayed edges' routed waypoints, so a spec can assert connector geometry.
     __shownEdges?: () => readonly {
       id: string;
+      from: string;
+      to: string;
+      label: string | null;
       waypoints: readonly { x: number; y: number }[];
       curved: boolean;
     }[];
@@ -179,6 +183,10 @@ declare global {
     __setEdgeLabelT?: (edgeId: string, t: number) => void;
     // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
     __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
+    // e2e hook: a node's scene-space bounds, so specs can assert route geometry without zoom conversion.
+    __nodeBounds?: (
+      nodeId: string,
+    ) => { x: number; y: number; w: number; h: number; shape: string } | null;
     // e2e hook: a node's currently-shown accent (the visual-only colour preference).
     __nodeAccent?: (nodeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
@@ -445,6 +453,9 @@ window.__shownEdges = () =>
     ? []
     : shownScene(scene).edges.map((e) => ({
         id: e.id,
+        from: e.from,
+        to: e.to,
+        label: e.label,
         waypoints: e.waypoints.map((p) => ({ x: p.x, y: p.y })),
         curved: e.curved,
       }));
@@ -825,6 +836,11 @@ const SPREAD_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
 ]);
 const MOUNT_POINT_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
   "flowchart",
+  "c4",
+  "block",
+  "network",
+  "cloud",
+  "state",
   "er",
   "class",
   "requirement",
@@ -959,6 +975,7 @@ const paintScene = (): void => {
   const overlayHalo = Math.max(3, 8 / viewScale);
   const overlayDash = Math.max(2, 5 / viewScale);
   const handleSize = Math.max(3, 4 / viewScale);
+  const mountRadius = Math.max(3, 4 / viewScale);
   const selectedStroke = forcedColors() ? "Highlight" : activeTheme().text;
   const selectedFill = forcedColors() ? "Highlight" : "#2563eb";
   for (const edge of shown.edges) {
@@ -994,6 +1011,25 @@ const paintScene = (): void => {
       const { origin, size } = node.bounds;
       const pad = Math.max(3, 3 / viewScale);
       ctx.strokeRect(origin.x - pad, origin.y - pad, size.width + pad * 2, size.height + pad * 2);
+      if (node.role !== "marker") {
+        const mounts = [
+          point(origin.x + size.width, origin.y + size.height / 2),
+          point(origin.x, origin.y + size.height / 2),
+          point(origin.x + size.width / 2, origin.y + size.height),
+          point(origin.x + size.width / 2, origin.y),
+        ];
+        ctx.save();
+        ctx.fillStyle = selectedFill;
+        ctx.strokeStyle = forcedColors() ? "Canvas" : active.background;
+        ctx.lineWidth = Math.max(1, 1.5 / viewScale);
+        for (const mount of mounts) {
+          ctx.beginPath();
+          ctx.arc(mount.x, mount.y, mountRadius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
   }
   if (marquee !== null) {
@@ -2684,7 +2720,7 @@ const renderFromText = async (text: string): Promise<void> => {
     }`,
   );
   ast = diagram;
-  scene = laid.value;
+  scene = snapSceneEdgesToMountPoints(laid.value);
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   navController.rebuild();
@@ -2930,6 +2966,18 @@ window.__nodeRect = (nodeId) => {
     y: tl.y,
     w: node.bounds.size.width * viewScale,
     h: node.bounds.size.height * viewScale,
+  };
+};
+window.__nodeBounds = (nodeId) => {
+  if (scene === null) return null;
+  const node = shownScene(scene).nodes.find((n) => n.id === nodeId);
+  if (node === undefined) return null;
+  return {
+    x: node.bounds.origin.x,
+    y: node.bounds.origin.y,
+    w: node.bounds.size.width,
+    h: node.bounds.size.height,
+    shape: node.shape,
   };
 };
 

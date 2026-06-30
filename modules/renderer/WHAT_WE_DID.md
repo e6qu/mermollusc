@@ -6,6 +6,8 @@
   use it, keeping exports and on-screen rendering in parity.
 - Edge-label plates are translucent in both canvas and SVG, reducing the opaque block effect while still
   keeping strokes from cutting through label text.
+- Plated edge labels now use 66% opacity for both their background plate and text foreground in canvas
+  and SVG exports.
 
 ## 2026-06-30 — Architecture accent rendering
 
