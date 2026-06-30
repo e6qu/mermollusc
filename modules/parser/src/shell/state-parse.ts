@@ -1,9 +1,10 @@
 import type { CstNode, IToken } from "chevrotain";
 import { childNodes, childTokens } from "./cst.js";
-import { brand, err, map, ok, type Result } from "@m/std";
+import { brand, err, isOk, map, ok, type Result } from "@m/std";
 import type {
   StateAst,
   StateComposite,
+  FlowDirection,
   StateId,
   StateKind,
   StateNode,
@@ -14,7 +15,7 @@ import type {
   StateTransitionId,
   TextSpan,
 } from "@m/contracts";
-import { lexingError, recognitionError } from "./parse-error.js";
+import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { stateParser } from "./state-grammar.js";
 import { stateLexer } from "./state-tokens.js";
@@ -23,6 +24,22 @@ const ANNOTATION_KIND: Record<string, StateKind> = {
   fork: "fork",
   join: "join",
   choice: "choice",
+};
+
+const toDirection = (raw: string): FlowDirection | null => {
+  switch (raw.toUpperCase()) {
+    case "TB":
+    case "TD":
+      return "TB";
+    case "BT":
+      return "BT";
+    case "LR":
+      return "LR";
+    case "RL":
+      return "RL";
+    default:
+      return null;
+  }
 };
 
 const noteSide = (note: CstNode): StateNoteSide => {
@@ -78,6 +95,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const transitions: StateTransition[] = [];
   const transitionSpans = new Map<StateTransitionId, TextSpan>();
   const notes: StateNote[] = [];
+  let direction: FlowDirection = "TB";
 
   const addMember = (composite: string | null, id: string): void => {
     if (composite === null) return; // top-level membership is implicit (absence from any composite)
@@ -133,8 +151,26 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
     stateSpans.set(brand<string, "StateId">(e.image), trimmedSpan(label));
   };
 
-  const walk = (statements: readonly CstNode[], scope: string | null): void => {
+  const walk = (statements: readonly CstNode[], scope: string | null): Result<null, ParseError> => {
     for (const stmt of statements) {
+      const dirStmt = childNodes(stmt.children, "stateDirectionStmt")[0];
+      if (dirStmt !== undefined) {
+        const dirToken = childTokens(dirStmt.children, "StateIdentifier")[0];
+        if (dirToken !== undefined) {
+          const parsed = toDirection(dirToken.image);
+          if (parsed === null) {
+            return err(
+              parseErrorAt(
+                `invalid state direction: ${dirToken.image}`,
+                dirToken.startOffset,
+                dirToken.image.length,
+              ),
+            );
+          }
+          direction = parsed;
+        }
+        continue;
+      }
       const decl = childNodes(stmt.children, "stateDecl")[0];
       if (decl !== undefined) {
         const quoted = childTokens(decl.children, "StateQuotedString")[0];
@@ -148,7 +184,8 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
           if (!compositeParent.has(id)) compositeParent.set(id, scope);
           addMember(scope, id);
           if (quoted !== undefined) stateSpans.set(brand<string, "StateId">(id), innerSpan(quoted));
-          walk(childNodes(block.children, "stateStatement"), id);
+          const walked = walk(childNodes(block.children, "stateStatement"), id);
+          if (!isOk(walked)) return walked;
         } else {
           seeReal(id, label, scope);
           // A `<<fork>>`/`<<join>>`/`<<choice>>` annotation overrides the kind (and so the rendered
@@ -180,9 +217,11 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
       const line = childNodes(stmt.children, "stateLine")[0];
       if (line !== undefined) walkLine(line, scope);
     }
+    return ok(null);
   };
 
-  walk(childNodes(cst.children, "stateStatement"), null);
+  const walked = walk(childNodes(cst.children, "stateStatement"), null);
+  if (!isOk(walked)) return walked;
 
   const states: StateNode[] = [...kinds]
     .filter(([id]) => !compositeIds.has(id))
@@ -201,7 +240,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
     states: [...(memberOf.get(id) ?? new Set<string>())].map((m) => brand<string, "StateId">(m)),
   }));
   return ok({
-    ast: { kind: "state", states, transitions, composites, notes },
+    ast: { kind: "state", direction, states, transitions, composites, notes },
     source: { states: stateSpans, transitions: transitionSpans },
   });
 };

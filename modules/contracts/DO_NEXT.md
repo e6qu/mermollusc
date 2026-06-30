@@ -12,3 +12,5 @@
   donut slices.
 - *(done)* Architecture scene nodes carry semantic accents, and Gantt source maps expose full start-field
   spans for drag-to-date edits.
+- *(done)* State diagrams carry explicit direction, and edge styles carry relative label positions for
+  movable labels that survive rerenders.

@@ -17,3 +17,5 @@ Checked while adding `SceneNode.role` for state marker rendering.
 Checked while adding state-note side, pie donut/inner-radius contracts, and override replacement.
 
 Checked while adding semantic architecture accents and Gantt full start-field source spans.
+
+Checked while adding state direction and movable edge-label overlay state.

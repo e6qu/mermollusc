@@ -1,5 +1,10 @@
 # @m/builder — work log
 
+- `EdgeStyle` overlay serialization now round-trips `labelT`, a route-relative label position. Legacy
+  overlays default it to `null`.
+- `applyStyles` now reapplies `labelT` after straightening, curved rendering, or A* route-option changes,
+  so a moved edge label keeps its relative place across rerenders.
+
 ## 2026-06-30 — Gantt dependency drag rewrite helper
 
 - Added and exported `setGanttStartFromDay(text, span, day)`.

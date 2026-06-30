@@ -14,7 +14,7 @@ test("a per-node `icon` override resolves and renders a vendored mark", async ({
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  // The override points at a bundled simple-icons mark; the kind default would be the arch glyph.
+  // The override points at a bundled simple-icons mark; the kind default is a different vendor glyph.
   await setSource(page,
     'network\n  server web "Web" icon "simpleicons/nginx"\n  database db "DB"\n  web -- db\n',
   );

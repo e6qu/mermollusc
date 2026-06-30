@@ -1,5 +1,12 @@
 # @m/renderer — work log
 
+- Added ratio-based routed-label helpers (`edgeLabelAnchorAt`, `pathRatioNearest`) and exported them
+  through the public renderer barrel so app overlays can move labels along the exact rendered route.
+- `labelLines` now defines multiline splitting for both actual newlines and literal `\n`; canvas and SVG
+  use it, keeping exports and on-screen rendering in parity.
+- Edge-label plates are translucent in both canvas and SVG, reducing the opaque block effect while still
+  keeping strokes from cutting through label text.
+
 ## 2026-06-30 — Architecture accent rendering
 
 - Added compute/data/network/security/ops accent fills.

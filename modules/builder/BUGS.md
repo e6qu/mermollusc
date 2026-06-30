@@ -51,3 +51,5 @@ Checked while adding the ER connect/delete patchers.
 Checked while adding the Gantt dependency-start rewrite helper.
 
 Checked while making side-centre mount snapping opt-in for manual override/style application.
+
+Checked while adding persisted route-relative edge-label positions.

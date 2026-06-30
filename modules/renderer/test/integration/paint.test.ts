@@ -102,7 +102,7 @@ const iconScene: Scene = {
       label: "Web",
       shape: "rect",
       parent: null,
-      icon: { pack: "arch", name: "server" },
+      icon: { pack: "devicon", name: "docker" },
       rowDivider: null, subtitle: null, accent: "none",
       role: "normal", rows: null,
     },
@@ -435,7 +435,7 @@ describe("paint", () => {
 
     const ctx = new RecordingCtx();
     const fakeImage = new RecordingCtx() as unknown as CanvasImageSource;
-    paint(ctx, toDisplayList(iconScene), new Map([["arch/server", fakeImage]]));
+    paint(ctx, toDisplayList(iconScene), new Map([["devicon/docker", fakeImage]]));
     expect(ctx.calls).toContain("drawImage");
     expect(ctx.calls).toContain("fillText:Web");
   });

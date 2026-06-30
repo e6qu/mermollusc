@@ -1,5 +1,13 @@
 # @m/layout — work log
 
+## 2026-06-30 — Label and icon rendering parity
+
+- `layoutNetwork` now maps node-kind defaults to bundled vendor icon packs (`devicon`/`k8s`) instead of
+  authored `arch` placeholders; explicit `icon "<pack>/<name>"` overrides still win.
+- State diagrams now pass `StateAst.direction` through `stateToFlow`, so `direction LR/RL/BT/TB` affects
+  ELK layout.
+- Shared label measurement now treats literal `\n` sequences as line breaks, matching renderer output.
+
 ## 2026-06-30 — First-class architecture layout cleanup
 
 - Added semantic accents to cloud and network nodes/groups.
@@ -39,7 +47,8 @@
   layout + `layoutDiagram`/`layout`, so the app can size nodes with real canvas `measureText`. +1 test.
 - Mapped cloud service kinds to representative vendored simple-icons glyphs (compute→docker,
   storage→googlecloudstorage, database→postgresql, queue→apachekafka, cdn→cloudflare).
-- `layoutNetwork` now honours a `NetworkNode.icon` override (falls back to the kind's arch glyph).
+- `layoutNetwork` now honours a `NetworkNode.icon` override (falling back to the kind's bundled vendor
+  glyph).
 - `toElkGraph` now sizes `circle` flowchart nodes square (side = max(label width, node height)) so
   the renderer's `min(w,h)/2` corner-rounding yields an actual circle; other shapes stay wide boxes.
   +1 transform test.

@@ -1,5 +1,8 @@
 # @m/parser — work log
 
+- State diagrams now parse `direction TB|TD|BT|LR|RL` into `StateAst.direction`; invalid values return
+  a located parse error instead of being ignored or silently defaulted.
+
 ## 2026-06-30 — Gantt start-field spans
 
 - Captured the full source span for every parsed Gantt task start field.

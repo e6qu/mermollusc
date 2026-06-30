@@ -70,3 +70,6 @@ Checked while making cloud/network architecture accents first-class, changing ne
 and converting timeline event connectors to real edges.
 
 Checked while family-gating side-centre mount snapping and covering corner-ish endpoint correction.
+
+Checked while switching network defaults to vendored icons, honoring state direction, and sizing escaped
+multiline labels.

@@ -11,15 +11,18 @@ import type {
   SceneNode,
   SceneWedge,
 } from "@m/contracts";
-import { buildEdgePath, edgeCrossings } from "./path.js";
+import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt } from "./path.js";
 import type { PathCmd } from "./path.js";
 
 export { bezierControls, roundedCorners, smoothSegments } from "./path.js";
+export { edgeLabelAnchorAt, pathRatioNearest } from "./path.js";
 export type { PathCmd } from "./path.js";
 
 const ICON_SIZE = 20;
 
 export type LabelAlign = "center" | "left";
+
+export const labelLines = (text: string): readonly string[] => text.split(/\n|\\n/g);
 
 // A marker polygon's fill: `solid` fills with the stroke colour (a filled arrowhead / UML composition
 // diamond); `hollow` fills with the background and outlines in stroke (an inheritance triangle / UML
@@ -565,8 +568,6 @@ const endLabel = (text: string, end: Point, toward: Point): DrawCmd => {
   };
 };
 
-const LABEL_GAP = 11;
-
 // Anchor an edge label at the midpoint *along the routed polyline*, nudged perpendicular to the
 // local segment. The straight average of the endpoints can land inside a node when an orthogonal
 // edge bends around one (e.g. a flowchart branch that routes down the side); the on-path midpoint
@@ -575,34 +576,8 @@ const LABEL_GAP = 11;
 export const edgeLabelAnchor = (
   points: readonly Point[],
 ): { readonly x: Coordinate; readonly y: Coordinate } => {
-  let total = 0;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
-    if (a !== undefined && b !== undefined) total += Math.hypot(b.x - a.x, b.y - a.y);
-  }
-  let remaining = total / 2;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
-    if (a === undefined || b === undefined) continue;
-    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
-    if (segLen === 0) continue;
-    if (remaining <= segLen) {
-      const t = remaining / segLen;
-      const nx = -(b.y - a.y) / segLen;
-      const ny = (b.x - a.x) / segLen;
-      return {
-        x: coordinate(a.x + (b.x - a.x) * t + nx * LABEL_GAP),
-        y: coordinate(a.y + (b.y - a.y) * t + ny * LABEL_GAP),
-      };
-    }
-    remaining -= segLen;
-  }
-  const first = points[0];
-  return first === undefined
-    ? { x: coordinate(0), y: coordinate(0) }
-    : { x: coordinate(first.x), y: coordinate(first.y) };
+  const anchor = edgeLabelAnchorAt(points, 0.5);
+  return { x: coordinate(anchor.x), y: coordinate(anchor.y) };
 };
 
 const JUNCTION_R = 3.2; // radius of a bus-junction dot

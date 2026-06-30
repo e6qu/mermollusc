@@ -4,7 +4,7 @@ import { setSource } from "./support/source.js";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
-test("every network node kind resolves to a built-in glyph (no resolve failures)", async ({
+test("every network node kind resolves to a bundled vendor glyph (no resolve failures)", async ({
   page,
 }) => {
   const errors: string[] = [];

@@ -17,6 +17,7 @@ describe("parseState", () => {
     const r = parseState(text);
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
+    expect(r.value.direction).toBe("TB");
     const byId = new Map<string, StateNode>(r.value.states.map((s) => [s.id, s]));
     expect(byId.get("Idle")).toMatchObject({ kind: "state", label: "Idle" });
     expect(byId.get("Running")).toMatchObject({ kind: "state", label: "Running fast" });
@@ -27,6 +28,13 @@ describe("parseState", () => {
       "start",
     );
     expect(r.value.transitions[0]).toMatchObject({ from: "__start", to: "Idle" });
+  });
+
+  it("reads Mermaid state direction statements", () => {
+    const r = parseState("stateDiagram-v2\n  direction LR\n  A --> B\n");
+    expect(isOk(r)).toBe(true);
+    if (!isOk(r)) return;
+    expect(r.value.direction).toBe("LR");
   });
 
   it("nests a composite `state X { … }` with its own scoped [*]", () => {
@@ -96,5 +104,9 @@ describe("parseState", () => {
 
   it("fails loudly on a malformed transition", () => {
     expect(isOk(parseState("stateDiagram-v2\n  A --> \n"))).toBe(false);
+  });
+
+  it("fails loudly on an invalid direction", () => {
+    expect(isOk(parseState("stateDiagram-v2\n  direction sideways\n  A --> B\n"))).toBe(false);
   });
 });

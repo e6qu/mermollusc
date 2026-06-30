@@ -273,6 +273,7 @@ export interface StateNote {
 
 export interface StateAst {
   readonly kind: "state";
+  readonly direction: FlowDirection;
   readonly states: readonly StateNode[];
   readonly transitions: readonly StateTransition[];
   readonly composites: readonly StateComposite[];

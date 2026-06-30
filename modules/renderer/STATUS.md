@@ -7,7 +7,7 @@ semantic cloud/network accents to theme-aware colours.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
-  `edgeLabelAnchor` at the midpoint *along the routed polyline* — perpendicular-nudged, so a bent
+  `edgeLabelAnchor`/`edgeLabelAnchorAt` along the routed polyline — perpendicular-nudged, so a bent
   edge's label stays in the routing channel rather than landing on a node — and an `icon` command —
   glyph above the label — for nodes carrying a `SceneNode.icon`). Emitted in three layers — edge
   lines + markers, then nodes, then edge labels — so nodes occlude crossing links while labels stay on top.
@@ -32,10 +32,10 @@ semantic cloud/network accents to theme-aware colours.
 - **State roles:** `SceneNode.role` maps to dedicated display commands for filled initial markers,
   ringed final markers, fork/join bars, and folded-note boxes; both canvas and SVG exports draw them
   from the same display list.
-- multi-line labels: a `label` whose text contains `\n` is drawn as stacked lines centred on the
+- multi-line labels: a `label` whose text contains an actual newline or a literal `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.
-- edge labels carry a `plate` flag: a padded background box is drawn behind the text (so the routed line
+- edge labels carry a `plate` flag: a padded translucent background box is drawn behind the text (so the routed line
   + end markers don't strike through it, and labels read as deliberate callouts instead of tight white
   cuts). `paint` measures the widest line; `toSvg` estimates it. Node/title/row labels keep
   `plate: false`.

@@ -3,6 +3,9 @@ export {
   smoothSegments,
   roundedCorners,
   edgeLabelAnchor,
+  edgeLabelAnchorAt,
+  labelLines,
+  pathRatioNearest,
   toDisplayList,
   wedgeColor,
 } from "./display.js";

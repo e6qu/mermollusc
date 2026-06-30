@@ -50,3 +50,5 @@ ordering walk, and `parseDiagramWithSource` — all behaviour-preserving; existi
 Checked while adding Gantt full start-field source spans.
 
 Checked while preserving DOT `style=rounded` through import so repeated export/import is stable.
+
+Checked while adding state diagram direction parsing.

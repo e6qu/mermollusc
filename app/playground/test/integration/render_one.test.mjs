@@ -9,7 +9,7 @@ const code = `cloud
   group "Edge" {
     storage assets "S3 static" icon "gilbarbara/aws-s3"
     cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
-    compute waf "AWS WAF" icon "arch/firewall"
+    compute waf "AWS WAF" icon "devicon/vault"
   }
   group "Routing" {
     compute alb "App Load Balancer" icon "gilbarbara/aws-elb"

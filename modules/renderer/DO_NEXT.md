@@ -16,6 +16,9 @@
   as callouts, not text stamped directly onto the stroke.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label
   placement.
+- *(done)* Export ratio-based edge-label helpers so host overlays can drag labels along a route and
+  preserve relative positions across rerenders.
+- *(done)* Literal `\n` labels render as multiple lines in both canvas and SVG.
 - *(done)* State-diagram `[*]` pseudo-states render as filled initial / ringed final markers; fork/join
   roles render as bars and state notes draw a folded corner.
 - *(done)* ER crow's-foot cardinality renders via per-edge-end markers. `SceneEdge` now carries

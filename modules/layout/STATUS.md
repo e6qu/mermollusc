@@ -2,9 +2,10 @@
 
 **State:** flowchart layout + relax (semi-interactive) implemented; `make check` green.
 
-**Current architecture note:** network root zones now lay out left-to-right, cloud uses semantic
-architecture accents with a wider tier row budget, timeline event connectors are real edges, and
-ELK/compartment box diagrams snap connectors to side-centre mount points.
+**Current architecture note:** network root zones now lay out left-to-right with vendored default
+icons, cloud uses semantic architecture accents with vendored default icons and a wider tier row budget,
+state diagrams honor source direction, timeline event connectors are real edges, and ELK/compartment
+box diagrams snap connectors to side-centre mount points.
 
 - `layout(ast, seed?)` → `Promise<Result<Scene, LayoutError>>` (shell). A non-empty `seed`
   (node → current position) runs ELK semi-interactive layered layout — relaxing around the
@@ -31,7 +32,7 @@ ELK/compartment box diagrams snap connectors to side-centre mount points.
   centre-to-centre edges.
 - `layoutNetwork(ast)` (pure): squarish (`ceil √n`) grid; ungrouped/external leaf nodes are placed
   before grouped zones so ingress nodes stay visually ahead of the subnets they connect to; undirected
-  (arrowless) links; sets each node's `icon` ref from its kind (`{ pack: "arch", name: kind }`).
+  (arrowless) links; sets each node's default `icon` ref from bundled vendor packs.
 - `layoutCloud(ast)` (pure): recursive nested-box — groups render as containers wrapping children;
   top-level boxes wrap to a new row past a narrow soft width budget with larger inter-row lanes, so
   tiered architectures stay readable rather than one wide strip; each service leaf's kind maps to a vendored simple-icons glyph
