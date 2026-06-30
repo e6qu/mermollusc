@@ -105,3 +105,8 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 - Dense cloud route labels can still be improved by the layout/renderer instead of removing labels from
   examples. The current catalog is visually cleaner and gated by parse→layout→display→SVG tests, but a
   route-label placement pass for trunk paths would make future complex cloud diagrams more robust.
+- Side-centre mount snapping is now family-gated to ELK/compartment box diagrams. Next visual step, if
+  needed: add user-visible per-edge port choice for those diagrams rather than relying only on
+  nearest-side selection.
+- UI e2e now owns its local servers during the gate. Keep this aligned with the shot harness so visual
+  and gating runs cannot attach to unrelated local apps.

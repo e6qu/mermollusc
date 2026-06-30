@@ -106,6 +106,11 @@ Routes that cross a group boundary now choose their side from the containing gro
 actual child box. Remaining visual debt: choose shorter channel positions for long cross-tier connectors,
 so cloud ingress links do not reserve more horizontal distance than necessary.
 
+## Side-centre mount cleanup shipped
+ELK/compartment box diagrams now normalize edge endpoints to side-centre mount points after layout.
+Possible next: expose per-edge or per-family port preferences if users need a specific side instead of
+nearest-side selection.
+
 ## Channel reservation + lane separation shipped
 The stacked-edge fix is now two cooperating passes in `spreadPorts`: `reserveChannels` (density-sized room)
 then `separateOverlaps` (lane assignment). `CHANNEL_LANE` (reservation width per crossing edge) is tuned;

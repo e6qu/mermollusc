@@ -816,6 +816,12 @@ const SPREAD_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
   "cloud",
   "c4",
 ]);
+const MOUNT_POINT_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
+  "flowchart",
+  "er",
+  "class",
+  "requirement",
+]);
 
 const shownScene = (base: Scene): Scene => {
   const ov = doc.overrides();
@@ -838,7 +844,8 @@ const shownScene = (base: Scene): Scene => {
   ) {
     return shownCacheResult;
   }
-  const moved = applyOverrides(base, ov);
+  const snapToMountPoints = family !== null && MOUNT_POINT_FAMILIES.has(family);
+  const moved = applyOverrides(base, ov, snapToMountPoints);
   // After a move, re-route the connectors a move left diagonal back to clean right angles (display only —
   // `base` and the overrides are untouched, so undo/persist are unaffected). A no-op when nothing moved.
   // Box-routed families get the FULL router on release (spread lanes + crossing-min), respecting the
@@ -871,7 +878,7 @@ const shownScene = (base: Scene): Scene => {
   }
 
   // The presentation-only overlay (display only): curved edges + node accents from the document.
-  const shown = applyStyles(tidied, es, ns);
+  const shown = applyStyles(tidied, es, ns, snapToMountPoints);
   shownCacheScene = base;
   shownCacheOverrides = ov;
   shownCacheEdgeStyles = es;

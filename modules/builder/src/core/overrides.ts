@@ -24,6 +24,7 @@ export const applyStyles = (
   scene: Scene,
   edgeStyles: EdgeStyles,
   nodeStyles: NodeStyles,
+  snapToMountPoints = false,
 ): Scene => {
   if (edgeStyles.size === 0 && nodeStyles.size === 0) return scene;
 
@@ -103,7 +104,8 @@ export const applyStyles = (
           const s = nodeStyles.get(n.id);
           return s !== undefined && s.accent !== n.accent ? { ...n, accent: s.accent } : n;
         });
-  return snapSceneEdgesToMountPoints({ ...scene, nodes, edges });
+  const styled = { ...scene, nodes, edges };
+  return snapToMountPoints ? snapSceneEdgesToMountPoints(styled) : styled;
 };
 
 export const moveNode = (
@@ -141,7 +143,11 @@ export const clearOverride = (overrides: LayoutOverrides, id: SceneNodeId): Layo
 // translated; an edge crossing the moved set (one endpoint moved, or by a different delta) has each
 // waypoint translated by a position-weighted blend of the two endpoints' deltas, so it stays attached
 // to both borders while preserving its shape (and a sequence message its row).
-export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene => {
+export const applyOverrides = (
+  scene: Scene,
+  overrides: LayoutOverrides,
+  snapToMountPoints = false,
+): Scene => {
   if (overrides.size === 0) return scene;
   const delta = new Map<SceneNodeId, { readonly dx: number; readonly dy: number }>();
   const nodes = scene.nodes.map((node): SceneNode => {
@@ -216,5 +222,6 @@ export const applyOverrides = (scene: Scene, overrides: LayoutOverrides): Scene 
     }
   }
   const extent = rect(minX, minY, maxX - minX, maxY - minY);
-  return { ...scene, nodes, edges, extent };
+  const moved = { ...scene, nodes, edges, extent };
+  return snapToMountPoints ? snapSceneEdgesToMountPoints(moved) : moved;
 };

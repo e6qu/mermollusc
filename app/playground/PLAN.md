@@ -8,6 +8,8 @@ canvas, and hosts the e2e / golden tests.
 - Keep the demo catalog at parity with renderer/layout capabilities. Cloud and network are first-class
   style families, cloud defaults to trunk routing, and examples exercise architecture colours, crossing
   hints, Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
+- Gate side-centre mount snapping by diagram family so ELK/compartment box diagrams get clean ports
+  while cloud/network/trunk-routed architecture diagrams and semantic families keep their own anchors.
 
 ## Responsibility
 

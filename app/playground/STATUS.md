@@ -4,7 +4,8 @@
 
 **Current demo-parity note:** cloud and network have first-class style buckets; cloud defaults to trunk
 routing; examples are richer across families; BPMN starters use real BPMN icons for banking and
-insurance-adjusting workflows; Gantt `after ...` bars and timeline events work when dragged.
+insurance-adjusting workflows; Gantt `after ...` bars and timeline events work when dragged; ELK/
+compartment box diagrams snap edges to side-centre mounts without affecting cloud/network routing.
 
 - **Design:** a computational notebook/workbench UI — compact command groups in the header, a framed
   **source/input** panel, a labelled **output** stage, quieter graph-paper geometry, and a status bar.
@@ -81,7 +82,8 @@ insurance-adjusting workflows; Gantt `after ...` bars and timeline events work w
   local-only and never opens the collaboration relay.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
-  part of `make check`. Guards against geometry regressions like an edge label drifting onto a node.
+  part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;
+  refreshed after the mount-point cleanup so current source rendering is pinned.
 
 - `main.ts`: source editor (CodeMirror) ↔ canvas.
   - edit text → re-render via `parseDiagram` + `layoutDiagram` (all fifteen families; gitGraph is
@@ -204,7 +206,7 @@ insurance-adjusting workflows; Gantt `after ...` bars and timeline events work w
   `@m/builder`'s tested core. The render path makes **one** `parseDiagramWithSource` pass per edit
   (AST + source map together) instead of parsing each family twice, and memoises `applyOverrides` +
   group-bounds across a frame.
-- Playwright (`make e2e-ui`): covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + a control-accessible-name audit (incl. the editor + form inputs) + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): owns fresh local Vite and collab-relay servers for each gate run; covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + a control-accessible-name audit (incl. the editor + form inputs) + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) + an **audit-omnibus** spec (family-capability
   gating, layout-survives-edit + share-carries-overlay, example-load confirm guard, platform modifier

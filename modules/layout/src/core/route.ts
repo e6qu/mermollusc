@@ -60,6 +60,13 @@ const snapToMountPoint = (box: RouteBox, ref: Point): Point => {
   return best;
 };
 
+const alignAdjacentToMount = (box: RouteBox, mount: Point, adjacent: Point): Point => {
+  if (Math.abs(mount.x - box.x) < 1e-6 || Math.abs(mount.x - (box.x + box.w)) < 1e-6) {
+    return point(adjacent.x, mount.y);
+  }
+  return point(mount.x, adjacent.y);
+};
+
 // The centre of a positioned box (origin + half its extent) — the straight-line fallback's anchor.
 export const boxCenter = (x: number, y: number, width: number, height: number): Point =>
   point(x + width / 2, y + height / 2);
@@ -1439,23 +1446,35 @@ export const retidyRoutes = (scene: Scene): Scene => {
 };
 
 export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
-  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const acceptsMountPoints = (node: SceneNode): boolean =>
+    node.shape === "rect" || node.shape === "container" || node.shape === "diamond";
+  const boxById = new Map<string, RouteBox>(
+    scene.nodes.filter(acceptsMountPoints).map((n) => [n.id, routeBoxOf(n)]),
+  );
   const edges = scene.edges.map((e): SceneEdge => {
     const fromBox = boxById.get(e.from);
     const toBox = boxById.get(e.to);
-    if (fromBox === undefined || toBox === undefined || e.from === e.to) return e;
+    if (fromBox === undefined || toBox === undefined || e.from === e.to || e.curved) return e;
     const pts = [...e.waypoints];
     if (pts.length >= 2) {
       const first = pts[0];
       const second = pts[1];
       if (first !== undefined && second !== undefined) {
-        pts[0] = snapToMountPoint(fromBox, first);
+        const mount = snapToMountPoint(fromBox, second);
+        pts[0] = mount;
+        if (pts.length > 2) {
+          pts[1] = alignAdjacentToMount(fromBox, mount, second);
+        }
       }
       const lastIdx = pts.length - 1;
       const last = pts[lastIdx];
       const prev = pts[lastIdx - 1];
       if (last !== undefined && prev !== undefined) {
-        pts[lastIdx] = snapToMountPoint(toBox, last);
+        const mount = snapToMountPoint(toBox, prev);
+        pts[lastIdx] = mount;
+        if (lastIdx > 1) {
+          pts[lastIdx - 1] = alignAdjacentToMount(toBox, mount, prev);
+        }
       }
     }
     const [w0, w1, ...wr] = pts;

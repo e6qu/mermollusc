@@ -182,6 +182,12 @@ catalog stays readable under the container-title routing guard.
 Checked while making cloud/network style buckets first-class, restoring architecture colours, enriching
 the demo catalog, and fixing dragged Gantt dependency tasks plus timeline events.
 
+Checked while gating side-centre mount snapping to ELK/compartment box families and preserving
+cloud/network first-class routing.
+
+Resolved while pushing this PR: the UI e2e gate could reuse an unrelated local app on port 4173 and fail
+against the wrong DOM. The Playwright config now starts fresh local servers for the gate.
+
 Resolved (Miro-like round, 2026-06-23):
 
 - ~~**A tool-change announcement overwrote the canvas's diagram aria-label.**~~ Caught while building

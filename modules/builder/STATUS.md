@@ -8,7 +8,8 @@ for drag gestures that already know the resolved calendar day.
 - core: `hitTest`; `Selection` (`selectOnly`/`toggle`/`isSelected`); overrides
   (`moveNode`/`resizeNode`/`clearOverride`/`applyOverrides` — moving nodes re-anchors their connectors
   and grows the extent so dragged-out nodes aren't clipped; `resizeNode` pins position + size for
-  manual node sizing; a uniformly-moved group keeps its edge routes).
+  manual node sizing; a uniformly-moved group keeps its edge routes; side-centre mount snapping is
+  opt-in for box-style diagram families).
 - two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line), C4 element/relation
@@ -23,7 +24,7 @@ for drag gestures that already know the resolved calendar day.
 - snap geometry (core): `snapAxis(edges, targets)` → `{ delta, line }` (closest candidate within
   `SNAP_T`, first-seen-wins on a tie) and `snapCandidates(nodes, exceptId)` → other nodes'
   left/centre/right xs + top/middle/bottom ys; `SNAP_T` = 6 px. Moved verbatim from the app shell.
-- tests: 84 passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: 53 unit + 79 integration passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases,
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept),
   `relabelNode` never-corrupts (round-trips through parse OR returns err), `validateLabel` per-context

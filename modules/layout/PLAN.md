@@ -47,3 +47,5 @@
 - Network and cloud demo-oriented layouts keep architecture diagrams tiered: ungrouped ingress nodes
   are placed before grouped zones in network layouts, and cloud top-level boxes wrap on a narrower row
   budget with larger inter-row lanes so public starter diagrams do not collapse into one congested band.
+- ELK/compartment box families use side-centre mount points (top, bottom, left, right) as a post-layout
+  routing cleanup; architecture spread families and non-box semantic families keep their own routers.
