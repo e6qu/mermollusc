@@ -17,7 +17,8 @@ canvas, and hosts the e2e / golden tests.
   and keep routed graph endpoints attached to those mounts after Relax, drag rerenders, and style
   overlays.
 - Use provenance-tracked original vendor icon packs for public cloud/network starters and defaults when
-  the bundled registry contains the needed glyphs.
+  the bundled registry contains the needed glyphs; demo icon tests must assert painted glyph pixels, not
+  only the absence of registry errors.
 - Gate mount snapping by diagram family only where the family has no routed node-to-node connector
   semantics; architecture and compartment families use the same cardinal endpoint contract.
 

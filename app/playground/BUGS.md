@@ -17,6 +17,8 @@ Resolved (mount-point and label pass, 2026-06-30):
   labelled edges through the UI across every graph family that emits edge labels.
 - ~~**Regenerate clearing imported unpinned overrides was not proven end to end.**~~ Fixed — the toolbar
   e2e imports a hash/share overlay with an unpinned node position and asserts Regenerate removes it.
+- ~~**Network default icons had no painted-pixel assertion.**~~ Fixed — the network icon e2e now samples
+  the canvas icon box for every default network kind and fails if the glyph is not visibly painted.
 
 Resolved (multi-dimension audit omnibus, 2026-06-23):
 

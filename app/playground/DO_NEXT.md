@@ -101,7 +101,7 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 - *(done)* **CAN-08** — end-to-end assert that Regenerate clears an imported *unpinned* override (today only the
   `pinnedOverrides` filter + the preserves-pinned assertion; the clears-unpinned path needs an imported
   overlay, since drag/resize always pin).
-- **`e2e/network-icons.spec.ts`** asserts only `errors == []`; assert painted pixels / registry
+- *(done)* **`e2e/network-icons.spec.ts`** asserts only `errors == []`; assert painted pixels / registry
   resolution (its `network-icon-override` sibling now asserts the loud-failure half).
 - *(optional)* a visual pixel golden off `make shots` — the display-list goldens already guard geometry
   without font/AA flakiness, so this is only for catching paint regressions.
