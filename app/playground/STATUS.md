@@ -159,7 +159,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
     focused, so CodeMirror keeps `⌘Z` for the source text — the two histories don't fight.
 - node e2e composition test (text → pixels) passing.
 - Icons in nodes: network node kinds resolve to bundled vendor glyphs (`findIcon` → SVG → rasterised
-  image, cached), handed to `paint` and drawn above each node's label.
+  image, cached), handed to `paint` and drawn above each node's label. The network icon e2e samples the
+  canvas icon box for every default network kind, so bundled registry resolution is proven as visible
+  pixels rather than only "no console errors".
 - Visual review shots exercise the public Examples menu sources for the major families, including
   cloud, network, timeline, Gantt, DOT, and BPMN workflow starters.
 - HiDPI: the canvas backing store is sized to `devicePixelRatio` (drawing in CSS px via a dpr

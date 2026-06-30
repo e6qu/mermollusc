@@ -1,5 +1,10 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Network icon pixel assertion
+
+- Strengthened the network icon e2e from "no resolve failures" to canvas pixel sampling across every
+  default network node kind, proving bundled vendor glyphs are visibly painted in the demo.
+
 ## 2026-06-30 — Imported override regenerate assertion
 
 - Added Playwright coverage for a shared/hash-loaded overlay containing an unpinned node position, then
