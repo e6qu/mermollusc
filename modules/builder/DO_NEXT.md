@@ -6,14 +6,12 @@
   semantic question "deleting `B` from `A --> B --> C` keeps `A` and `C` as bare nodes" is answered. A
   parser-span rework would still be cleaner (no extra render, no re-declare round-trip), but it's no
   longer a correctness gap — lower priority now.
-- Wire the app shell to call `validateLabel(label, context)` before committing every inline
-  edge/element label edit (the `patchAt`/`commit` path in `beginRelabel`): flowchart/network/cloud/block
-  pipe labels → `pipe`; C4 element/relation labels → `quoted`; the remaining families → `plain`. Surface
-  the `PatchError` (the relabel/reshape node paths already validate internally).
-- Wire `app/main.ts` to import `snapAxis` / `snapCandidates` / `SNAP_T` from `@m/builder` and delete the
-  in-file copies (the core is now the single source).
-- Add unit coverage for `applyStyles(scene, emptyEdgeStyles, emptyNodeStyles, true)` so the no-style
-  branch continues to honor mount snapping.
+- *(done)* App inline relabel commits call `validateLabel` before splicing source spans, including
+  timeline/gantt colon-delimited labels, and surface `PatchError` messages in the status HUD.
+- *(done)* `app/main.ts` imports `snapAxis` / `snapCandidates` / `SNAP_T` from `@m/builder`; the core is
+  the single source for alignment snapping.
+- *(done)* Unit coverage for `applyStyles(scene, emptyEdgeStyles, emptyNodeStyles, true)` guards the
+  no-style branch so it continues to honor mount snapping.
 - *(done)* Sidecar group labels (`setGroupLabel`) persist through the overlay codec.
 - *(done)* Property coverage for `relabelNode` (span-accurate relabel, others untouched) and
   `connect` (appends exactly one edge, nodes preserved).

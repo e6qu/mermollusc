@@ -36,7 +36,8 @@ Hit-testing, selection, drag, and text↔diagram two-way sync.
 - `patchSpan`, `relabelNode`, `reshapeNode`, `addNode`, `connect`, `connectUndirected`, `connectC4`,
   `connectMessage`.
 - `validateLabel(label, context)` — the pure label-safety guard the shell calls before committing an
-  inline edge/element/node-label edit (`context` ∈ `flowchartBracket` | `pipe` | `quoted` | `plain`).
+  inline edge/element/node-label edit (`context` ∈ `flowchartBracket` | `pipe` | `quoted` | `colon` |
+  `plain`).
 - `deleteNode`, `deleteEdge`, `deleteC4`, `deleteC4Rel`, `deleteActor`, `deleteMessage`.
 - `snapAxis`, `snapCandidates`, `SNAP_T` — alignment-snap geometry for drag/resize (pure, in core).
 - `applyOverrides(scene, overrides, snapToMountPoints?)` and `applyStyles(..., snapToMountPoints?)` —

@@ -1,7 +1,13 @@
 import { brand, point, rect } from "@m/std";
 import type { LayoutOverrides, Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
-import { applyOverrides, clearOverride, moveNode, resizeNode } from "../../src/core/overrides.js";
+import {
+  applyOverrides,
+  applyStyles,
+  clearOverride,
+  moveNode,
+  resizeNode,
+} from "../../src/core/overrides.js";
 
 const snid = (s: string) => brand<string, "SceneNodeId">(s);
 const seid = (s: string) => brand<string, "SceneEdgeId">(s);
@@ -82,6 +88,22 @@ describe("overrides", () => {
   it("snaps moved box-family connectors to side-center mounts when requested", () => {
     const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(200, 50)), true);
     expect(moved.edges[0]?.waypoints).toEqual([point(200, 70), point(200, 120), point(60, 120)]);
+  });
+
+  it("snaps no-style display connectors when requested", () => {
+    const edge = scene.edges[0];
+    if (edge === undefined) throw new Error("missing edge fixture");
+    const raw: Scene = {
+      ...scene,
+      edges: [
+        {
+          ...edge,
+          waypoints: [point(10, 40), point(40, 100)],
+        },
+      ],
+    };
+    const shown = applyStyles(raw, new Map(), new Map(), true);
+    expect(shown.edges[0]?.waypoints).toEqual([point(30, 40), point(30, 100)]);
   });
 
   it("translates an edge whose endpoints both move by the same delta (group move)", () => {

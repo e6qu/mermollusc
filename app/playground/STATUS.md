@@ -77,8 +77,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   + `e2e-shots/shots.spec.ts`) drives the live UI through named flows and writes PNGs to `shots/`
   (git-ignored) after clearing stale PNGs, and owns its preview server on a dedicated port so it
   cannot attach to a stale local process — for visual review / design iteration, not a gate. It
-  includes phone-width responsive shell, shortcut-help modal, state/sketch/donut, minimap, grouping,
-  and family-polish flows so task journeys and visual modes are reviewable from a clean artifact set.
+  includes phone-width responsive shell, shortcut-help modal, light/dark selected-node mount handles,
+  state/sketch/donut, minimap, grouping, and family-polish flows so task journeys and visual modes are
+  reviewable from a clean artifact set.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay.

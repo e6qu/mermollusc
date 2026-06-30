@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Selected mount visual guard
+
+- Added a dark-theme selected-node screenshot flow so cardinal mount handles are visually reviewed in
+  both light and dark themes, not only checked by geometry assertions.
+- Regenerated the local demo screenshots and verified the current catalog still passes all shot flows.
+
 ## 2026-06-30 — Demo-visible label and icon parity
 
 - Edge labels are now draggable as canvas objects. The app stores their route-relative `labelT`, uses

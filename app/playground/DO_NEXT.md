@@ -4,8 +4,8 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
 ## Sweep-round audit backlog (deferred from the multi-agent review)
-- Add a screenshot review pass specifically for selected-node mount handles across light/dark, because
-  the current regression guard is geometric rather than visual.
+- *(done)* Add a screenshot review pass specifically for selected-node mount handles across light/dark,
+  because the geometric regression guard does not catch theme visibility.
 - **Node colour/fill restyle (J4).** Only shape + arrow-kind cycling exist; colour is the most-expected
   styling control. Add a swatch writing a `style`/`classDef` patch (flowchart first), or mark as source-only.
 - **(done) Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)
