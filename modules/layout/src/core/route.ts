@@ -179,6 +179,32 @@ const portAt = (box: RouteBox, side: Side, rank: number, count: number): Point =
   if (side === "B") return point(box.x + box.w * f, box.y + box.h);
   return point(box.x + box.w * f, box.y);
 };
+const mountAt = (box: RouteBox, side: Side): Point => {
+  if (side === "R") return point(box.x + box.w, box.y + box.h / 2);
+  if (side === "L") return point(box.x, box.y + box.h / 2);
+  if (side === "B") return point(box.x + box.w / 2, box.y + box.h);
+  return point(box.x + box.w / 2, box.y);
+};
+const sideNormal = (side: Side): readonly [number, number] => {
+  if (side === "R") return [1, 0];
+  if (side === "L") return [-1, 0];
+  if (side === "B") return [0, 1];
+  return [0, -1];
+};
+const offsetOutside = (p: Point, side: Side, gap: number): Point => {
+  const [dx, dy] = sideNormal(side);
+  return point(p.x + dx * gap, p.y + dy * gap);
+};
+const compactPoints = (pts: readonly Point[]): Point[] => {
+  const out: Point[] = [];
+  for (const p of pts) {
+    const last = out[out.length - 1];
+    if (last === undefined || Math.abs(last.x - p.x) >= 0.5 || Math.abs(last.y - p.y) >= 0.5) {
+      out.push(p);
+    }
+  }
+  return out;
+};
 
 interface PortStub {
   readonly key: string;
@@ -1216,47 +1242,63 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
     const tr = rankOf.get(s.to);
     if (fr === undefined || tr === undefined) return e;
     const fs = s.fs;
-    const p0 = portAt(a, fs, fr.rank, fr.count);
-    const p3 = portAt(b, s.ts, tr.rank, tr.count);
+    const p0 = mountAt(a, fs);
+    const p3 = mountAt(b, s.ts);
+    const lane0 = offsetOutside(portAt(a, fs, fr.rank, fr.count), fs, CHANNEL_GAP);
+    const lane3 = offsetOutside(portAt(b, s.ts, tr.rank, tr.count), s.ts, CHANNEL_GAP);
+    const exit0 = offsetOutside(p0, fs, CHANNEL_GAP);
+    const exit3 = offsetOutside(p3, s.ts, CHANNEL_GAP);
     // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v): the two
     // mid points sit on the central cross-channel leg. Stagger that leg per source-lane so parallel edges
     // (e.g. several A→B) don't lay their cross-channel legs on top of each other; clamp into the gap so
     // the leg stays between the two boxes.
     const horizontal = fs === "L" || fs === "R";
-    const span = horizontal ? Math.abs(p3.x - p0.x) : Math.abs(p3.y - p0.y);
+    const span = horizontal ? Math.abs(lane3.x - lane0.x) : Math.abs(lane3.y - lane0.y);
     const raw = (fr.rank - (fr.count - 1) / 2) * CHANNEL_GAP;
     const limit = (span / 2) * 0.6;
     const off = Math.max(-limit, Math.min(limit, raw));
-    const midX = (p0.x + p3.x) / 2 + (horizontal ? off : 0);
-    const midY = (p0.y + p3.y) / 2 + (horizontal ? 0 : off);
-    const sm1 = horizontal ? point(midX, p0.y) : point(p0.x, midY);
-    const sm2 = horizontal ? point(midX, p3.y) : point(p3.x, midY);
+    const midX = (lane0.x + lane3.x) / 2 + (horizontal ? off : 0);
+    const midY = (lane0.y + lane3.y) / 2 + (horizontal ? 0 : off);
+    const sm1 = horizontal ? point(midX, lane0.y) : point(lane0.x, midY);
+    const sm2 = horizontal ? point(midX, lane3.y) : point(lane3.x, midY);
     const obstacles = obstacleBoxes.get(e.id) ?? [];
+    const direct = compactPoints([p0, exit0, lane0, sm1, sm2, lane3, exit3, p3]);
     // Clean staggered route (the overwhelming common case) — unchanged, so clean diagrams don't move.
-    if (routeHits([p0, sm1, sm2, p3], obstacles) === 0) {
+    if (routeHits(direct, obstacles) === 0) {
       const labelPos = e.labelPos === null ? null : point((sm1.x + sm2.x) / 2, (sm1.y + sm2.y) / 2);
-      return { ...e, waypoints: twoOrMore(p0, sm1, sm2, p3), labelPos };
+      const [w0, w1, ...wr] = direct;
+      if (w0 !== undefined && w1 !== undefined)
+        return { ...e, waypoints: twoOrMore(w0, w1, ...wr), labelPos };
     }
     // The route would cut through a node. Prefer the maze router (general multi-bend detours); if it
     // can't find a clear orthogonal path, fall back to the local two-topology channel repair.
-    const maze = mazeRoute(p0, p3, obstacles, OBSTACLE_CLEARANCE);
-    if (maze !== null && maze.length >= 2 && routeHits(maze, obstacles) === 0) {
-      const [w0, w1, ...wr] = maze;
-      if (w0 !== undefined && w1 !== undefined) {
-        const labelPos = e.labelPos === null ? null : pathMidpoint(maze);
-        return { ...e, waypoints: twoOrMore(w0, w1, ...wr), labelPos };
+    const maze = mazeRoute(lane0, lane3, obstacles, OBSTACLE_CLEARANCE);
+    if (maze !== null && maze.length >= 2) {
+      const routed = compactPoints([p0, exit0, ...maze, exit3, p3]);
+      if (routeHits(routed, obstacles) === 0) {
+        const [w0, w1, ...wr] = routed;
+        if (w0 !== undefined && w1 !== undefined) {
+          const labelPos = e.labelPos === null ? null : pathMidpoint(routed);
+          return { ...e, waypoints: twoOrMore(w0, w1, ...wr), labelPos };
+        }
       }
     }
-    const { m1, m2 } = avoidObstacles(p0, p3, sm1, sm2, horizontal, obstacles);
+    const { m1, m2 } = avoidObstacles(lane0, lane3, sm1, sm2, horizontal, obstacles);
+    const fallback = compactPoints([p0, exit0, lane0, m1, m2, lane3, exit3, p3]);
     const labelPos = e.labelPos === null ? null : point((m1.x + m2.x) / 2, (m1.y + m2.y) / 2);
-    return { ...e, waypoints: twoOrMore(p0, m1, m2, p3), labelPos };
+    const [w0, w1, ...wr] = fallback;
+    if (w0 !== undefined && w1 !== undefined) {
+      return { ...e, waypoints: twoOrMore(w0, w1, ...wr), labelPos };
+    }
+    return e;
   });
   const wired = { ...scene, edges };
   // BUS mode keeps the staggered routes as-is: connectors to a shared endpoint already run along common
   // channel legs, so leaving them coincident forms a shared "backbone" (the renderer marks the junctions
   // where edges branch off it). The default instead minimises crossings then de-stacks the overlaps onto
   // separate lanes — the two complementary passes that give the clean parallel look.
-  return bus ? wired : separateOverlaps(minimizeCrossings(wired));
+  const routed = bus ? wired : separateOverlaps(minimizeCrossings(wired));
+  return snapSceneEdgesToMountPoints(routed);
 };
 
 // Initial layout: reserve channel room (moving bands apart by edge density) then route (default, no bus).
@@ -1326,7 +1368,7 @@ const trunkMerge = (scene: Scene): Scene => {
     if (free.length < TRUNK_MIN) continue;
     const tb = boxOf.get(g.node);
     if (tb === undefined) continue;
-    const tPort = portAt(tb, g.side, 0, 1); // single shared port at the side's centre
+    const tPort = mountAt(tb, g.side);
     const vertical = g.side === "L" || g.side === "R";
 
     const farPorts = free
@@ -1336,7 +1378,7 @@ const trunkMerge = (scene: Scene): Scene => {
         const otherId = e.from === g.node ? e.to : e.from;
         const ob = boxOf.get(otherId);
         if (ob === undefined) return null;
-        const oPort = portAt(ob, facingSide(ob, tb), 0, 1);
+        const oPort = mountAt(ob, facingSide(ob, tb));
         return { idx, e, oPort };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -1446,15 +1488,12 @@ export const retidyRoutes = (scene: Scene): Scene => {
 };
 
 export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
-  const acceptsMountPoints = (node: SceneNode): boolean =>
-    node.shape === "rect" || node.shape === "container" || node.shape === "diamond";
-  const boxById = new Map<string, RouteBox>(
-    scene.nodes.filter(acceptsMountPoints).map((n) => [n.id, routeBoxOf(n)]),
-  );
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const obstacleBoxes = obstaclesForEdges(scene);
   const edges = scene.edges.map((e): SceneEdge => {
     const fromBox = boxById.get(e.from);
     const toBox = boxById.get(e.to);
-    if (fromBox === undefined || toBox === undefined || e.from === e.to || e.curved) return e;
+    if (fromBox === undefined || toBox === undefined || e.from === e.to) return e;
     const pts = [...e.waypoints];
     if (pts.length >= 2) {
       const first = pts[0];
@@ -1462,7 +1501,7 @@ export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
       if (first !== undefined && second !== undefined) {
         const mount = snapToMountPoint(fromBox, second);
         pts[0] = mount;
-        if (pts.length > 2) {
+        if (pts.length > 2 && !samePoint(first, mount)) {
           pts[1] = alignAdjacentToMount(fromBox, mount, second);
         }
       }
@@ -1472,12 +1511,30 @@ export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
       if (last !== undefined && prev !== undefined) {
         const mount = snapToMountPoint(toBox, prev);
         pts[lastIdx] = mount;
-        if (lastIdx > 1) {
+        if (lastIdx > 1 && !samePoint(last, mount)) {
           pts[lastIdx - 1] = alignAdjacentToMount(toBox, mount, prev);
         }
       }
     }
-    const [w0, w1, ...wr] = pts;
+    if (pts.length === 2) {
+      const start = pts[0];
+      const end = pts[1];
+      if (
+        start !== undefined &&
+        end !== undefined &&
+        Math.abs(start.x - end.x) > 1e-6 &&
+        Math.abs(start.y - end.y) > 1e-6
+      ) {
+        const firstElbow = point(start.x, end.y);
+        const secondElbow = point(end.x, start.y);
+        const obstacles = obstacleBoxes.get(e.id) ?? [];
+        const firstHits = routeHits([start, firstElbow, end], obstacles);
+        const secondHits = routeHits([start, secondElbow, end], obstacles);
+        pts.splice(1, 0, firstHits <= secondHits ? firstElbow : secondElbow);
+      }
+    }
+    const compacted = compactPoints(pts);
+    const [w0, w1, ...wr] = compacted;
     if (w0 !== undefined && w1 !== undefined) {
       const snappedWaypoints = twoOrMore(w0, w1, ...wr);
       return {

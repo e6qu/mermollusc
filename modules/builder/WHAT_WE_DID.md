@@ -4,6 +4,8 @@
   overlays default it to `null`.
 - `applyStyles` now reapplies `labelT` after straightening, curved rendering, or A* route-option changes,
   so a moved edge label keeps its relative place across rerenders.
+- `applyStyles` now honors the mount-snap option even when there are no explicit edge/node styles, so the
+  no-style display path cannot bypass cardinal endpoint mounts.
 
 ## 2026-06-30 — Gantt dependency drag rewrite helper
 

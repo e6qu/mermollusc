@@ -4,8 +4,9 @@
 
 **Current architecture note:** network root zones now lay out left-to-right with vendored default
 icons, cloud uses semantic architecture accents with vendored default icons and a wider tier row budget,
-state diagrams honor source direction, timeline event connectors are real edges, and ELK/compartment
-box diagrams snap connectors to side-centre mount points.
+state diagrams honor source direction, timeline event connectors are real edges, and graph endpoints use
+cardinal mount points across the box/diamond families. C4 boundaries wrap larger child sets into compact
+rows instead of a single horizontal strip.
 
 - `layout(ast, seed?)` → `Promise<Result<Scene, LayoutError>>` (shell). A non-empty `seed`
   (node → current position) runs ELK semi-interactive layered layout — relaxing around the

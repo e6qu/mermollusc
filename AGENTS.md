@@ -39,6 +39,10 @@ Read it before touching any module. These rules **override** convenience.
 9. **No noise comments.** No separator/banner comments and no comments that restate the code
    or these rules. Keep only comments that explain something the code cannot: a boundary, an
    invariant, a non-obvious "why". Never cite rule/section numbers in code — they rot.
+10. **Graph-wide scope by default.** When asked to change rendering, interaction, layout,
+    examples, or demo behavior, apply the fix to every applicable graph family and to the demo
+    website. Push back only when that is impossible; in that case, ask for direction and halt
+    instead of shipping a narrow partial fix.
 
 ---
 

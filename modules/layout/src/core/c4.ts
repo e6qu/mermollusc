@@ -74,15 +74,25 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
       boxes.set(el.id, box);
       return box;
     }
-    let cursor = x + PADDING;
-    let maxHeight = 0;
-    for (const kid of kids) {
-      const kidBox = place(kid, cursor, y + HEADER);
-      cursor += kidBox.w + GAP;
-      maxHeight = Math.max(maxHeight, kidBox.h);
+    const columns = Math.max(1, Math.ceil(Math.sqrt(kids.length)));
+    let rowX = x + PADDING;
+    let rowY = y + HEADER;
+    let rowH = 0;
+    let maxRight = x + PADDING;
+    let maxBottom = rowY;
+    for (const [idx, kid] of kids.entries()) {
+      if (idx > 0 && idx % columns === 0) {
+        rowX = x + PADDING;
+        rowY += rowH + GAP;
+        rowH = 0;
+      }
+      const kidBox = place(kid, rowX, rowY);
+      rowX += kidBox.w + GAP;
+      rowH = Math.max(rowH, kidBox.h);
+      maxRight = Math.max(maxRight, kidBox.x + kidBox.w);
+      maxBottom = Math.max(maxBottom, kidBox.y + kidBox.h);
     }
-    const innerWidth = cursor - GAP - (x + PADDING);
-    const box: Box = { x, y, w: innerWidth + 2 * PADDING, h: HEADER + maxHeight + PADDING };
+    const box: Box = { x, y, w: maxRight - x + PADDING, h: maxBottom - y + PADDING };
     boxes.set(el.id, box);
     return box;
   };

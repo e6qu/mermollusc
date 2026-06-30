@@ -78,8 +78,15 @@ describe("layoutC4", () => {
 
   it("emits a right-angle (port-spread) edge per relation", () => {
     expect(scene.edges.map((e) => e.id)).toEqual(["r0"]);
-    // `spreadPorts` routes each relation as a 4-point orthogonal path into per-side lanes.
-    expect(scene.edges[0]?.waypoints).toHaveLength(4);
+    const waypoints = scene.edges[0]?.waypoints;
+    if (waypoints === undefined) throw new Error("missing route");
+    expect(waypoints.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < waypoints.length; i++) {
+      const prev = waypoints[i - 1];
+      const curr = waypoints[i];
+      if (prev === undefined || curr === undefined) throw new Error("missing waypoint");
+      expect(prev.x === curr.x || prev.y === curr.y).toBe(true);
+    }
   });
 
   it("renders a description as a second label line and widens the box to fit it", () => {

@@ -4,6 +4,9 @@ _None known._
 
 ## Resolved
 
+- ~~**Edge label backgrounds read as opaque blocks.**~~ Fixed — plated edge labels now render with 66%
+  opacity for both the padded background and foreground text in canvas and SVG.
+
 - ~~**`toDot` exported pie markers as orphan boxes and grew `cluster_` on every round-trip.**~~ Fixed
   (export/IO audit) — `toDot` emitted pie slices (invisible `marker` nodes) as disconnected boxes (the
   comments even claimed a pie "exports as an empty graph", which was false), and prefixed a container id

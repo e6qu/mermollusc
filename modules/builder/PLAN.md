@@ -23,8 +23,8 @@ Hit-testing, selection, drag, and text↔diagram two-way sync.
   coordinates). Each override is `nodeId → { position, size?, pinned }`.
 - **Manual edge-label placement lives in sidecar edge styles** as a relative route ratio, so label
   positions survive reroutes and regenerate without polluting the Mermaid source.
-- Box-style mount snapping is an explicit display option at the override/style boundary so semantic
-  families can keep their own anchor rules.
+- Box-style mount snapping is an explicit display option at the override/style boundary, and that option
+  applies even when the sidecar has no edge/node style entries.
 - **Operations:**
   - *regenerate* — re-run ELK on **unpinned** nodes only; pinned nodes keep their manual position.
   - *relax* — feed manual positions to ELK as **soft seeds** and let it relax the whole graph

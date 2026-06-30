@@ -133,6 +133,9 @@ const labelLineHeight = (font: string): number => {
 const scaleFont = (font: string, factor: number): string =>
   font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${(Number(n) * factor).toFixed(1)}px`);
 
+const EDGE_LABEL_TEXT_ALPHA = 0.66;
+const EDGE_LABEL_PLATE_ALPHA = 0.66;
+
 // Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
 const lcg = (seed: number) => {
   let s = seed >>> 0 || 1;
@@ -438,7 +441,7 @@ export const paint = (
           const boxW = widest + padX * 2;
           const boxH = lines.length * lh + padY * 2;
           ctx.fillStyle = theme.background;
-          ctx.globalAlpha = 0.78;
+          ctx.globalAlpha = EDGE_LABEL_PLATE_ALPHA;
           ctx.fillRect(cmd.x - boxW / 2, top - lh / 2 - padY, boxW, boxH);
           ctx.globalAlpha = 1;
         }
@@ -446,11 +449,11 @@ export const paint = (
           if (i === 0) {
             ctx.fillStyle = theme.text;
             ctx.font = theme.font;
-            ctx.globalAlpha = 1;
+            ctx.globalAlpha = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : 1;
           } else {
             ctx.fillStyle = theme.text;
             ctx.font = scaleFont(theme.font, 0.82);
-            ctx.globalAlpha = 0.7;
+            ctx.globalAlpha = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : 0.7;
           }
           ctx.fillText(line, cmd.x, top + i * lh);
         }

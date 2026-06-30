@@ -89,7 +89,8 @@ describe("toSvg", () => {
   });
 
   it("renders edge-label plates as padded rounded callouts", () => {
-    expect(svg).toContain(`rx="3" fill="${defaultTheme.background}"`);
+    expect(svg).toContain(`rx="3" fill="${defaultTheme.background}" fill-opacity="0.66"`);
+    expect(svg).toContain(`fill-opacity="0.66">go</tspan>`);
     expect(svg).toMatch(/<rect x="[-0-9.]+" y="[-0-9.]+" width="28\.80" height="24\.20" rx="3"/);
   });
 

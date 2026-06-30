@@ -52,6 +52,9 @@ const attr = (s: string): string => esc(s).replace(/"/g, "&quot;");
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
+const EDGE_LABEL_TEXT_ALPHA = "0.66";
+const EDGE_LABEL_PLATE_ALPHA = "0.66";
+
 const labelLineHeight = (font: string): number => {
   const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];
   return (px === undefined ? 14 : Number(px)) * 1.3;
@@ -132,7 +135,9 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const top = cmd.y - ((lines.length - 1) * lh) / 2;
       const tspans = lines
         .map((line, i) => {
-          const style = i === 0 ? "" : ` font-size="${num(sub)}" fill-opacity="0.7"`;
+          const size = i === 0 ? "" : ` font-size="${num(sub)}"`;
+          const opacity = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : i === 0 ? "1" : "0.7";
+          const style = `${size} fill-opacity="${opacity}"`;
           return `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}"${style}>${esc(line)}</tspan>`;
         })
         .join("");
@@ -147,7 +152,7 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const padY = 3;
       const boxW = widest * fontPx * 0.6 + padX * 2;
       const boxH = lines.length * lh + padY * 2;
-      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}" fill-opacity="0.78"/>`;
+      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}" fill-opacity="${EDGE_LABEL_PLATE_ALPHA}"/>`;
       return `${rect}${text}`;
     }
     case "wedge": {

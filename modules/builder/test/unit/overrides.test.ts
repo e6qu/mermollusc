@@ -81,7 +81,7 @@ describe("overrides", () => {
 
   it("snaps moved box-family connectors to side-center mounts when requested", () => {
     const moved = applyOverrides(scene, moveNode(new Map(), snid("A"), point(200, 50)), true);
-    expect(moved.edges[0]?.waypoints).toEqual([point(200, 70), point(60, 120)]);
+    expect(moved.edges[0]?.waypoints).toEqual([point(200, 70), point(200, 120), point(60, 120)]);
   });
 
   it("translates an edge whose endpoints both move by the same delta (group move)", () => {

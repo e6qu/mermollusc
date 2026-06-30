@@ -2,8 +2,8 @@
 
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
-  "polyline 48,20 73,20 73,13 98,13 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
-  "polyline 98,27 78,27 78,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 48,20 48,17 98,17 98,20 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 98,20 88,20 88,27 78,27 78,104 58,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "box 0,0 48x40 r0",
   "label "Web" 24,20 center",
   "box 98,0 48x40 r0",
@@ -17,7 +17,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 [
   "box 124,0 244x98 r4",
   "label "Backend" 246,12 center",
-  "polyline 80,28 110,28 110,54 140,54 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 80,28 90,28 110,28 110,54 130,54 140,54 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
   "box 0,0 80x56 r8",
   "label "Alice" 40,28 center",
   "box 140,26 80x56 r0",
@@ -30,7 +30,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 [
-  "polyline 82,98 62,158 dashed=false from=l0p1c0 to=l0p0c0 mid=1",
+  "polyline 82,98 82,158 62,158 dashed=false from=l0p1c0 to=l0p0c0 mid=2",
   "polyline 82,98 82,112 212,112 212,158 dashed=false from=l0p1c0 to=l0p0c0 mid=0",
   "box 22,12 120x86 r0",
   "label "«abstract»" 82,22 center",
@@ -50,7 +50,7 @@ exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 [
   "box 0,0 276x98 r4",
   "label "AWS" 138,12 center",
-  "polyline 96,54 138,54 138,54 180,54 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 96,54 106,54 138,54 170,54 180,54 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 16,26 80x56 r0",
   "icon simpleicons/docker 46,32 20",
   "label "Web" 56,58 center",
@@ -90,9 +90,9 @@ exports[`pipeline goldens > lays out er to a stable display list 1`] = `
 exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 [
   "polyline 149,52 149,92 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 149,132 130,230 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 149,132 149,230 130,230 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "polyline 149,132 149,146 184,146 184,284 138,284 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=4",
-  "polyline 130,270 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 130,270 130,310 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "box 117,12 64x40 r0",
   "label "Start" 149,32 center",
   "diamond 149,112 112x40",
@@ -103,7 +103,7 @@ exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
   "box 114,310 48x40 r0",
   "icon devicon/cloudflare 128,316 20",
   "label "End" 138,342 center",
-  "label "yes\\nverified" 139,181 center",
+  "label "yes\\nverified" 149,190 center",
   "label "no" 184,226 center",
 ]
 `;
@@ -188,8 +188,8 @@ exports[`pipeline goldens > lays out mindmap to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out network to a stable display list 1`] = `
 [
-  "polyline 88,24 112,24 112,24 136,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 224,24 248,24 248,24 272,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 88,24 98,24 112,24 126,24 136,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
+  "polyline 224,24 234,24 248,24 262,24 272,24 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
   "box 0,0 88x48 r0",
   "icon devicon/cloudflare 34,6 20",
   "label "Internet" 44,32 center",
@@ -265,8 +265,8 @@ exports[`pipeline goldens > lays out state to a stable display list 1`] = `
   "box 34,376 64x40 r8",
   "label "Ready" 66,396 center",
   "stateEnd 66,480 r24",
-  "label "fetch" 37,189 center",
-  "label "ok" 49,327 center",
+  "label "fetch" 66,189 center",
+  "label "ok" 66,327 center",
 ]
 `;
 
@@ -275,9 +275,9 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
   "box 12,100 216x218 r4",
   "label "Active" 120,112 center",
   "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 192,236 192,266 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 172,266 172,246 95,246 95,168 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
-  "polyline 71,168 71,178 84,178 84,256 152,256 152,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
+  "polyline 192,236 192,266 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
+  "polyline 172,266 172,246 83,246 83,168 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 83,168 83,178 84,178 84,256 172,256 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "stateStart 120,36 r24",
   "stateEnd 120,382 r24",
@@ -286,8 +286,8 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
   "label "Running" 172,286 center",
   "box 47,128 72x40 r8",
   "label "Paused" 83,148 center",
-  "label "pause" 123,212 center",
-  "label "resume" 53,212 center",
+  "label "pause" 99,246 center",
+  "label "resume" 89,256 center",
 ]
 `;
 

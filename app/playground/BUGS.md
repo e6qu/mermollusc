@@ -1,5 +1,15 @@
 # @m/app (playground) — bugs
 
+Resolved (mount-point and label pass, 2026-06-30):
+
+- ~~**Relax could display flowchart diamond edges attached to arbitrary side points.**~~ Fixed — Relax
+  now feeds the laid-out scene through cardinal mount snapping, and the displayed no-style path also
+  honors mount snapping.
+- ~~**Selected nodes did not reveal their connection mounts.**~~ Fixed — the canvas selection overlay now
+  draws the four cardinal mount points for selected nodes.
+- ~~**Edge-label drag support was not proven across graph families.**~~ Fixed — the e2e suite now drags
+  labelled edges through the UI across every graph family that emits edge labels.
+
 Resolved (multi-dimension audit omnibus, 2026-06-23):
 
 - ~~**Any keystroke wiped all manual canvas layout (unrecoverable).**~~ Fixed — single-user text edits

@@ -6,8 +6,8 @@
 icons; cloud defaults to trunk routing; edge labels can be dragged along their routes and preserve their
 relative positions; examples are richer across families; BPMN starters keep the original BPMN glyphs for
 banking and insurance-adjusting workflows; state diagrams honor direction; Gantt `after ...` bars and
-timeline events work when dragged; ELK/compartment box diagrams snap edges to side-centre mounts without
-affecting cloud/network routing.
+timeline events work when dragged; selected nodes show cardinal mount points, and routed graph families
+snap connector endpoints to those mounts after Relax and display rerenders.
 
 - **Design:** a computational notebook/workbench UI — compact command groups in the header, a framed
   **source/input** panel, a labelled **output** stage, quieter graph-paper geometry, and a status bar.

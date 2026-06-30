@@ -42,16 +42,15 @@ const loadExample = async (page: Page, name: string): Promise<void> => {
 declare global {
   interface Window {
     __editor?: { value(): string; setValue(text: string): void };
+    __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
   }
 }
 
-// Click the canvas at a point relative to its top-left, in CSS pixels — the instrument's primitive
-// for "interact with a node/edge" without reaching into scene internals.
-const clickCanvas = async (page: Page, dx: number, dy: number): Promise<void> => {
-  const box = await page.locator("#stage").boundingBox();
+const clickNode = async (page: Page, id: string): Promise<void> => {
+  const box = await page.evaluate((nodeId) => window.__nodeRect?.(nodeId) ?? null, id);
   expect(box).not.toBeNull();
   if (box === null) return;
-  await page.mouse.click(box.x + dx, box.y + dy);
+  await page.mouse.click(box.x + box.w / 2, box.y + box.h / 2);
 };
 
 const STATE_POLISH_SOURCE =
@@ -78,7 +77,7 @@ const FLOWS: readonly Flow[] = [
     about: "a node clicked → selection ring",
     drive: async (page) => {
       await settled(page);
-      await clickCanvas(page, 70, 60);
+      await clickNode(page, "A");
     },
   },
   {

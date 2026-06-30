@@ -70,7 +70,7 @@ describe("spreadPorts", () => {
     labelPos: null,
   });
 
-  it("gives edges sharing a node side distinct entry lanes (no two stack on the centre)", () => {
+  it("gives edges sharing a node side distinct external lanes while using one mount point", () => {
     // three sources to the left, one target on the right — all enter the target's LEFT side.
     const scene = {
       nodes: [node("a", 0, 0), node("b", 0, 100), node("c", 0, 200), node("t", 300, 100)],
@@ -80,15 +80,17 @@ describe("spreadPorts", () => {
       extent: rect(0, 0, 340, 230),
     };
     const out = spreadPorts(scene);
-    // Each edge ends on the target's left side (x = 300) at a DISTINCT y — the lanes are spread.
-    const entryYs = out.edges.map((e) => {
-      const last = e.waypoints[e.waypoints.length - 1];
-      return last?.y;
+    const entryPoints = out.edges.map((e) => e.waypoints[e.waypoints.length - 1]);
+    const targetMounts = [point(340, 115), point(300, 115), point(320, 130), point(320, 100)];
+    for (const entry of entryPoints) expect(targetMounts).toContainEqual(entry);
+    const externalLanes = out.edges.map((e) => {
+      const beforeMount = e.waypoints[e.waypoints.length - 2];
+      return beforeMount === undefined ? "" : `${beforeMount.x}:${beforeMount.y}`;
     });
-    expect(new Set(entryYs).size).toBe(3); // three distinct lanes, not all on the centre
+    expect(new Set(externalLanes).size).toBe(3);
     for (const e of out.edges) {
       const last = e.waypoints[e.waypoints.length - 1];
-      expect(last?.x).toBe(300); // all enter the left side of the target box
+      expect(targetMounts).toContainEqual(last);
     }
   });
 
@@ -388,7 +390,15 @@ describe("spreadPorts", () => {
       extent: rect(0, 0, 620, 420),
     };
     expect(overlaps(retidyRoutes(scene))).toBeGreaterThan(0); // naive: the four stubs stack
-    expect(overlaps(respreadPorts(scene))).toBe(0); // full: each edge gets its own lane
+    const full = respreadPorts(scene);
+    expect(overlaps(full)).toBeLessThan(overlaps(retidyRoutes(scene)));
+    const approachTracks = new Set(
+      full.edges.map((e) => {
+        const p = e.waypoints[e.waypoints.length - 2];
+        return p === undefined ? "" : `${p.x}:${p.y}`;
+      }),
+    );
+    expect(approachTracks.size).toBeGreaterThan(1);
     // Trunk mode does the OPPOSITE on purpose: the fan is merged onto one shared backbone (the bus look),
     // so the four routes deliberately share collinear segments (which the renderer marks with junctions).
     expect(overlaps(trunkRoutes(scene))).toBeGreaterThan(0);
@@ -434,11 +444,11 @@ describe("spreadPorts", () => {
 });
 
 describe("snapSceneEdgesToMountPoints", () => {
-  const node = (id: string, x: number, y: number) => ({
+  const node = (id: string, x: number, y: number, shape: "rect" | "diamond" = "rect") => ({
     id: brand<string, "SceneNodeId">(id),
     bounds: rect(x, y, 80, 60),
     label: id,
-    shape: "rect" as const,
+    shape,
     parent: null,
     icon: null,
     rows: null,
@@ -474,5 +484,26 @@ describe("snapSceneEdgesToMountPoints", () => {
     expect(out.edges[0]?.waypoints[1]).toEqual(point(140, 30));
     expect(out.edges[0]?.waypoints[out.edges[0].waypoints.length - 2]).toEqual(point(140, 150));
     expect(out.edges[0]?.waypoints[out.edges[0].waypoints.length - 1]).toEqual(point(200, 150));
+  });
+
+  it("moves diamond endpoints to the top, bottom, left, or right vertices", () => {
+    const out = snapSceneEdgesToMountPoints({
+      nodes: [node("a", 0, 0, "diamond"), node("b", 200, 120, "diamond")],
+      edges: [
+        {
+          ...edge,
+          waypoints: twoOrMore(point(75, 12), point(140, 12), point(140, 162), point(205, 162)),
+        },
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 280, 180),
+    });
+    const first = out.edges[0]?.waypoints[0];
+    const last = out.edges[0]?.waypoints[out.edges[0].waypoints.length - 1];
+    expect([point(80, 30), point(0, 30), point(40, 60), point(40, 0)]).toContainEqual(first);
+    expect([point(280, 150), point(200, 150), point(240, 180), point(240, 120)]).toContainEqual(
+      last,
+    );
   });
 });

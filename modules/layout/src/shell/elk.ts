@@ -856,19 +856,19 @@ const layoutByFamily = async (
   }
 };
 
-const usesSideCenterMounts = (kind: DiagramAst["kind"]): boolean => {
+const usesCardinalMounts = (kind: DiagramAst["kind"]): boolean => {
   switch (kind) {
     case "flowchart":
-    case "er":
-    case "class":
-    case "requirement":
-      return true;
     case "c4":
     case "block":
     case "network":
     case "cloud":
-    case "sequence":
     case "state":
+    case "er":
+    case "class":
+    case "requirement":
+      return true;
+    case "sequence":
     case "gitGraph":
     case "timeline":
     case "mindmap":
@@ -901,6 +901,6 @@ export const layoutDiagram = async (
       }
     }
     const labelled = decollideEdgeLabels(finalScene, measure);
-    return usesSideCenterMounts(ast.kind) ? snapSceneEdgesToMountPoints(labelled) : labelled;
+    return usesCardinalMounts(ast.kind) ? snapSceneEdgesToMountPoints(labelled) : labelled;
   });
 };

@@ -57,11 +57,17 @@ describe("layoutBlock", () => {
     const a = byId.get("a")?.bounds;
     const b = byId.get("b")?.bounds;
     if (edge === undefined || a === undefined || b === undefined) throw new Error("missing");
-    // a→b is left-to-right on the same row: exit a's right border, enter b's left border (4-point Z that
-    // degenerates to a straight horizontal run here), not a diagonal centre-to-centre line.
-    expect(edge.waypoints).toHaveLength(4);
+    // a→b is left-to-right on the same row: exit a's right-border mount, enter b's left-border mount,
+    // not a diagonal centre-to-centre line or an arbitrary side/corner port.
+    expect(edge.waypoints.length).toBeGreaterThanOrEqual(2);
     expect(edge.waypoints[0]).toEqual({ x: a.origin.x + a.size.width, y: a.origin.y + 20 });
     expect(edge.waypoints[edge.waypoints.length - 1]).toEqual({ x: b.origin.x, y: b.origin.y + 20 });
+    for (let i = 1; i < edge.waypoints.length; i++) {
+      const prev = edge.waypoints[i - 1];
+      const curr = edge.waypoints[i];
+      if (prev === undefined || curr === undefined) throw new Error("missing waypoint");
+      expect(prev.x === curr.x || prev.y === curr.y).toBe(true);
+    }
   });
 
   it("sizes the extent to the populated grid", () => {

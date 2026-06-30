@@ -5,6 +5,9 @@
 - Edge labels are now draggable as canvas objects. The app stores their route-relative `labelT`, uses
   the same anchor for painting overlays, hit testing, inline editing, e2e hooks, and context-bar
   placement, and preserves that position across rerenders/reroutes.
+- Selected nodes now show their four cardinal mount points in the canvas, and Relax/display rerenders
+  preserve those mounts for flowchart, C4, block, network, cloud, state, ER, class, and requirement.
+- Plated edge labels render with 66% opacity for both the transparent background and text foreground.
 - Labels containing literal `\n` now render and hit-test as multiline labels; the app text measurer
   sizes by the widest rendered line.
 - The demo catalog now shows cloud/network examples with bundled vendored icons, keeps the original
@@ -13,6 +16,8 @@
   shots, including cloud, network, timeline, Gantt, DOT, and both BPMN workflows.
 - Added E2E coverage for dragging an edge label itself and preserving that route-relative position
   after the edge is rerendered.
+- Added E2E coverage for the Relax diamond mount-point regression and for UI label dragging across every
+  graph family that emits edge labels.
 
 ## 2026-06-30 — Demo parity, architecture, and drag fixes
 
