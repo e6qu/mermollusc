@@ -2,7 +2,13 @@ import { brand, point, rect, twoOrMore } from "@m/std";
 import type { Scene, SceneEdge, SceneNode } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { layoutEnergy, lowestEnergy } from "../../src/core/energy.js";
-import { containersEncloseMembers, noSiblingOverlaps, styleOk } from "../../src/core/invariants.js";
+import {
+  cardinalMountViolations,
+  containersEncloseMembers,
+  edgesUseCardinalMounts,
+  noSiblingOverlaps,
+  styleOk,
+} from "../../src/core/invariants.js";
 
 const node = (id: string, x: number, y: number, parent: string | null = null): SceneNode => ({
   id: brand<string, "SceneNodeId">(id),
@@ -123,5 +129,25 @@ describe("style invariants", () => {
   it("styleOk combines both family-agnostic guards", () => {
     expect(styleOk(scene([node("a", 0, 0), node("b", 200, 0)], []))).toBe(true);
     expect(styleOk(scene([node("a", 0, 0), node("b", 10, 0)], []))).toBe(false);
+  });
+
+  it("edgesUseCardinalMounts rejects endpoints away from side centres", () => {
+    const clean = scene(
+      [node("a", 0, 0), node("b", 200, 0)],
+      [edge("e", "a", "b", [40, 15], [200, 15])],
+    );
+    const cornerish = scene(
+      [node("a", 0, 0), node("b", 200, 0)],
+      [edge("e", "a", "b", [40, 5], [200, 15])],
+    );
+    expect(edgesUseCardinalMounts(clean)).toBe(true);
+    expect(cardinalMountViolations(cornerish)).toEqual([
+      {
+        edgeId: brand<string, "SceneEdgeId">("e"),
+        nodeId: brand<string, "SceneNodeId">("a"),
+        end: "from",
+        endpoint: point(40, 5),
+      },
+    ]);
   });
 });

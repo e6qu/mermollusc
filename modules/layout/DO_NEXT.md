@@ -3,8 +3,9 @@
 - Wire relax/regenerate buttons in the app (pass the current scene positions as the seed).
 - Refine regenerate to re-layout only *unpinned* nodes (ELK can't cleanly fix a subset; needs a
   per-node fixed-position approach or post-pass).
-- Add a broader route invariant sweep that checks every routed graph family for cardinal endpoint mounts
-  after each layout style, including bus/trunk and manual-drag rerenders.
+- *(done)* Add a broader route invariant sweep that checks every routed graph family for cardinal
+  endpoint mounts after each layout style, including bus/trunk. Manual-drag rerenders remain covered
+  by the app's focused Playwright mount-point and edge-label movement specs.
 - *(done)* The app now measures with the *active* theme font (incl. the wider sketch font) and
   re-lays out when the Sketch toggle flips, so labels stay inside their boxes in both modes.
 - Extend property tests: no node-box overlap, edges terminate near nodes (ids-preserved + boxes-

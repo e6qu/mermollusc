@@ -12,7 +12,8 @@
 - Keep timeline event connectors as real scene edges so manual drag overrides move visible links with the
   event nodes.
 - Keep connector endpoints on cardinal node mounts. Parallel fan-out belongs in external lanes and
-  trunks, not on arbitrary side coordinates.
+  trunks, not on arbitrary side coordinates; `cardinalMountViolations` is the shared invariant for CI
+  and app catalog checks.
 
 ## Responsibility
 
@@ -28,6 +29,8 @@
 - `toElkGraph` / `toScene` (pure) are exported for testing and reuse.
 - `layoutDiagram(ast, measure)` preserves family-specific Scene semantics such as state node roles
   while sharing the generic ELK path where appropriate.
+- `cardinalMountViolations(scene)` / `edgesUseCardinalMounts(scene)` — pure route-endpoint invariant
+  helpers for graph families whose connectors must land on top/bottom/left/right mounts.
 
 ## Notes
 

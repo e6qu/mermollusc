@@ -1,5 +1,13 @@
 # @m/layout — work log
 
+## 2026-06-30 — Cardinal mount invariant sweep
+
+- Added `cardinalMountViolations(scene)` and `edgesUseCardinalMounts(scene)` as exported pure
+  invariants for graph families whose edge endpoints must land on top/bottom/left/right node mounts.
+- Added unit coverage for the invariant, including diagnostic edge/node/end/endpoint reporting.
+- Tightened the `widestLine` property test so "single-line" generated labels exclude both actual
+  newlines and literal `\n`, matching the renderer/layout multiline-label contract.
+
 ## 2026-06-30 — Label and icon rendering parity
 
 - `layoutNetwork` now maps node-kind defaults to bundled vendor icon packs (`devicon`/`k8s`) instead of

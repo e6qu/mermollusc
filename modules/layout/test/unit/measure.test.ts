@@ -4,12 +4,13 @@ import { heuristicMeasure } from "../../src/core/graph.js";
 import { clampedWidth, widestLine } from "../../src/core/measure.js";
 
 const charWidth = (s: string): number => s.length * 8; // mirrors `heuristicMeasure`
+const singleLine = (s: string): string => s.replace(/\n|\\n/g, "");
 
 describe("widestLine", () => {
   it("returns the single line's measured width for a newline-free label", () => {
     fc.assert(
       fc.property(fc.string(), (s) => {
-        const line = s.replace(/\n/g, "");
+        const line = singleLine(s);
         expect(widestLine(line, heuristicMeasure)).toBe(charWidth(line));
       }),
     );
@@ -18,7 +19,7 @@ describe("widestLine", () => {
   it("returns the maximum over lines (>= every individual line)", () => {
     fc.assert(
       fc.property(fc.array(fc.string({ unit: "grapheme-ascii" }), { minLength: 1 }), (lines) => {
-        const text = lines.map((l) => l.replace(/\n/g, "")).join("\n");
+        const text = lines.map(singleLine).join("\n");
         const w = widestLine(text, heuristicMeasure);
         for (const line of text.split("\n")) expect(w).toBeGreaterThanOrEqual(charWidth(line));
         expect(w).toBe(Math.max(...text.split("\n").map(charWidth)));
@@ -40,7 +41,7 @@ describe("clampedWidth", () => {
         fc.nat({ max: 500 }),
         fc.nat({ max: 200 }),
         (s, min, pad) => {
-          const text = s.replace(/\n/g, "");
+          const text = singleLine(s);
           const w = clampedWidth(text, heuristicMeasure, min, pad);
           expect(w).toBeGreaterThanOrEqual(min);
           expect(w).toBeGreaterThanOrEqual(widestLine(text, heuristicMeasure) + pad);
