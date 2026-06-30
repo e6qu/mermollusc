@@ -12,6 +12,9 @@ const overrideCount = (page: Page): Promise<number> =>
     return parsed.overrides?.length ?? 0;
   });
 
+const documentOverrideCount = (page: Page): Promise<number> =>
+  page.evaluate(() => window.__overrideCount?.() ?? -1);
+
 test("drag then relax then regenerate runs without errors", async ({ page }) => {
   const errors = watchPipelineErrors(page);
 
@@ -59,5 +62,37 @@ test("Regenerate preserves pinned manual node overrides", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   await expect.poll(() => overrideCount(page)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test("Regenerate clears imported unpinned node overrides", async ({ page }) => {
+  const errors = watchPipelineErrors(page);
+
+  const source = "flowchart TD\n  A[Start]\n  B[End]\n  A --> B\n";
+  const overlay = JSON.stringify({
+    overrides: [
+      [
+        "A",
+        {
+          position: { x: 260, y: 120 },
+          size: null,
+          pinned: false,
+        },
+      ],
+    ],
+    groups: [],
+    edgeStyles: [],
+    nodeStyles: [],
+  });
+
+  await page.goto(`/#src=${encodeURIComponent(source)}&overlay=${encodeURIComponent(overlay)}`);
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await expect(page.locator("#kind")).toHaveText("flowchart");
+  await expect.poll(() => documentOverrideCount(page)).toBe(1);
+
+  await page.locator("#regenerate").click();
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  await expect.poll(() => documentOverrideCount(page)).toBe(0);
   expect(errors).toEqual([]);
 });

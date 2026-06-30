@@ -1,5 +1,10 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Imported override regenerate assertion
+
+- Added Playwright coverage for a shared/hash-loaded overlay containing an unpinned node position, then
+  pressing Regenerate and asserting the override is removed while the flowchart remains rendered.
+
 ## 2026-06-30 — Selected edge overlay assertion
 
 - Added Playwright coverage for the selected-edge route overlay: the test selects a labelled edge and
