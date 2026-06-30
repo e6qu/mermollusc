@@ -48,7 +48,7 @@
   `FlowSubgraph` boxes, others are transparent) imported into the flowchart model. Not a new family;
   ports/HTML labels are out of scope.
 - `parseState(text)` / `parseStateWithSource(text)` → `StateAst` (+ `StateSource`): `stateDiagram-v2`
-  subset — transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
+  subset — `direction TB|TD|BT|LR|RL`, transitions `A --> B [: label]` (endpoints are identifiers or the `[*]` start/end
   pseudo-state), descriptions `A : label`, `state "Label" as A`, and **composite states**
   `state X { … }` (recursive; each composite scopes its own `[*]`, mirrors `FlowSubgraph` membership/
   nesting → `StateAst.composites`), plus notes with explicit `right`/`left`/`over` side. Source spans

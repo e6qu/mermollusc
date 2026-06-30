@@ -91,6 +91,7 @@ import type {
   OverlayDoc,
   Scene,
   SceneNode,
+  SceneEdgeId,
   SceneNodeId,
   SequenceSource,
   SourceMap,
@@ -108,7 +109,7 @@ import {
   trunkRoutes,
 } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
-import { edgeLabelAnchor, paint, toDisplayList } from "@m/renderer";
+import { edgeLabelAnchorAt, labelLines, paint, pathRatioNearest, toDisplayList } from "@m/renderer";
 import {
   assertNever,
   brand,
@@ -173,6 +174,9 @@ declare global {
     // e2e hook: the viewport px of a labelled edge's label anchor (where the label is drawn), so a spec
     // can click the label and assert it selects the edge.
     __edgeLabelPos?: (edgeId: string) => { x: number; y: number } | null;
+    // e2e hook: set a labelled edge's route-relative label position through the same overlay sidecar
+    // the canvas drag writes.
+    __setEdgeLabelT?: (edgeId: string, t: number) => void;
     // e2e hook: a node's screen-space rect (top-left + size), so a spec can drag/resize it precisely.
     __nodeRect?: (nodeId: string) => { x: number; y: number; w: number; h: number } | null;
     // e2e hook: a node's currently-shown accent (the visual-only colour preference).
@@ -479,6 +483,8 @@ let resize: {
   readonly anchorY: number;
 } | null = null;
 let resizeRecorded = false;
+let labelDrag: { readonly id: SceneEdgeId } | null = null;
+let labelDragRecorded = false;
 const RESIZE_MIN_W = 30;
 const RESIZE_MIN_H = 24;
 const HANDLE_HIT = 7;
@@ -747,9 +753,10 @@ const activeTheme = themeCtl.activeTheme;
 // the heuristic when no 2D context is available.
 const measureCtx = document.createElement("canvas").getContext("2d");
 const measureLabel = (label: string): number => {
-  if (measureCtx === null) return label.length * 8;
+  const lines = labelLines(label);
+  if (measureCtx === null) return lines.reduce((w, l) => Math.max(w, l.length * 8), 0);
   measureCtx.font = activeTheme().font;
-  return measureCtx.measureText(label).width;
+  return lines.reduce((w, l) => Math.max(w, measureCtx.measureText(l).width), 0);
 };
 
 // Resolve every icon referenced by the scene to a drawable image before painting, so the painter
@@ -770,8 +777,8 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
       continue;
     }
     try {
-      // Bake the active theme foreground into `currentColor` line-art (bpmn/arch/sketch) so glyphs stay
-      // legible in dark mode; the cache is cleared on a theme toggle so they re-rasterise.
+      // Bake the active theme foreground into authored `currentColor` line art so glyphs stay legible in
+      // dark mode; vendor packs keep their source SVG colors.
       iconImages.set(key, await rasterizeIcon(resolved.value, activeTheme().text));
     } catch (e) {
       console.error("icon decode failed:", key, messageOf(e));
@@ -902,7 +909,12 @@ const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => 
 // True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
 // minimap cache rebuild and to hide the selection context bar mid-gesture.
 const isInteracting = (): boolean =>
-  drag !== null || resize !== null || marquee !== null || connectDrag !== null || pan !== null;
+  drag !== null ||
+  resize !== null ||
+  labelDrag !== null ||
+  marquee !== null ||
+  connectDrag !== null ||
+  pan !== null;
 
 const paintScene = (): void => {
   if (scene === null) return;
@@ -970,7 +982,7 @@ const paintScene = (): void => {
     for (const p of tail) ctx.lineTo(p.x, p.y);
     ctx.stroke();
     ctx.setLineDash([]);
-    const anchor = edgeLabelAnchor(edge.waypoints);
+    const anchor = displayedEdgeLabelAnchor(edge);
     ctx.fillStyle = selectedFill;
     ctx.fillRect(anchor.x - handleSize, anchor.y - handleSize, handleSize * 2, handleSize * 2);
     ctx.restore();
@@ -2838,6 +2850,12 @@ const scenePoint = (ev: MouseEvent): Point => {
   );
 };
 
+const displayedEdgeLabelAnchor = (edge: Scene["edges"][number]): Point => {
+  if (edge.labelPos !== null) return edge.labelPos;
+  const anchor = edgeLabelAnchorAt(edge.waypoints, 0.5);
+  return point(anchor.x, anchor.y);
+};
+
 // Hit-testing that also catches an edge's *label*: the label is drawn offset from the edge line (beyond
 // the line's hit tolerance), so a click on the visible label text would otherwise miss the edge (the
 // "edge rename seems bugged" report). A NODE still owns its own pixels — only an empty/edge-line region
@@ -2845,20 +2863,26 @@ const scenePoint = (ev: MouseEvent): Point => {
 // stolen by a label that happens to overlap it.
 const EDGE_LABEL_HIT_PAD = 7;
 const EDGE_LABEL_LINE_H = 16;
-const hitScene = (shown: Scene, at: Point): HitTarget | null => {
-  const base = hitTest(shown, at);
-  if (base !== null && base.kind === "node") return base;
+const edgeLabelHit = (shown: Scene, at: Point): SceneEdgeId | null => {
   for (const edge of shown.edges) {
     if (edge.label === null) continue;
-    const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
+    const anchor = displayedEdgeLabelAnchor(edge);
     // Mirror the painter's multi-line box: widest line for width, line count for height.
-    const lines = edge.label.split("\n");
+    const lines = labelLines(edge.label);
     const halfW = lines.reduce((w, l) => Math.max(w, measureLabel(l)), 0) / 2 + EDGE_LABEL_HIT_PAD;
     const halfH = (lines.length * EDGE_LABEL_LINE_H) / 2 + EDGE_LABEL_HIT_PAD;
     if (Math.abs(at.x - anchor.x) <= halfW && Math.abs(at.y - anchor.y) <= halfH) {
-      return { kind: "edge", id: edge.id };
+      return edge.id;
     }
   }
+  return null;
+};
+
+const hitScene = (shown: Scene, at: Point): HitTarget | null => {
+  const base = hitTest(shown, at);
+  if (base !== null && base.kind === "node") return base;
+  const labelHit = edgeLabelHit(shown, at);
+  if (labelHit !== null) return { kind: "edge", id: labelHit };
   return base; // an edge-line hit, or null
 };
 
@@ -2877,9 +2901,20 @@ window.__edgeLabelPos = (edgeId) => {
   if (scene === null) return null;
   const edge = shownScene(scene).edges.find((e) => e.id === edgeId);
   if (edge === undefined || edge.label === null) return null;
-  const anchor = edge.labelPos ?? edgeLabelAnchor(edge.waypoints);
+  const anchor = displayedEdgeLabelAnchor(edge);
   const s = sceneToScreen(point(anchor.x, anchor.y));
   return { x: s.x, y: s.y };
+};
+window.__setEdgeLabelT = (edgeId, t) => {
+  const id = brand<string, "SceneEdgeId">(edgeId);
+  const existing = doc.edgeStyles().get(id);
+  doc.setEdgeStyle(id, {
+    route: existing?.route ?? "square",
+    routeOption: existing?.routeOption ?? null,
+    labelT: Math.max(0.04, Math.min(0.96, t)),
+  });
+  doc.persist();
+  requestPaint();
 };
 window.__nodeAccent = (nodeId) => {
   if (scene === null) return null;
@@ -2933,7 +2968,7 @@ const positionContextBar = (): void => {
   }
   for (const edge of shown.edges) {
     if (!selection.edges.has(edge.id)) continue;
-    const a = edgeLabelAnchor(edge.waypoints);
+    const a = displayedEdgeLabelAnchor(edge);
     minX = Math.min(minX, a.x);
     minY = Math.min(minY, a.y);
     maxX = Math.max(maxX, a.x);
@@ -3160,6 +3195,28 @@ canvas.addEventListener("pointerdown", (ev) => {
   // on Windows/Linux (the help panel advertises "Ctrl click" there).
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
 
+  const labelHit = additive || hit?.kind === "node" ? null : edgeLabelHit(shown, at);
+  const edgeHitWithLabel =
+    !additive &&
+    labelHit === null &&
+    hit !== null &&
+    hit.kind === "edge" &&
+    shown.edges.some((edge) => edge.id === hit.id && edge.label !== null)
+      ? hit.id
+      : null;
+  const labelDragHit = labelHit ?? edgeHitWithLabel;
+  if (labelDragHit !== null && !viewerMode) {
+    ev.preventDefault();
+    selection = selectOnly({ kind: "edge", id: labelDragHit });
+    selectionOrder = [];
+    labelDrag = { id: labelDragHit };
+    labelDragRecorded = false;
+    canvas.setPointerCapture(ev.pointerId);
+    paintScene();
+    updateGroupButtons();
+    return;
+  }
+
   // ⌥-drag from a node (or any drag from a node under the Connect tool) starts a connect — a rubber-band
   // to the cursor, an edge on release over another node — before the resize/move paths. Viewers can't,
   // and neither can families whose grammar can't accept the edit (else the rubber-band arms a dead
@@ -3321,6 +3378,25 @@ canvas.addEventListener("pointermove", (ev) => {
     requestPaint();
     return;
   }
+  if (labelDrag !== null) {
+    const shown = scene === null ? null : shownScene(scene);
+    const edge = shown?.edges.find((e) => e.id === labelDrag?.id);
+    if (edge === undefined) return;
+    const at = scenePoint(ev);
+    if (!labelDragRecorded) {
+      recordHistory();
+      labelDragRecorded = true;
+    }
+    const existing = doc.edgeStyles().get(edge.id);
+    const t = Math.max(0.04, Math.min(0.96, pathRatioNearest(edge.waypoints, at)));
+    doc.setEdgeStyle(edge.id, {
+      route: existing?.route ?? "square",
+      routeOption: existing?.routeOption ?? null,
+      labelT: t,
+    });
+    requestPaint();
+    return;
+  }
   if (resize !== null) {
     const at = scenePoint(ev);
     if (!resizeRecorded) {
@@ -3414,6 +3490,7 @@ canvas.addEventListener("pointerleave", () => {
   if (
     drag === null &&
     resize === null &&
+    labelDrag === null &&
     pan === null &&
     marquee === null &&
     connectDrag === null
@@ -3521,6 +3598,18 @@ canvas.addEventListener("pointerup", (ev) => {
     } else {
       paintScene(); // released on empty space / the same node — clear the rubber-band
     }
+    return;
+  }
+  if (labelDrag !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    labelDrag = null;
+    if (labelDragRecorded) {
+      doc.persist();
+      requestPaint();
+    } else {
+      paintScene();
+    }
+    updateGroupButtons();
     return;
   }
   if (resize !== null) {
@@ -3703,7 +3792,7 @@ const anchorFor = (
   }
   const e = shown.edges.find((ee) => ee.id === hit.id);
   if (e === undefined) return null;
-  const anchor = edgeLabelAnchor(e.waypoints); // waypoints is TwoOrMore — always anchorable
+  const anchor = displayedEdgeLabelAnchor(e);
   return { x: anchor.x - 40, y: anchor.y - 12, w: 80, h: 24 };
 };
 
@@ -4861,10 +4950,11 @@ const cycleEdgeRoute = (): void => {
   for (const id of selection.edges) {
     const existing = doc.edgeStyles().get(id);
     const opt = existing?.routeOption ?? null;
-    if (next === "square" && opt === null) {
+    const labelT = existing?.labelT ?? null;
+    if (next === "square" && opt === null && labelT === null) {
       doc.setEdgeStyle(id, null);
     } else {
-      doc.setEdgeStyle(id, { route: next, routeOption: opt });
+      doc.setEdgeStyle(id, { route: next, routeOption: opt, labelT });
     }
   }
   doc.persist();
@@ -4883,6 +4973,7 @@ const cycleEdgeOption = (): void => {
     doc.setEdgeStyle(id, {
       route: existing?.route ?? "square",
       routeOption: nextOpt,
+      labelT: existing?.labelT ?? null,
     });
   }
   doc.persist();
@@ -5309,7 +5400,7 @@ styleSelect.addEventListener("change", () => {
 });
 
 // Load icons: read a user-supplied icon-pack JSON, decode it at the boundary, and merge it into the
-// active registry (a pack with id "arch" overrides the built-in glyphs). This is how vendor cloud
+// active registry. This is how vendor cloud
 // packs (AWS/Azure/GCP) are used without bundling them. Failures are logged loudly, not swallowed.
 const loadPack = async (file: File): Promise<void> => {
   const text = await file.text();

@@ -2,15 +2,16 @@
 
 **State:** AST + SceneGraph IR defined (types only); `make check` green.
 
-**Current rendering-contract note:** semantic architecture accents are in `NodeAccent`, and
-`GanttSource` includes `taskStartField` for explicit and dependency start rewrites.
+**Current rendering-contract note:** semantic architecture accents are in `NodeAccent`, `StateAst`
+carries layout direction, `EdgeStyle` carries movable label ratios, and `GanttSource` includes
+`taskStartField` for explicit and dependency start rewrites.
 
 - AST: all fifteen family variants — flowchart + sequence + C4 + block + network + cloud + state + ER
   + class + requirement + gitGraph + timeline + mindmap + pie + Gantt (`FlowchartAst` incl.
   `FlowSubgraph` grouping, `SequenceAst`, `C4Ast` with nesting + optional `C4Element.description`,
   `BlockAst`/`NetworkAst`/`CloudAst` whose nodes carry an optional `icon: IconRef | null` override
   (cloud also nests via `CloudGroup`, and `CloudLink.directed` marks `-->` traffic edges),
-  `StateAst` with composites + notes, `ErAst` with
+  `StateAst` with direction + composites + notes, `ErAst` with
   `attributes: ErAttribute[]`, `ClassAst` with `members: ClassMember[]` + `ClassArrow` ends,
   `RequirementAst` whose entities carry a `ReqKind` + `ReqField[]` and relationships a `ReqRelKind`
   verb, `GitGraphAst` (commits/branches), `TimelineAst` (periods/events), `MindmapAst` (hierarchy),
@@ -27,6 +28,7 @@
   `innerRadius`, so full pies and donuts share one
   primitive.
 - `LayoutOverrides`: sidecar manual geometry (scene node → position/size/pinned).
+- `EdgeStyle`: sidecar edge route plus optional `labelT`, a relative label position along the route.
 - `Groups`: sidecar editor grouping with required `label`, ordered members, and move-only lock.
 - `SourceMap` (`TextSpan`/`NodeSpans`): AST id/label → source byte ranges for two-way patching.
 - `StateNote.side`: parsed `right`/`left`/`over` note placement intent preserved for layout.

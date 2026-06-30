@@ -1,4 +1,4 @@
-import { wedgeColor } from "../core/index.js";
+import { labelLines, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { accentFill, bandFill, defaultTheme, type Theme } from "./paint.js";
 
@@ -126,7 +126,7 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
     case "label": {
       // Mirror the painter: one <tspan> per line, centred on the anchor. Continuation lines (a C4
       // description) render smaller and dimmed than the first (primary) line.
-      const lines = cmd.text.split("\n");
+      const lines = labelLines(cmd.text);
       const lh = labelLineHeight(theme.font);
       const sub = (labelLineHeight(theme.font) / 1.3) * 0.82;
       const top = cmd.y - ((lines.length - 1) * lh) / 2;
@@ -147,7 +147,7 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const padY = 3;
       const boxW = widest * fontPx * 0.6 + padX * 2;
       const boxH = lines.length * lh + padY * 2;
-      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}"/>`;
+      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}" fill-opacity="0.78"/>`;
       return `${rect}${text}`;
     }
     case "wedge": {

@@ -47,7 +47,7 @@
 - *(done)* C4: the optional description argument (`Person/System/Container(id, "label", "descr")`)
   now parses into `C4Element.description` (null when omitted); the layout renders it as a second
   label line. Boundaries stay 2-arg.
-- State: *(done — composite / nested `state X { … }` with scoped `[*]`; `<<fork>>`/`<<join>>`/
+- State: *(done — `direction`; composite / nested `state X { … }` with scoped `[*]`; `<<fork>>`/`<<join>>`/
   `<<choice>>` annotations → fork/join bars + choice diamond; note side `right`/`left`/`over`)*.
   Still: distinct final states rather than one merged `[*]` end per scope.
 - ER: *(done)* entity attribute blocks (`ENTITY { type name PK,FK "comment" }`) parse into

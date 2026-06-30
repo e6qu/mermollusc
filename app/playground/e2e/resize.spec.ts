@@ -20,17 +20,16 @@ test("dragging a corner handle resizes the selected node (undoable)", async ({ p
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
+  const start = await page.evaluate(() => window.__nodeRect?.("A") ?? null);
+  expect(start).not.toBeNull();
+  if (start === null) return;
 
-  // Select the default flowchart's Start node — its bottom-right corner handle sits near (111, 76).
-  await page.mouse.click(box.x + 88, box.y + 56);
+  await page.mouse.click(start.x + start.w / 2, start.y + start.h / 2);
   expect(await overrideSize(page)).toBeNull();
 
-  await page.mouse.move(box.x + 111, box.y + 76);
+  await page.mouse.move(start.x + start.w, start.y + start.h);
   await page.mouse.down();
-  await page.mouse.move(box.x + 230, box.y + 180, { steps: 10 });
+  await page.mouse.move(start.x + start.w + 120, start.y + start.h + 104, { steps: 10 });
   await page.mouse.up();
 
   const sized = await overrideSize(page);

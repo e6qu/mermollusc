@@ -18,7 +18,7 @@ test("loading a user icon pack re-renders without errors", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  // A network diagram references the "arch" glyphs the loaded pack overrides.
+  // A network diagram is enough to exercise icon registry reload and repaint.
   await setSource(page, 'network\n  server web "Web"\n  database db "DB"\n  web -- db\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 

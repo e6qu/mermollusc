@@ -1,43 +1,45 @@
 export const SAMPLE = `flowchart TD
-  A[Start] --> B{Authorized?} icon "arch/firewall"
-  B -->|yes| C[Process] icon "arch/server"
-  B -->|no| D[End] icon "arch/firewall"
+  A[Start] --> B{Authorized?} icon "devicon/vault"
+  B -->|yes\\nverified| C[Process] icon "devicon/kubernetes"
+  B -->|no| D[End] icon "devicon/cloudflare"
   C --> D
 `;
 
 // A tiered AWS-style architecture with enough routing to show cloud groups, icons, labels, and async
-// work without turning the public demo into an unreadable edge stress test. Vendor logo packs remain
-// available from the icon picker; the starter uses built-in line-art glyphs for visual coherence.
+// work without turning the public demo into an unreadable edge stress test.
 const CLOUD_AWS = `cloud
   group "Edge" {
-    cdn cf "CloudFront" icon "arch/cdn"
-    compute waf "AWS WAF" icon "arch/firewall"
-    compute shield "Shield" icon "arch/firewall"
+    cdn cf "CloudFront" icon "gilbarbara/aws-cloudfront"
+    compute waf "AWS WAF" icon "devicon/cloudflare"
+    compute shield "Shield" icon "devicon/vault"
   }
   group "Routing" {
-    compute alb "App Load Balancer" icon "arch/load-balancer"
-    compute api "API Gateway" icon "arch/gateway"
+    compute alb "App Load Balancer" icon "gilbarbara/aws-elb"
+    compute api "API Gateway" icon "gilbarbara/aws-api-gateway"
   }
   group "Services" {
-    compute web "web service" icon "arch/microservice"
-    compute apiSvc "api service" icon "arch/microservice"
-    compute orders "orders service" icon "arch/microservice"
+    compute web "web service" icon "devicon/nginx"
+    compute apiSvc "api service" icon "devicon/nodejs"
+    compute orders "orders service" icon "devicon/docker"
   }
   group "Async" {
-    queue events "event bus" icon "arch/queue"
-    compute worker "worker" icon "arch/container"
+    queue events "event bus" icon "gilbarbara/aws-kinesis"
+    queue jobs "job queue" icon "gilbarbara/aws-sqs"
+    compute worker "worker" icon "gilbarbara/aws-lambda"
   }
   group "Data" {
-    database rds "Aurora" icon "arch/database"
-    storage s3 "Assets" icon "arch/storage"
+    database rds "Aurora" icon "gilbarbara/aws-aurora"
+    storage s3 "Assets" icon "gilbarbara/aws-s3"
+    database redis "Redis" icon "devicon/redis"
   }
   group "Security" {
-    compute cognito "Cognito" icon "arch/key"
-    compute secrets "Secrets" icon "arch/key"
+    compute cognito "Cognito" icon "gilbarbara/aws-cognito"
+    compute secrets "Secrets" icon "devicon/vault"
   }
   group "Operations" {
-    compute cw "CloudWatch" icon "arch/server"
-    queue dlq "DLQ" icon "arch/queue"
+    compute cw "CloudWatch" icon "gilbarbara/aws-cloudwatch"
+    compute grafana "Dashboards" icon "devicon/grafana"
+    queue dlq "DLQ" icon "gilbarbara/aws-sqs"
   }
   cf --> waf : "public"
   waf --> shield : "inspect"
@@ -49,77 +51,100 @@ const CLOUD_AWS = `cloud
   apiSvc --> orders
   orders --> cognito
   orders --> rds : "SQL"
+  orders --> redis : "cache"
   web --> s3
   orders --> events
-  events --> worker : "async"
+  events --> jobs : "fan out"
+  jobs --> worker : "async"
   worker --> cw : "logs"
+  cw --> grafana : "metrics"
   worker --> dlq : "failed jobs"
   secrets --> apiSvc
 `;
 
-// A BPMN-style retail banking workflow drawn as a flowchart with lane-like subgraphs and real BPMN glyphs.
-const BPMN_ORDER = `flowchart LR
-  subgraph Intake
-    received((Received)) icon "bpmn/start-message"
-    capture([Capture data]) icon "bpmn/user-task"
-    documents{Docs complete?} icon "bpmn/exclusive-gateway"
-    request([Request docs]) icon "bpmn/send-task"
-  end
-  subgraph Compliance
-    kyc([KYC screening]) icon "bpmn/business-rule-task"
-    fraud([Fraud check]) icon "bpmn/service-task"
-    clear{Clear?} icon "bpmn/exclusive-gateway"
-  end
-  subgraph Underwriting
-    score([Credit score]) icon "bpmn/service-task"
-    affordability([Affordability]) icon "bpmn/user-task"
-    approve{Approve?} icon "bpmn/inclusive-gateway"
-  end
-  subgraph Booking
-    docs([Disclosures]) icon "bpmn/script-task"
-    sign([E-signature]) icon "bpmn/receive-task"
-    book([Book limits]) icon "bpmn/service-task"
-    funded((Funded)) icon "bpmn/end-message"
-  end
+const NETWORK_ENTERPRISE = `network
+  group "Edge" {
+    cloud net "Internet" icon "devicon/cloudflare"
+    firewall fw "Edge firewall" icon "devicon/vault"
+    router rtr "Border router" icon "devicon/nginx"
+    server lb "Load balancer" icon "gilbarbara/aws-elb"
+  }
+  group "Core" {
+    group "App tier" {
+      switch sw "App switch" icon "k8s/svc"
+      server web "web service" icon "devicon/nginx"
+      server api "api service" icon "devicon/nodejs"
+      server jobs "jobs" icon "devicon/docker"
+    }
+    group "Data tier" {
+      database db "Postgres" icon "devicon/postgresql"
+      server cache "Redis" icon "devicon/redis"
+      server queue "Kafka" icon "devicon/apachekafka"
+    }
+  }
+  group "Ops" {
+    host admin "Admin jumpbox" icon "devicon/docker"
+    server mon "Monitoring" icon "devicon/prometheus"
+    server dash "Dashboards" icon "devicon/grafana"
+  }
+  net -- fw : "WAN"
+  fw -- rtr : "filtered"
+  rtr -- lb : "443/tcp"
+  lb -- web : "HTTPS"
+  lb -- api : "API"
+  web -- sw : "east-west"
+  sw -- api : "RPC"
+  api -- db : "SQL"
+  api -- cache : "cache"
+  api -- queue : "events"
+  queue -- jobs : "consume"
+  admin -- sw : "SSH"
+  mon -- api : "metrics"
+  mon -- dash : "panels"
+`;
+
+// A compact BPMN-style retail banking onboarding workflow with real BPMN glyphs.
+const BPMN_ORDER = `flowchart TB
+  received((Received)) icon "bpmn/start-message"
+  capture([Capture data]) icon "bpmn/user-task"
+  documents{Docs complete?} icon "bpmn/exclusive-gateway"
+  request([Request docs]) icon "bpmn/send-task"
+  kyc([KYC / AML]) icon "bpmn/business-rule-task"
+  fraud([Fraud score]) icon "bpmn/service-task"
+  approve{Decision} icon "bpmn/inclusive-gateway"
+  docs([Disclosures]) icon "bpmn/script-task"
+  sign([E-signature]) icon "bpmn/receive-task"
+  book([Book account]) icon "bpmn/service-task"
+  funded((Funded)) icon "bpmn/end-message"
   reject([Adverse action]) icon "bpmn/send-task"
   declined((Declined)) icon "bpmn/end-error"
   received --> capture --> documents
   documents -->|no| request --> capture
-  documents -->|yes| kyc --> fraud --> clear
-  clear -->|fail| reject --> declined
-  clear -->|pass| score --> affordability --> approve
+  documents -->|yes| kyc --> fraud --> approve
   approve -->|decline| reject
   approve -->|approve| docs --> sign --> book --> funded
+  reject --> declined
 `;
 
-// A BPMN-style insurance adjusting workflow with triage, coverage, inspection, estimate, and settlement.
-const BPMN_INCIDENT = `flowchart LR
-  subgraph FNOL
-    reported((Reported)) icon "bpmn/start-message"
-    intake([Record FNOL]) icon "bpmn/user-task"
-    classify([Classify loss]) icon "bpmn/business-rule-task"
-  end
-  subgraph Coverage
-    policy([Policy lookup]) icon "bpmn/service-task"
-    coverage{Covered?} icon "bpmn/exclusive-gateway"
-    denial([Denial letter]) icon "bpmn/send-task"
-  end
-  subgraph Adjustment
-    assign([Assign adjuster]) icon "bpmn/user-task"
-    inspect([Inspect loss]) icon "bpmn/manual-task"
-    estimate([Repair estimate]) icon "bpmn/script-task"
-    review{Review?} icon "bpmn/exclusive-gateway"
-  end
-  subgraph Settlement
-    negotiate([Negotiate]) icon "bpmn/user-task"
-    payment([Authorize pay]) icon "bpmn/service-task"
-    close((Closed)) icon "bpmn/end-message"
-  end
+// A compact BPMN-style insurance adjusting workflow with triage, coverage, inspection, and settlement.
+const BPMN_INCIDENT = `flowchart TB
+  reported((Reported)) icon "bpmn/start-message"
+  intake([Record FNOL]) icon "bpmn/user-task"
+  classify([Classify loss]) icon "bpmn/business-rule-task"
+  policy([Policy lookup]) icon "bpmn/service-task"
+  coverage{Covered?} icon "bpmn/exclusive-gateway"
+  denial([Denial letter]) icon "bpmn/send-task"
+  assign([Assign adjuster]) icon "bpmn/user-task"
+  inspect([Inspect loss]) icon "bpmn/manual-task"
+  estimate([Repair estimate]) icon "bpmn/script-task"
+  review{Review?} icon "bpmn/exclusive-gateway"
+  payment([Authorize pay]) icon "bpmn/service-task"
+  close((Closed)) icon "bpmn/end-message"
   reported --> intake --> classify --> policy --> coverage
   coverage -->|no| denial
   coverage -->|yes| assign --> inspect --> estimate --> review
   review -->|needs revision| inspect
-  review -->|approved| negotiate --> payment --> close
+  review -->|approved| payment --> close
 `;
 
 export const EXAMPLES = new Map<string, string>([
@@ -138,14 +163,11 @@ export const EXAMPLES = new Map<string, string>([
     "block",
     'block-beta\n  columns 4\n  dns["DNS"]:2\n  cdn["CDN"]:2\n  lb["Load balancer"]:4\n  block:app:4\n    columns 4\n    web1["web-1"]\n    web2["web-2"]\n    api1["api-1"]\n    api2["api-2"]\n  end\n  queue["Jobs"]:2\n  worker["Worker"]:2\n  cache["Redis cache"]\n  db["Postgres"]\n  store["Object store"]\n  logs["Logs"]\n  dns --> cdn\n  cdn --> lb\n  lb --> web1\n  lb --> web2\n  web1 --> api1\n  web2 --> api2\n  api1 --> cache\n  api1 --> db\n  api2 --> queue\n  queue --> worker\n  worker --> store\n  worker --> logs\n',
   ],
-  [
-    "network",
-    'network\n  cloud net "Internet"\n  group "DMZ" {\n    firewall fw "Edge firewall"\n    router rtr "Border router"\n    server lb "Load balancer"\n  }\n  group "App tier" {\n    switch sw "App switch"\n    server web "web service"\n    server api "api service"\n  }\n  group "Data tier" {\n    database db "Postgres"\n    server cache "Redis"\n  }\n  group "Ops" {\n    host admin "Admin jumpbox"\n    server mon "Monitoring"\n  }\n  net -- fw : "WAN"\n  fw -- rtr : "filtered"\n  rtr -- lb : "443/tcp"\n  lb -- web : "HTTPS"\n  lb -- api : "API"\n  web -- sw : "east-west"\n  sw -- api : "RPC"\n  api -- db : "SQL"\n  api -- cache : "cache"\n  admin -- sw : "SSH"\n  mon -- api : "metrics"\n',
-  ],
+  ["network", NETWORK_ENTERPRISE],
   ["cloud", CLOUD_AWS],
   [
     "state",
-    "stateDiagram-v2\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  state Fulfilment {\n    [*] --> Pick\n    Pick --> Pack\n    Pack --> HandOff\n    HandOff --> [*]\n  }\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> ReserveInventory\n  fork --> NotifyCustomer\n  ReserveInventory --> join\n  NotifyCustomer --> join\n  join --> Fulfilment\n  Fulfilment --> Ready\n  Ready --> [*]\n  Error --> Idle : correct\n  note right of Error : retry with corrected input\n",
+    "stateDiagram-v2\n  direction LR\n  state fork <<fork>>\n  state join <<join>>\n  state choice <<choice>>\n  state Fulfilment {\n    [*] --> Pick\n    Pick --> Pack\n    Pack --> HandOff\n    HandOff --> [*]\n  }\n  [*] --> Idle\n  Idle --> choice : submit\n  choice --> fork : accepted\n  choice --> Error : rejected\n  fork --> ReserveInventory\n  fork --> NotifyCustomer\n  ReserveInventory --> join\n  NotifyCustomer --> join\n  join --> Fulfilment\n  Fulfilment --> Ready\n  Ready --> [*]\n  Error --> Idle : correct\n  note right of Error : retry with corrected input\n",
   ],
   [
     "er",

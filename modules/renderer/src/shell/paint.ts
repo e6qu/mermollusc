@@ -1,6 +1,6 @@
 import { assertNever } from "@m/std";
 import type { BandFill, NodeAccent } from "@m/contracts";
-import { wedgeColor } from "../core/index.js";
+import { labelLines, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 
 // Structural subset of CanvasRenderingContext2D — the methods/props the painter uses. A real
@@ -425,7 +425,7 @@ export const paint = (
         // lines centred on the anchor. The first line is the primary label; continuation lines are
         // secondary (a C4 description), so they render smaller and dimmed.
         ctx.textAlign = cmd.align === "left" ? "left" : "center";
-        const lines = cmd.text.split("\n");
+        const lines = labelLines(cmd.text);
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;
         if (cmd.plate) {
@@ -438,7 +438,9 @@ export const paint = (
           const boxW = widest + padX * 2;
           const boxH = lines.length * lh + padY * 2;
           ctx.fillStyle = theme.background;
+          ctx.globalAlpha = 0.78;
           ctx.fillRect(cmd.x - boxW / 2, top - lh / 2 - padY, boxW, boxH);
+          ctx.globalAlpha = 1;
         }
         for (const [i, line] of lines.entries()) {
           if (i === 0) {

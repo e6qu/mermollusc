@@ -46,6 +46,11 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   with explicit network/cloud catalog assertions. Network/cloud starters are now curated for public
   demo readability; future source changes should be checked with before/after screenshots, not only
   parser/layout tests.
+- *(done)* Edge labels are draggable on the canvas, persist their relative route position, move with
+  rerenders, and render literal `\n` as multiline labels.
+- *(done)* State examples can use `direction`, and the state family honors it end to end.
+- *(done)* Public cloud/network starters and network defaults use bundled vendor icons where available;
+  original BPMN glyphs remain unchanged.
 - **Container-title visual guard:** Done for every catalog entry via `edgesAvoidContainerHeaders`; future
   demo examples fail integration if a connector cuts through a container title label.
 - **c4 + network edge labels overlap node labels on busy diagrams.** Both use a simple absolute layout

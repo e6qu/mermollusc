@@ -6,6 +6,9 @@
 
 - Treat network and cloud as first-class architecture families: network root zones read left-to-right,
   while cloud keeps wider tier rows for edge/routing/service/data/security/ops demos.
+- Keep network/cloud default glyphs on provenance-tracked vendor packs; the authored `arch` pack remains
+  available through explicit icon refs, but network defaults should not depend on it.
+- Preserve state-diagram `direction` through the shared flowchart/ELK layout path.
 - Keep timeline event connectors as real scene edges so manual drag overrides move visible links with the
   event nodes.
 
@@ -47,5 +50,7 @@
 - Network and cloud demo-oriented layouts keep architecture diagrams tiered: ungrouped ingress nodes
   are placed before grouped zones in network layouts, and cloud top-level boxes wrap on a narrower row
   budget with larger inter-row lanes so public starter diagrams do not collapse into one congested band.
+- Label measurement treats both actual newlines and literal `\n` sequences as line breaks, matching the
+  renderer's display behavior.
 - ELK/compartment box families use side-centre mount points (top, bottom, left, right) as a post-layout
   routing cleanup; architecture spread families and non-box semantic families keep their own routers.

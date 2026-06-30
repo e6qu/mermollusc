@@ -9,6 +9,11 @@ const StateDiagram = createToken({
   longer_alt: Identifier,
 });
 const StateKw = createToken({ name: "StateKw", pattern: /state/, longer_alt: Identifier });
+const Direction = createToken({
+  name: "StateDirection",
+  pattern: /direction/,
+  longer_alt: Identifier,
+});
 const As = createToken({ name: "StateAs", pattern: /as/, longer_alt: Identifier });
 const Note = createToken({ name: "StateNoteKw", pattern: /note/, longer_alt: Identifier });
 const Over = createToken({ name: "StateOver", pattern: /over/, longer_alt: Identifier });
@@ -51,6 +56,7 @@ export const stateLexer = new Lexer({
       Semicolon,
       StateDiagram,
       StateKw,
+      Direction,
       As,
       RightOf,
       LeftOf,
@@ -74,6 +80,7 @@ export const StateTok = {
   Identifier,
   StateDiagram,
   StateKw,
+  Direction,
   As,
   Note,
   Over,
@@ -99,6 +106,7 @@ export const stateAllTokens: TokenType[] = [
   Semicolon,
   StateDiagram,
   StateKw,
+  Direction,
   As,
   Star,
   Note,

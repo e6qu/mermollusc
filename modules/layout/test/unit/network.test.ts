@@ -57,6 +57,12 @@ describe("layoutNetwork", () => {
     expect(byId.get("b")?.accent).toBe("data");
     expect(byId.get("c")?.accent).toBe("network");
   });
+
+  it("maps network kinds to bundled vendor icons", () => {
+    expect(byId.get("a")?.icon).toEqual({ pack: "devicon", name: "docker" });
+    expect(byId.get("b")?.icon).toEqual({ pack: "devicon", name: "postgresql" });
+    expect(byId.get("c")?.icon).toEqual({ pack: "devicon", name: "cloudflare" });
+  });
 });
 
 describe("layoutNetwork — subnet/zone groups", () => {

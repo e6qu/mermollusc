@@ -31,10 +31,16 @@ class StateParser extends CstParser {
   private readonly statement = this.RULE("stateStatement", () =>
     this.OR([
       { ALT: () => this.SUBRULE(this.stateDecl) },
+      { ALT: () => this.SUBRULE(this.directionStmt) },
       { ALT: () => this.SUBRULE(this.noteStmt) },
       { ALT: () => this.SUBRULE(this.line) },
     ]),
   );
+
+  private readonly directionStmt = this.RULE("stateDirectionStmt", () => {
+    this.CONSUME(StateTok.Direction);
+    this.CONSUME(StateTok.Identifier);
+  });
 
   // `note right of X : text` / `note left of X : text` / `note over X : text`
   private readonly noteStmt = this.RULE("noteStmt", () => {

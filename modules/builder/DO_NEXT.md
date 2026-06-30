@@ -19,3 +19,4 @@
   explicit date when the app has a resolved calendar day.
 - *(done)* Make side-centre mount snapping an explicit `applyOverrides`/`applyStyles` option so the app
   can gate it per family.
+- *(done)* Persist moved edge-label position as `EdgeStyle.labelT` and apply it after route changes.

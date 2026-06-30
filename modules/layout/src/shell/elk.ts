@@ -362,7 +362,7 @@ const stateShape = (kind: StateKind): NodeShape => {
 // flowchart id space (a shell-boundary operation).
 const stateToFlow = (ast: StateAst): FlowchartAst => ({
   kind: "flowchart",
-  direction: "TB",
+  direction: ast.direction,
   nodes: [
     ...ast.states.map((s) => ({
       id: brand<string, "NodeId">(s.id),

@@ -170,8 +170,7 @@ Checked while preserving pinned overrides on Regenerate and adding donut/state-n
 Checked while tightening Examples menu rendering parity; network and cloud remain explicit catalog
 entries and render through the shared display-list/SVG pipeline.
 
-Checked while reducing the GitHub Pages demo network/cloud starters to readable tiered source diagrams
-and replacing the cloud starter's vendor-logo tiles with built-in architecture glyphs.
+Checked while reducing the GitHub Pages demo network/cloud starters to readable tiered source diagrams.
 
 Checked while making repeated edge-style keyboard cycling derive the current arrow from the editor text
 span, so a rapid second `S` press cannot reuse a stale AST edge kind.
@@ -184,6 +183,9 @@ the demo catalog, and fixing dragged Gantt dependency tasks plus timeline events
 
 Checked while gating side-centre mount snapping to ELK/compartment box families and preserving
 cloud/network first-class routing.
+
+Checked while adding draggable route-relative edge labels, escaped multiline label rendering, state
+direction, and vendored cloud/network demo icons while keeping the original BPMN glyph pack unchanged.
 
 Resolved while pushing this PR: the UI e2e gate could reuse an unrelated local app on port 4173 and fail
 against the wrong DOM. The Playwright config now starts fresh local servers for the gate.

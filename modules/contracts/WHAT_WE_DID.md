@@ -1,5 +1,10 @@
 # @m/contracts — work log
 
+- `StateAst` now carries a required `direction` so state diagrams can lay out left-to-right, right-to-left,
+  bottom-to-top, or top-to-bottom instead of being forced through one direction downstream.
+- `EdgeStyle` now carries `labelT: number | null`, the persisted relative position of a movable edge
+  label along its route. The overlay wire shape defaults it to `null` for old persisted overlays.
+
 ## 2026-06-30 — Architecture accents and Gantt start-field spans
 
 - Expanded `NodeAccent` with semantic architecture roles for cloud/network rendering.

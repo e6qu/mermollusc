@@ -1,5 +1,19 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Demo-visible label and icon parity
+
+- Edge labels are now draggable as canvas objects. The app stores their route-relative `labelT`, uses
+  the same anchor for painting overlays, hit testing, inline editing, e2e hooks, and context-bar
+  placement, and preserves that position across rerenders/reroutes.
+- Labels containing literal `\n` now render and hit-test as multiline labels; the app text measurer
+  sizes by the widest rendered line.
+- The demo catalog now shows cloud/network examples with bundled vendored icons, keeps the original
+  BPMN glyph pack untouched, and includes state `direction LR` in the state starter.
+- The screenshot harness now renders the public Examples menu sources for the main diagram-family
+  shots, including cloud, network, timeline, Gantt, DOT, and both BPMN workflows.
+- Added E2E coverage for dragging an edge label itself and preserving that route-relative position
+  after the edge is rerendered.
+
 ## 2026-06-30 — Demo parity, architecture, and drag fixes
 
 - Made cloud and network first-class style families in the UI, with cloud defaulting to trunk routing.
@@ -858,9 +872,9 @@
 - Demo parity guard: upgraded `test/integration/examples.test.ts` from parse-only to parse → layout →
   `toDisplayList` → `toSvg` for every Examples menu entry, and added explicit assertions that
   `network` and `cloud` remain in the catalog.
-- Cleaned up the public cloud demo example icons: replaced the forced `gilbarbara/aws-*` logo tiles
-  with built-in monochrome `arch/*` glyphs so the starter renders as a coherent diagram while keeping
-  vendor logo packs available through the icon picker.
+- Previously cleaned up the public cloud demo example icons by replacing forced vendor logo tiles with
+  internal architecture placeholders; this has since been superseded by the current vendor-icon cloud
+  starter.
 - Reduced cloud starter edge congestion by keeping representative cross-tier links instead of routing
   every service to every downstream dependency; the example still shows edge/routing/service/data/
   identity tiers without overloading the public demo rendering.

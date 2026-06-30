@@ -1,4 +1,4 @@
-import { err, ok, point, rect, type Result } from "@m/std";
+import { assertNever, err, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { spreadPorts } from "./route.js";
 import type {
@@ -11,8 +11,9 @@ import type {
   Scene,
   SceneEdge,
   SceneNode,
+  IconRef,
 } from "@m/contracts";
-import { ARCH_PACK } from "./icon-packs.js";
+import { DEVICON_PACK, K8S_PACK } from "./icon-packs.js";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { variableGrid, type Size } from "./grid.js";
 import { optimalMountPoints } from "./route.js";
@@ -26,14 +27,42 @@ const GROUP_PAD = 16; // inner padding around a subnet/zone's content
 const GROUP_HEADER = 26; // subnet/zone title band
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
-const KIND_ACCENT: Record<NetworkNodeKind, NodeAccent> = {
-  server: "compute",
-  database: "data",
-  cloud: "network",
-  router: "network",
-  switch: "network",
-  firewall: "security",
-  host: "muted",
+const kindAccent = (kind: NetworkNodeKind): NodeAccent => {
+  switch (kind) {
+    case "server":
+      return "compute";
+    case "database":
+      return "data";
+    case "cloud":
+    case "router":
+    case "switch":
+      return "network";
+    case "firewall":
+      return "security";
+    case "host":
+      return "muted";
+  }
+  return assertNever(kind);
+};
+
+const kindIcon = (kind: NetworkNodeKind): IconRef => {
+  switch (kind) {
+    case "server":
+      return { pack: DEVICON_PACK, name: "docker" };
+    case "database":
+      return { pack: DEVICON_PACK, name: "postgresql" };
+    case "cloud":
+      return { pack: DEVICON_PACK, name: "cloudflare" };
+    case "router":
+      return { pack: DEVICON_PACK, name: "nginx" };
+    case "switch":
+      return { pack: K8S_PACK, name: "svc" };
+    case "firewall":
+      return { pack: DEVICON_PACK, name: "vault" };
+    case "host":
+      return { pack: DEVICON_PACK, name: "kubernetes" };
+  }
+  return assertNever(kind);
 };
 
 const groupAccent = (label: string): NodeAccent => {
@@ -144,11 +173,11 @@ export const layoutNetwork = (
           label: n.label,
           shape: "rect",
           parent: sceneParent,
-          icon: n.icon ?? { pack: ARCH_PACK, name: n.kind },
+          icon: n.icon ?? kindIcon(n.kind),
           rows: null,
           rowDivider: null,
           subtitle: null,
-          accent: KIND_ACCENT[n.kind],
+          accent: kindAccent(n.kind),
           role: "normal",
         });
         return;

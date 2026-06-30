@@ -8,6 +8,10 @@ the family has a printer.
 - Preserve edit spans for the full Gantt start field, not only explicit date tokens, so UI gestures can
   convert `after ...` tasks into explicit calendar starts from parser-provided provenance.
 
+## State diagrams
+
+- Preserve `direction TB|TD|BT|LR|RL` in `StateAst.direction` and fail loudly on unsupported values.
+
 ## Responsibility
 
 - Owns the grammars (one per family, Chevrotain) and the CST→AST conversion.

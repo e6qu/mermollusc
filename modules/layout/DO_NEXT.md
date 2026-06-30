@@ -131,6 +131,11 @@ trunk (route them to one shared port / backbone, branch with junctions) — the 
 `trunkRoutes` = spread the non-fan edges, then merge each ≥2 fan onto a shared trunk + single port. Enhanced to place the trunk line dynamically in the center of the available routing channel (balanced) and to maze-route each edge's approach to the trunk around obstacles (avoiding clipping). Defaulted playground UI toggle to true on first load.
 
 ## First-class architecture cleanup shipped
+
+- *(done)* Network default icons now use bundled vendor packs instead of authored `arch` placeholders;
+  cloud defaults already use vendored marks.
+- *(done)* State diagram layout honors source `direction`.
+- *(done)* Label width measurement treats literal `\n` as a rendered line break.
 Network roots now read left-to-right as zones, cloud rows have room for tiered routing demos, and
 timeline event connectors are real edges so dragged events keep visible links. Remaining visual debt:
 route-label placement on dense cloud trunks can still improve without removing source labels.

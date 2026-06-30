@@ -30,6 +30,7 @@ export interface EdgeCrossing {
 
 const HOP_R = 4;
 const CORNER_RADIUS = 9;
+const LABEL_GAP = 11;
 
 export const buildEdgePath = (
   pts: readonly Point[],
@@ -168,6 +169,87 @@ export const edgeCrossings = (
   }
 
   return crossingsMap;
+};
+
+export const pathPointAt = (
+  points: readonly Point[],
+  ratio: number,
+): { readonly point: Point; readonly segmentStart: Point; readonly segmentEnd: Point } => {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a !== undefined && b !== undefined) total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  const clamped = Math.max(0, Math.min(1, ratio));
+  let remaining = total * clamped;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (a === undefined || b === undefined) continue;
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segLen === 0) continue;
+    if (remaining <= segLen) {
+      const t = remaining / segLen;
+      return {
+        point: point(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t),
+        segmentStart: a,
+        segmentEnd: b,
+      };
+    }
+    remaining -= segLen;
+  }
+  const first = points[0] ?? point(0, 0);
+  const last = points[points.length - 1] ?? first;
+  return { point: first, segmentStart: first, segmentEnd: last };
+};
+
+export const edgeLabelAnchorAt = (
+  points: readonly Point[],
+  ratio: number,
+): { readonly x: number; readonly y: number } => {
+  const at = pathPointAt(points, ratio);
+  const dx = at.segmentEnd.x - at.segmentStart.x;
+  const dy = at.segmentEnd.y - at.segmentStart.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return { x: at.point.x, y: at.point.y };
+  return {
+    x: at.point.x - (dy / len) * LABEL_GAP,
+    y: at.point.y + (dx / len) * LABEL_GAP,
+  };
+};
+
+export const pathRatioNearest = (points: readonly Point[], target: Point): number => {
+  let total = 0;
+  const lengths: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const len = a === undefined || b === undefined ? 0 : Math.hypot(b.x - a.x, b.y - a.y);
+    lengths.push(len);
+    total += len;
+  }
+  if (total === 0) return 0.5;
+  let bestDist = Number.POSITIVE_INFINITY;
+  let bestAlong = total / 2;
+  let along = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const len = lengths[i - 1] ?? 0;
+    if (a === undefined || b === undefined || len === 0) continue;
+    const raw = ((target.x - a.x) * (b.x - a.x) + (target.y - a.y) * (b.y - a.y)) / (len * len);
+    const t = Math.max(0, Math.min(1, raw));
+    const x = a.x + (b.x - a.x) * t;
+    const y = a.y + (b.y - a.y) * t;
+    const dist = Math.hypot(target.x - x, target.y - y);
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestAlong = along + len * t;
+    }
+    along += len;
+  }
+  return Math.max(0, Math.min(1, bestAlong / total));
 };
 
 const hopTarget = (

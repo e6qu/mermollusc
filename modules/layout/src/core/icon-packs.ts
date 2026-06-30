@@ -3,3 +3,5 @@
 // (a sibling we can't import — the icon ref `{ pack, name }` is the shared contract between them).
 export const ARCH_PACK = "arch";
 export const SIMPLE_ICONS_PACK = "simpleicons";
+export const DEVICON_PACK = "devicon";
+export const K8S_PACK = "k8s";

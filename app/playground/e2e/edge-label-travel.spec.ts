@@ -32,3 +32,32 @@ test("an edge label travels with the edge when an endpoint node is dragged", asy
     })
     .toBeGreaterThan(20); // the label moved meaningfully with the edge
 });
+
+test("a moved edge label keeps its relative position across an edge rerender", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart LR\n  A[Left] -->|move me| B[Right]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const before = await labelPos(page, "e0");
+  expect(before).not.toBeNull();
+  if (before === null) return;
+
+  await page.evaluate(() => window.__setEdgeLabelT?.("e0", 0.85));
+
+  await expect
+    .poll(async () => {
+      const pos = await labelPos(page, "e0");
+      return pos === null ? 0 : pos.x - before.x;
+    })
+    .toBeGreaterThan(20);
+
+  await page.keyboard.press("s");
+
+  await expect
+    .poll(async () => {
+      const pos = await labelPos(page, "e0");
+      return pos === null ? 0 : pos.x - before.x;
+    })
+    .toBeGreaterThan(20);
+});

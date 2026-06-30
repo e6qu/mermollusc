@@ -2,10 +2,12 @@
 
 **State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; pie donuts; gantt task bars on a day axis with `after`-chains); `make check` green.
 
-**Current demo-parity note:** cloud and network have first-class style buckets; cloud defaults to trunk
-routing; examples are richer across families; BPMN starters use real BPMN icons for banking and
-insurance-adjusting workflows; Gantt `after ...` bars and timeline events work when dragged; ELK/
-compartment box diagrams snap edges to side-centre mounts without affecting cloud/network routing.
+**Current demo-parity note:** cloud and network have first-class style buckets and vendored default
+icons; cloud defaults to trunk routing; edge labels can be dragged along their routes and preserve their
+relative positions; examples are richer across families; BPMN starters keep the original BPMN glyphs for
+banking and insurance-adjusting workflows; state diagrams honor direction; Gantt `after ...` bars and
+timeline events work when dragged; ELK/compartment box diagrams snap edges to side-centre mounts without
+affecting cloud/network routing.
 
 - **Design:** a computational notebook/workbench UI — compact command groups in the header, a framed
   **source/input** panel, a labelled **output** stage, quieter graph-paper geometry, and a status bar.
@@ -43,8 +45,8 @@ compartment box diagrams snap edges to side-centre mounts without affecting clou
   ([`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md)) — the source-text counterpart of
   the `Editor` seam.
 - **Examples are real, not gibberish:** the catalog includes a readable tiered AWS architecture
-  (cloud, with directed traffic paths CloudFront→WAF→ALB→services→data/identity/operations and coherent
-  built-in architecture glyphs), a compact network perimeter example, and two BPMN-style workflow
+  (cloud, with directed traffic paths CloudFront→WAF→ALB→services→data/identity/operations and
+  provenance-tracked vendored icons), a compact network perimeter example, and two BPMN-style workflow
   starters curated for readability rather than loop-heavy stress coverage. A **Reset** control (topbar)
   clears the persisted state and reloads a fresh demo.
 - **Family-aware controls:** an **Examples** menu drops a richer known-good starter for each of the fifteen
@@ -149,12 +151,14 @@ compartment box diagrams snap edges to side-centre mounts without affecting clou
     covers drag, group/ungroup/lock, group label, and Regenerate. It's gated on the editor not being
     focused, so CodeMirror keeps `⌘Z` for the source text — the two histories don't fight.
 - node e2e composition test (text → pixels) passing.
-- Icons in nodes: network node kinds resolve to built-in glyphs (`findIcon` → SVG → rasterised
+- Icons in nodes: network node kinds resolve to bundled vendor glyphs (`findIcon` → SVG → rasterised
   image, cached), handed to `paint` and drawn above each node's label.
+- Visual review shots exercise the public Examples menu sources for the major families, including
+  cloud, network, timeline, Gantt, DOT, and BPMN workflow starters.
 - HiDPI: the canvas backing store is sized to `devicePixelRatio` (drawing in CSS px via a dpr
   transform) so rendering stays crisp on retina displays.
 - **Load icons**: a file input decodes a user pack (`decodePack`) and merges it into the active
-  registry (`registerPack`); a pack with id "arch" overrides the built-in network glyphs. This is
+  registry (`registerPack`); a pack can override any active pack id in the registry. This is
   how non-redistributable vendor sets (AWS/Azure/GCP/Oracle/AliCloud official icons) render — convert
   a downloaded SVG folder with `tools/pack-dir.mjs`, then load it. Failures log loudly.
 - **Icon picker** (`#icons-toggle`): a right-side drawer that browses the active registry (pack →

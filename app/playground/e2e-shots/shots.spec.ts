@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { EXAMPLES } from "../src/examples.js";
 
 // A scenario-driven UI instrument: each flow names a sequence of real interactions, drives them
 // through the live app, and captures a full-page PNG to `shots/`. This is how we (a) review the
@@ -27,6 +28,14 @@ const settled = async (page: Page): Promise<void> => {
 const setSource = async (page: Page, text: string): Promise<void> => {
   await expect.poll(() => page.evaluate(() => window.__editor !== undefined)).toBe(true);
   await page.evaluate((t) => window.__editor?.setValue(t), text);
+  await settled(page);
+};
+
+const loadExample = async (page: Page, name: string): Promise<void> => {
+  if (!EXAMPLES.has(name)) throw new Error(`missing screenshot example: ${name}`);
+  await page.locator("#example").selectOption(name);
+  await settled(page);
+  await page.locator("#zoom-fit").click();
   await settled(page);
 };
 
@@ -101,47 +110,37 @@ const FLOWS: readonly Flow[] = [
   },
   {
     name: "05-sequence",
-    about: "sequence diagram",
+    about: "sequence diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(page, "sequenceDiagram\n  A->>B: Hello\n  B-->>A: Hi there\n");
+      await loadExample(page, "sequence");
     },
   },
   {
     name: "06-c4",
-    about: "C4 context diagram",
+    about: "C4 context diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(
-        page,
-        'C4Context\n  Person(alice, "Alice")\n  Boundary(b, "Backend") {\n    Container(api, "API")\n    Container(db, "Database")\n  }\n  Rel(alice, api, "uses")\n',
-      );
+      await loadExample(page, "c4");
     },
   },
   {
     name: "07-block",
-    about: "block diagram",
+    about: "block diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(page, 'block-beta\n  columns 2\n  a["Web"]\n  b["API"]\n  c["DB"]\n  a --> b\n  b --> c\n');
+      await loadExample(page, "block");
     },
   },
   {
     name: "08-network",
-    about: "network diagram with built-in glyphs",
+    about: "network diagram from the public Examples menu with vendored glyphs",
     drive: async (page) => {
-      await setSource(
-        page,
-        'network\n  cloud net "Internet"\n  router r1 "Edge"\n  server web "Web"\n  net -- r1\n  r1 -- web : "eth0"\n',
-      );
+      await loadExample(page, "network");
     },
   },
   {
     name: "09-cloud",
-    about: "cloud diagram with vendored brand marks",
+    about: "cloud diagram from the public Examples menu with vendored brand marks",
     drive: async (page) => {
-      await setSource(
-        page,
-        'cloud\n  group "AWS" {\n    compute web "Web"\n    storage assets "Assets"\n    database db "Orders"\n    queue jobs "Jobs"\n    cdn edge "Edge"\n  }\n  web -- db\n',
-      );
-      await page.waitForTimeout(200);
+      await loadExample(page, "cloud");
     },
   },
   {
@@ -325,11 +324,12 @@ const FLOWS: readonly Flow[] = [
     about: "Connect adds a sequence message between two actors",
     drive: async (page) => {
       await setSource(page, "sequenceDiagram\n  A->>B: Hello\n");
-      const box = await page.locator("#stage").boundingBox();
-      if (box === null) return;
+      const a = await page.evaluate(() => window.__nodeRect?.("A") ?? null);
+      const b = await page.evaluate(() => window.__nodeRect?.("B") ?? null);
+      if (a === null || b === null) return;
       await page.keyboard.down("Shift");
-      await page.mouse.click(box.x + 40, box.y + 40);
-      await page.mouse.click(box.x + box.width - 40, box.y + 40);
+      await page.mouse.click(a.x + a.w / 2, a.y + a.h / 2);
+      await page.mouse.click(b.x + b.w / 2, b.y + b.h / 2);
       await page.keyboard.up("Shift");
       await page.locator("#connect").click();
       await settled(page);
@@ -337,22 +337,16 @@ const FLOWS: readonly Flow[] = [
   },
   {
     name: "25-er",
-    about: "ER diagram: entity attribute compartments and crow's-foot cardinality on relationships",
+    about: "ER diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(
-        page,
-        'erDiagram\n  CUSTOMER {\n    string name PK\n    string email UK\n  }\n  ORDER {\n    int id PK\n    string status\n  }\n  CUSTOMER ||--o{ ORDER : places\n  ORDER }|..|| PRODUCT\n',
-      );
+      await loadExample(page, "er");
     },
   },
   {
     name: "26-class",
-    about: "UML class diagram: field/method compartments and inheritance/composition/aggregation heads",
+    about: "UML class diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(
-        page,
-        "classDiagram\n  class Animal {\n    <<abstract>>\n    +String name\n    -int age\n    +isMammal() bool\n  }\n  class Swimmer {\n    <<interface>>\n    +swim() void\n  }\n  class Duck {\n    +String beak\n  }\n  Animal <|-- Duck\n  Swimmer <|.. Duck\n  Animal *-- Leg\n  Duck ..> Food : eats\n",
-      );
+      await loadExample(page, "class");
     },
   },
   {
@@ -382,9 +376,9 @@ const FLOWS: readonly Flow[] = [
   },
   {
     name: "29-state-polish",
-    about: "state diagram pseudo-states, fork/join bars, choice diamond, and left/right/over notes",
+    about: "state diagram pseudo-states, direction, fork/join bars, choice diamond, and notes",
     drive: async (page) => {
-      await setSource(page, STATE_POLISH_SOURCE);
+      await loadExample(page, "state");
     },
   },
   {
@@ -398,22 +392,65 @@ const FLOWS: readonly Flow[] = [
   },
   {
     name: "31-requirement",
-    about: "requirement diagram: «kind» tag + field compartments, verb-labelled relationships",
+    about: "requirement diagram from the public Examples menu",
     drive: async (page) => {
-      await setSource(
-        page,
-        "requirementDiagram\n  requirement user_req {\n    id: 1\n    text: shall log in.\n    risk: high\n  }\n  element login_form {\n    type: simulation\n  }\n  login_form - satisfies -> user_req\n",
-      );
+      await loadExample(page, "requirement");
     },
   },
   {
     name: "32-pie-donut",
-    about: "donut pie chart with data labels and legend swatches",
+    about: "donut pie chart from the public Examples menu",
     drive: async (page) => {
-      await setSource(
-        page,
-        'pie showData donut\n  title Diagram family coverage\n  "Flow / state" : 34\n  "Structure" : 28\n  "Planning" : 18\n  "Architecture" : 20\n',
-      );
+      await loadExample(page, "pie");
+    },
+  },
+  {
+    name: "33-bpmn-banking",
+    about: "BPMN-style banking workflow from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "bpmn");
+    },
+  },
+  {
+    name: "34-bpmn-insurance",
+    about: "BPMN-style insurance adjusting workflow from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "bpmn-incident");
+    },
+  },
+  {
+    name: "35-dot",
+    about: "Graphviz DOT import from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "dot");
+    },
+  },
+  {
+    name: "36-timeline",
+    about: "timeline diagram from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "timeline");
+    },
+  },
+  {
+    name: "37-gantt",
+    about: "gantt diagram from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "gantt");
+    },
+  },
+  {
+    name: "38-mindmap",
+    about: "mindmap diagram from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "mindmap");
+    },
+  },
+  {
+    name: "39-gitgraph",
+    about: "gitGraph diagram from the public Examples menu",
+    drive: async (page) => {
+      await loadExample(page, "gitGraph");
     },
   },
 ];

@@ -186,6 +186,7 @@ describe("layout", () => {
   it("layoutDiagram lays out a state diagram through the ELK path", async () => {
     const stateAst: StateAst = {
       kind: "state",
+      direction: "TB",
       states: [
         { id: sid("__state_start"), label: "", kind: "start" },
         { id: sid("Idle"), label: "Idle", kind: "state" },
@@ -209,6 +210,7 @@ describe("layout", () => {
   it("places state notes on the requested side of their target", async () => {
     const stateAst: StateAst = {
       kind: "state",
+      direction: "TB",
       states: [{ id: sid("Idle"), label: "Idle", kind: "state" }],
       transitions: [],
       composites: [],

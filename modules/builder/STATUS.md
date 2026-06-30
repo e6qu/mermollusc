@@ -10,6 +10,8 @@ for drag gestures that already know the resolved calendar day.
   and grows the extent so dragged-out nodes aren't clipped; `resizeNode` pins position + size for
   manual node sizing; a uniformly-moved group keeps its edge routes; side-centre mount snapping is
   opt-in for box-style diagram families).
+- core: `applyStyles` handles sidecar edge presentation (`route`, `routeOption`, `labelT`), including
+  recomputing a moved label from its route-relative ratio after straightening, A* reroute, or redraw.
 - two-way text edits: `patchSpan` (primitive), `relabelNode` (span splice / bare-node wrap),
   `addNode` / `connect` (append a node / edge line), `deleteNode` (remove decl + referencing
   edge lines), `deleteEdge` (remove a standalone `from <arrow> to` line), C4 element/relation

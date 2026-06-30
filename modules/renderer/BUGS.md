@@ -29,3 +29,6 @@ coverage.
 Checked while widening edge-label plates in the canvas and SVG backends.
 
 Checked while adding semantic architecture accent fills and container accent propagation.
+
+Checked while adding ratio-based edge-label geometry, translucent label plates, and escaped-newline
+label rendering.

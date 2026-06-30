@@ -8,6 +8,7 @@ import type {
   SceneNodeId,
 } from "@m/contracts";
 import { point, rect, twoOrMore, type Point, type Size } from "@m/std";
+import { edgeLabelAnchorAt } from "@m/renderer";
 
 // Apply the presentation-only overlay (curved edges, coloured nodes) to a laid-out scene — display only,
 // like `applyOverrides`. Kept separate so it composes after geometry without changing that signature.
@@ -51,6 +52,12 @@ export const applyStyles = (
       : scene.edges.map((e): SceneEdge => {
           const s = edgeStyles.get(e.id);
           if (s === undefined) return e;
+          const labelPos = (points: readonly Point[]): Point | null => {
+            if (e.label === null) return null;
+            if (s.labelT === null) return e.labelPos;
+            const anchor = edgeLabelAnchorAt(points, s.labelT);
+            return point(anchor.x, anchor.y);
+          };
           // `straight` collapses the route to a direct endpoint→endpoint line; `curved` flags the
           // rounded-corner render; `square` keeps the laid-out right-angle route. The label follows.
           if (s.route === "straight") {
@@ -61,7 +68,10 @@ export const applyStyles = (
               ...e,
               curved: false,
               waypoints: twoOrMore(a, b),
-              labelPos: e.labelPos === null ? null : point((a.x + b.x) / 2, (a.y + b.y) / 2),
+              labelPos:
+                s.labelT === null && e.labelPos !== null
+                  ? point((a.x + b.x) / 2, (a.y + b.y) / 2)
+                  : labelPos(twoOrMore(a, b)),
             };
           }
 
@@ -87,7 +97,12 @@ export const applyStyles = (
                     ...e,
                     curved: s.route === "curved",
                     waypoints: twoOrMore(w0, w1, ...wr),
-                    labelPos: e.labelPos === null ? null : pathMidpoint(path),
+                    labelPos:
+                      s.labelT === null
+                        ? e.labelPos === null
+                          ? null
+                          : pathMidpoint(path)
+                        : labelPos(path),
                   };
                 }
               }
@@ -95,7 +110,10 @@ export const applyStyles = (
           }
 
           const curved = s.route === "curved";
-          return curved !== e.curved ? { ...e, curved } : e;
+          const movedLabel = labelPos(e.waypoints);
+          return curved !== e.curved || movedLabel !== e.labelPos
+            ? { ...e, curved, labelPos: movedLabel }
+            : e;
         });
   const nodes =
     nodeStyles.size === 0
@@ -105,7 +123,15 @@ export const applyStyles = (
           return s !== undefined && s.accent !== n.accent ? { ...n, accent: s.accent } : n;
         });
   const styled = { ...scene, nodes, edges };
-  return snapToMountPoints ? snapSceneEdgesToMountPoints(styled) : styled;
+  const snapped = snapToMountPoints ? snapSceneEdgesToMountPoints(styled) : styled;
+  if (!snapToMountPoints || edgeStyles.size === 0) return snapped;
+  const relabelled = snapped.edges.map((e): SceneEdge => {
+    const s = edgeStyles.get(e.id);
+    if (s === undefined || s.labelT === null || e.label === null) return e;
+    const anchor = edgeLabelAnchorAt(e.waypoints, s.labelT);
+    return { ...e, labelPos: point(anchor.x, anchor.y) };
+  });
+  return { ...snapped, edges: relabelled };
 };
 
 export const moveNode = (
