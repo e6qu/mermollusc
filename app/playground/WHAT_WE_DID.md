@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-06-30 — Selected edge overlay assertion
+
+- Added Playwright coverage for the selected-edge route overlay: the test selects a labelled edge and
+  samples the canvas pixel at the route label-anchor handle, proving the blue handle is actually painted
+  instead of only screenshot-reviewed.
+
 ## 2026-06-30 — Catalog cardinal-mount gate
 
 - The Examples integration test now fails any routed catalog diagram whose edge endpoints are off the

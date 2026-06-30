@@ -81,6 +81,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   includes phone-width responsive shell, shortcut-help modal, light/dark selected-node mount handles,
   state/sketch/donut, minimap, grouping, and family-polish flows so task journeys and visual modes are
   reviewable from a clean artifact set.
+- **Selected-edge overlay e2e:** `selected-edge-overlay.spec.ts` selects a labelled edge and samples the
+  canvas pixel at the painted route label-anchor handle, so the route halo/handle is assertion-covered
+  in addition to the `02-edge-selected` screenshot review.
 - **GitHub Pages demo:** the root Pages site is reserved for presentation content; `make pages-build`
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay.
