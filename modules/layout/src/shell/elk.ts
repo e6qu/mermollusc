@@ -856,6 +856,30 @@ const layoutByFamily = async (
   }
 };
 
+const usesSideCenterMounts = (kind: DiagramAst["kind"]): boolean => {
+  switch (kind) {
+    case "flowchart":
+    case "er":
+    case "class":
+    case "requirement":
+      return true;
+    case "c4":
+    case "block":
+    case "network":
+    case "cloud":
+    case "sequence":
+    case "state":
+    case "gitGraph":
+    case "timeline":
+    case "mindmap":
+    case "pie":
+    case "gantt":
+      return false;
+    default:
+      return assertNever(kind);
+  }
+};
+
 export const layoutDiagram = async (
   ast: DiagramAst,
   measure: MeasureText,
@@ -876,6 +900,7 @@ export const layoutDiagram = async (
         finalScene = respreadPorts(finalScene, true);
       }
     }
-    return snapSceneEdgesToMountPoints(decollideEdgeLabels(finalScene, measure));
+    const labelled = decollideEdgeLabels(finalScene, measure);
+    return usesSideCenterMounts(ast.kind) ? snapSceneEdgesToMountPoints(labelled) : labelled;
   });
 };

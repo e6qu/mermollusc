@@ -3,7 +3,8 @@
 **State:** flowchart layout + relax (semi-interactive) implemented; `make check` green.
 
 **Current architecture note:** network root zones now lay out left-to-right, cloud uses semantic
-architecture accents with a wider tier row budget, and timeline event connectors are real edges.
+architecture accents with a wider tier row budget, timeline event connectors are real edges, and
+ELK/compartment box diagrams snap connectors to side-centre mount points.
 
 - `layout(ast, seed?)` → `Promise<Result<Scene, LayoutError>>` (shell). A non-empty `seed`
   (node → current position) runs ELK semi-interactive layered layout — relaxing around the
@@ -90,7 +91,10 @@ architecture accents with a wider tier row budget, and timeline event connectors
   group when the other endpoint is outside that group, then anchors on the real child box. This keeps
   grouped architecture links entering tiers from the expected side without changing sibling-in-group
   routing.
-- tests: 82 unit + 15 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- **Side-centre mount cleanup:** `layoutDiagram` applies `snapSceneEdgesToMountPoints` only to
+  flowchart/ER/class/requirement, moving corner-ish edge endpoints to top/bottom/left/right side centres
+  while leaving architecture spread families and semantic families untouched.
+- tests: 133 unit + 18 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`

@@ -17,3 +17,5 @@
   `connect` (appends exactly one edge, nodes preserved).
 - *(done)* Gantt dependency-start drag support: `setGanttStartFromDay` rewrites `after ...` spans to an
   explicit date when the app has a resolved calendar day.
+- *(done)* Make side-centre mount snapping an explicit `applyOverrides`/`applyStyles` option so the app
+  can gate it per family.

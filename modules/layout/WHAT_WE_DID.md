@@ -420,3 +420,7 @@
   orientation box when an edge crosses a group boundary, while the port itself remains on the child node.
   The cloud starter's ALB-to-service connector now enters the services tier from above instead of tracing
   along the tier title.
+- Added family-gated side-centre mount cleanup: ELK/compartment box diagrams now snap edge endpoints to
+  the nearest top/bottom/left/right mount based on the adjacent segment, so connectors no longer land on
+  square corners. The cleanup skips architecture spread families and semantic families whose anchors are
+  not generic box ports, and the snapper avoids rewriting the opposite endpoint on two-point routes.

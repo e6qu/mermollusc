@@ -68,3 +68,5 @@ orientation and the child box for the final port.
 
 Checked while making cloud/network architecture accents first-class, changing network root-zone ordering,
 and converting timeline event connectors to real edges.
+
+Checked while family-gating side-centre mount snapping and covering corner-ish endpoint correction.

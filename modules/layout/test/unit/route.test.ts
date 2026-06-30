@@ -7,6 +7,7 @@ import {
   respreadPorts,
   retidyRoutes,
   routeWaypoints,
+  snapSceneEdgesToMountPoints,
   spreadPorts,
   trunkRoutes,
 } from "../../src/core/route.js";
@@ -429,5 +430,49 @@ describe("spreadPorts", () => {
     const out = spreadPorts(scene);
     expect(out.edges[0]?.waypoints).toEqual(scene.edges[0]?.waypoints);
     expect(out.edges[1]?.waypoints).toEqual(scene.edges[1]?.waypoints);
+  });
+});
+
+describe("snapSceneEdgesToMountPoints", () => {
+  const node = (id: string, x: number, y: number) => ({
+    id: brand<string, "SceneNodeId">(id),
+    bounds: rect(x, y, 80, 60),
+    label: id,
+    shape: "rect" as const,
+    parent: null,
+    icon: null,
+    rows: null,
+    rowDivider: null,
+    subtitle: null,
+    accent: "none" as const,
+    role: "normal" as const,
+  });
+  const edge = {
+    id: brand<string, "SceneEdgeId">("e0"),
+    from: brand<string, "SceneNodeId">("a"),
+    to: brand<string, "SceneNodeId">("b"),
+    waypoints: twoOrMore(point(80, 5), point(140, 5), point(140, 155), point(200, 155)),
+    label: "RPC",
+    stroke: "solid" as const,
+    fromEnd: "none" as const,
+    toEnd: "arrow" as const,
+    curved: false,
+    fromLabel: null,
+    toLabel: null,
+    labelPos: point(140, 80),
+  };
+
+  it("moves corner-ish endpoints to the side-center mount points", () => {
+    const out = snapSceneEdgesToMountPoints({
+      nodes: [node("a", 0, 0), node("b", 200, 120)],
+      edges: [edge],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 280, 180),
+    });
+    expect(out.edges[0]?.waypoints[0]).toEqual(point(80, 30));
+    expect(out.edges[0]?.waypoints[1]).toEqual(point(140, 30));
+    expect(out.edges[0]?.waypoints[out.edges[0].waypoints.length - 2]).toEqual(point(140, 150));
+    expect(out.edges[0]?.waypoints[out.edges[0].waypoints.length - 1]).toEqual(point(200, 150));
   });
 });

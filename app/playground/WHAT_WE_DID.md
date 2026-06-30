@@ -876,3 +876,10 @@
 - Audited the local demo screenshots for every starter and trimmed the public cloud and BPMN-style
   workflow sources: cloud now keeps only meaningful grouped tiers, while the workflows are single-pass
   readable starters rather than loop-heavy routing stress fixtures.
+- Gated side-centre mount snapping in the playground display path: ELK/compartment box families pass the
+  new `snapToMountPoints` option through `applyOverrides`/`applyStyles`, while cloud/network/C4/block
+  keep their first-class spread/trunk routers and sequence/state/gitGraph/timeline/mindmap/pie/gantt
+  keep their family-specific anchors. Refreshed pipeline goldens to pin the current before/after
+  geometry.
+- Hardened the UI e2e gate after pre-push attached to an unrelated server on the shared preview port:
+  `playwright.config.ts` now owns fresh Vite and collab-relay servers instead of reusing existing ones.
