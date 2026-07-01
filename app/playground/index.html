@@ -825,6 +825,7 @@
       .drawer-backdrop[hidden] { display: none; }
       .picker-head { display: flex; align-items: center; justify-content: space-between; }
       .picker-head strong { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+      .picker-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
       #icons-close { width: 28px; height: 28px; padding: 0; }
       #icon-filter {
         font-family: var(--font-mono);
@@ -1154,9 +1155,8 @@
                 title="Download the current diagram as a Graphviz DOT file">DOT</button>
               <button id="share-link" type="button" role="menuitem"
                 title="Copy a shareable link (the diagram is encoded in the URL)">Share</button>
-              <label class="filebtn" role="menuitem" tabindex="-1"
+              <label class="filebtn" role="menuitem" tabindex="-1" for="load-pack"
                 title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder (AWS/Azure/GCP/Oracle/AliCloud official sets) with tools/pack-dir.mjs.">Load icons
-                <input id="load-pack" type="file" accept="application/json" />
               </label>
               <button id="reset-cache" type="button" role="menuitem"
                 title="Clear the saved diagram, layout, and preferences and reload a fresh demo">Reset</button>
@@ -1294,11 +1294,16 @@
         </span>
       </footer>
       <input id="inline-edit" type="text" spellcheck="false" aria-label="Rename label" hidden />
+      <input id="load-pack" class="sr-only" type="file" accept="application/json" tabindex="-1" />
       <div id="icon-backdrop" class="drawer-backdrop" hidden></div>
       <aside id="icon-picker" role="dialog" aria-modal="true" aria-label="Icon picker" hidden>
         <div class="picker-head">
           <strong>Insert icon</strong>
           <button id="icons-close" type="button" aria-label="Close icon picker">✕</button>
+        </div>
+        <div class="picker-tools">
+          <label class="filebtn" for="load-pack" tabindex="0"
+            title="Load a {meta, icons} pack JSON. Convert a vendor SVG folder with tools/pack-dir.mjs.">Load icon pack</label>
         </div>
         <input
           id="icon-filter"

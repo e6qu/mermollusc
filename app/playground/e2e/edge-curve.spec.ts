@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExportMenu } from "./support/menu.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -46,7 +47,9 @@ test("the Route control cycles square → straight → curved (the route label t
 
 test("a curved route travels in the share link and is undoable (it's real overlay state)", async ({
   page,
+  context,
 }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await setSource(page, "flowchart TD\n  A[A] -->|go| B[B]\n");
@@ -67,10 +70,10 @@ test("a curved route travels in the share link and is undoable (it's real overla
   await selectEdge(page, "e0");
   await page.locator("#ctx-curve").click();
   await expect.poll(() => isCurved(page, "e0")).toBe(true);
-  const url = await page.evaluate(() => {
-    document.querySelector<HTMLButtonElement>("#share-link")?.click();
-    return location.href; // Share sets the URL via history.replaceState regardless of clipboard
-  });
+  await openExportMenu(page);
+  await page.locator("#share-link").click();
+  await expect(page.locator("#status")).toContainText("shareable link copied to clipboard");
+  const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain("overlay=");
   await page.goto(url);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);

@@ -12,7 +12,11 @@ test("a #src= link reproduces the diagram on load", async ({ page }) => {
   await expectSourceMatches(page, text);
 });
 
-test("Share encodes the current source into the URL hash", async ({ page }) => {
+test("Share copies the current source without overwriting the current URL", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
@@ -22,15 +26,17 @@ test("Share encodes the current source into the URL hash", async ({ page }) => {
 
   await openExportMenu(page);
   await page.locator("#share-link").click();
+  await expect(page.locator("#status")).toContainText("shareable link copied to clipboard");
 
-  const hash = await page.evaluate(() => location.hash);
+  const href = await page.evaluate(() => location.href);
+  expect(href).not.toContain("#src=");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  const hash = new URL(copied).hash;
   expect(hash.startsWith("#src=")).toBe(true);
   expect(decodeURIComponent(hash.slice("#src=".length))).toBe(edited);
 });
 
-test("Share warns (not a confident 'copied') when the link is too large to paste reliably", async ({
-  page,
-}) => {
+test("Share puts an oversized link in the address bar while warning", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
@@ -41,6 +47,9 @@ test("Share warns (not a confident 'copied') when the link is too large to paste
 
   await openExportMenu(page);
   await page.locator("#share-link").click();
+
+  const hash = await page.evaluate(() => location.hash);
+  expect(hash.startsWith("#src=")).toBe(true);
   await expect(page.locator("#status")).toHaveAttribute("data-level", "warning");
   await expect(page.locator("#status")).toContainText(/large|truncated/i);
 });

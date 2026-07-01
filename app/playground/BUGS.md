@@ -2,6 +2,10 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Share overwrote the current demo URL on normal copy.**~~ Fixed — successful clipboard sharing now
+  leaves the page hash alone; fallback and oversized-link paths still expose the URL in the address bar.
+- ~~**Custom icon packs were hidden in export overflow.**~~ Fixed — the icon picker drawer now exposes
+  the same icon-pack JSON loader as the overflow menu.
 - ~~**Minimap arrow-pan had no spoken feedback.**~~ Fixed — keyboard panning through the minimap now
   announces arrow moves and Home/End jumps through the shared live region, covered by Playwright.
 - ~~**Transient confirmations bypassed task guidance.**~~ Fixed — `flashStatus` now refreshes the

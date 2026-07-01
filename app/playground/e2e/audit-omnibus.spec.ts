@@ -35,7 +35,11 @@ test("Connect and Icons are gated to families whose grammar accepts them", async
 
 // A keystroke no longer wipes manual layout: a nudged node keeps its position when unrelated text is
 // edited, and Share carries that overlay so a recipient sees the same arrangement.
-test("manual layout survives a text edit and rides along in the share link", async ({ page }) => {
+test("manual layout survives a text edit and rides along in the share link", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await ready(page);
   await setSource(page, "flowchart TD\n  A[Alpha]\n  B[Beta]\n  A --> B\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
@@ -51,14 +55,16 @@ test("manual layout survives a text edit and rides along in the share link", asy
   await setSource(page, "flowchart TD\n  A[Alpha]\n  B[Beta]\n  C[Gamma]\n  A --> B\n");
   await expect.poll(() => sourceValue(page)).toContain("Gamma");
 
-  // Share encodes the surviving overlay in the hash.
+  // Share encodes the surviving overlay in the copied URL without replacing the current page hash.
   await openExportMenu(page);
   await page.locator("#share-link").click();
-  await expect.poll(() => page.evaluate(() => location.hash)).toContain("overlay=");
+  await expect(page.locator("#status")).toContainText("shareable link copied to clipboard");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain("overlay=");
+  expect(await page.evaluate(() => location.hash)).not.toContain("overlay=");
 
   // Re-opening the shared link restores it and renders without error.
-  const hash = await page.evaluate(() => location.hash);
-  await page.goto(`/${hash}`);
+  await page.goto(copied);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await expect(page.locator("#stage-wrap")).toHaveAttribute("data-stale", "false");
 });

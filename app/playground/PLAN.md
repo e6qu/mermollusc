@@ -54,6 +54,9 @@ canvas, and hosts the e2e / golden tests.
 - Keep keyboard navigation audibly stateful: minimap arrow/Home/End panning, navigator movement,
   nudging, resizing, grouping, and lock changes should all report concise results through the shared
   live region.
+- Keep sharing non-destructive: copying a share URL should not overwrite the visitor's current address
+  bar when clipboard write succeeds, but fallback paths must still surface the URL loudly. Keep custom
+  icon-pack loading discoverable from the icon workflow itself, not only from export overflow.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as
