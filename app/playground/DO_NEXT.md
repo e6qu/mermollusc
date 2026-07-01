@@ -10,7 +10,8 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   styling control. Add a swatch writing a `style`/`classDef` patch (flowchart first), or mark as source-only.
 - **(done) Connect/Duplicate discoverability (J5).** Their multi-select requirement is hidden (button vanishes)
   rather than shown disabled-with-tooltip; navigator has no Duplicate key. Prefer disabled-with-reason.
-- **Share-link overwrite (J8) + icon-pack discoverability (J9).** Smaller, independent polish items.
+- *(done)* **Share-link overwrite (J8) + icon-pack discoverability (J9).** Share no longer mutates the
+  page hash on clipboard success, and the icon picker exposes the custom pack loader.
 - **(done) Self-relations (P5, layout).** c4/network render a self-link as a degenerate dot; cloud silently
   drops it. Pick one policy (small loop, or parser-level rejection) and apply uniformly.
 

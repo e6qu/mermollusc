@@ -21,6 +21,7 @@ test("the icon picker filters and inserts an icon override at the caret", async 
   const picker = page.locator("#icon-picker");
   await expect(picker).toBeVisible();
   await expect(page.locator("#icon-backdrop")).toBeVisible();
+  await expect(picker.locator('label[for="load-pack"]')).toContainText("Load icon pack");
 
   await page.locator("#icon-filter").fill("docker");
   const first = page.locator("#icon-grid .picker-icon").first();

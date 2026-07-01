@@ -1,5 +1,14 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Share and icon-pack polish
+
+- Changed Share so the normal clipboard-success path no longer overwrites the current demo URL hash;
+  the address bar is used only when the link is too large, clipboard is unavailable, or clipboard write
+  is blocked.
+- Exposed the custom icon-pack loader directly inside the icon picker drawer, while keeping the export
+  menu entry for keyboard/menu workflows.
+- Updated share-link, overlay-share, edge-style share, and icon-picker e2e coverage for the new behavior.
+
 ## 2026-07-01 — Minimap keyboard feedback
 
 - Added live-region announcements for minimap keyboard panning, including arrow-key moves and

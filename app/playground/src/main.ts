@@ -5695,6 +5695,12 @@ iconPicker.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape") {
     ev.preventDefault();
     setPickerOpen(false);
+  } else if (
+    (ev.key === "Enter" || ev.key === " ") &&
+    document.activeElement instanceof HTMLLabelElement
+  ) {
+    ev.preventDefault();
+    document.activeElement.click();
   }
 });
 
@@ -5803,8 +5809,8 @@ const SHARE_URL_MAX = 8000;
 
 shareBtn.addEventListener("click", () => {
   const url = shareUrl();
-  history.replaceState(null, "", url);
   if (url.length > SHARE_URL_MAX) {
+    history.replaceState(null, "", url);
     setStatusAndAnnounce(
       "warning",
       `diagram is large — share link is ${url.length} chars and may be truncated when pasted (it's in the address bar)`,
@@ -5813,12 +5819,16 @@ shareBtn.addEventListener("click", () => {
   }
   const clip = navigator.clipboard;
   if (clip === undefined) {
+    history.replaceState(null, "", url);
     setStatusAndAnnounce("ok", "shareable link is in the address bar");
     return;
   }
   void clip.writeText(url).then(
     () => setStatusAndAnnounce("ok", "shareable link copied to clipboard"),
-    () => setStatusAndAnnounce("ok", "shareable link is in the address bar"),
+    () => {
+      history.replaceState(null, "", url);
+      setStatusAndAnnounce("ok", "shareable link is in the address bar");
+    },
   );
 });
 

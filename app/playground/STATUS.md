@@ -37,6 +37,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
 - **Navigation feedback:** the diagram navigator, minimap keyboard panning, node nudge/resize, and
   grouped-object commands announce their results through the shared live region, while pointer-only
   movement remains visually direct.
+- **Sharing and icon packs:** Share copies a self-contained source/overlay URL without replacing the
+  current page hash on clipboard success; fallback/warning paths still put the URL in the address bar.
+  The icon-pack JSON loader is visible from both the export overflow menu and the icon picker drawer.
 - **Source editor is CodeMirror 6** (`src/editor.ts`): family-aware syntax highlighting (a stream
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
