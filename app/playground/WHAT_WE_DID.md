@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Unified transient confirmations
+
+- Routed transient command confirmations through the same task-guidance refresh as durable status
+  updates, while keeping them from overwriting the diagram's canvas `aria-label` or stale/error state.
+- Added Playwright coverage for a Relax confirmation showing in the status bar while selected-node task
+  guidance and the canvas diagram label stay intact.
+
 ## 2026-07-01 — Keyboard resize affordance
 
 - Added `Alt+Arrow` keyboard resizing for the single selected resizable node, using the same sidecar

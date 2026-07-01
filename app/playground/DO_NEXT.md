@@ -77,8 +77,8 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   capability record; also surface them in the always-visible task status for touch/keyboard.
 - *(done)* **Keyboard resize.** The task hint promises corner handles a keyboard user can't operate — add a
   resize-by-key affordance or scope the hint.
-- **Unify the confirmation channel.** `flashStatus` confirmations (add/duplicate/connect/shape) don't
-  nudge the task HUD the way the `setStatusAndAnnounce` ones do.
+- *(done)* **Unify the confirmation channel.** `flashStatus` confirmations now refresh the task HUD
+  without replacing the diagram aria label or stale/error state.
 - **Minimap arrow-pan has no spoken feedback** (LOW — the navigator is the primary SR surface).
 
 ## Collaboration (Phase 2/3 remainder — see `modules/collab/DO_NEXT.md`)
