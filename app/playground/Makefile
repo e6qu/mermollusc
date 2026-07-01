@@ -7,10 +7,13 @@ STOP_CMD  := test -f .run/playground.pid && kill $$(cat .run/playground.pid) 2>/
 
 include ../../module.mk
 
-.PHONY: test-e2e-ui shots
+.PHONY: test-e2e-ui test-e2e-pages shots
 
 test-e2e-ui:
 	pnpm exec playwright test
+
+test-e2e-pages:
+	pnpm exec playwright test -c playwright.pages.config.ts
 
 # Drive the live UI through named flows and write PNGs to shots/ (generated, git-ignored). Separate
 # from the gating e2e suite — for visual review and design iteration, not a pass/fail gate.

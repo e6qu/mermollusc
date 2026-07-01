@@ -134,7 +134,7 @@ Coverage labels:
 | COL-04 | As collaborators, we see remote text presence. | Awareness relays name/color and source caret/selection. | Covered: `collab-presence.spec.ts`, collab awareness tests. |
 | COL-05 | As an owner/editor/viewer, my role is enforced and reflected. | Server drops viewer document frames; app makes viewer editor/canvas read-only and restores edit controls for editor. | Covered: `collab-role.spec.ts`, relay/RBAC tests. |
 | COL-06 | As an enterprise operator, auth and persistence seams are explicit. | Auth0 verifier validates tokens; file store persists room snapshots; production store remains a documented next step. | Covered: collab auth/store/relay tests. |
-| COL-07 | As a Pages visitor, demo mode is backend-free without faking client-capable paths. | `/demo/?collab` uses the real in-browser Yjs document/source binding and skips only the relay transport, persisting local rooms through the shared browser `RoomStore` snapshot seam. | Covered by collab store/session tests, build configuration, and documented Pages flow; add e2e if routing changes. |
+| COL-07 | As a Pages visitor, demo mode is backend-free without faking client-capable paths. | `/demo/?collab` uses the real in-browser Yjs document/source binding and skips only the relay transport, persisting local rooms through the shared browser `RoomStore` snapshot seam. | Covered: `app/playground/e2e-pages/backend-free-collab.spec.ts`, collab store/session tests. |
 
 ## API And Module Contracts
 
@@ -150,7 +150,7 @@ Coverage labels:
 ## Test Coverage Backlog
 
 - Add story-id comments to new tests when names do not clearly map to this document.
-- Add a backend-free Pages demo e2e if future Pages routing, build flags, or embedded browser-store
-  wiring change.
+- Extend the backend-free Pages e2e if future Pages routing, build flags, or embedded browser-store
+  wiring changes.
 - Consider visual pixel goldens only for flows where display-list goldens cannot catch the regression.
 - Keep `make shots` broad but non-gating; keep Playwright assertions focused and deterministic.

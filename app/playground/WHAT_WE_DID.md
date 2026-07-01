@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Pages backend-free demo e2e
+
+- Added a dedicated Playwright Pages project that builds the static GitHub Pages artifact and serves
+  `site-dist/demo/`, separate from the normal Vite dev-server UI suite.
+- Added a backend-free `/demo/?collab` regression: no WebSocket is opened, a canvas drag records a
+  local Yjs room snapshot through Web Storage, and reloading the built demo rehydrates the override.
+
 ## 2026-07-01 — Backend-free demo uses local collab runtime
 
 - Changed the GitHub Pages backend-free build so `?collab` still constructs the real `@m/collab`

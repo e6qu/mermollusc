@@ -2,6 +2,9 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Backend-free Pages collab had only manual built-artifact probes.**~~ Fixed — the Pages e2e target
+  now builds `site-dist/demo/`, serves it, asserts `/demo/?collab` opens no WebSocket, and proves the
+  local Yjs room snapshot survives reload.
 - ~~**Pages `?collab` faked a disabled backend instead of using the browser-capable runtime.**~~ Fixed —
   the backend-free build now constructs the same `@m/collab` Yjs document/source binding as production
   and omits only the relay transport, so Pages remains local-only without turning off real client code.
