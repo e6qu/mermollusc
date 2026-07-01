@@ -1,5 +1,14 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Backend-free demo uses local collab runtime
+
+- Changed the GitHub Pages backend-free build so `?collab` still constructs the real `@m/collab`
+  Yjs-backed document, source binding, undo manager, overlay save seam, and status hooks; only the relay
+  transport is omitted because Pages has no server.
+- The public demo now exercises the same in-browser collaboration runtime as production/dev instead of
+  reporting that collaboration is disabled. A future embedded SQLite/WASM store can attach at the
+  persistence seam without changing the app call sites.
+
 ## 2026-07-01 — Sequence message style coverage
 
 - Added demo-level Playwright coverage for selecting a sequence message and cycling its arrow style

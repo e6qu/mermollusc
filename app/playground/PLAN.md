@@ -65,8 +65,9 @@ canvas, and hosts the e2e / golden tests.
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as
   SVG. Network and cloud examples are explicit catalog requirements.
-- Support the backend-free GitHub Pages demo build at `/demo/`: the app stays single-user/local-only
-  there even if a visitor appends `?collab`.
+- Support the backend-free GitHub Pages demo build at `/demo/`: the app stays local-only there, but
+  `?collab` still uses the real in-browser `@m/collab` Yjs document/runtime and omits only the relay
+  transport. Do not fake-disable production-capable client paths in the demo.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
   icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.
