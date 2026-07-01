@@ -85,3 +85,27 @@ test("task guidance tracks valid, selected, edge, and stale states", async ({ pa
   await expect(task).toContainText("fix the source");
   await expect(page.locator("#stage-hud")).toBeVisible();
 });
+
+test("task guidance surfaces disabled action reasons without hover", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  const task = page.locator("#task-status-text");
+
+  await setSource(page, "timeline\n  2001 : Alpha : Beta\n  2002 : Gamma\n");
+  await expect(task).toContainText("Add: adding nodes isn't available for timeline");
+  await expect(task).toContainText("Relax: flowchart only");
+  await expect(task).toHaveCSS("white-space", "normal");
+
+  await setSource(page, "gitGraph\n  commit\n  branch develop\n  commit\n  branch feature\n  commit\n");
+  await expect(page.locator("#diagram-nav")).toContainText("main");
+  await page.locator("#diagram-nav").focus();
+  await page.keyboard.press("Home");
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.up("Shift");
+
+  await expect(page.locator("#connect")).toBeDisabled();
+  await expect(task).toContainText("Connect: select exactly two nodes");
+  await expect(task).toContainText("Duplicate: duplicate isn't available for gitGraph");
+});

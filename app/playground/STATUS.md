@@ -25,7 +25,10 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   silently masquerade as matching the text. When there is no prior good render, the stage shows an
   explicit recovery empty state instead of a blank grid. Exports/copy are blocked while the current
   source is stale. A task strip and in-stage HUD describe the next useful action for valid, selected,
-  edge-selected, and stale states. On success it reads `kind · N nodes · M edges`. A parse error names its
+  edge-selected, and stale states. Disabled Add/Relax/Connect/Duplicate reasons are mirrored in that
+  always-visible task guidance, and the footer task text wraps instead of ellipsizing, so touch and
+  keyboard users do not have to discover reasons via hover titles. On success it reads
+  `kind · N nodes · M edges`. A parse error names its
   **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking the status
   selects the offending range, never auto-moving the caret mid-type), and is **mirrored inline in the
   editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.

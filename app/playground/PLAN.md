@@ -42,6 +42,9 @@ canvas, and hosts the e2e / golden tests.
 - Keep app user stories aligned with [`docs/user_stories.md`](../../docs/user_stories.md); new
   user-facing workflows should update that story map and add deterministic Playwright/Vitest coverage
   or an explicit visual-review shot.
+- Keep disabled editing affordances explainable without hover: when a family cannot Add, Relax,
+  Connect, or Duplicate, the always-visible task guidance must surface the same reason as the disabled
+  control title.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as
