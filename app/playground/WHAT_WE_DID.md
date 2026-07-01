@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Keyboard resize affordance
+
+- Added `Alt+Arrow` keyboard resizing for the single selected resizable node, using the same sidecar
+  size override and undo path as corner-handle resize.
+- Updated the demo footer/help shortcut text and added Playwright coverage for keyboard resize plus
+  undo.
+
 ## 2026-07-01 — Disabled action reasons in task guidance
 
 - Mirrored Add/Relax/Connect/Duplicate disabled reasons into the always-visible task guidance, using the

@@ -136,12 +136,14 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   - **box-select**: shift-drag on the empty canvas draws a marquee and adds every node it touches to
     the selection (plain drag still pans) — fast multi-select for Group / multi-move / Delete.
   - **resize**: a single selected node shows zoom-stable corner handles; dragging one resizes it
-    (`resizeNode` override, min size, edges re-anchor), one undo step. Locked nodes show no handles.
-    Edge selection now has a visible route halo and label-anchor marker, so edge relabel/delete
-    affordances match node selection.
+    (`resizeNode` override, min size, edges re-anchor), one undo step. `Alt+Arrow` resizes the selected
+    resizable node from the keyboard (`Shift` = larger step), with the same undo/overlay path. Locked
+    nodes show no handles. Edge selection now has a visible route halo and label-anchor marker, so edge
+    relabel/delete affordances match node selection.
   - **keyboard affordances** (canvas-focused, so CodeMirror keeps them for the text otherwise):
     `⌘/Ctrl-A` select all nodes, `Escape` deselect, `↑↓←→` nudge the selection (Shift = a bigger
-    step; a nudge run is one undo entry; locked groups don't move), and **`S` cycles the selected
+    step; a nudge run is one undo entry; locked groups don't move), `Alt+↑↓←→` resizes a single
+    resizable selected node (Shift = larger), and **`S` cycles the selected
     flowchart node(s) through the shapes** (rect→round→stadium→circle→diamond, rewriting the source
     brackets via `reshapeNode`, label preserved).
   - **screen-reader navigator**: a hidden listbox mirrors both nodes and edges; arrows move the active

@@ -45,6 +45,9 @@ canvas, and hosts the e2e / golden tests.
 - Keep disabled editing affordances explainable without hover: when a family cannot Add, Relax,
   Connect, or Duplicate, the always-visible task guidance must surface the same reason as the disabled
   control title.
+- Keep pointer-only canvas promises paired with keyboard paths: a resizable selected node can be resized
+  with corner drag or `Alt+Arrow` (`Shift` for a larger step), and the shortcut is visible in the demo
+  hints/help.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as

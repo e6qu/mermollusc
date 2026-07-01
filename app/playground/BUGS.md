@@ -2,6 +2,8 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Resizable-node guidance promised a mouse-only affordance.**~~ Fixed — a selected resizable node can
+  now be resized with `Alt+Arrow`, the demo help/footer expose the shortcut, and Playwright covers undo.
 - ~~**Disabled editing actions required hover to explain why.**~~ Fixed — Add/Relax/Connect/Duplicate
   reasons now appear in the always-visible task guidance and are covered by Playwright.
 - ~~**Mount-point handles had only geometric coverage.**~~ Fixed — the screenshot harness now captures a
