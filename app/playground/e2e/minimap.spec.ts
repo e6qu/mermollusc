@@ -93,14 +93,17 @@ test("the minimap can pan the stage from the keyboard", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await zoomIn(page, 4);
   const minimap = page.locator("#minimap");
+  const live = page.locator("#diagram-live");
   await expect(minimap).toBeVisible();
   await minimap.focus();
   await expect(minimap).toBeFocused();
 
   await page.keyboard.press("ArrowDown");
   expect(await scrollTopOf(page)).toBeGreaterThan(0);
+  await expect(live).toHaveText("panned diagram down");
   await page.keyboard.press("Home");
   expect(await scrollTopOf(page)).toBe(0);
+  await expect(live).toHaveText("panned diagram to the top left");
   expect(errors).toEqual([]);
 });
 

@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Minimap keyboard feedback
+
+- Added live-region announcements for minimap keyboard panning, including arrow-key moves and
+  Home/End jumps, so keyboard users get the same feedback loop as other canvas navigation commands.
+- Extended the minimap Playwright coverage to assert the spoken feedback alongside the scroll change.
+
 ## 2026-07-01 — Unified transient confirmations
 
 - Routed transient command confirmations through the same task-guidance refresh as durable status
