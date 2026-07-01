@@ -2,6 +2,9 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Node colour/fill restyle needed first-class coverage.**~~ Fixed — colour accents already live in
+  the overlay sidecar; the context swatches are now named radio controls with keyboard movement, and
+  Playwright covers persistence, share-link roundtrip, and clearing.
 - ~~**Share overwrote the current demo URL on normal copy.**~~ Fixed — successful clipboard sharing now
   leaves the page hash alone; fallback and oversized-link paths still expose the URL in the address bar.
 - ~~**Custom icon packs were hidden in export overflow.**~~ Fixed — the icon picker drawer now exposes

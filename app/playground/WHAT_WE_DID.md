@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Node colour hardening
+
+- Hardened the node colour swatches as named radio controls with arrow-key movement, so the visual-only
+  colour overlay is keyboard and screen-reader operable.
+- Extended node colour e2e coverage to prove local persistence, share-link roundtrip, and clearing the
+  accent back to the default fill.
+
 ## 2026-07-01 — Share and icon-pack polish
 
 - Changed Share so the normal clipboard-success path no longer overwrites the current demo URL hash;
