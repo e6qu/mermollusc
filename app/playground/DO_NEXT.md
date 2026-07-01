@@ -124,3 +124,5 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   nearest-side selection.
 - UI e2e now owns its local servers during the gate. Keep this aligned with the shot harness so visual
   and gating runs cannot attach to unrelated local apps.
+- *(done)* Pages backend-free e2e now owns its static artifact server and verifies built `/demo/?collab`
+  does not open a relay WebSocket while preserving the local Yjs room snapshot across reload.
