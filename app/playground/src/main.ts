@@ -1545,10 +1545,13 @@ const renderContextBar = (caps: CapabilityState): void => {
   if (!ctxColourSwatches.hidden) {
     const accents = new Set(selectionOrder.map((id) => doc.nodeStyles().get(id)?.accent ?? "none"));
     const activeAccent = accents.size === 1 ? [...accents][0] : undefined;
-    for (const swatch of ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch")) {
+    const swatches = Array.from(ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch"));
+    const first = swatches[0] ?? null;
+    for (const swatch of swatches) {
       const acc = swatch.getAttribute("data-accent");
       const checked = acc === activeAccent;
       swatch.setAttribute("aria-checked", checked ? "true" : "false");
+      swatch.tabIndex = checked || (activeAccent === undefined && swatch === first) ? 0 : -1;
     }
   }
   // The route control cycles square → straight → curved; it shows whenever edges — and only edges — are
@@ -5236,6 +5239,22 @@ ctxColourSwatches.addEventListener("click", (ev) => {
   if (btn === null) return;
   const adv = (btn.getAttribute("data-accent") ?? "none") as NodeAccent;
   setNodeColour(adv);
+});
+ctxColourSwatches.addEventListener("keydown", (ev) => {
+  const items = Array.from(ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch"));
+  const active = document.activeElement;
+  const i = active instanceof HTMLButtonElement ? items.indexOf(active) : -1;
+  if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+    ev.preventDefault();
+    const next = items[(i + 1) % items.length];
+    next?.focus();
+    next?.click();
+  } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    const next = items[(i - 1 + items.length) % items.length];
+    next?.focus();
+    next?.click();
+  }
 });
 ctxCurveBtn.addEventListener("click", () => cycleEdgeRoute());
 ctxRerouteBtn.addEventListener("click", () => cycleEdgeOption());

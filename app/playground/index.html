@@ -675,8 +675,8 @@
       }
       .swatch-picker[hidden] { display: none !important; }
       .swatch {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
         border-radius: 50% !important;
         border: 1px solid var(--line) !important;
         padding: 0 !important;
@@ -709,9 +709,9 @@
       .swatch.active { background-color: #bfdbfe; }
       .swatch.danger { background-color: #fecaca; }
 
-      [data-theme="dark"] .swatch.muted { background-color: #475569; }
-      [data-theme="dark"] .swatch.active { background-color: #1d4ed8; }
-      [data-theme="dark"] .swatch.danger { background-color: #b91c1c; }
+      [data-theme="dark"] .swatch.muted { background: #94a3b8; border-color: #cbd5e1 !important; }
+      [data-theme="dark"] .swatch.active { background: #60a5fa; border-color: #bfdbfe !important; }
+      [data-theme="dark"] .swatch.danger { background: #f87171; border-color: #fecaca !important; }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -1251,11 +1251,11 @@
           <div id="context-bar" class="context-bar" role="toolbar" aria-label="Selection actions" hidden>
             <button id="ctx-relabel" type="button">Rename</button>
             <button id="ctx-shape" type="button">Shape</button>
-            <div id="ctx-colour-swatches" class="swatch-picker" role="group" aria-label="Node fill color" hidden>
-              <button class="swatch none" data-accent="none" title="Clear color (default)"></button>
-              <button class="swatch muted" data-accent="muted" title="Muted (slate)"></button>
-              <button class="swatch active" data-accent="active" title="Active (blue)"></button>
-              <button class="swatch danger" data-accent="danger" title="Danger (red)"></button>
+            <div id="ctx-colour-swatches" class="swatch-picker" role="radiogroup" aria-label="Node fill color" hidden>
+              <button class="swatch none" role="radio" data-accent="none" aria-label="Default color" title="Clear color (default)"></button>
+              <button class="swatch muted" role="radio" data-accent="muted" aria-label="Muted slate" title="Muted (slate)"></button>
+              <button class="swatch active" role="radio" data-accent="active" aria-label="Active blue" title="Active (blue)"></button>
+              <button class="swatch danger" role="radio" data-accent="danger" aria-label="Danger red" title="Danger (red)"></button>
             </div>
             <button id="ctx-curve" type="button" title="Curve or straighten this connector (visual only)">Curve</button>
             <button id="ctx-reroute" type="button" title="Cycle through alternative obstacle-avoiding routes (smart routing)">Reroute</button>
