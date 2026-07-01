@@ -79,7 +79,8 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   resize-by-key affordance or scope the hint.
 - *(done)* **Unify the confirmation channel.** `flashStatus` confirmations now refresh the task HUD
   without replacing the diagram aria label or stale/error state.
-- **Minimap arrow-pan has no spoken feedback** (LOW — the navigator is the primary SR surface).
+- *(done)* **Minimap arrow-pan spoken feedback.** Keyboard minimap panning now reports arrow and
+  Home/End movement through the shared live region.
 
 ## Collaboration (Phase 2/3 remainder — see `modules/collab/DO_NEXT.md`)
 - **Production store + browser login.** Postgres/S3 durable store and the browser Auth0 login flow are

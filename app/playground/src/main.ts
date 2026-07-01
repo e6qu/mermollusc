@@ -2249,6 +2249,15 @@ const scrollToGroup = (id: GroupId): void => {
   );
 };
 
+// Push a message to the diagram's live region (screen-reader announcement). Shared by the keyboard
+// navigator, the status bar (`setStatusAndAnnounce`), the minimap, and on-canvas group/lock commands.
+const announce = (message: string): void => {
+  // Re-fire even when the text is identical to the last message (two "moved Alpha" in a row): most
+  // screen readers ignore a live-region write that doesn't change the text, so clear then set.
+  if (diagramLive.textContent === message) diagramLive.textContent = "";
+  diagramLive.textContent = message;
+};
+
 // The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
 // it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
 const minimapView = createMinimap({
@@ -2264,16 +2273,8 @@ const minimapView = createMinimap({
   isDark: themeCtl.isDark,
   forcedColors,
   scrollToLogical,
+  announce,
 });
-
-// Push a message to the diagram's live region (screen-reader announcement). Shared by the keyboard
-// navigator, the status bar (`setStatusAndAnnounce`), and the on-canvas group/lock commands.
-const announce = (message: string): void => {
-  // Re-fire even when the text is identical to the last message (two "moved Alpha" in a row): most
-  // screen readers ignore a live-region write that doesn't change the text, so clear then set.
-  if (diagramLive.textContent === message) diagramLive.textContent = "";
-  diagramLive.textContent = message;
-};
 
 // Collapse / expand the source editor so the canvas can use the freed space. The head stays as the
 // always-visible expand handle. `persist` is false for the auto-expand on a parse error (so a forced

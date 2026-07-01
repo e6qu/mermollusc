@@ -26,6 +26,7 @@ export interface MinimapDeps {
   readonly forcedColors: () => boolean;
   // Centre the stage viewport on a point in the diagram's logical px (shared with the keyboard nav).
   readonly scrollToLogical: (logicalX: number, logicalY: number) => void;
+  readonly announce: (message: string) => void;
 }
 
 export interface MinimapController {
@@ -198,27 +199,35 @@ export const createMinimap = (deps: MinimapDeps): MinimapController => {
   minimap.addEventListener("keydown", (ev) => {
     if (deps.getRender() === null || minimap.hidden) return;
     const step = ev.shiftKey ? 120 : 40;
+    let message: string | null = null;
     if (ev.key === "ArrowLeft") {
       ev.preventDefault();
       stageWrap.scrollLeft -= step;
+      message = "panned diagram left";
     } else if (ev.key === "ArrowRight") {
       ev.preventDefault();
       stageWrap.scrollLeft += step;
+      message = "panned diagram right";
     } else if (ev.key === "ArrowUp") {
       ev.preventDefault();
       stageWrap.scrollTop -= step;
+      message = "panned diagram up";
     } else if (ev.key === "ArrowDown") {
       ev.preventDefault();
       stageWrap.scrollTop += step;
+      message = "panned diagram down";
     } else if (ev.key === "Home") {
       ev.preventDefault();
       stageWrap.scrollLeft = 0;
       stageWrap.scrollTop = 0;
+      message = "panned diagram to the top left";
     } else if (ev.key === "End") {
       ev.preventDefault();
       stageWrap.scrollLeft = stageWrap.scrollWidth;
       stageWrap.scrollTop = stageWrap.scrollHeight;
+      message = "panned diagram to the bottom right";
     }
+    if (message !== null) deps.announce(message);
   });
   // The viewport rectangle scales with the window; rebuild + redraw on resize.
   window.addEventListener("resize", () => {

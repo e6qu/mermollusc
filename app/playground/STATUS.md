@@ -34,6 +34,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   **line:col** (derived from `ParseError.positions`), is **click-to-locate** (clicking the status
   selects the offending range, never auto-moving the caret mid-type), and is **mirrored inline in the
   editor** as a CodeMirror lint diagnostic — gutter marker + underline + hover message.
+- **Navigation feedback:** the diagram navigator, minimap keyboard panning, node nudge/resize, and
+  grouped-object commands announce their results through the shared live region, while pointer-only
+  movement remains visually direct.
 - **Source editor is CodeMirror 6** (`src/editor.ts`): family-aware syntax highlighting (a stream
   tokenizer over the shared keyword set; colours are CSS variables so the light/dark switch drives
   them) + line numbers. `main.ts` talks only to a small `Editor` interface, so CodeMirror types stay
