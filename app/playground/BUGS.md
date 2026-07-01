@@ -5,6 +5,9 @@ Resolved (mount-point and label pass, 2026-06-30):
 - ~~**Backend-free Pages collab e2e was not part of the root gate.**~~ Fixed — root `make e2e-pages`
   now delegates to the app's built-artifact Pages suite, and the pre-push hook runs it alongside the
   live UI e2e checks.
+- ~~**Backend-free Pages rooms used Web Storage instead of an embedded browser database.**~~ Fixed —
+  `/demo/?collab` now loads and saves whole Yjs room snapshots through `@m/collab`'s async IndexedDB
+  room store, and the Pages e2e asserts that database record.
 - ~~**App integration stress/fuzz tests used wall-clock budgets as hang guards.**~~ Fixed — the tests
   now use explicit longer timeouts, preserving the fail-loud hang guard without making busy local hook
   runs fail as performance tests.

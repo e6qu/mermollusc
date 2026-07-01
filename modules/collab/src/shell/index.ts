@@ -6,11 +6,15 @@ export {
   connectWebSocket,
   reconnectingWebSocketTransport,
 } from "./transport.js";
-export { createMemoryRoomStore, createWebStorageRoomStore } from "./store.js";
+export {
+  createIndexedDbRoomStore,
+  createMemoryRoomStore,
+  createWebStorageRoomStore,
+} from "./store.js";
 export type {
   CollabSocket,
   TransportHooks,
   ReconnectStatus,
   ReconnectDeps,
 } from "./transport.js";
-export type { RoomStore } from "./store.js";
+export type { AsyncRoomStore, RoomStore } from "./store.js";

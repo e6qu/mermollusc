@@ -105,11 +105,11 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay. If a visitor appends `?collab`, the demo still
   uses the real in-browser `@m/collab` Yjs document/source binding and skips only the network transport.
-  Local collab rooms persist through `@m/collab`'s browser `RoomStore` as whole Yjs snapshots; explicit
-  share links and `?example=` links bypass the stored room. `make -C app/playground test-e2e-pages`
-  and root `make e2e-pages` build and serve the Pages artifact, then verify backend-free `?collab`
-  opens no WebSocket and persists/reloads the local Yjs room. The root pre-push hook runs this Pages
-  gate alongside the live-app UI suite.
+  Local collab rooms persist through `@m/collab`'s IndexedDB `RoomStore` as whole Yjs snapshots;
+  explicit share links and `?example=` links bypass the stored room. `make -C app/playground
+  test-e2e-pages` and root `make e2e-pages` build and serve the Pages artifact, then verify
+  backend-free `?collab` opens no WebSocket and persists/reloads the local Yjs room from IndexedDB. The
+  root pre-push hook runs this Pages gate alongside the live-app UI suite.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;

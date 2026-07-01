@@ -1,5 +1,8 @@
 # @m/collab — work log
 
+- Added `createIndexedDbRoomStore(indexedDB)`, an async browser `RoomStore` implementation that stores
+  whole Yjs room snapshots as binary IndexedDB values. This gives backend-free browser runtimes a real
+  embedded database behind the same snapshot seam, without introducing a package dependency.
 - Added a browser-compatible `RoomStore` shell contract with memory and Web Storage implementations.
   The Web Storage store persists whole Yjs room snapshots as binary data, encoded per room, so a
   backend-free browser build can use the same snapshot seam as the relay instead of app-only overlay

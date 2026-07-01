@@ -128,11 +128,11 @@ import {
 import {
   connectTransport,
   createCollabSession,
-  createWebStorageRoomStore,
+  createIndexedDbRoomStore,
   reconnectingWebSocketTransport,
+  type AsyncRoomStore,
   type CollabSession,
   type ReconnectStatus,
-  type RoomStore,
 } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
@@ -531,8 +531,8 @@ const collabRoom = collabParams.get("room") ?? "playground";
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
 const useCollab = collabRequested;
 const useRelayTransport = useCollab && !backendFreeDemo;
-const localCollabStore: RoomStore | null =
-  useCollab && !useRelayTransport ? createWebStorageRoomStore(localStorage) : null;
+const localCollabStore: AsyncRoomStore | null =
+  useCollab && !useRelayTransport ? await createIndexedDbRoomStore(indexedDB) : null;
 
 // Resolution order: a `#src=…` hash (a shared custom diagram) wins, then a `?example=<name>` link (a
 // shared example), then the persisted source, then the sample.
@@ -547,7 +547,7 @@ let collabSession: CollabSession | null = null;
 let doc: OverlayDoc;
 if (useCollab) {
   const initialUpdate = useStoredLocalCollabRoom
-    ? (localCollabStore?.load(collabRoom) ?? undefined)
+    ? ((await localCollabStore?.load(collabRoom)) ?? undefined)
     : undefined;
   collabSession = createCollabSession({
     initialOverrides: new Map(),
@@ -6129,7 +6129,12 @@ if (collabSession !== null) {
   } else {
     const store = localCollabStore;
     if (store === null) throw new Error("backend-free collab store was not initialised");
-    const saveSnapshot = (): void => store.save(collabRoom, session.state());
+    const saveSnapshot = (): void => {
+      store.save(collabRoom, session.state()).catch((error: unknown) => {
+        console.error(`backend-free collab store save failed: ${messageOf(error)}`);
+        setStatus("error", "backend-free room save failed");
+      });
+    };
     session.onUpdate(saveSnapshot);
     window.setTimeout(() => {
       setStatus("ok", "backend-free demo: using the local collaboration document");
