@@ -2,6 +2,10 @@
 
 ## 2026-07-02 — Pages demo e2e joins the root gate
 
+- Switched the backend-free Pages collab runtime from Web Storage snapshots to
+  `@m/collab`'s async IndexedDB `RoomStore`, so `/demo/?collab` persists the real local Yjs room through
+  a browser database while still omitting only the relay transport.
+- Updated the Pages e2e to clear and assert the IndexedDB room snapshot directly.
 - Added root `make e2e-pages` so the backend-free GitHub Pages artifact regression is addressable from
   the same command surface as the live UI e2e suite.
 - Added the Pages Playwright project to the pre-push hook list, so `/demo/?collab` parity is checked
@@ -16,7 +20,8 @@
 - Added a dedicated Playwright Pages project that builds the static GitHub Pages artifact and serves
   `site-dist/demo/`, separate from the normal Vite dev-server UI suite.
 - Added a backend-free `/demo/?collab` regression: no WebSocket is opened, a canvas drag records a
-  local Yjs room snapshot through Web Storage, and reloading the built demo rehydrates the override.
+  local Yjs room snapshot through the browser room store, and reloading the built demo rehydrates the
+  override.
 
 ## 2026-07-01 — Backend-free demo uses local collab runtime
 

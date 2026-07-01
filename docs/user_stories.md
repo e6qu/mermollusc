@@ -134,7 +134,7 @@ Coverage labels:
 | COL-04 | As collaborators, we see remote text presence. | Awareness relays name/color and source caret/selection. | Covered: `collab-presence.spec.ts`, collab awareness tests. |
 | COL-05 | As an owner/editor/viewer, my role is enforced and reflected. | Server drops viewer document frames; app makes viewer editor/canvas read-only and restores edit controls for editor. | Covered: `collab-role.spec.ts`, relay/RBAC tests. |
 | COL-06 | As an enterprise operator, auth and persistence seams are explicit. | Auth0 verifier validates tokens; file store persists room snapshots; production store remains a documented next step. | Covered: collab auth/store/relay tests. |
-| COL-07 | As a Pages visitor, demo mode is backend-free without faking client-capable paths. | `/demo/?collab` uses the real in-browser Yjs document/source binding and skips only the relay transport, persisting local rooms through the shared browser `RoomStore` snapshot seam. | Covered: root `make e2e-pages`, `app/playground/e2e-pages/backend-free-collab.spec.ts`, collab store/session tests. |
+| COL-07 | As a Pages visitor, demo mode is backend-free without faking client-capable paths. | `/demo/?collab` uses the real in-browser Yjs document/source binding and skips only the relay transport, persisting local rooms through the shared IndexedDB `RoomStore` snapshot seam. | Covered: root `make e2e-pages`, `app/playground/e2e-pages/backend-free-collab.spec.ts`, collab store/session tests. |
 
 ## API And Module Contracts
 

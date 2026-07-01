@@ -37,9 +37,10 @@
 - *(done)* **Role-aware client:** the relay sends the role (a CONTROL frame); the app makes a viewer's
   editor + canvas read-only with a "view only" badge. Follow-up: a presence "active users" list
   (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
-- **Production / embedded `RoomStore`:** swap the file store for Postgres (update log = audit trail) +
-  S3 (snapshots) + Redis fan-out, and evaluate SQLite/WASM or equivalent for richer browser-local room
-  storage — same snapshot interface. Needs real storage engines to verify end to end.
+- **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
+  (snapshots) + Redis fan-out. Browser-local embedded storage is now represented by the async IndexedDB
+  room store behind the same snapshot interface; SQLite/WASM remains optional only if future queries
+  outgrow whole-room snapshots.
 - *(done)* **Decode-failure surfacing:** a corrupt peer overlay no longer throws inside the Y observer —
   `materialize` returns the decode `Result`; the observer logs `overlay-decode-rejected` via a
   `Logger<CollabEvent>` (threaded through `createCollabSession({ logger })`), surfaces a `CollabStatus`

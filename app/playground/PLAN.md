@@ -68,9 +68,9 @@ canvas, and hosts the e2e / golden tests.
 - Support the backend-free GitHub Pages demo build at `/demo/`: the app stays local-only there, but
   `?collab` still uses the real in-browser `@m/collab` Yjs document/runtime and omits only the relay
   transport. Persist backend-free collab rooms through the shared browser `RoomStore` whole-snapshot
-  seam, and keep URL share/example loads higher precedence than stored local rooms. Do not fake-disable
-  production-capable client paths in the demo. Keep the dedicated Pages e2e target in the root
-  pre-push gate and aligned with this contract.
+  seam, backed by IndexedDB in the Pages build, and keep URL share/example loads higher precedence than
+  stored local rooms. Do not fake-disable production-capable client paths in the demo. Keep the
+  dedicated Pages e2e target in the root pre-push gate and aligned with this contract.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
   icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.

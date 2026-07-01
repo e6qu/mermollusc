@@ -41,9 +41,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   socket on drop, backoff + jitter + cap, re-exchanges state on reopen, fires the consumer `onClose`
   only when the budget is exhausted) surfacing a closed-union `ReconnectStatus`
   (`reconnecting`/`reconnected`/`disconnected`); `ReconnectDeps` injects `schedule`/`random`/`mkSocket`.
-- Browser-compatible store: `RoomStore`, `createMemoryRoomStore()`, and
-  `createWebStorageRoomStore(storage, keyPrefix?)` persist whole-room Yjs snapshots for backend-free
-  runtime parity.
+- Browser-compatible stores: sync `RoomStore` implementations (`createMemoryRoomStore()`,
+  `createWebStorageRoomStore(storage, keyPrefix?)`) plus async `createIndexedDbRoomStore(indexedDB)`
+  persist whole-room Yjs snapshots for backend-free runtime parity.
 - Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom, rateLimit,
   now })` — crash-guarded, rate-limited, tag-allow-listed, room-name-validated, flushes on
   SIGINT/SIGTERM), `store.mjs` (`createMemoryRoomStore` / `createFileRoomStore` with legacy aliases —

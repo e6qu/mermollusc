@@ -5,6 +5,7 @@ export {
   webSocketTransport,
   connectWebSocket,
   reconnectingWebSocketTransport,
+  createIndexedDbRoomStore,
   createMemoryRoomStore,
   createWebStorageRoomStore,
 } from "./shell/index.js";
@@ -13,5 +14,6 @@ export type {
   TransportHooks,
   ReconnectStatus,
   ReconnectDeps,
+  AsyncRoomStore,
   RoomStore,
 } from "./shell/index.js";
