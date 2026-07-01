@@ -518,12 +518,15 @@ let registry = defaultRegistry;
 // `@m/collab` — same interface, so every call site is unchanged. When the URL also reaches a relay
 // (the dev WebSocket server), two tabs on the same `?collab&room=…` edit the overlay live. In collab
 // mode the shared Y.Doc is the source of truth, so the session is kept (to wire the transport +
-// remote-repaint at the end of this file) and the persisted localStorage overlay is *not* restored
-// (it would clobber the room). Default off, and disabled entirely in the backend-free Pages demo, so
-// the public demo never attempts to open a relay socket.
+// remote-repaint at the end of this file). A relay-backed room does not restore localStorage overlay
+// state because that would clobber the room; the backend-free Pages runtime has no remote room, so it
+// keeps local/share restoration while still using the Yjs document. Default off. In the backend-free
+// Pages demo the same Yjs document still runs locally when `?collab` is present; only the relay socket
+// is skipped, so the demo exercises the production document/runtime contract without infrastructure.
 const collabRequested = new URLSearchParams(location.search).has("collab");
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
-const useCollab = collabRequested && !backendFreeDemo;
+const useCollab = collabRequested;
+const useRelayTransport = useCollab && !backendFreeDemo;
 let collabSession: CollabSession | null = null;
 let doc: OverlayDoc;
 if (useCollab) {
@@ -5902,8 +5905,10 @@ const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
 lastTextSnapshot = initialSource;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
-// source. In collab mode the shared room owns the overlay, so neither is applied. A corrupt/invalid
-// overlay is logged loudly and ignored — never a silent default.
+// source. In relay-backed collab mode the shared room owns the overlay, so neither is applied. In the
+// backend-free demo's local collab runtime there is no remote room to clobber, so the same local/share
+// restoration path is used with the Yjs-backed document. A corrupt/invalid overlay is logged loudly and
+// ignored — never a silent default.
 const applyOverlayJson = (raw: string, whence: string): void => {
   try {
     const decoded = decodeOverlay(JSON.parse(raw));
@@ -5921,7 +5926,7 @@ const applyOverlayJson = (raw: string, whence: string): void => {
     console.error("ignoring corrupt overlay from", whence, messageOf(e));
   }
 };
-if (!useCollab) {
+if (!useRelayTransport) {
   const linkOverlay = fromHash === null ? null : hashValue("overlay");
   if (linkOverlay !== null) {
     applyOverlayJson(linkOverlay, "share link");
@@ -6016,11 +6021,15 @@ setSourceCollapsed(loadSourceCollapsed(), false);
 // at once instead of running off the edge. `fitView` caps at 100%, so a small diagram is left untouched.
 void renderFromText(initialSource).then(() => fitView());
 
-// Collab transport (experimental): connect the session to the dev relay so peers' source-text and
-// overlay edits arrive (the source binds to the editor via `sourceBinding`; an overlay change repaints
-// here, since the doc stays UI-agnostic). The room and relay URL come from the query (`room`, `ws`);
-// the default relay is the dev server on :1234. The scheme follows the page — secure `wss` on an https
-// page, plain `ws` only for local/http dev — so a deployed instance never opens an insecure socket.
+// Collab runtime (experimental): every `?collab` run uses the same Yjs-backed document. Production/dev
+// builds also connect that document to the relay so peers' source-text and overlay edits arrive (the
+// source binds to the editor via `sourceBinding`; an overlay change repaints here, since the doc stays
+// UI-agnostic). The backend-free Pages build deliberately omits only the relay socket, keeping the real
+// document/runtime local instead of faking a disabled feature.
+//
+// When a relay is used, the room and relay URL come from the query (`room`, `ws`); the default relay is
+// the dev server on :1234. The scheme follows the page — secure `wss` on an https page, plain `ws` only
+// for local/http dev — so a deployed instance never opens an insecure socket.
 // `__collabOverrideCount` is an e2e convergence hook.
 if (collabSession !== null) {
   const session = collabSession;
@@ -6075,43 +6084,45 @@ if (collabSession !== null) {
     if (ast !== null) applyKind(ast.kind);
     updateGroupButtons();
   };
-  // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
-  // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
-  const token = params.get("token");
-  const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
-  // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
-  // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
-  // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
-  const onReconnectStatus = (status: ReconnectStatus): void => {
-    if (status === "reconnecting") {
-      setStatus("warning", "⚠ reconnecting to the collaboration relay…");
-    } else if (status === "reconnected") {
-      setStatus("ok", "reconnected to the collaboration relay");
-    }
-  };
-  const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(room)}${query}`, {
-    onStatus: onReconnectStatus,
-  });
-  connectTransport(session, socket, {
-    onControl: applyRole,
-    // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
-    // the user must know they're no longer shared.
-    onClose: () => {
-      console.error("collab: disconnected from the relay");
-      setStatus("warning", "disconnected from the collaboration relay — editing locally");
-    },
-  });
+  if (useRelayTransport) {
+    // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
+    // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
+    const token = params.get("token");
+    const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
+    // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
+    // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
+    // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
+    const onReconnectStatus = (status: ReconnectStatus): void => {
+      if (status === "reconnecting") {
+        setStatus("warning", "⚠ reconnecting to the collaboration relay…");
+      } else if (status === "reconnected") {
+        setStatus("ok", "reconnected to the collaboration relay");
+      }
+    };
+    const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(room)}${query}`, {
+      onStatus: onReconnectStatus,
+    });
+    connectTransport(session, socket, {
+      onControl: applyRole,
+      // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
+      // the user must know they're no longer shared.
+      onClose: () => {
+        console.error("collab: disconnected from the relay");
+        setStatus("warning", "disconnected from the collaboration relay — editing locally");
+      },
+    });
+  } else {
+    window.setTimeout(() => {
+      setStatus("ok", "backend-free demo: using the local collaboration document");
+    }, 0);
+  }
   // Seed the room's source once the initial sync has settled: the first client into an empty room
   // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
-  // relay) and adopts that instead, so the text isn't duplicated.
+  // relay) and adopts that instead, so the text isn't duplicated. In backend-free demo mode this seeds
+  // the local in-browser document after the editor binding is mounted.
   window.setTimeout(() => {
     session.seedSourceIfEmpty(initialSource);
   }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
   window.__collabSetRole = applyRole; // e2e hook: drive the role without a real RBAC server
-} else if (collabRequested && backendFreeDemo) {
-  console.error("collab: disabled in the backend-free demo build");
-  window.setTimeout(() => {
-    setStatusAndAnnounce("ok", "collaboration is disabled in this backend-free demo");
-  }, 0);
 }
