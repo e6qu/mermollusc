@@ -2,6 +2,8 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Disabled editing actions required hover to explain why.**~~ Fixed — Add/Relax/Connect/Duplicate
+  reasons now appear in the always-visible task guidance and are covered by Playwright.
 - ~~**Mount-point handles had only geometric coverage.**~~ Fixed — the screenshot harness now captures a
   selected node in both light and dark themes, so theme contrast regressions are reviewable from
   generated demo shots.

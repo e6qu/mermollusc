@@ -1,5 +1,13 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Disabled action reasons in task guidance
+
+- Mirrored Add/Relax/Connect/Duplicate disabled reasons into the always-visible task guidance, using the
+  same capability state as the toolbar/context controls so touch and keyboard users get the reason
+  without hovering.
+- Let footer task guidance wrap instead of ellipsizing, and added Playwright coverage for the visible
+  disabled-reason text.
+
 ## 2026-06-30 — Network icon pixel assertion
 
 - Strengthened the network icon e2e from "no resolve failures" to canvas pixel sampling across every

@@ -1363,13 +1363,47 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   }
 };
 
-const updateTask = (): void => {
+const reasonedTask = (base: string, reasons: readonly string[]): string =>
+  reasons.length === 0 ? base : `${base} · ${reasons.join(" · ")}`;
+
+const familyToolReasons = (): readonly string[] => {
+  if (ast === null || viewerMode) return [];
+  const affordances = familyAffordances(ast.kind);
+  const reasons: string[] = [];
+  if (!affordances.addNode) reasons.push(`Add: adding nodes isn't available for ${ast.kind}`);
+  if (ast.kind !== "flowchart") reasons.push("Relax: flowchart only");
+  return reasons;
+};
+
+const selectedActionReasons = (caps: CapabilityState): readonly string[] => {
+  const reasons: string[] = [];
+  if (selection.nodes.size > 0 && !caps.canConnect && caps.connectTitle.length > 0) {
+    reasons.push(`Connect: ${caps.connectTitle}`);
+  }
+  if (
+    selectionOrder.length > 0 &&
+    !caps.canDuplicate &&
+    caps.duplicateTitle.length > 0 &&
+    !caps.duplicateTitle.startsWith("select")
+  ) {
+    reasons.push(`Duplicate: ${caps.duplicateTitle}`);
+  }
+  return reasons;
+};
+
+const updateTask = (caps: CapabilityState = computeCapabilities()): void => {
   if (!currentRenderValid) {
     setTask("fix the source before editing or exporting", "blocked");
     return;
   }
   if (selection.nodes.size + selection.edges.size === 0) {
-    setTask("select a diagram item, edit the source, or export when ready", "quiet");
+    setTask(
+      reasonedTask(
+        "select a diagram item, edit the source, or export when ready",
+        familyToolReasons(),
+      ),
+      "quiet",
+    );
     return;
   }
   if (selection.edges.size > 0 && selection.nodes.size === 0) {
@@ -1378,13 +1412,22 @@ const updateTask = (): void => {
   }
   if (selection.nodes.size === 1) {
     const resizable = ast !== null && familyAffordances(ast.kind).resizable;
-    setTask(resizable ? "drag, rename, or resize with corner handles" : "drag or rename", "action");
+    setTask(
+      reasonedTask(
+        resizable ? "drag, rename, or resize with corner handles" : "drag or rename",
+        selectedActionReasons(caps),
+      ),
+      "action",
+    );
     return;
   }
-  const canConnect =
-    ast !== null && familyAffordances(ast.kind).connect && selectionOrder.length >= 2;
   setTask(
-    canConnect ? "connect, group, arrange, or drag selection" : "group, arrange, or drag selection",
+    reasonedTask(
+      caps.canConnect
+        ? "connect, group, arrange, or drag selection"
+        : "group, arrange, or drag selection",
+      selectedActionReasons(caps),
+    ),
     "action",
   );
 };
@@ -1800,7 +1843,7 @@ const updateGroupButtons = (): void => {
   iconsToggle.title = caps.iconTitle;
   syncToolPalette();
   renderContextBar(caps);
-  updateTask();
+  updateTask(caps);
 };
 
 type AlignKind = "left" | "right" | "top" | "bottom" | "centerX" | "centerY" | "distH" | "distV";
