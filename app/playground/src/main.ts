@@ -128,9 +128,11 @@ import {
 import {
   connectTransport,
   createCollabSession,
+  createWebStorageRoomStore,
   reconnectingWebSocketTransport,
   type CollabSession,
   type ReconnectStatus,
+  type RoomStore,
 } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
@@ -523,17 +525,35 @@ let registry = defaultRegistry;
 // keeps local/share restoration while still using the Yjs document. Default off. In the backend-free
 // Pages demo the same Yjs document still runs locally when `?collab` is present; only the relay socket
 // is skipped, so the demo exercises the production document/runtime contract without infrastructure.
-const collabRequested = new URLSearchParams(location.search).has("collab");
+const collabParams = new URLSearchParams(location.search);
+const collabRequested = collabParams.has("collab");
+const collabRoom = collabParams.get("room") ?? "playground";
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
 const useCollab = collabRequested;
 const useRelayTransport = useCollab && !backendFreeDemo;
+const localCollabStore: RoomStore | null =
+  useCollab && !useRelayTransport ? createWebStorageRoomStore(localStorage) : null;
+
+// Resolution order: a `#src=…` hash (a shared custom diagram) wins, then a `?example=<name>` link (a
+// shared example), then the persisted source, then the sample.
+const fromHash = hashValue("src");
+const exampleParam = collabParams.get("example");
+const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam) ?? null);
+const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
+const useStoredLocalCollabRoom =
+  localCollabStore !== null && fromHash === null && exampleFromUrl === null;
+
 let collabSession: CollabSession | null = null;
 let doc: OverlayDoc;
 if (useCollab) {
+  const initialUpdate = useStoredLocalCollabRoom
+    ? (localCollabStore?.load(collabRoom) ?? undefined)
+    : undefined;
   collabSession = createCollabSession({
     initialOverrides: new Map(),
     initialGroups: new Map(),
     initialSource: "",
+    initialUpdate,
     save: saveOverlay,
     logger: consoleLogger,
   });
@@ -5896,12 +5916,6 @@ const getFeaturesSimilarity = (a: readonly string[], b: readonly string[]): numb
   return intersection.size / union.size;
 };
 
-// Resolution order: a `#src=…` hash (a shared custom diagram) wins, then a `?example=<name>` link (a
-// shared example), then the persisted source, then the sample.
-const fromHash = hashValue("src");
-const exampleParam = new URLSearchParams(location.search).get("example");
-const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam) ?? null);
-const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
 lastTextSnapshot = initialSource;
 // Restore an overlay before the first render. A shared link carries its own overlay in the hash (the
 // author's arrangement of *that* source); otherwise the persisted overlay is restored for the persisted
@@ -5926,7 +5940,7 @@ const applyOverlayJson = (raw: string, whence: string): void => {
     console.error("ignoring corrupt overlay from", whence, messageOf(e));
   }
 };
-if (!useRelayTransport) {
+if (!useRelayTransport && !useStoredLocalCollabRoom) {
   const linkOverlay = fromHash === null ? null : hashValue("overlay");
   if (linkOverlay !== null) {
     applyOverlayJson(linkOverlay, "share link");
@@ -6033,14 +6047,12 @@ void renderFromText(initialSource).then(() => fitView());
 // `__collabOverrideCount` is an e2e convergence hook.
 if (collabSession !== null) {
   const session = collabSession;
-  const params = new URLSearchParams(location.search);
-  const room = params.get("room") ?? "playground";
   const scheme = location.protocol === "https:" ? "wss" : "ws";
   // A `?ws=` override lets a shared `?collab` link point a victim's session (source + edits, and any
   // forwarded token) at an arbitrary relay. A scheme check alone doesn't stop that — require the host to
   // match this page's origin (a different relay port on the same host is fine), so a crafted link can't
   // exfiltrate the document/token to `wss://evil.example`. Reject loudly and fall back to the default.
-  const wsOverride = params.get("ws");
+  const wsOverride = collabParams.get("ws");
   const sameOriginWs = (raw: string): boolean => {
     if (!URL.canParse(raw)) return false;
     const u = new URL(raw);
@@ -6087,7 +6099,7 @@ if (collabSession !== null) {
   if (useRelayTransport) {
     // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
     // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
-    const token = params.get("token");
+    const token = collabParams.get("token");
     const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
     // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
     // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
@@ -6099,9 +6111,12 @@ if (collabSession !== null) {
         setStatus("ok", "reconnected to the collaboration relay");
       }
     };
-    const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(room)}${query}`, {
-      onStatus: onReconnectStatus,
-    });
+    const socket = reconnectingWebSocketTransport(
+      `${wsBase}/${encodeURIComponent(collabRoom)}${query}`,
+      {
+        onStatus: onReconnectStatus,
+      },
+    );
     connectTransport(session, socket, {
       onControl: applyRole,
       // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
@@ -6112,6 +6127,10 @@ if (collabSession !== null) {
       },
     });
   } else {
+    const store = localCollabStore;
+    if (store === null) throw new Error("backend-free collab store was not initialised");
+    const saveSnapshot = (): void => store.save(collabRoom, session.state());
+    session.onUpdate(saveSnapshot);
     window.setTimeout(() => {
       setStatus("ok", "backend-free demo: using the local collaboration document");
     }, 0);

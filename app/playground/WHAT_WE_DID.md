@@ -8,6 +8,9 @@
 - The public demo now exercises the same in-browser collaboration runtime as production/dev instead of
   reporting that collaboration is disabled. A future embedded SQLite/WASM store can attach at the
   persistence seam without changing the app call sites.
+- Wired that backend-free local collab runtime to `@m/collab`'s browser `RoomStore`, saving whole Yjs
+  room snapshots in Web Storage when no relay is present. Share links and `?example=` loads still win
+  over a stored room snapshot.
 
 ## 2026-07-01 — Sequence message style coverage
 

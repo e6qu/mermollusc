@@ -23,6 +23,10 @@ and binds the editor to the shared doc.
   flushes every dirty room before exit). An edit still inside the open debounce window when the process
   is **hard-killed** (SIGKILL / crash / power loss) is lost — the file store has no write-ahead log; the
   production Postgres target (an append-only update log + S3 snapshots, same interface) closes that gap.
+- **Browser room snapshots (`src/shell/store.ts`):** `createMemoryRoomStore` and
+  `createWebStorageRoomStore` expose the same whole-Yjs-state snapshot contract to browser runtimes.
+  `createCollabSession({ initialUpdate })` hydrates from that stored snapshot before any source/overlay
+  seed is applied.
 - **Auth (`server/auth.mjs`):** the `authorize(req)` hook verifies the connection's `?token=` against
   the issuer's JWKS (Auth0; `jose`) — signature + issuer + audience + expiry — and surfaces the user
   (incl. `tenant` from `org_id` and per-room `roles` claims), or rejects (the relay closes 1008,

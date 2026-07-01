@@ -9,6 +9,10 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
 
 Resolved (hardening sweep):
 
+- ~~**Backend-free collab persistence used app-local overlay/source persistence, not the room snapshot
+  seam.**~~ Fixed — `@m/collab` now has a browser-compatible `RoomStore` and session `initialUpdate`
+  hydration, so a local browser runtime can persist whole Yjs room snapshots.
+
 - ~~**RBAC fails open on tokens without a roles claim.**~~ Fixed — `createClaimsRoleResolver` now
   defaults `defaultRole: null` (**fail closed**: a verified token with no per-room role is denied). The
   relay's run-block computes `authEnabled = Boolean(domain && audience)` and passes
