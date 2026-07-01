@@ -21,7 +21,8 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 ## Public API (stable surface)
 
-- `createCollabSession({ initialOverrides, initialGroups, initialSource, save }) → CollabSession`
+- `createCollabSession({ initialOverrides, initialGroups, initialSource, initialUpdate, save }) →
+  CollabSession`; `initialUpdate` is an optional whole-room Yjs snapshot that wins over seeds.
 - `CollabSession`: `overlay: OverlayDoc`, `source()/setSource()/spliceSource()`,
   `sourceBinding()` (a CodeMirror extension binding the editor to the source `Y.Text`, with presence),
   `setLocalUser()`, `onSourceChange()/onOverlayChange()`, the binary-sync seam
@@ -40,6 +41,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   socket on drop, backoff + jitter + cap, re-exchanges state on reopen, fires the consumer `onClose`
   only when the budget is exhausted) surfacing a closed-union `ReconnectStatus`
   (`reconnecting`/`reconnected`/`disconnected`); `ReconnectDeps` injects `schedule`/`random`/`mkSocket`.
+- Browser-compatible store: `RoomStore`, `createMemoryRoomStore()`, and
+  `createWebStorageRoomStore(storage, keyPrefix?)` persist whole-room Yjs snapshots for backend-free
+  runtime parity.
 - Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom, rateLimit,
   now })` — crash-guarded, rate-limited, tag-allow-listed, room-name-validated, flushes on
   SIGINT/SIGTERM), `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability

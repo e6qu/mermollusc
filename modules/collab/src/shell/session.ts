@@ -113,6 +113,7 @@ export const createCollabSession = (opts: {
   readonly initialOverrides: LayoutOverrides;
   readonly initialGroups: Groups;
   readonly initialSource: string;
+  readonly initialUpdate?: Uint8Array | undefined;
   readonly save: (serialized: string) => void;
   // Loud-logging sink for boundary failures (a corrupt remote overlay). Omitted in tests that don't
   // assert on logs; the app passes the @m/std `consoleLogger`.
@@ -174,12 +175,22 @@ export const createCollabSession = (opts: {
     }, LOCAL);
   };
 
-  // Seed the shared doc with the caller's starting state, outside undo history.
-  doc.transact(() => {
-    if (opts.initialSource.length > 0) yText.insert(0, opts.initialSource);
-    for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverrideEntry(o));
-    for (const [id, g] of opts.initialGroups) yGroups.set(id, encodeGroupEntry(g));
-  }, SEED);
+  // Seed the shared doc with the caller's starting state, outside undo history. A stored Yjs snapshot
+  // is already the whole room state, so it wins over source/overlay seeds.
+  if (opts.initialUpdate !== undefined) {
+    applyUpdate(doc, opts.initialUpdate, REMOTE);
+    const decoded = materialize();
+    if (isErr(decoded)) {
+      throw new Error(`collab initial snapshot rejected: ${decoded.error.issues.join("; ")}`);
+    }
+    cache = decoded.value;
+  } else {
+    doc.transact(() => {
+      if (opts.initialSource.length > 0) yText.insert(0, opts.initialSource);
+      for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverrideEntry(o));
+      for (const [id, g] of opts.initialGroups) yGroups.set(id, encodeGroupEntry(g));
+    }, SEED);
+  }
 
   const undoManager = new UndoManager([yOverrides, yGroups], { trackedOrigins: new Set([LOCAL]) });
 

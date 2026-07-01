@@ -5,10 +5,13 @@ export {
   webSocketTransport,
   connectWebSocket,
   reconnectingWebSocketTransport,
+  createMemoryRoomStore,
+  createWebStorageRoomStore,
 } from "./shell/index.js";
 export type {
   CollabSocket,
   TransportHooks,
   ReconnectStatus,
   ReconnectDeps,
+  RoomStore,
 } from "./shell/index.js";

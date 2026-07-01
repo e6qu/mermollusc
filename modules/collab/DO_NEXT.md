@@ -20,6 +20,9 @@
   (`server/store.mjs`) — memory default + a file-snapshot store (`PERSIST_DIR`); rooms survive a restart.
   Every connection passes an `authorize(req)` hook (default allow) — the auth seam. The server is
   optional; single-user local needs none of it.
+- *(done)* **Browser room snapshot seam:** `src/shell/store.ts` provides memory + Web Storage
+  `RoomStore` implementations and `createCollabSession` can hydrate from a saved Yjs `initialUpdate`.
+  The Pages demo can persist a local room through the same whole-snapshot contract as the relay.
 - *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the `?token=` against the issuer JWKS
   (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated; default allow.
   Decided to extend our own relay rather than adopt Hocuspocus (§10.5).
@@ -31,8 +34,9 @@
 - *(done)* **Role-aware client:** the relay sends the role (a CONTROL frame); the app makes a viewer's
   editor + canvas read-only with a "view only" badge. Follow-up: a presence "active users" list
   (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
-- **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
-  (snapshots) + Redis fan-out — same interface. Needs a real DB to verify end to end.
+- **Production / embedded `RoomStore`:** swap the file store for Postgres (update log = audit trail) +
+  S3 (snapshots) + Redis fan-out, and evaluate SQLite/WASM or equivalent for richer browser-local room
+  storage — same snapshot interface. Needs real storage engines to verify end to end.
 - *(done)* **Decode-failure surfacing:** a corrupt peer overlay no longer throws inside the Y observer —
   `materialize` returns the decode `Result`; the observer logs `overlay-decode-rejected` via a
   `Logger<CollabEvent>` (threaded through `createCollabSession({ logger })`), surfaces a `CollabStatus`

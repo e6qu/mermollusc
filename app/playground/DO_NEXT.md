@@ -84,9 +84,10 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 
 ## Collaboration (Phase 2/3 remainder — see `modules/collab/DO_NEXT.md`)
 - **Backend-free persistence parity:** Pages now runs the real local Yjs document when `?collab` is
-  present and skips only the relay. Next architectural step is an embedded browser store
-  (SQLite/WASM or equivalent) behind the same persistence seam, chosen with the repo's pinned-version
-  process and verified against the production store contract.
+  present, skips only the relay, and persists whole Yjs room snapshots through `@m/collab`'s browser
+  `RoomStore`. Next architectural step is evaluating an embedded browser store (SQLite/WASM or
+  equivalent) behind that same snapshot seam, chosen with the repo's pinned-version process and
+  verified against the production store contract.
 - **Production store + browser login.** Postgres/S3 durable store and the browser Auth0 login flow are
   the Phase 2 remainder.
 - **WS auth hardening (before auth ships).** Move the `?token=` out of the query string into the first

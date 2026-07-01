@@ -105,6 +105,8 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   builds the playground into `site-dist/demo/` with `VITE_BACKEND_FREE_DEMO=1`, so `/demo/` is
   local-only and never opens the collaboration relay. If a visitor appends `?collab`, the demo still
   uses the real in-browser `@m/collab` Yjs document/source binding and skips only the network transport.
+  Local collab rooms persist through `@m/collab`'s browser `RoomStore` as whole Yjs snapshots; explicit
+  share links and `?example=` links bypass the stored room.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;
