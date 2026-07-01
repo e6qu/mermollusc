@@ -43,3 +43,32 @@ test("dragging a corner handle resizes the selected node (undoable)", async ({ p
 
   expect(errors).toEqual([]);
 });
+
+test("Alt+Arrow resizes the selected node from the keyboard", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const start = await page.evaluate(() => window.__nodeRect?.("A") ?? null);
+  expect(start).not.toBeNull();
+  if (start === null) return;
+
+  await page.mouse.click(start.x + start.w / 2, start.y + start.h / 2);
+  await expect(page.locator("#task-status-text")).toContainText("Alt+arrows resize");
+  expect(await overrideSize(page)).toBeNull();
+
+  await page.keyboard.press("Alt+ArrowRight");
+  await page.keyboard.press("Shift+Alt+ArrowDown");
+
+  const sized = await overrideSize(page);
+  expect(sized).not.toBeNull();
+  if (sized === null) return;
+  expect(sized.width).toBeGreaterThan(start.w);
+  expect(sized.height).toBeGreaterThan(start.h + 5);
+
+  await page.keyboard.press("Control+z");
+  await expect.poll(() => overrideSize(page)).toBeNull();
+
+  expect(errors).toEqual([]);
+});

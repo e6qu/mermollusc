@@ -485,6 +485,7 @@ let connectDrag: {
 // True while a run of arrow-key nudges is in progress, so the run shares a single undo entry (the
 // pre-nudge overlay is recorded once); reset by any other interaction.
 let nudging = false;
+let keyboardResizing = false;
 // A corner-handle resize of the single selected node: the *fixed* opposite corner (scene coords)
 // the box grows from. `resizeRecorded` mirrors `dragRecorded` — the undo entry is taken on the first
 // move so a handle click that doesn't move leaves no entry.
@@ -1414,7 +1415,9 @@ const updateTask = (caps: CapabilityState = computeCapabilities()): void => {
     const resizable = ast !== null && familyAffordances(ast.kind).resizable;
     setTask(
       reasonedTask(
-        resizable ? "drag, rename, or resize with corner handles" : "drag or rename",
+        resizable
+          ? "drag, rename, resize with corner handles, or Alt+arrows resize"
+          : "drag or rename",
         selectedActionReasons(caps),
       ),
       "action",
@@ -3259,6 +3262,7 @@ canvas.addEventListener("pointerdown", (ev) => {
   }
 
   nudging = false; // a click ends any nudge run, so the next nudge is a new undo entry
+  keyboardResizing = false;
   const shown = shownScene(scene);
   const at = scenePoint(ev);
   const hit = hitScene(shown, at);
@@ -4952,6 +4956,7 @@ const nudgeSelection = (dx: number, dy: number): void => {
   if (scene === null || viewerMode) return;
   const ids = movableSelectionLeaves();
   if (ids.length === 0) return;
+  keyboardResizing = false;
   const shown = shownScene(scene);
   const origin = new Map(shown.nodes.map((n) => [n.id, n.bounds.origin]));
   if (!nudging) {
@@ -4964,6 +4969,28 @@ const nudgeSelection = (dx: number, dy: number): void => {
   }
   doc.persist();
   paintScene();
+};
+
+const keyboardResizeSelection = (dw: number, dh: number): boolean => {
+  if (scene === null || viewerMode || ast?.kind === "gantt") return false;
+  const id = singleResizableNodeId();
+  if (id === null) return false;
+  const node = shownScene(scene).nodes.find((n) => n.id === id);
+  if (node === undefined) return false;
+  const nextW = Math.max(RESIZE_MIN_W, node.bounds.size.width + dw);
+  const nextH = Math.max(RESIZE_MIN_H, node.bounds.size.height + dh);
+  if (nextW === node.bounds.size.width && nextH === node.bounds.size.height) return true;
+  nudging = false;
+  if (!keyboardResizing) {
+    recordHistory();
+    keyboardResizing = true;
+  }
+  doc.resizeNode(id, node.bounds.origin, size(nextW, nextH));
+  doc.persist();
+  paintScene();
+  updateGroupButtons();
+  announce(`resized ${node.label.length > 0 ? node.label : "node"}`);
+  return true;
 };
 
 // Cycle the selected flowchart node(s) through the shapes (rect → round → stadium → circle → diamond),
@@ -5242,6 +5269,7 @@ window.addEventListener("keydown", (ev) => {
     selection = emptySelection;
     selectionOrder = [];
     nudging = false;
+    keyboardResizing = false;
     paintScene();
     updateGroupButtons();
     return;
@@ -5271,6 +5299,21 @@ window.addEventListener("keydown", (ev) => {
     return;
   }
   const step = ev.shiftKey ? 10 : 1;
+  const arrowDelta = ev.altKey
+    ? (
+        {
+          ArrowLeft: [-step, 0],
+          ArrowRight: [step, 0],
+          ArrowUp: [0, -step],
+          ArrowDown: [0, step],
+        } satisfies Partial<Record<string, readonly [number, number]>>
+      )[ev.key]
+    : undefined;
+  if (arrowDelta !== undefined) {
+    ev.preventDefault();
+    keyboardResizeSelection(arrowDelta[0], arrowDelta[1]);
+    return;
+  }
   switch (ev.key) {
     case "ArrowLeft":
       ev.preventDefault();

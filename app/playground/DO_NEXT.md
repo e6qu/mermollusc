@@ -75,7 +75,7 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   bottom-sheet for the editing verbs on very small screens, and a verification pass on physical devices.
 - *(done)* **Surface "why-disabled" reasons.** Connect/Add/Relax disabled-reasons live on hover titles + the
   capability record; also surface them in the always-visible task status for touch/keyboard.
-- **Keyboard resize.** The task hint promises corner handles a keyboard user can't operate — add a
+- *(done)* **Keyboard resize.** The task hint promises corner handles a keyboard user can't operate — add a
   resize-by-key affordance or scope the hint.
 - **Unify the confirmation channel.** `flashStatus` confirmations (add/duplicate/connect/shape) don't
   nudge the task HUD the way the `setStatusAndAnnounce` ones do.
