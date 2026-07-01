@@ -17,12 +17,11 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 
 
 ## Editing breadth
-- **Edge rename + restyle for the remaining families.** Flowchart + block now support adding a label to
-  a bare edge and cycling the arrow style (`-->`/`---`/`-.->`/`==>`). **Sequence** is the other purely
-  presentational family (message kinds `->>`/`-->>`/`->`/`-->`) — extend restyle there with its own
-  arrow-span capture + token map. The **semantic-arrow** families (er crow's-foot, class UML relation,
-  state/c4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator encodes
-  meaning; they want a typed cardinality/relation picker instead (a separate feature).
+- *(done)* **Edge rename + restyle for the presentational families.** Flowchart + block support adding a
+  label to a bare edge and cycling arrow style; sequence message arrows cycle through their four
+  presentational kinds with e2e coverage. The semantic-arrow families (ER crow's-foot, class UML
+  relation, state/C4/requirement/gitGraph) intentionally do NOT get a free restyle — their operator
+  encodes meaning and wants a typed cardinality/relation picker instead.
 
 
 - **(done) DOT as an editable family.** DOT imports load read-only (Add/Connect/Shape gated on `isDotImport`).

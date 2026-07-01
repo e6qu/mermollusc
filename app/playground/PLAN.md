@@ -59,6 +59,8 @@ canvas, and hosts the e2e / golden tests.
   icon-pack loading discoverable from the icon workflow itself, not only from export overflow.
 - Keep visual overlay controls first-class: node colour accents and edge route styles must persist,
   share, undo, repaint, and expose named keyboard-operable controls rather than mouse-only widgets.
+- Keep presentational connector restyling scoped: flowchart/block arrows and sequence message arrows
+  can cycle visually from the canvas; semantic relationship operators should wait for typed editors.
 - Keep the Examples menu catalog in `src/examples.ts` so the app and integration tests share the
   same starter diagrams; every menu entry must parse, lay out, pass container-title routing guards,
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as

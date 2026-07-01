@@ -67,3 +67,24 @@ test("selecting an edge and pressing S cycles its arrow style", async ({ page })
   await page.keyboard.press("s");
   await expectSourceMatches(page, /A\[Top\] -\.->\|go\| B\[Bottom\]/);
 });
+
+test("selecting a sequence message and pressing S cycles its message arrow", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "sequenceDiagram\n  A->>B: approve\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const pos = await page.evaluate(() => window.__edgeLabelPos?.("m0") ?? null);
+  expect(pos).not.toBeNull();
+  if (pos === null) return;
+  await page.mouse.click(pos.x, pos.y);
+
+  await page.keyboard.press("s");
+  await expectSourceMatches(page, /A-->>B: approve/);
+
+  await page.keyboard.press("s");
+  await expectSourceMatches(page, /A->B: approve/);
+
+  await page.keyboard.press("s");
+  await expectSourceMatches(page, /A-->B: approve/);
+});
