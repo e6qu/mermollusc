@@ -9,6 +9,10 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
 
 Resolved (hardening sweep):
 
+- ~~**Auth0 access tokens rode in the WebSocket URL.**~~ Fixed — clients now send the token as the first
+  auth frame after the socket opens, and auth-enabled relays wait for that frame before admitting
+  document/presence traffic.
+
 - ~~**Backend-free collab persistence used app-local overlay/source persistence, not the room snapshot
   seam.**~~ Fixed — `@m/collab` now has a browser-compatible `RoomStore` and session `initialUpdate`
   hydration, so a local browser runtime can persist whole Yjs room snapshots.

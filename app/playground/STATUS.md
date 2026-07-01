@@ -110,6 +110,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   test-e2e-pages` and root `make e2e-pages` build and serve the Pages artifact, then verify
   backend-free `?collab` opens no WebSocket and persists/reloads the local Yjs room from IndexedDB. The
   root pre-push hook runs this Pages gate alongside the live-app UI suite.
+- **Collaboration transport hardening:** browser relay tokens no longer ride in WebSocket URLs; the
+  page passes them to `@m/collab` as the first auth frame before document or awareness state, and the
+  app CSP names the allowed local and secure WebSocket connection targets.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;

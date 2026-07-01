@@ -71,6 +71,9 @@ canvas, and hosts the e2e / golden tests.
   seam, backed by IndexedDB in the Pages build, and keep URL share/example loads higher precedence than
   stored local rooms. Do not fake-disable production-capable client paths in the demo. Keep the
   dedicated Pages e2e target in the root pre-push gate and aligned with this contract.
+- Keep collaboration relay credentials out of transport URLs: page-provided tokens may seed the client
+  session, but relay transport sends them through the first WebSocket auth frame and the app CSP must
+  name the allowed HTTP/WebSocket connection targets.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
   icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.

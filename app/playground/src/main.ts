@@ -6097,10 +6097,10 @@ if (collabSession !== null) {
     updateGroupButtons();
   };
   if (useRelayTransport) {
-    // A `?token=` (an Auth0 access token, once login is wired) is forwarded to the relay, which verifies
-    // it when auth is enabled. Absent in local dev → the relay's default allow-all accepts.
+    // A `?token=` from the page (an Auth0 access token, once login is wired) is sent as the first
+    // WebSocket auth frame, never in the relay URL. Absent in local dev → the relay's default allow-all
+    // accepts.
     const token = collabParams.get("token");
-    const query = token === null ? "" : `?token=${encodeURIComponent(token)}`;
     // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
     // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
     // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
@@ -6111,13 +6111,11 @@ if (collabSession !== null) {
         setStatus("ok", "reconnected to the collaboration relay");
       }
     };
-    const socket = reconnectingWebSocketTransport(
-      `${wsBase}/${encodeURIComponent(collabRoom)}${query}`,
-      {
-        onStatus: onReconnectStatus,
-      },
-    );
+    const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(collabRoom)}`, {
+      onStatus: onReconnectStatus,
+    });
     connectTransport(session, socket, {
+      ...(token === null ? {} : { authToken: token }),
       onControl: applyRole,
       // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
       // the user must know they're no longer shared.

@@ -36,7 +36,8 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   so a corrupt remote overlay is logged + surfaced instead of throwing.
 - Transport: `connectTransport(session, socket, hooks?)` / `webSocketTransport(url)` /
   `connectWebSocket(session, url, hooks?)` — frames document, presence, and server→client control
-  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket. Plus
+  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket; `TransportHooks.authToken`
+  sends an access token as the first client auth frame when auth is enabled. Plus
   `reconnectingWebSocketTransport(url, deps)` — a self-healing `CollabSocket` (mints a fresh inner
   socket on drop, backoff + jitter + cap, re-exchanges state on reopen, fires the consumer `onClose`
   only when the budget is exhausted) surfacing a closed-union `ReconnectStatus`
@@ -44,8 +45,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 - Browser-compatible stores: sync `RoomStore` implementations (`createMemoryRoomStore()`,
   `createWebStorageRoomStore(storage, keyPrefix?)`) plus async `createIndexedDbRoomStore(indexedDB)`
   persist whole-room Yjs snapshots for backend-free runtime parity.
-- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom, rateLimit,
-  now })` — crash-guarded, rate-limited, tag-allow-listed, room-name-validated, flushes on
+- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authRequired,
+  authorizeRoom, rateLimit, now })` — auth-frame-gated, crash-guarded, rate-limited,
+  tag-allow-listed, room-name-validated, flushes on
   SIGINT/SIGTERM), `store.mjs` (`createMemoryRoomStore` / `createFileRoomStore` with legacy aliases —
   the `RoomStore` durability seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and
   `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default / `canWrite` —

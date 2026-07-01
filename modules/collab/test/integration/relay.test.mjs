@@ -10,6 +10,7 @@ import { startRelay } from "../../server/relay.mjs";
 const WS = "ws"; // localhost test relay: plain ws, no TLS
 const DOC = 0;
 const CONTROL = 2;
+const AUTH = 3;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const frame = (tag, payload) => {
@@ -18,6 +19,7 @@ const frame = (tag, payload) => {
   f.set(payload, 1);
   return f;
 };
+const authFrame = (token) => frame(AUTH, new TextEncoder().encode(token));
 const docUpdate = (text) => {
   const d = new Doc();
   d.getText("source").insert(0, text);
@@ -106,14 +108,40 @@ describe("relay — RBAC enforcement over a real socket", () => {
   });
 
   it("rejects a connection whose token fails verification", async () => {
-    const port = await start({ authorize: () => ({ ok: false, reason: "bad token" }) });
+    const port = await start({
+      authRequired: true,
+      authorize: ({ authToken }) => ({ ok: authToken === "good", reason: "bad token" }),
+    });
     const ws = await open(port);
     let code = null;
     ws.addEventListener("close", (e) => {
       code = e.code;
     });
+    ws.send(authFrame("bad"));
     await sleep(200);
     expect(code).toBe(1008);
+  });
+
+  it("authenticates from the first auth frame, not the URL query", async () => {
+    const seen = [];
+    const port = await start({
+      authRequired: true,
+      authorize: ({ authToken, url }) => {
+        seen.push({ authToken, url });
+        return { ok: authToken === "frame-token", user: { roles: { board: "editor" } } };
+      },
+      authorizeRoom: () => "editor",
+    });
+    const ws = await openPath(port, "/board?token=url-token");
+    const controls = [];
+    ws.addEventListener("message", (e) => {
+      const b = new Uint8Array(e.data);
+      if (b[0] === CONTROL) controls.push(new TextDecoder().decode(b.subarray(1)));
+    });
+    ws.send(authFrame("frame-token"));
+    await sleep(200);
+    expect(seen).toEqual([{ authToken: "frame-token", url: "/board?token=url-token" }]);
+    expect(controls).toContain("editor");
   });
 });
 

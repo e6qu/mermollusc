@@ -89,8 +89,8 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   gate, and asserts the IndexedDB room snapshot directly.
 - **Production store + browser login.** Postgres/S3 durable store and the browser Auth0 login flow are
   the Phase 2 remainder.
-- **WS auth hardening (before auth ships).** Move the `?token=` out of the query string into the first
-  frame after open; add a `connect-src` CSP.
+- *(done)* **WS auth hardening (before auth ships).** Tokens now travel in the first WebSocket auth
+  frame after open, and `index.html` carries a `connect-src` CSP.
 
 ## Security (LOW — not exploitable today)
 - **Icon-pack SVG sanitiser** misses external-subresource refs (`<image href="http…">`, `<use>`) and SMIL

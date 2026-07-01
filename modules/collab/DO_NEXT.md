@@ -26,11 +26,11 @@
 - *(done)* **Server/browser store semantics aligned:** the Node relay memory store now copies snapshots
   on save/load just like the browser `RoomStore`, and the relay uses the same `RoomStore` constructor
   naming (`createMemoryRoomStore` / `createFileRoomStore`).
-- *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the `?token=` against the issuer JWKS
-  (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated; default allow.
-  Decided to extend our own relay rather than adopt Hocuspocus (§10.5).
+- *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the first client auth frame against the
+  issuer JWKS (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated;
+  default allow. Decided to extend our own relay rather than adopt Hocuspocus (§10.5).
 - **Browser Auth0 login (next):** wire the Auth0 SPA login so the app obtains a real access token and
-  passes it as `?token=`; carry the verified user identity into **presence** (name/colour from the
+  passes it as the first WebSocket auth frame; carry the verified user identity into **presence** (name/colour from the
   token, replacing the random pick) and into rooms.
 - *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles + isolates tenants; the relay
   closes 1008 on no access and enforces viewers read-only.
