@@ -46,8 +46,8 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   runtime parity.
 - Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authorizeRoom, rateLimit,
   now })` — crash-guarded, rate-limited, tag-allow-listed, room-name-validated, flushes on
-  SIGINT/SIGTERM), `store.mjs` (`createMemoryStore` / `createFileStore` — the `RoomStore` durability
-  seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and
+  SIGINT/SIGTERM), `store.mjs` (`createMemoryRoomStore` / `createFileRoomStore` with legacy aliases —
+  the `RoomStore` durability seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and
   `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default / `canWrite` —
   per-document roles + tenant isolation).
 

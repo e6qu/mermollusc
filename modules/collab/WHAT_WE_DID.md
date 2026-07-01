@@ -7,6 +7,9 @@
 - Added `initialUpdate` hydration to `createCollabSession`: a stored Yjs room snapshot wins over
   source/overlay seeds and materialises through the same overlay decoder. Unit coverage proves a saved
   snapshot hydrates a fresh session.
+- Aligned the Node relay stores with the browser `RoomStore` semantics: the server memory store now
+  copies snapshots on save/load, and the relay uses the `createMemoryRoomStore` /
+  `createFileRoomStore` names while keeping the old constructor aliases for compatibility.
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - Pinned `yjs` 13.6.31 in the catalog (latest stable, ~22d old — passes the ≥24h supply-chain rule).
 - Built `createCollabSession` (`src/shell/session.ts`): one `Y.Doc` holding the source (`Y.Text`) and
