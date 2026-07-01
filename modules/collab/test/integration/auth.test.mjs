@@ -49,7 +49,7 @@ const sign = (claims, { issuer = ISSUER, audience = AUDIENCE, expSeconds = 3600 
     .setExpirationTime(Math.floor(Date.now() / 1000) + expSeconds)
     .sign(privateKey);
 
-const req = (token) => ({ url: token === null ? "/room" : `/room?token=${token}` });
+const req = (token) => (token === null ? { url: "/room" } : { url: "/room", authToken: token });
 
 describe("collab OIDC authorize", () => {
   it("accepts a valid token and surfaces the user (incl. tenant + roles claims)", async () => {

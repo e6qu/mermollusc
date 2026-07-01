@@ -28,11 +28,12 @@ and binds the editor to the shared doc.
   `createWebStorageRoomStore`, and async `createIndexedDbRoomStore` expose the same whole-Yjs-state
   snapshot contract to browser runtimes. `createCollabSession({ initialUpdate })` hydrates from that
   stored snapshot before any source/overlay seed is applied.
-- **Auth (`server/auth.mjs`):** the `authorize(req)` hook verifies the connection's `?token=` against
-  the issuer's JWKS (Auth0; `jose`) — signature + issuer + audience + expiry — and surfaces the user
-  (incl. `tenant` from `org_id` and per-room `roles` claims), or rejects (the relay closes 1008,
-  buffering frames during the async check). **Env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is
-  allow-all, so local dev / e2e stay zero-auth.
+- **Auth (`server/auth.mjs`):** when auth is enabled, the relay waits for the client's first auth frame
+  and `authorize(req)` verifies that token against the issuer's JWKS (Auth0; `jose`) — signature +
+  issuer + audience + expiry — and surfaces the user (incl. `tenant` from `org_id` and per-room `roles`
+  claims), or rejects (the relay closes 1008, buffering document/presence frames during the async
+  check). **Env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is allow-all, so local dev / e2e
+  stay zero-auth.
 - **RBAC (`server/rbac.mjs`):** `authorizeRoom({ user, room })` resolves the role (owner/editor/viewer)
   or null (no access). The default resolver isolates **tenants** (a tenant-bound user reaches only
   rooms namespaced `<tenant>/…`) and reads **per-room roles** from token claims (authoritative when

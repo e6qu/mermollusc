@@ -1,6 +1,6 @@
 // OIDC token verification for the collaborative relay's `authorize` seam. A connection carries its
-// access token in the WebSocket URL query (`?token=…`, since a browser WebSocket can't set headers);
-// the verifier checks the JWT signature against the issuer's JWKS and the issuer/audience/expiry
+// access token in the first auth frame after the WebSocket opens; the verifier checks the JWT signature
+// against the issuer's JWKS and the issuer/audience/expiry
 // claims. Configured for Auth0 (decisions §10.4), but `createVerifier` works against any JWKS endpoint
 // — which is how the test points it at a local key.
 //
@@ -13,8 +13,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 const ROLES_CLAIM = "https://mermollusc.dev/roles";
 
 const tokenFrom = (req) => {
-  const url = new URL(req.url ?? "/", "http://relay.invalid");
-  return url.searchParams.get("token");
+  return typeof req.authToken === "string" ? req.authToken : null;
 };
 
 const userFrom = (payload) => ({

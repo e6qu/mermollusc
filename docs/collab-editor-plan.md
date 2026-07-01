@@ -1,9 +1,9 @@
 # Collaborative editor — design & scoping (CRDT)
 
 Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete; Phase 2 in progress — durable
-persistence, Auth0 OIDC verification, and rooms + RBAC (server-enforced roles + tenant isolation) all
-landed at the relay; next is the browser login + the production store. The app always runs single-user
-with zero infra (see §1).** This scopes a real-time,
+persistence, Auth0 OIDC first-frame verification, and rooms + RBAC (server-enforced roles + tenant
+isolation) all landed at the relay; next is the browser login + the production store. The app always
+runs single-user with zero infra (see §1).** This scopes a real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
 architecture (see *Future bets* in the root `PLAN.md`).
@@ -19,7 +19,7 @@ path plugs in as alternate implementations without touching call sites.
 | 1 | CRDT engine | **Yjs** |
 | 2 | Sync model | **Server-authoritative WebSocket** |
 | 3 | Persistence / hosting | **Self-hosted: Postgres (update log) + S3 (snapshots) + Redis (fan-out)** |
-| 4 | Auth / tenancy | **OIDC via Auth0** (JWKS token verification at the WS handshake); tenant = org; region-pinned storage. |
+| 4 | Auth / tenancy | **OIDC via Auth0** (JWKS token verification from the first WS auth frame); tenant = org; region-pinned storage. |
 | 5 | Server stack | **Extend the repo's minimal Node relay** for Phases 1–2; keep Hocuspocus as a fallback; revisit Go/Rust only if Phase 3 fan-out demands it |
 
 The rest of this doc records the design these decisions resolve.
@@ -175,9 +175,9 @@ after merge — the invariant holds without coordination.
   locally (Playwright covers overlay convergence, source sync, and presence).
 - **Phase 2 — durable + secured (in progress).** **Persistence is in:** the relay has a pluggable
   `RoomStore` (`server/store.mjs`) — in-memory default + a file-snapshot store (`PERSIST_DIR`), so rooms
-  survive a restart (verified). **OIDC auth is in:** `server/auth.mjs` verifies the connection's
-  `?token=` against the issuer's JWKS (Auth0; `jose`), checking signature + issuer + audience + expiry;
-  the relay admits or closes (1008) the connection, buffering frames during the async check. Auth is
+  survive a restart (verified). **OIDC auth is in:** `server/auth.mjs` verifies the connection's first
+  auth frame against the issuer's JWKS (Auth0; `jose`), checking signature + issuer + audience + expiry;
+  the relay admits or closes (1008) the connection, buffering document/presence frames during the async check. Auth is
   **env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`) so local dev / e2e stay zero-auth. We're **extending
   our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Rooms + RBAC are in:**
   `server/rbac.mjs` resolves a per-document role (owner/editor/viewer) from the token's per-room `roles`
@@ -201,8 +201,8 @@ after merge — the invariant holds without coordination.
    trail), periodic snapshots in S3, Redis pub/sub for cross-instance fan-out. Chosen over a managed
    Yjs service for data-residency/compliance control and no per-seat cost — accepting the larger ops
    commitment.
-4. **Auth / tenancy → OIDC via Auth0** (decided 2026-06-20). JWKS token verification at the WS
-   handshake; tenant = org boundary; per-tenant region-pinned storage.
+4. **Auth / tenancy → OIDC via Auth0** (decided 2026-06-20). JWKS token verification from the first WS
+   auth frame; tenant = org boundary; per-tenant region-pinned storage.
 5. **Server stack → extend our own minimal Node relay** (reconsidered 2026-06-20, was "adopt
    Hocuspocus"). The relay (`modules/collab/server/`) already speaks our compact framed protocol and
    keeps the client unchanged, so persistence and the OIDC handshake bolt onto it directly — no

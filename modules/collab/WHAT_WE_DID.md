@@ -1,5 +1,9 @@
 # @m/collab — work log
 
+- Moved WebSocket auth tokens out of relay URLs: `connectTransport` now sends `TransportHooks.authToken`
+  as tag 3 before document/presence frames, and auth-enabled relays wait for that auth frame before
+  admitting a socket. Unit/integration tests prove the auth frame order and that URL query tokens are no
+  longer consumed.
 - Added `createIndexedDbRoomStore(indexedDB)`, an async browser `RoomStore` implementation that stores
   whole Yjs room snapshots as binary IndexedDB values. This gives backend-free browser runtimes a real
   embedded database behind the same snapshot seam, without introducing a package dependency.
@@ -72,11 +76,11 @@
   read it back). Production `RoomStore` (Postgres update log + S3 snapshots) is the same interface.
 - Phase 2 — Auth0 OIDC handshake (extending our own relay, not Hocuspocus; §10.5 reconsidered).
   `server/auth.mjs`: `createVerifier({jwksUri,issuer,audience})` + `createAuth0Authorizer({domain,audience})`
-  verify the connection's `?token=` (carried in the WS URL, since browsers can't set WS headers) against
-  the issuer JWKS via `jose` — signature + issuer + audience + expiry — returning `{ok,user}` or a
-  reason. The relay's connection handler is now async: it buffers frames during verification, then admits
-  (sends state) or closes 1008. Auth is env-gated (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default allow-all,
-  so dev/e2e stay zero-auth. The app forwards a `?token=` to the relay when present. Pinned `jose` 6.2.3.
+  verify the connection's first auth frame against the issuer JWKS via `jose` — signature + issuer +
+  audience + expiry — returning `{ok,user}` or a reason. The relay's connection handler is now async: it
+  buffers frames during verification, then admits (sends state) or closes 1008. Auth is env-gated
+  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default allow-all, so dev/e2e stay zero-auth. The app forwards a
+  page token as the first auth frame when present. Pinned `jose` 6.2.3.
   Test: a local JWKS harness (generated RSA key + a local endpoint + signed tokens) covering accept +
   every rejection; the relay admit/reject + buffering flow verified manually.
 - Phase 2 — rooms + RBAC (server-enforced). The verifier now surfaces `tenant` (Auth0 `org_id`) + per-

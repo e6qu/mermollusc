@@ -1,7 +1,7 @@
 // Server-authoritative WebSocket relay for the collaborative editor. Rooms by URL path, a Y.Doc per
-// room, every client in a room converges. The wire protocol — the room's full state on join, then
-// [tag][payload] frames (tag 0 = document/CRDT, tag 1 = presence/awareness) — is what the
-// `connectTransport` client speaks.
+// room, every client in a room converges. The wire protocol is [tag][payload] frames: tag 0 =
+// document/CRDT, tag 1 = presence/awareness, tag 2 = server control, tag 3 = client auth. Auth-enabled
+// deployments require tag 3 as the first client credential before document/presence frames are admitted.
 //
 //   PORT=1234 PERSIST_DIR=.collab-data node modules/collab/server/relay.mjs
 //
@@ -20,10 +20,11 @@ import { canWrite, createClaimsRoleResolver } from "./rbac.mjs";
 import { createFileRoomStore, createMemoryRoomStore } from "./store.mjs";
 
 // Frame-tag allow-list. A relayed frame is broadcast only when its leading byte is a known channel the
-// relay understands; unknown tags (and CONTROL, which only ever flows server→client) are dropped.
+// relay understands; unknown tags (and CONTROL/AUTH outside their direction/phase) are dropped.
 const DOC = 0; // document update (CRDT) — applied to the room Doc and broadcast
 const AWARE = 1; // presence/awareness — broadcast but never persisted
 const CONTROL = 2; // server→client control channel (e.g. the granted role) — never relayed inbound
+const AUTH = 3; // client→server auth token, consumed before admission when auth is enabled
 const SAVE_DEBOUNCE_MS = 400;
 // Abuse limits. A single frame is capped at the WebSocket layer (`maxPayload`); the pre-auth buffer
 // (frames a client sends before its token verifies) is bounded so an unauthenticated peer can't OOM
@@ -62,8 +63,8 @@ const controlFrame = (message) => {
   return frame;
 };
 
-// The room is the URL path (the query carries `?token=`, consumed by `authorize`). Returns the decoded
-// room name, or null if it is malformed — the caller rejects rather than normalising a bad name.
+// The room is the URL path. Returns the decoded room name, or null if it is malformed — the caller
+// rejects rather than normalising a bad name.
 const roomName = (req) => {
   const path = new URL(req.url ?? "/", "http://relay.invalid").pathname;
   const raw = decodeURIComponent(path.replace(/^\/+/, ""));
@@ -118,6 +119,7 @@ export const startRelay = ({
   port = 0,
   store = createMemoryRoomStore(),
   authorize = () => true,
+  authRequired = false,
   authorizeRoom = createClaimsRoleResolver({ defaultRole: "editor" }),
   rateLimit = DEFAULT_RATE_LIMIT,
   now = () => Date.now(),
@@ -184,6 +186,80 @@ export const startRelay = ({
     const allow = createRateBucket(rateLimit, now);
     let lastViewerDropLog = 0;
 
+    const admit = async (authReq) => {
+      let auth;
+      try {
+        auth = await runAuthorize(authorize, authReq);
+      } catch (e) {
+        console.error("collab relay: authorize threw —", e instanceof Error ? e.message : e);
+        phase = "closed";
+        socket.close(1011, "auth error"); // 1011 = internal error
+        return;
+      }
+      if (phase === "closed") return; // client gave up while we verified
+      if (!auth.ok) {
+        reject(1008, auth.reason ?? "unauthorized");
+        return;
+      }
+
+      name = roomName(req);
+      if (name === null) {
+        reject(1008, "invalid room name");
+        return;
+      }
+      let resolved;
+      try {
+        resolved = await authorizeRoom({ user: auth.user ?? null, room: name });
+      } catch (e) {
+        console.error("collab relay: authorizeRoom threw —", e instanceof Error ? e.message : e);
+        phase = "closed";
+        socket.close(1011, "rbac error");
+        return;
+      }
+      if (phase === "closed") return;
+      if (resolved === null || resolved === undefined) {
+        reject(1008, `forbidden: ${name}`);
+        return;
+      }
+
+      const loaded = loadRoom(name);
+      if (loaded === null) {
+        reject(1013, "server full"); // 1013 = try again later
+        return;
+      }
+      role = resolved;
+      room = loaded;
+      room.sockets.add(socket);
+      phase = "open";
+      // The socket may have closed during async verification — its `close` handler ran while `room` was
+      // still null, so it couldn't remove this now-registered socket. Reconcile here so a dead socket
+      // can't keep an otherwise-empty room (and its Doc) alive forever.
+      if (socket.readyState !== socket.OPEN) {
+        phase = "closed";
+        room.sockets.delete(socket);
+        if (room.sockets.size === 0) {
+          flush(name, room);
+          rooms.delete(name);
+        }
+        return;
+      }
+      // Tell the client its granted role (so it can present read-only UI for a viewer), then bring it
+      // up to the room's current document state.
+      socket.send(controlFrame(role));
+      socket.send(docFrame(encodeStateAsUpdate(room.doc)));
+      for (const data of pending) handle(data);
+      pending.length = 0;
+    };
+
+    const startAuthFromFrame = (frame) => {
+      if (frame[0] !== AUTH) {
+        pending.push(frame);
+        return;
+      }
+      const token = new TextDecoder().decode(frame.subarray(1));
+      void admit({ ...req, authToken: token });
+    };
+
     const handle = (data) => {
       const frame = bytes(data);
       if (frame.byteLength === 0) return;
@@ -191,8 +267,8 @@ export const startRelay = ({
       // breach, not silently absorbed.
       if (!allow(frame.byteLength)) return reject(1008, "rate limit exceeded");
       const tag = frame[0];
-      // Tag allow-list: only document and presence frames are relayed. CONTROL is server-originated;
-      // an unknown tag is noise. Either is dropped (one warn for an unexpected tag, then silence).
+      // Tag allow-list: only document and presence frames are relayed. CONTROL is server-originated and
+      // AUTH is pre-admission only; an unknown tag is noise. These are dropped with throttled logging.
       if (tag !== DOC && tag !== AWARE) {
         const t = now();
         if (t - lastViewerDropLog >= VIEWER_DROP_LOG_MS) {
@@ -246,6 +322,7 @@ export const startRelay = ({
         // Bound the pre-auth buffer: a client that floods frames before its token verifies is dropped
         // rather than allowed to grow `pending` without limit.
         if (pending.length >= MAX_PENDING_FRAMES) reject(1008, "flood before auth");
+        else if (authRequired) startAuthFromFrame(bytes(data));
         else pending.push(data);
       }
     });
@@ -271,58 +348,7 @@ export const startRelay = ({
       socket.close(code, reason);
     };
 
-    (async () => {
-      let auth;
-      try {
-        auth = await runAuthorize(authorize, req);
-      } catch (e) {
-        console.error("collab relay: authorize threw —", e instanceof Error ? e.message : e);
-        phase = "closed";
-        socket.close(1011, "auth error"); // 1011 = internal error
-        return;
-      }
-      if (phase === "closed") return; // client gave up while we verified
-      if (!auth.ok) return reject(1008, auth.reason ?? "unauthorized");
-
-      name = roomName(req);
-      if (name === null) return reject(1008, "invalid room name");
-      let resolved;
-      try {
-        resolved = await authorizeRoom({ user: auth.user ?? null, room: name });
-      } catch (e) {
-        console.error("collab relay: authorizeRoom threw —", e instanceof Error ? e.message : e);
-        phase = "closed";
-        socket.close(1011, "rbac error");
-        return;
-      }
-      if (phase === "closed") return;
-      if (resolved === null || resolved === undefined) return reject(1008, `forbidden: ${name}`);
-
-      const loaded = loadRoom(name);
-      if (loaded === null) return reject(1013, "server full"); // 1013 = try again later
-      role = resolved;
-      room = loaded;
-      room.sockets.add(socket);
-      phase = "open";
-      // The socket may have closed during the async verification — its `close` handler ran while
-      // `room` was still null, so it couldn't remove this now-registered socket. Reconcile here so a
-      // dead socket can't keep an otherwise-empty room (and its Doc) alive forever.
-      if (socket.readyState !== socket.OPEN) {
-        phase = "closed";
-        room.sockets.delete(socket);
-        if (room.sockets.size === 0) {
-          flush(name, room);
-          rooms.delete(name);
-        }
-        return;
-      }
-      // Tell the client its granted role (so it can present read-only UI for a viewer), then bring it
-      // up to the room's current document state.
-      socket.send(controlFrame(role));
-      socket.send(docFrame(encodeStateAsUpdate(room.doc)));
-      for (const data of pending) handle(data);
-      pending.length = 0;
-    })();
+    if (!authRequired) void admit(req);
   });
 
   // Flush every dirty room's latest snapshot. The durability guarantee: an edit is durable once its
@@ -337,7 +363,7 @@ export const startRelay = ({
 
 // Run directly: `node relay.mjs`. Wires the env-selected store + authorizer. Auth is OFF unless both
 // AUTH0_DOMAIN and AUTH0_AUDIENCE are set (so local dev / e2e stay zero-auth); when set, every
-// connection must present a valid Auth0 token (`?token=`).
+// connection must present a valid Auth0 token in the first auth frame.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.env.PORT ?? "1234");
   const persistDir = process.env.PERSIST_DIR;
@@ -350,7 +376,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const authEnabled = Boolean(domain && audience);
   const authorize = authEnabled ? createAuth0Authorizer({ domain, audience }) : () => true;
   const authorizeRoom = createClaimsRoleResolver({ defaultRole: authEnabled ? null : "editor" });
-  const wss = startRelay({ port, store, authorize, authorizeRoom });
+  const wss = startRelay({ port, store, authorize, authRequired: authEnabled, authorizeRoom });
   wss.on("listening", () => {
     const addr = wss.address();
     const actual = typeof addr === "object" && addr !== null ? addr.port : port;

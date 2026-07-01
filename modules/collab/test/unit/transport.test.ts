@@ -152,6 +152,17 @@ describe("collab transport — connectTransport", () => {
     b.destroy();
   });
 
+  it("sends an auth frame before document and presence frames when a token is provided", () => {
+    const a = blank();
+    const wire = pair();
+    const tags: number[] = [];
+    wire.b.onMessage((d) => tags.push(d[0] ?? -1));
+    connectTransport(a, wire.a, { authToken: "access-token" });
+    wire.connect();
+    expect(tags.slice(0, 3)).toEqual([3, 0, 1]);
+    a.destroy();
+  });
+
   it("routes a server control frame to onControl", () => {
     const a = blank();
     const wire = pair();

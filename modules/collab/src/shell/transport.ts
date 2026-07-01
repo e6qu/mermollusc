@@ -14,11 +14,13 @@ export interface CollabSocket {
 }
 
 // Frame tags: the document (CRDT) and presence (awareness) travel on the same socket as distinct
-// frames, a single leading byte apart. CONTROL is a server→client channel (e.g. the granted role). The
-// relay keeps the document, only relays presence, and originates control.
+// frames, a single leading byte apart. CONTROL is a server→client channel (e.g. the granted role), and
+// AUTH is the client→server token channel sent before document/presence frames when auth is enabled.
+// The relay keeps the document, only relays presence, and originates control.
 const DOC = 0;
 const AWARE = 1;
 const CONTROL = 2;
+const AUTH = 3;
 
 const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   const frame = new Uint8Array(payload.byteLength + 1);
@@ -27,9 +29,11 @@ const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   return frame;
 };
 
-// Optional hooks. `onControl` receives a server control message (a short UTF-8 string, e.g. the role);
-// `onClose` fires when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
+// Optional hooks. `authToken` sends an access token as the first client frame on every socket open;
+// `onControl` receives a server control message (a short UTF-8 string, e.g. the role); `onClose` fires
+// when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
 export interface TransportHooks {
+  readonly authToken?: string;
   onControl?: (message: string) => void;
   onClose?: () => void;
 }
@@ -44,6 +48,9 @@ export const connectTransport = (
   hooks: TransportHooks = {},
 ): (() => void) => {
   const sendState = (): void => {
+    if (hooks.authToken !== undefined) {
+      socket.send(framed(AUTH, new TextEncoder().encode(hooks.authToken)));
+    }
     socket.send(framed(DOC, session.state()));
     socket.send(framed(AWARE, session.awarenessState()));
   };
