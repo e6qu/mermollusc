@@ -1,5 +1,13 @@
 # @m/app (playground) — work log
 
+## 2026-07-01 — Sequence message style coverage
+
+- Added demo-level Playwright coverage for selecting a sequence message and cycling its arrow style
+  through `->>`, `-->>`, `->`, and `-->`, proving the sequence path has parity with flowchart/block
+  edge restyling.
+- Marked the stale sequence restyle backlog item done now that parser source spans, builder patching,
+  app wiring, and e2e coverage are all present.
+
 ## 2026-07-01 — Node colour hardening
 
 - Hardened the node colour swatches as named radio controls with arrow-key movement, so the visual-only

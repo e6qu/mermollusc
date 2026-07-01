@@ -2,6 +2,8 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Sequence message restyle lacked demo-level proof.**~~ Fixed — selecting a sequence message and
+  pressing `S` now has Playwright coverage for cycling `->>` → `-->>` → `->` → `-->`.
 - ~~**Node colour/fill restyle needed first-class coverage.**~~ Fixed — colour accents already live in
   the overlay sidecar; the context swatches are now named radio controls with keyboard movement, and
   Playwright covers persistence, share-link roundtrip, and clearing.
