@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { collabUrl } from "./collab-url.js";
 
 // Presence: with two `?collab` tabs in a room, moving the cursor in tab A renders A's remote caret in
 // tab B's editor (a `.cm-ySelectionCaret`, coloured by A's awareness `user` state). Built on the shared
@@ -19,13 +20,13 @@ test("a remote cursor from one ?collab tab shows in the other", async ({ browser
   const ctxA = await browser.newContext();
   const a = await ctxA.newPage();
   a.on("pageerror", (e) => errors.push(`A: ${e.message}`));
-  await a.goto(`/?collab&room=${room}`);
+  await a.goto(collabUrl(room));
   await expect.poll(() => editorValue(a), { timeout: 6000 }).toContain("flowchart");
 
   const ctxB = await browser.newContext();
   const b = await ctxB.newPage();
   b.on("pageerror", (e) => errors.push(`B: ${e.message}`));
-  await b.goto(`/?collab&room=${room}`);
+  await b.goto(collabUrl(room));
   await expect.poll(() => editorValue(b), { timeout: 6000 }).toBe(await editorValue(a));
 
   // place + move A's cursor in the shared text → A's selection enters awareness → broadcast to B

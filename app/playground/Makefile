@@ -10,7 +10,7 @@ include ../../module.mk
 .PHONY: test-e2e-ui test-e2e-pages shots
 
 test-e2e-ui:
-	pnpm exec playwright test
+	node ../../tools/run-playground-e2e.mjs
 
 test-e2e-pages:
 	pnpm exec playwright test -c playwright.pages.config.ts

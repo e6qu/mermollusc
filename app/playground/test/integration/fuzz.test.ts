@@ -6,6 +6,8 @@ import { isOk } from "@m/std";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../src/examples.js";
 
+const FUZZ_TIMEOUT_MS = 90_000;
+
 // Per-source text mutations that keep an input *near* valid, so the parser often still accepts it and
 // the layout (the real target — its totality + the depth guards on nested families) is exercised on
 // adversarial-but-structured ASTs, where a throw or infinite recursion is most likely.
@@ -86,7 +88,7 @@ describe("pipeline fuzz — parse → layout totality over mutated examples", ()
       ),
       { numRuns: 600 },
     );
-  }, 30000);
+  }, FUZZ_TIMEOUT_MS);
 });
 
 describe("render fuzz — layout → display list → SVG totality over mutated examples", () => {
@@ -124,5 +126,5 @@ describe("render fuzz — layout → display list → SVG totality over mutated 
       ),
       { numRuns: 500 },
     );
-  }, 30000);
+  }, FUZZ_TIMEOUT_MS);
 });

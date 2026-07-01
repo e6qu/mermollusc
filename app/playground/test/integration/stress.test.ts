@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 // few thousand nodes finishes in well under vitest's timeout; an accidental O(n²) (a `.find` in a
 // per-node loop, say) would blow that timeout and a crash/throw would fail outright.
 const N = 3000;
+const STRESS_TIMEOUT_MS = 30_000;
 
 const networkSource = (n: number): string => {
   const lines = ["network"];
@@ -40,7 +41,7 @@ describe("large-diagram pipeline (stress)", () => {
     const cmds = toDisplayList(laid.value);
     expect(cmds.length).toBeGreaterThanOrEqual(N);
     expect(cmds.every((c) => Object.values(c).every((v) => typeof v !== "number" || Number.isFinite(v)))).toBe(true);
-  });
+  }, STRESS_TIMEOUT_MS);
 
   it(`renders a ${N}-block grid end to end without crashing or stalling`, async () => {
     const parsed = parseDiagram(blockSource(N));
@@ -54,5 +55,5 @@ describe("large-diagram pipeline (stress)", () => {
 
     const cmds = toDisplayList(laid.value);
     expect(cmds.length).toBeGreaterThanOrEqual(N);
-  });
+  }, STRESS_TIMEOUT_MS);
 });

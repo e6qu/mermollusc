@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { collabUrl } from "./collab-url.js";
 
 // The `?collab` flag swaps the local overlay document for the Yjs-backed one (`@m/collab`). It is the
 // same `OverlayDoc` interface, so the whole app must behave identically: a drag still writes a
@@ -20,7 +21,7 @@ test("?collab runs the Yjs overlay: drag persists and ⌘Z undoes it", async ({ 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
-  await page.goto("/?collab&room=smoke");
+  await page.goto(collabUrl("smoke"));
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();

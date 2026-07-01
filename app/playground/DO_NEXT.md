@@ -85,9 +85,10 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 ## Collaboration (Phase 2/3 remainder — see `modules/collab/DO_NEXT.md`)
 - **Backend-free persistence parity:** Pages now runs the real local Yjs document when `?collab` is
   present, skips only the relay, and persists whole Yjs room snapshots through `@m/collab`'s browser
-  `RoomStore`. Next architectural step is evaluating an embedded browser store (SQLite/WASM or
-  equivalent) behind that same snapshot seam, chosen with the repo's pinned-version process and
-  verified against the production store contract.
+  `RoomStore`. The built-artifact Pages suite now runs from root `make e2e-pages` and the pre-push
+  gate. Next architectural step is evaluating an embedded browser store (SQLite/WASM or equivalent)
+  behind that same snapshot seam, chosen with the repo's pinned-version process and verified against
+  the production store contract.
 - **Production store + browser login.** Postgres/S3 durable store and the browser Auth0 login flow are
   the Phase 2 remainder.
 - **WS auth hardening (before auth ships).** Move the `?token=` out of the query string into the first
@@ -122,7 +123,9 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 - Side-centre mount snapping is now family-gated to ELK/compartment box diagrams. Next visual step, if
   needed: add user-visible per-edge port choice for those diagrams rather than relying only on
   nearest-side selection.
-- UI e2e now owns its local servers during the gate. Keep this aligned with the shot harness so visual
-  and gating runs cannot attach to unrelated local apps.
+- UI e2e now owns free per-run local app and relay ports during the gate. Keep this aligned with the
+  shot harness so visual and gating runs cannot attach to unrelated local apps.
+- *(done)* Root pre-push now runs the backend-free Pages demo e2e through `make e2e-pages`, so the
+  built `/demo/?collab` artifact is checked before pushes.
 - *(done)* Pages backend-free e2e now owns its static artifact server and verifies built `/demo/?collab`
   does not open a relay WebSocket while preserving the local Yjs room snapshot across reload.

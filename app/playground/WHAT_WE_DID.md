@@ -1,5 +1,16 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Pages demo e2e joins the root gate
+
+- Added root `make e2e-pages` so the backend-free GitHub Pages artifact regression is addressable from
+  the same command surface as the live UI e2e suite.
+- Added the Pages Playwright project to the pre-push hook list, so `/demo/?collab` parity is checked
+  before pushes instead of living only as a module-local manual target.
+- Stabilised the app integration stress/fuzz timeout contract: those tests still catch hangs, but no
+  longer treat a busy local/pre-commit run as a performance regression.
+- Made the live UI e2e runner choose free app and collab relay ports per run, and pass the relay through
+  the existing same-host `?ws=` override so local port collisions cannot break pre-push.
+
 ## 2026-07-01 — Pages backend-free demo e2e
 
 - Added a dedicated Playwright Pages project that builds the static GitHub Pages artifact and serves

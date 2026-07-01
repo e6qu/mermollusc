@@ -73,6 +73,14 @@ repos:
         always_run: true
         stages: [pre-push]
 
+      - id: e2e-pages
+        name: GitHub Pages demo e2e (Playwright)
+        entry: make e2e-pages
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
       - id: e2e-api
         name: API HTTP e2e
         entry: make e2e-api

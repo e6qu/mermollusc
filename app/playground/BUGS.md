@@ -2,6 +2,14 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Backend-free Pages collab e2e was not part of the root gate.**~~ Fixed — root `make e2e-pages`
+  now delegates to the app's built-artifact Pages suite, and the pre-push hook runs it alongside the
+  live UI e2e checks.
+- ~~**App integration stress/fuzz tests used wall-clock budgets as hang guards.**~~ Fixed — the tests
+  now use explicit longer timeouts, preserving the fail-loud hang guard without making busy local hook
+  runs fail as performance tests.
+- ~~**UI e2e pre-push could fail when port 4173 was busy.**~~ Fixed — the UI e2e runner reserves free
+  app and relay ports for each run, and collab specs pass the chosen relay through `?ws=`.
 - ~~**Backend-free Pages collab had only manual built-artifact probes.**~~ Fixed — the Pages e2e target
   now builds `site-dist/demo/`, serves it, asserts `/demo/?collab` opens no WebSocket, and proves the
   local Yjs room snapshot survives reload.

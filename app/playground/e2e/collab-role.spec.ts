@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { collabUrl } from "./collab-url.js";
 
 // The role-aware client: when the relay grants the `viewer` role, the editor and the canvas tools go
 // read-only and a "view only" badge shows; an `editor` grant restores editing. Driven through the
@@ -28,7 +29,7 @@ test("a viewer role makes the editor + tools read-only; editor restores it", asy
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
-  await page.goto("/?collab&room=role-test");
+  await page.goto(collabUrl("role-test"));
   await expect.poll(() => editorValue(page), { timeout: 6000 }).toContain("flowchart");
   // default (editor) — the buffer is editable and no badge yet
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");

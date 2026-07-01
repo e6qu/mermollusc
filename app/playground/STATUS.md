@@ -107,8 +107,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   uses the real in-browser `@m/collab` Yjs document/source binding and skips only the network transport.
   Local collab rooms persist through `@m/collab`'s browser `RoomStore` as whole Yjs snapshots; explicit
   share links and `?example=` links bypass the stored room. `make -C app/playground test-e2e-pages`
-  builds and serves the Pages artifact, then verifies backend-free `?collab` opens no WebSocket and
-  persists/reloads the local Yjs room.
+  and root `make e2e-pages` build and serve the Pages artifact, then verify backend-free `?collab`
+  opens no WebSocket and persists/reloads the local Yjs room. The root pre-push hook runs this Pages
+  gate alongside the live-app UI suite.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;
@@ -241,7 +242,8 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   `@m/builder`'s tested core. The render path makes **one** `parseDiagramWithSource` pass per edit
   (AST + source map together) instead of parsing each family twice, and memoises `applyOverrides` +
   group-bounds across a frame.
-- Playwright (`make e2e-ui`): owns fresh local Vite and collab-relay servers for each gate run; covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + a control-accessible-name audit (incl. the editor + form inputs) + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
+- Playwright (`make e2e-ui`): owns fresh local Vite and collab-relay servers on free per-run ports; the
+  collab specs pass the chosen relay through the same-host `?ws=` URL seam. Covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + a control-accessible-name audit (incl. the editor + form inputs) + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
   spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
   PDF + SVG export + icon-picker (insert + empty-filter) + an **audit-omnibus** spec (family-capability
   gating, layout-survives-edit + share-carries-overlay, example-load confirm guard, platform modifier

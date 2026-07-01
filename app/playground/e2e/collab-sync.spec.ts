@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { collabUrl } from "./collab-url.js";
 
 // The end-to-end proof of the dev WebSocket transport: two independent browser contexts ("tabs") open
 // the same `?collab&room=…`, and an overlay drag in one appears in the other via the relay. Both tabs
@@ -21,8 +22,8 @@ test("two ?collab tabs converge: a drag in one tab appears in the other", async 
   a.on("pageerror", (e) => errors.push(`A: ${e.message}`));
   b.on("pageerror", (e) => errors.push(`B: ${e.message}`));
 
-  await a.goto(`/?collab&room=${room}`);
-  await b.goto(`/?collab&room=${room}`);
+  await a.goto(collabUrl(room));
+  await b.goto(collabUrl(room));
   await expect.poll(() => canvasWidth(a)).toBeGreaterThan(0);
   await expect.poll(() => canvasWidth(b)).toBeGreaterThan(0);
 

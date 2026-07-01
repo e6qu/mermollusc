@@ -8,7 +8,7 @@ MODULES := modules/std modules/contracts modules/parser modules/layout \
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
 
-.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-api collab-server pages-build
+.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-pages e2e-api collab-server pages-build
 
 SEMGREP_VERSION := 1.166.0
 
@@ -33,6 +33,9 @@ sast:
 
 e2e-ui:
 	@$(MAKE) --no-print-directory -C app/playground test-e2e-ui
+
+e2e-pages:
+	@$(MAKE) --no-print-directory -C app/playground test-e2e-pages
 
 e2e-api:
 	@echo "no API packages yet; HTTP e2e will run here once an API module exists"
