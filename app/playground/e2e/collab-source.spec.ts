@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { collabUrl } from "./collab-url.js";
 
 // Proves the live source-text binding: the diagram TEXT (not just the overlay) syncs across two
 // `?collab` tabs via the Y.Text ↔ CodeMirror binding. Tab A seeds the room; tab B adopts it; then an
@@ -21,14 +22,14 @@ test("two ?collab tabs share the source text live", async ({ browser }) => {
   const ctxA = await browser.newContext();
   const a = await ctxA.newPage();
   a.on("pageerror", (e) => errors.push(`A: ${e.message}`));
-  await a.goto(`/?collab&room=${room}`);
+  await a.goto(collabUrl(room));
   // tab A seeds the empty room with the sample after its sync settles
   await expect.poll(() => editorValue(a), { timeout: 6000 }).toContain("flowchart");
 
   const ctxB = await browser.newContext();
   const b = await ctxB.newPage();
   b.on("pageerror", (e) => errors.push(`B: ${e.message}`));
-  await b.goto(`/?collab&room=${room}`);
+  await b.goto(collabUrl(room));
   // tab B joins and adopts A's text (not a duplicated seed)
   await expect.poll(() => editorValue(b), { timeout: 6000 }).toBe(await editorValue(a));
 

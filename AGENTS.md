@@ -167,8 +167,9 @@ closed union per module — never a free-form string.
   secret scan, `make fmt-check`, `make lint` (biome + type guard), `make typecheck`, `make test`
   (unit + integration).
 - **pre-push** (heavier): `make sast` (**semgrep**, strict, run via `uvx`), `make e2e-ui`
-  (**Playwright**, one spec per UI flow), `make e2e-api` (HTTP API e2e — a placeholder until an
-  API module exists; never fabricate tests against a non-existent API).
+  (**Playwright**, one spec per UI flow), `make e2e-pages` (built GitHub Pages demo e2e),
+  `make e2e-api` (HTTP API e2e — a placeholder until an API module exists; never fabricate tests
+  against a non-existent API).
 
 Hook repo revs are pinned in the config; semgrep is pinned in the `Makefile`, Playwright in the
 catalog. All were chosen with the ≥24h supply-chain rule (§0.3).
