@@ -6,7 +6,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createFileStore, createMemoryStore } from "../../server/store.mjs";
+import {
+  createFileRoomStore,
+  createFileStore,
+  createMemoryRoomStore,
+  createMemoryStore,
+} from "../../server/store.mjs";
 
 describe("collab room store — memory", () => {
   it("returns null for an unknown room, then the saved snapshot", () => {
@@ -23,6 +28,21 @@ describe("collab room store — memory", () => {
     expect([...store.load("a")]).toEqual([1]);
     expect([...store.load("b")]).toEqual([2]);
   });
+
+  it("copies snapshots on save and load, matching the browser RoomStore contract", () => {
+    const store = createMemoryRoomStore();
+    const original = new Uint8Array([1, 2, 3]);
+    store.save("copy", original);
+    original[0] = 9;
+
+    const loaded = store.load("copy");
+    expect(loaded).not.toBeNull();
+    if (loaded === null) throw new Error("no stored snapshot");
+    expect([...loaded]).toEqual([1, 2, 3]);
+
+    loaded[1] = 8;
+    expect([...store.load("copy")]).toEqual([1, 2, 3]);
+  });
 });
 
 describe("collab room store — file (survives a fresh instance ≈ restart)", () => {
@@ -35,12 +55,12 @@ describe("collab room store — file (survives a fresh instance ≈ restart)", (
   });
 
   it("persists a snapshot a brand-new store over the same dir then loads", () => {
-    const first = createFileStore(dir);
+    const first = createFileRoomStore(dir);
     expect(first.load("durable")).toBeNull();
     first.save("durable", new Uint8Array([9, 8, 7, 6]));
 
     // a new store instance over the same directory == what a relay sees after a restart
-    const second = createFileStore(dir);
+    const second = createFileRoomStore(dir);
     expect([...second.load("durable")]).toEqual([9, 8, 7, 6]);
   });
 

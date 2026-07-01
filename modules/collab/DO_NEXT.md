@@ -23,6 +23,9 @@
 - *(done)* **Browser room snapshot seam:** `src/shell/store.ts` provides memory + Web Storage
   `RoomStore` implementations and `createCollabSession` can hydrate from a saved Yjs `initialUpdate`.
   The Pages demo can persist a local room through the same whole-snapshot contract as the relay.
+- *(done)* **Server/browser store semantics aligned:** the Node relay memory store now copies snapshots
+  on save/load just like the browser `RoomStore`, and the relay uses the same `RoomStore` constructor
+  naming (`createMemoryRoomStore` / `createFileRoomStore`).
 - *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the `?token=` against the issuer JWKS
   (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated; default allow.
   Decided to extend our own relay rather than adopt Hocuspocus (§10.5).

@@ -17,7 +17,7 @@ import { WebSocketServer } from "ws";
 import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { createAuth0Authorizer } from "./auth.mjs";
 import { canWrite, createClaimsRoleResolver } from "./rbac.mjs";
-import { createFileStore, createMemoryStore } from "./store.mjs";
+import { createFileRoomStore, createMemoryRoomStore } from "./store.mjs";
 
 // Frame-tag allow-list. A relayed frame is broadcast only when its leading byte is a known channel the
 // relay understands; unknown tags (and CONTROL, which only ever flows server→client) are dropped.
@@ -116,7 +116,7 @@ const createRateBucket = ({ framesPerSec, bytesPerSec }, now) => {
 // WebSocketServer.
 export const startRelay = ({
   port = 0,
-  store = createMemoryStore(),
+  store = createMemoryRoomStore(),
   authorize = () => true,
   authorizeRoom = createClaimsRoleResolver({ defaultRole: "editor" }),
   rateLimit = DEFAULT_RATE_LIMIT,
@@ -341,7 +341,7 @@ export const startRelay = ({
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.env.PORT ?? "1234");
   const persistDir = process.env.PERSIST_DIR;
-  const store = persistDir ? createFileStore(persistDir) : createMemoryStore();
+  const store = persistDir ? createFileRoomStore(persistDir) : createMemoryRoomStore();
   const domain = process.env.AUTH0_DOMAIN;
   const audience = process.env.AUTH0_AUDIENCE;
   // Auth is on only when both Auth0 env vars are set. When OFF, a verified token can't exist, so we

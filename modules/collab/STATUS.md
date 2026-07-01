@@ -17,7 +17,8 @@ and binds the editor to the shared doc.
   full state on join + broadcast). `make collab-server` runs it. **Optional** — the app runs fully
   single-user without it.
 - **Persistence (`server/store.mjs`):** a pluggable `RoomStore` — in-memory default + a file-snapshot
-  store (`PERSIST_DIR`). The relay loads a room's snapshot on first join and saves it. **Durability
+  store (`PERSIST_DIR`). The server memory store copies snapshots at save/load boundaries, matching the
+  browser store contract. The relay loads a room's snapshot on first join and saves it. **Durability
   guarantee:** an edit is durable once (a) its 400 ms save-debounce timer fires, (b) the room empties
   (last socket closes → flush), OR (c) the relay shuts down cleanly on SIGINT/SIGTERM (`wss.flushAll()`
   flushes every dirty room before exit). An edit still inside the open debounce window when the process

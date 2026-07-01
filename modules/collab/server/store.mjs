@@ -12,17 +12,22 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const createMemoryStore = () => {
+const copy = (bytes) => new Uint8Array(bytes);
+
+export const createMemoryRoomStore = () => {
   const snapshots = new Map();
   return {
-    load: (room) => snapshots.get(room) ?? null,
+    load: (room) => {
+      const snapshot = snapshots.get(room);
+      return snapshot === undefined ? null : copy(snapshot);
+    },
     save: (room, snapshot) => {
-      snapshots.set(room, snapshot);
+      snapshots.set(room, copy(snapshot));
     },
   };
 };
 
-export const createFileStore = (dir) => {
+export const createFileRoomStore = (dir) => {
   mkdirSync(dir, { recursive: true });
   // Encode the room name so an arbitrary id is a safe single filename (no path traversal / separators).
   const fileFor = (room) => join(dir, `${encodeURIComponent(room)}.bin`);
@@ -41,3 +46,6 @@ export const createFileStore = (dir) => {
     },
   };
 };
+
+export const createMemoryStore = createMemoryRoomStore;
+export const createFileStore = createFileRoomStore;
