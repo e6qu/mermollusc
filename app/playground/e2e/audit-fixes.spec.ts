@@ -109,3 +109,21 @@ test("task guidance surfaces disabled action reasons without hover", async ({ pa
   await expect(task).toContainText("Connect: select exactly two nodes");
   await expect(task).toContainText("Duplicate: duplicate isn't available for gitGraph");
 });
+
+test("transient confirmations refresh task guidance without replacing diagram status", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  const stage = page.locator("#stage");
+  const task = page.locator("#task-status-text");
+
+  await page.locator("#diagram-nav").focus();
+  await expect(task).toContainText("Alt+arrows resize");
+  await expect(stage).toHaveAttribute("aria-label", /^flowchart diagram:/);
+
+  await page.locator("#relax").click();
+  await expect(page.locator("#status")).toContainText("relaxed layout");
+  await expect(task).toContainText("Alt+arrows resize");
+  await expect(stage).toHaveAttribute("aria-label", /^flowchart diagram:/);
+});

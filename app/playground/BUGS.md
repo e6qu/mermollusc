@@ -2,6 +2,9 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
+- ~~**Transient confirmations bypassed task guidance.**~~ Fixed — `flashStatus` now refreshes the
+  always-visible task guidance while preserving the canvas diagram label and parse stale/error state;
+  Playwright covers the Relax confirmation path.
 - ~~**Resizable-node guidance promised a mouse-only affordance.**~~ Fixed — a selected resizable node can
   now be resized with `Alt+Arrow`, the demo help/footer expose the shortcut, and Playwright covers undo.
 - ~~**Disabled editing actions required hover to explain why.**~~ Fixed — Add/Relax/Connect/Duplicate

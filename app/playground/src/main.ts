@@ -2450,10 +2450,11 @@ const setStatusAndAnnounce = (
 };
 
 // A transient action confirmation (added/duplicated/connected/…): show it in the status bar and
-// announce it, but — unlike setStatus — don't touch the canvas's screen-reader description or the
-// parse-status level/stale flag, which describe the *diagram*, not the last command.
+// announce it, and refresh task guidance. Unlike setStatus, it must not touch the canvas's
+// screen-reader description or the parse-status level/stale flag, which describe the diagram.
 const flashStatus = (message: string): void => {
   statusEl.textContent = message;
+  updateTask();
   announce(message);
 };
 
