@@ -3,6 +3,21 @@
 Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known defects are in
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
+## Deferred from the 2026-07-02 UX audit (real findings, not fixed in that pass)
+- **Bare-edge labelling is flowchart/block-only.** Double-click labelling of an unlabelled edge
+  (`wrapBareEdge`) should extend to network/cloud links (grammar supports `: "label"`) and state
+  transitions — the graph-wide-scope rule applies; today those families answer "this item has no
+  editable label".
+- **Collab join flash.** Joining an existing room paints the local/sample diagram first, then swaps
+  when the sync settles (~300ms) — suppress the first paint or show "syncing…" until the seed decision.
+- **No room-invite affordance.** `shareUrl` strips `?collab`/`room`, so a collab user can't share a
+  join link; add an explicit "Copy room link" action.
+- **Gantt keyboard parity.** Bar reschedule/duration are mouse-only (`keyboardResizeSelection` excludes
+  gantt); add Alt+Arrow day-shift/duration keys. Gantt `after` dependencies also have no canvas
+  Connect even though the grammar expresses them.
+- **Alt+Arrow semantics differ by focus** (resize on canvas, move in the navigator) — the help dialog
+  now needs a note, or the chords should unify.
+
 ## Sweep-round audit backlog (deferred from the multi-agent review)
 - *(done)* Add a screenshot review pass specifically for selected-node mount handles across light/dark,
   because the geometric regression guard does not catch theme visibility.

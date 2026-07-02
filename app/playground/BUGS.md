@@ -1,5 +1,45 @@
 # @m/app (playground) — bugs
 
+Resolved (UX/fail-loud audit pass, 2026-07-02):
+
+- ~~**Space was hijacked from every focused button.**~~ Fixed — the global Space-to-pan shortcut now
+  yields when a button has focus, so Space activates it (the standard a11y contract). Covered by
+  `e2e/ux-regressions.spec.ts`.
+- ~~**Loading an example destroyed the undo history while promising undo.**~~ Fixed — the example swap
+  is now one recorded history step (text + overlay together); ⌘Z genuinely restores the previous
+  diagram. In a collab room the confirm is always shown and says the swap affects every peer, and the
+  `?example=` URL rewrite now merges into the existing query instead of dropping `?collab`/`room`/`ws`.
+- ~~**Opening a share link or `?example=` URL permanently overwrote the visitor's saved diagram.**~~
+  Fixed — persistence stays disarmed for hash/example-derived source until the visitor makes an edit of
+  their own. Covered by `e2e/ux-regressions.spec.ts`.
+- ~~**Every programmatic source mutation left a stale text snapshot, corrupting the next typing
+  session's undo entry.**~~ Fixed — all programmatic mutations route through one `setSourceValue`
+  helper that refreshes the snapshot (a bare `editor.setValue` no longer appears outside it).
+- ~~**The overlay similarity wipe cleared the undo history and re-fired during undo/redo.**~~ Fixed —
+  the wipe records a history step instead of clearing the stacks, surfaces in the status bar instead of
+  only `console.warn`, and is skipped entirely during undo/redo-driven renders.
+- ~~**Add node and the navigator's keyboard connect were not undoable.**~~ Fixed — both record history;
+  the navigator commits through a `commitSourceEdit` port instead of a bare `editor.setValue`.
+- ~~**Action errors dimmed a perfectly valid diagram and rewrote its screen-reader description.**~~
+  Fixed — action outcomes (rename/label rejections, icon-pack failures, sign-in failure, share/copy
+  confirmations, collab connection changes) route through `flashStatus`, which now carries its own
+  level and never touches the canvas aria-label or the stale flag; `setStatus` is reserved for
+  parse/layout/render outcomes.
+- ~~**Share stayed enabled on a broken source and its success message erased error surfacing.**~~
+  Fixed — Share gates on a valid render alongside the export buttons, and share outcomes are transient
+  flashes that leave the parse-error record (editor diagnostic, stale dim) alone.
+- ~~**Export buttons permanently lost their tooltips after first enable.**~~ Fixed — the authored
+  titles are restored, not erased, when re-enabling.
+- ~~**Boot-time collab notices were clobbered by the initial render's summary status.**~~ Fixed — the
+  "sign in to connect", backend-free-relay, unknown-`?example=`, and rejected-`?ws=` notices sequence
+  after the initial render completes.
+- ~~**Dark-theme flash on load.**~~ Fixed — a tiny render-blocking `public/theme-boot.js` sets
+  `data-theme` before first paint (CSP-compatible: an external classic script, not inline).
+- ~~**Sequence message restyle was reachable by keyboard but hidden from the context bar.**~~ Fixed —
+  `canStyleEdge` includes sequence, matching what `cycleEdgeStyle` implements; `S` on an unsupported
+  family's edge now explains itself instead of silently no-op'ing (as does Alt+Arrow resize with no
+  resizable node, and a viewer picking an Example).
+
 Resolved (mount-point and label pass, 2026-06-30):
 
 - ~~**Auth-enabled collab still had no browser login or identity-backed presence.**~~ Fixed — the app

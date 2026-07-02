@@ -568,6 +568,10 @@ const fromHash = hashValue("src");
 const exampleParam = collabParams.get("example");
 const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam) ?? null);
 const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
+// Merely VIEWING someone's share link or example URL must not clobber the visitor's own persisted
+// diagram — persistence stays disarmed until the first edit they make themselves (typing, or any
+// canvas-driven source mutation via setSourceValue).
+let sourcePersistenceArmed = fromHash === null && exampleFromUrl === null;
 const useStoredLocalCollabRoom =
   localCollabStore !== null && fromHash === null && exampleFromUrl === null;
 
@@ -594,7 +598,7 @@ if (authConfig !== null && useRelayTransport) {
         storage: sessionStorage,
       }).catch((error: unknown) => {
         console.error(`collab auth: login start failed: ${messageOf(error)}`);
-        setStatus("error", "collaboration sign-in failed");
+        flashStatus("collaboration sign-in failed", "error");
       });
       return;
     }
@@ -631,7 +635,11 @@ if (useCollab) {
           payload.identity = getDiagramFeatures(scene.nodes, scene.edges, ast.kind);
         }
         saveOverlay(JSON.stringify(payload));
-      } catch {
+      } catch (e) {
+        // `serialized` is the document model's own JSON — a parse failure here is a programming error.
+        // Still save (losing the identity stamp beats losing the overlay), but never silently: an
+        // identity-less overlay skips the staleness check on the next load.
+        console.error("overlay identity attach failed — saving without identity:", messageOf(e));
         saveOverlay(serialized);
       }
     },
@@ -649,12 +657,15 @@ interface UnifiedHistoryEntry {
   readonly selectionOrder: readonly SceneNodeId[];
 }
 
-let unifiedUndoStack: UnifiedHistoryEntry[] = [];
+const unifiedUndoStack: UnifiedHistoryEntry[] = [];
 let unifiedRedoStack: UnifiedHistoryEntry[] = [];
 let typingSessionActive = false;
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let lastTextSnapshot = "";
 let lastCursorSnapshot: { readonly from: number; readonly to: number } | null = null;
+// True while an undo/redo-driven render is in flight — renderFromText's overlay-staleness check must not
+// second-guess a restored snapshot (see the similarity check).
+let restoringHistory = false;
 
 const recordHistory = (): void => {
   if (collabSession !== null) {
@@ -721,18 +732,15 @@ const recordTypingStart = (): void => {
   }, 800);
 };
 
-const clearUnifiedHistory = (): void => {
-  unifiedUndoStack = [];
-  unifiedRedoStack = [];
-  typingSessionActive = false;
-  if (typingTimeout !== null) {
-    clearTimeout(typingTimeout);
-    typingTimeout = null;
-  }
-  if (editorReady) {
-    lastTextSnapshot = editor.value();
-    lastCursorSnapshot = editor.selectedRange();
-  }
+// Every programmatic source mutation must go through this, not editor.setValue directly: a programmatic
+// change doesn't fire the editor's change listener (by design), so nothing else refreshes
+// lastTextSnapshot — and a stale snapshot makes the NEXT typing session's undo entry restore the text
+// from BEFORE this mutation, silently skipping it in the undo chain.
+const setSourceValue = (text: string): void => {
+  sourcePersistenceArmed = true; // every caller is a user-initiated mutation — the user owns the text now
+  editor.setValue(text);
+  lastTextSnapshot = text;
+  lastCursorSnapshot = editor.selectedRange();
 };
 
 const applyRestored = (): void => {
@@ -746,7 +754,7 @@ const undoOverlay = (): void => {
   if (collabSession !== null) {
     if (doc.undo()) {
       applyRestored();
-      setStatusAndAnnounce("ok", "layout undone");
+      flashStatus("layout undone");
     }
     return;
   }
@@ -768,7 +776,7 @@ const undoOverlay = (): void => {
   doc.replace(entry.overrides, entry.groups, entry.edgeStyles, entry.nodeStyles);
 
   if (editorReady && editor.value() !== entry.text) {
-    editor.setValue(entry.text);
+    setSourceValue(entry.text);
   }
   if (editorReady && entry.cursor !== null) {
     editor.select(entry.cursor.from, entry.cursor.to);
@@ -782,9 +790,12 @@ const undoOverlay = (): void => {
   typingSessionActive = false;
 
   applyRestored();
-  setStatusAndAnnounce("ok", "undone");
+  flashStatus("undone");
   if (editorReady) {
-    void renderFromText(entry.text);
+    restoringHistory = true;
+    void renderFromText(entry.text).finally(() => {
+      restoringHistory = false;
+    });
   }
 };
 
@@ -792,7 +803,7 @@ const redoOverlay = (): void => {
   if (collabSession !== null) {
     if (doc.redo()) {
       applyRestored();
-      setStatusAndAnnounce("ok", "layout redone");
+      flashStatus("layout redone");
     }
     return;
   }
@@ -814,7 +825,7 @@ const redoOverlay = (): void => {
   doc.replace(entry.overrides, entry.groups, entry.edgeStyles, entry.nodeStyles);
 
   if (editorReady && editor.value() !== entry.text) {
-    editor.setValue(entry.text);
+    setSourceValue(entry.text);
   }
   if (editorReady && entry.cursor !== null) {
     editor.select(entry.cursor.from, entry.cursor.to);
@@ -828,9 +839,12 @@ const redoOverlay = (): void => {
   typingSessionActive = false;
 
   applyRestored();
-  setStatusAndAnnounce("ok", "redone");
+  flashStatus("redone");
   if (editorReady) {
-    void renderFromText(entry.text);
+    restoringHistory = true;
+    void renderFromText(entry.text).finally(() => {
+      restoringHistory = false;
+    });
   }
 };
 
@@ -1776,11 +1790,12 @@ const computeCapabilities = (): CapabilityState => {
     canArrange: movable >= 2,
     canDistribute: movable >= 3,
     canShape: isFlowchart && selectionOrder.length >= 1,
-    // Restyle the arrow of a single selected flowchart/block edge (presentational kinds only).
+    // Restyle the arrow of a single selected edge — exactly the families cycleEdgeStyle handles
+    // (flowchart/block edge kinds, sequence message kinds), so the button and the `S` key never drift.
     canStyleEdge:
       editable &&
       ast !== null &&
-      (ast.kind === "flowchart" || ast.kind === "block") &&
+      (ast.kind === "flowchart" || ast.kind === "block" || ast.kind === "sequence") &&
       selectionOrder.length === 0 &&
       selection.edges.size === 1,
     canDuplicate,
@@ -2189,13 +2204,13 @@ const groupSelection = (): void => {
     };
     const lineIdxs = selectionOrder.map(lineOf).filter((n): n is number => n !== null);
     if (lineIdxs.length < 2) {
-      setStatusAndAnnounce("ok", "select two or more top-level services to group");
+      flashStatus("select two or more top-level services to group", "warning");
       return;
     }
     const next = wrapCloudGroup(editor.value(), lineIdxs, "Group");
     if (next === editor.value()) return;
     recordHistory();
-    editor.setValue(next);
+    setSourceValue(next);
     void renderFromText(next);
     announce(`grouped ${lineIdxs.length} services — double-click the group title to rename`);
     return;
@@ -2481,10 +2496,15 @@ const lineColOf = (
 
 // Disable the export/copy controls while the current text doesn't render — they'd otherwise fail only
 // after the click. Re-evaluated on every render outcome, since setStatus runs on success and failure alike.
+// Export/share act on the current render, so they gate on it — including Share, which would otherwise
+// happily encode a broken source into a link. Disabling swaps in an explanatory tooltip; re-enabling
+// restores each button's own authored one (never erases it).
+const exportTitles = new Map<HTMLButtonElement, string>();
 const syncExportButtons = (): void => {
-  for (const b of [exportBtn, copyBtn, exportPdfBtn, exportSvgBtn, exportDotBtn]) {
+  for (const b of [exportBtn, copyBtn, exportPdfBtn, exportSvgBtn, exportDotBtn, shareBtn]) {
+    if (!exportTitles.has(b)) exportTitles.set(b, b.title);
     b.disabled = !currentRenderValid;
-    b.title = currentRenderValid ? "" : "fix the source first";
+    b.title = currentRenderValid ? (exportTitles.get(b) ?? "") : "fix the source first";
   }
 };
 
@@ -2536,11 +2556,19 @@ const setStatusAndAnnounce = (
   announce(message);
 };
 
-// A transient action confirmation (added/duplicated/connected/…): show it in the status bar and
-// announce it, and refresh task guidance. Unlike setStatus, it must not touch the canvas's
-// screen-reader description or the parse-status level/stale flag, which describe the diagram.
-const flashStatus = (message: string): void => {
+// A transient action outcome (added/duplicated/connected/… or a rejected action): show it in the
+// status bar with its own level and announce it. Unlike setStatus, it must never touch the canvas's
+// screen-reader description or the stale flag — those describe the DIAGRAM, and an action outcome is
+// not a render outcome. An action error therefore never greys out a perfectly valid render, and an
+// action confirmation never erases the record of a live parse error (the editor's inline diagnostic
+// and the stale dim persist until the next render resolves them).
+const flashStatus = (message: string, level: "ok" | "warning" | "error" = "ok"): void => {
   statusEl.textContent = message;
+  statusEl.setAttribute("data-level", level);
+  statusEl.setAttribute("data-locatable", "false");
+  statusEl.removeAttribute("role");
+  statusEl.removeAttribute("tabindex");
+  errorRange = null;
   updateTask();
   announce(message);
 };
@@ -2663,7 +2691,10 @@ const getActiveStyle = (family: string): string => {
   try {
     const val = localStorage.getItem(`mermollusc-style-${family}`);
     return val !== null ? val : defaultStyleForFamily(family);
-  } catch {
+  } catch (e) {
+    // Storage can be unavailable (private mode, blocked); the default is the right outcome, but the
+    // failure itself is never silent.
+    console.error("layout-style read failed:", messageOf(e));
     return defaultStyleForFamily(family);
   }
 };
@@ -2671,7 +2702,10 @@ const getActiveStyle = (family: string): string => {
 const setActiveStyle = (family: string, style: string): void => {
   try {
     localStorage.setItem(`mermollusc-style-${family}`, style);
-  } catch {}
+  } catch (e) {
+    console.error("layout-style persist failed:", messageOf(e));
+    flashStatus("couldn't save the layout-style preference (storage unavailable)", "warning");
+  }
 };
 
 // Map of styles available per family:
@@ -2793,7 +2827,7 @@ const renderFromText = async (text: string): Promise<void> => {
   const mySeq = ++renderSeq;
   currentRenderValid = false;
   updateGroupButtons();
-  saveSource(text);
+  if (sourcePersistenceArmed) saveSource(text);
   // One parse yields both the AST (to lay out) and the family's source map (the spans the inline editor
   // patches) — previously every family was parsed twice per render. `parsed.value.family` is the closed
   // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
@@ -2867,12 +2901,22 @@ const renderFromText = async (text: string): Promise<void> => {
   if (!useCollab) {
     const currentFeatures = getDiagramFeatures(laid.value.nodes, laid.value.edges, diagram.kind);
     const targetIdentity = loadedOverlayIdentity ?? activeOverlayIdentity;
-    if (targetIdentity !== null && (doc.overrides().size > 0 || doc.groups().size > 0)) {
+    // Undo/redo restores a snapshot from a possibly-different diagram — the similarity check would see
+    // that as "stale overlay" and wipe the exact state it just restored, so it never runs there. And the
+    // wipe must never touch the history stacks: they're what lets the user recover FROM it.
+    if (
+      !restoringHistory &&
+      targetIdentity !== null &&
+      (doc.overrides().size > 0 || doc.groups().size > 0)
+    ) {
       const similarity = getFeaturesSimilarity(currentFeatures, targetIdentity);
       if (similarity < 0.5) {
-        console.warn("Clearing stale overlay overrides: Jaccard similarity is", similarity);
+        setStatus(
+          "warning",
+          "cleared the saved manual layout — the diagram changed too much for it to apply (undo restores it)",
+        );
+        recordHistory();
         doc.replace(new Map(), new Map(), new Map(), new Map());
-        clearUnifiedHistory();
         doc.persist();
       }
     }
@@ -2989,7 +3033,7 @@ const relax = async (): Promise<void> => {
   const laid = await layout(ast, seed, measureLabel, activeStyle);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
-    setStatusAndAnnounce("error", `relax failed — ${laid.error.message}`);
+    flashStatus(`relax failed — ${laid.error.message}`, "error");
     return;
   }
   scene = laid.value;
@@ -3268,7 +3312,7 @@ const placeNodeAt = async (at: Point): Promise<void> => {
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
   recordHistory();
-  editor.setValue(next);
+  setSourceValue(next);
   await renderFromText(next);
   if (scene === null) return;
   const sid = brand<string, "SceneNodeId">(id);
@@ -3726,9 +3770,9 @@ const ganttRescheduleDrag = (id: SceneNodeId, deltaDays: number): boolean => {
         : setGanttStartFromDay(editor.value(), fieldSpan, startDay);
   if (next === editor.value()) return false;
   doc.persist();
-  editor.setValue(next);
+  setSourceValue(next);
   void renderFromText(next);
-  setStatusAndAnnounce("ok", `rescheduled ${deltaDays > 0 ? "+" : ""}${deltaDays}d`);
+  flashStatus(`rescheduled ${deltaDays > 0 ? "+" : ""}${deltaDays}d`);
   return true;
 };
 const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
@@ -3741,9 +3785,9 @@ const ganttResizeWidth = (id: SceneNodeId, widthPx: number): boolean => {
   doc.replaceOverrides(clearOverride(doc.overrides(), id));
   const next = setGanttDuration(editor.value(), span, days);
   doc.persist();
-  editor.setValue(next);
+  setSourceValue(next);
   void renderFromText(next);
-  setStatusAndAnnounce("ok", `duration ${days}d`);
+  flashStatus(`duration ${days}d`);
   return true;
 };
 
@@ -3771,7 +3815,7 @@ canvas.addEventListener("pointerup", (ev) => {
         const label = (id: SceneNodeId): string =>
           scene?.nodes.find((n) => n.id === id)?.label ?? "node";
         recordHistory();
-        editor.setValue(next);
+        setSourceValue(next);
         void renderFromText(next);
         announce(describeConnect(ast.kind, label(cd.from), label(target.id)));
       } else {
@@ -4008,11 +4052,11 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       const checked = validateLabel(next, contextFor(editor.value(), span));
       if (!isOk(checked)) {
         console.error("relabel rejected:", checked.error.message);
-        setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
+        flashStatus(`can't rename — ${checked.error.message}`, "error");
         return;
       }
       recordHistory();
-      editor.setValue(patchSpan(editor.value(), span, next));
+      setSourceValue(patchSpan(editor.value(), span, next));
       void renderFromText(editor.value());
     },
   });
@@ -4028,12 +4072,12 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       const checked = validateLabel(next, "quoted");
       if (!isOk(checked)) {
         console.error("relabel rejected:", checked.error.message);
-        setStatusAndAnnounce("error", `can't rename — ${checked.error.message}`);
+        flashStatus(`can't rename — ${checked.error.message}`, "error");
         return;
       }
       const id = editor.value().slice(idSpan.start, idSpan.end);
       recordHistory();
-      editor.setValue(patchSpan(editor.value(), idSpan, wrap(id, next)));
+      setSourceValue(patchSpan(editor.value(), idSpan, wrap(id, next)));
       void renderFromText(editor.value());
     },
   });
@@ -4048,11 +4092,11 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       const out = addEdgeLabel(editor.value(), arrowSpan, next);
       if (!isOk(out)) {
         console.error("edge label rejected:", out.error.message);
-        setStatusAndAnnounce("error", `can't label edge — ${out.error.message}`);
+        flashStatus(`can't label edge — ${out.error.message}`, "error");
         return;
       }
       recordHistory();
-      editor.setValue(out.value);
+      setSourceValue(out.value);
       void renderFromText(editor.value());
     },
   });
@@ -4094,11 +4138,11 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
           const patched = relabelNode(editor.value(), src, nodeId, next, isDotImport);
           if (!isOk(patched)) {
             console.error("relabel failed:", patched.error.message);
-            setStatusAndAnnounce("error", `can't rename — ${patched.error.message}`);
+            flashStatus(`can't rename — ${patched.error.message}`, "error");
             return;
           }
           recordHistory();
-          editor.setValue(patched.value);
+          setSourceValue(patched.value);
           void renderFromText(patched.value);
         },
       };
@@ -4132,12 +4176,12 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
           commit: (next) => {
             if (next === current) return;
             if (!/^[A-Za-z0-9_]+$/.test(next)) {
-              setStatusAndAnnounce("error", "a block id must be letters, digits, or underscores");
+              flashStatus("a block id must be letters, digits, or underscores", "error");
               return;
             }
             const renamed = renameBlockId(editor.value(), current, next);
             recordHistory();
-            editor.setValue(renamed);
+            setSourceValue(renamed);
             void renderFromText(renamed);
           },
         };
@@ -4250,7 +4294,7 @@ canvas.addEventListener("dblclick", (ev) => {
   // If something was hit but it has no editable label (e.g. a gitGraph merge edge, a mindmap spoke, an
   // auto-id commit), say so instead of letting the double-click do nothing.
   if (!beginRelabel(shown, hit, groupHit) && (hit !== null || groupHit !== null)) {
-    setStatusAndAnnounce("warning", "this item has no editable label");
+    flashStatus("this item has no editable label", "warning");
   }
 });
 
@@ -4380,7 +4424,8 @@ addBtn.addEventListener("click", () => {
   const { id, label } = newNodeIdLabel(ast.kind, used);
   const next = appendNode(ast.kind, editor.value(), id, label, "rect");
   if (next === editor.value()) return;
-  editor.setValue(next);
+  recordHistory();
+  setSourceValue(next);
   void renderFromText(next);
   flashStatus(`added ${label}`);
 });
@@ -4407,7 +4452,7 @@ const duplicateSelection = async (): Promise<void> => {
   }
   if (pairs.length === 0) return;
   recordHistory();
-  editor.setValue(text);
+  setSourceValue(text);
   await renderFromText(text);
   if (scene === null) return;
   const posById = new Map(shownScene(scene).nodes.map((nd) => [nd.id, nd.bounds.origin]));
@@ -4454,7 +4499,7 @@ const copySelection = (): void => {
   }));
   clipboardOrigin = point(minX, minY);
   pasteSeq = 0;
-  setStatusAndAnnounce("ok", `copied ${picked.length} node${picked.length === 1 ? "" : "s"}`);
+  flashStatus(`copied ${picked.length} node${picked.length === 1 ? "" : "s"}`);
 };
 
 const pasteClipboard = async (): Promise<void> => {
@@ -4476,7 +4521,7 @@ const pasteClipboard = async (): Promise<void> => {
   if (created.length === 0) return;
   pasteSeq += 1;
   recordHistory();
-  editor.setValue(text);
+  setSourceValue(text);
   await renderFromText(text);
   const off = 28 * pasteSeq;
   for (const c of created) {
@@ -4514,7 +4559,7 @@ connectBtn.addEventListener("click", () => {
     return;
   }
   recordHistory();
-  editor.setValue(text);
+  setSourceValue(text);
   void renderFromText(text);
   flashStatus(connectedMessage(ast.kind, selectionOrder.length - 1));
 });
@@ -4925,13 +4970,13 @@ const deleteSelection = async (): Promise<void> => {
     // The source didn't change: this item has no removable declaration line — a gitGraph branch lane or
     // a timeline period/event (synthetic ids absent from the text), or a structural edge. Say so loudly
     // instead of claiming a delete that didn't happen.
-    setStatusAndAnnounce("warning", "can't delete this from the canvas — remove it in the source");
+    flashStatus("can't delete this from the canvas — remove it in the source", "warning");
     return;
   }
   recordHistory();
   selection = emptySelection;
   selectionOrder = [];
-  editor.setValue(text);
+  setSourceValue(text);
   await renderFromText(text);
   // Restore any survivor the delete collaterally dropped (only the inline-edge families can hit this;
   // for the rest every survivor is still present, so this is a no-op). One extra render, only when needed.
@@ -4948,15 +4993,12 @@ const deleteSelection = async (): Promise<void> => {
       }
     }
     if (changed) {
-      editor.setValue(restored);
+      setSourceValue(restored);
       await renderFromText(restored);
     }
   }
   // Announce the outcome so a keyboard/screen-reader user isn't left guessing after the canvas changes.
-  setStatusAndAnnounce(
-    "ok",
-    `deleted ${removedCount} item${removedCount === 1 ? "" : "s"} — undo in the editor`,
-  );
+  flashStatus(`deleted ${removedCount} item${removedCount === 1 ? "" : "s"} (undo restores)`);
 };
 
 // Delete key removes the selection. Guarded on the editor / a text field not being focused so it never
@@ -5111,7 +5153,7 @@ const cycleShape = async (): Promise<void> => {
   }
   const keep = selectionOrder.map((id) => brand<string, "SceneNodeId">(id));
   recordHistory();
-  editor.setValue(text);
+  setSourceValue(text);
   await renderFromText(text);
   selection = { nodes: new Set(keep), edges: new Set() };
   selectionOrder = keep;
@@ -5166,7 +5208,7 @@ const cycleEdgeRoute = (): void => {
   doc.persist();
   paintScene();
   updateGroupButtons(); // refresh the route label for the new state
-  setStatusAndAnnounce("ok", `edge route: ${next}`);
+  flashStatus(`edge route: ${next}`);
 };
 
 const cycleEdgeOption = (): void => {
@@ -5185,11 +5227,28 @@ const cycleEdgeOption = (): void => {
   doc.persist();
   paintScene();
   updateGroupButtons();
-  setStatusAndAnnounce("ok", "rerouted connector");
+  flashStatus("rerouted connector");
 };
 
 // Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
 // curves — flip the map, persist, repaint. All selected nodes take the first node's next accent.
+// The one place a DOM string becomes a NodeAccent: validated against the closed union, never cast.
+const NODE_ACCENTS: readonly NodeAccent[] = [
+  "none",
+  "muted",
+  "active",
+  "danger",
+  "compute",
+  "data",
+  "network",
+  "security",
+  "ops",
+];
+const nodeAccentOf = (raw: string | null): NodeAccent | null => {
+  const found = NODE_ACCENTS.find((a) => a === raw);
+  return found ?? null;
+};
+
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
   recordHistory();
@@ -5197,7 +5256,7 @@ const setNodeColour = (adv: NodeAccent): void => {
   doc.persist();
   paintScene();
   updateGroupButtons();
-  setStatusAndAnnounce("ok", adv === "none" ? "colour cleared" : `colour: ${adv}`);
+  flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
 const cycleEdgeStyle = async (): Promise<void> => {
@@ -5217,6 +5276,13 @@ const cycleEdgeStyle = async (): Promise<void> => {
     const msgId = brand<string, "MessageId">(edgeId);
     arrowSpan = seqSource.arrows.get(msgId);
     currentKind = ast.messages.find((m) => m.id === msgId)?.kind;
+  } else {
+    // Parity with the node path's "shape change is only available for flowchart" — never a silent no-op.
+    flashStatus(
+      `edge style change is only available for flowchart, block, and sequence`,
+      "warning",
+    );
+    return;
   }
   if (arrowSpan === undefined || currentKind === undefined) return;
 
@@ -5226,7 +5292,7 @@ const cycleEdgeStyle = async (): Promise<void> => {
   if (ast.kind === "sequence") {
     const current = messageKindForToken(token);
     if (current === null) {
-      flashStatus(`edge style failed: unknown message arrow ${token}`);
+      flashStatus(`edge style failed: unknown message arrow ${token}`, "error");
       return;
     }
     const idx = SEQ_STYLE_CYCLE.indexOf(current);
@@ -5236,7 +5302,7 @@ const cycleEdgeStyle = async (): Promise<void> => {
   } else {
     const current = edgeKindForToken(token);
     if (current === null) {
-      flashStatus(`edge style failed: unknown edge arrow ${token}`);
+      flashStatus(`edge style failed: unknown edge arrow ${token}`, "error");
       return;
     }
     const idx = EDGE_STYLE_CYCLE.indexOf(current);
@@ -5246,7 +5312,7 @@ const cycleEdgeStyle = async (): Promise<void> => {
   }
 
   recordHistory();
-  editor.setValue(text);
+  setSourceValue(text);
   await renderFromText(text);
   // Keep the edge selected so a repeated press keeps cycling it.
   selection = { nodes: new Set(), edges: new Set([brand<string, "SceneEdgeId">(edgeId)]) };
@@ -5307,7 +5373,7 @@ ctxRelabelBtn.addEventListener("click", () => {
         ? { kind: "node", id: nodeId }
         : null;
   if (hit !== null && !beginRelabel(shownScene(scene), hit, null)) {
-    setStatusAndAnnounce("warning", "this item has no editable label");
+    flashStatus("this item has no editable label", "warning");
   }
 });
 ctxShapeBtn.addEventListener(
@@ -5320,7 +5386,13 @@ ctxShapeBtn.addEventListener(
 ctxColourSwatches.addEventListener("click", (ev) => {
   const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(".swatch");
   if (btn === null) return;
-  const adv = (btn.getAttribute("data-accent") ?? "none") as NodeAccent;
+  const adv = nodeAccentOf(btn.getAttribute("data-accent"));
+  if (adv === null) {
+    // Markup drift (a swatch whose data-accent isn't a NodeAccent) must fail loudly, not be cast into
+    // the closed union and silently stored.
+    console.error("swatch has an unknown data-accent value:", btn.getAttribute("data-accent"));
+    return;
+  }
   setNodeColour(adv);
 });
 ctxColourSwatches.addEventListener("keydown", (ev) => {
@@ -5393,8 +5465,11 @@ window.addEventListener("keydown", (ev) => {
   // The keyboard diagram navigator owns arrow keys (and its own two-step `c` connect) when focused, so
   // don't also run the global nudge / tool switch on every navigation step.
   if (active === diagramNav) return;
-  // Hold Space to temporarily pan (whiteboard-style), released on keyup/blur.
+  // Hold Space to temporarily pan (whiteboard-style), released on keyup/blur. Never steal Space from a
+  // focused button — Space IS activation there (a keyboard user tabbing to Dark/Sketch/zoom/Close must
+  // be able to press it).
   if (ev.key === " ") {
+    if (active instanceof HTMLButtonElement) return;
     ev.preventDefault();
     if (!spaceHeld) {
       spaceHeld = true;
@@ -5415,7 +5490,11 @@ window.addEventListener("keydown", (ev) => {
     : undefined;
   if (arrowDelta !== undefined) {
     ev.preventDefault();
-    keyboardResizeSelection(arrowDelta[0], arrowDelta[1]);
+    // The chord was consumed either way — say why nothing happened rather than silently no-op'ing
+    // (resize needs exactly one resizable node, and gantt bars resize by their own drag/keys).
+    if (!keyboardResizeSelection(arrowDelta[0], arrowDelta[1]) && selectionOrder.length > 0) {
+      flashStatus("resize needs a single resizable node selected", "warning");
+    }
     return;
   }
   switch (ev.key) {
@@ -5522,7 +5601,7 @@ regenBtn.addEventListener("click", () => {
   doc.replaceOverrides(pinnedOverrides(doc.overrides()));
   doc.persist();
   void renderFromText(editor.value());
-  setStatusAndAnnounce("ok", "regenerated layout — pinned nodes kept");
+  flashStatus("regenerated layout — pinned nodes kept");
 });
 
 // Reset positions: clear EVERY manual position/resize (pinned included) so the diagram returns to its
@@ -5539,7 +5618,7 @@ const resetPositions = async (): Promise<void> => {
   // Await the re-render before announcing — `renderFromText` writes the diagram summary to the status
   // bar, so setting our message after it (not before) is what the user actually sees.
   await renderFromText(editor.value());
-  setStatusAndAnnounce("ok", "reset to default positions");
+  flashStatus("reset to default positions");
 };
 resetPosBtn.addEventListener("click", () => void resetPositions());
 // API hook: clear the overlay's manual positions from script/console.
@@ -5580,6 +5659,7 @@ syncThemeLabel();
 exampleEl.addEventListener("change", () => {
   if (viewerMode) {
     exampleEl.value = "";
+    flashStatus("view only — loading an example needs editor access", "warning");
     return;
   }
   const name = exampleEl.value;
@@ -5589,29 +5669,30 @@ exampleEl.addEventListener("change", () => {
   // Loading an example replaces the whole source and clears the manual layout/groups (a different
   // diagram — the old positions no longer apply). Guard the destructive swap only when there's real
   // authored work to lose: a pristine sample or another unmodified example is fair game to switch away
-  // from without a prompt. The source text itself stays recoverable via the editor's own undo.
+  // from without a prompt. In a shared room the swap replaces the diagram for EVERY peer, so always ask.
   const current = editor.value();
   const isPristine =
     current.trim() === "" || current === SAMPLE || [...EXAMPLES.values()].includes(current);
-  if (
-    !isPristine &&
-    current !== text &&
-    !window.confirm(
-      "Replace your current diagram? Manual layout and groups will be cleared (your text can be restored with Undo in the editor).",
-    )
-  ) {
+  const prompt = useCollab
+    ? "Load this example for everyone in the room? The shared diagram and its manual layout will be replaced (undo restores them)."
+    : "Replace your current diagram? Undo restores your text and layout.";
+  if ((useCollab || (!isPristine && current !== text)) && !window.confirm(prompt)) {
     return;
   }
+  // One undoable step: the swap (text + overlay clear) lands on the history stack, so ⌘Z genuinely
+  // restores the previous diagram — never clear the history here.
+  recordHistory();
   doc.clearOverrides();
-  doc.clearHistory();
-  clearUnifiedHistory(); // a different diagram — the old positions/history no longer apply
   doc.persist();
-  editor.setValue(text);
+  setSourceValue(text);
   // Fit the freshly loaded example in the viewport (a wide one like the git-flow shouldn't run off-edge).
   void renderFromText(text).then(() => fitView());
-  // Give the example a stable, shareable URL (`?example=<name>`), replacing any prior share hash.
-  history.replaceState(null, "", `${location.pathname}?example=${encodeURIComponent(name)}`);
-  announce("loaded example — undo in the editor to restore your text");
+  // Give the example a stable, shareable URL (`?example=<name>`) — merged into the existing query so a
+  // collab session keeps its `?collab`/`room`/`ws` params across a reload.
+  const exampleParams = new URLSearchParams(location.search);
+  exampleParams.set("example", name);
+  history.replaceState(null, "", `${location.pathname}?${exampleParams.toString()}`);
+  announce("loaded example — undo restores your previous diagram");
 });
 
 // Sketch toggle: hand-drawn (wobbly outlines + handwriting font) vs. crisp. Re-lays out, because the
@@ -5633,7 +5714,7 @@ styleSelect.addEventListener("change", () => {
   syncStyleFlags();
 
   void renderFromText(editor.value()).then(() => {
-    setStatusAndAnnounce("ok", `layout style changed to ${newStyle}`);
+    flashStatus(`layout style changed to ${newStyle}`);
   });
 });
 
@@ -5648,19 +5729,19 @@ const loadPack = async (file: File): Promise<void> => {
   } catch (e) {
     const detail = messageOf(e);
     console.error("pack parse failed:", detail);
-    setStatusAndAnnounce("error", `icon pack is not valid JSON — ${detail}`);
+    flashStatus(`icon pack is not valid JSON — ${detail}`, "error");
     return;
   }
   const decoded = decodePack(json);
   if (!isOk(decoded)) {
     const detail = decoded.error.issues.join("; ");
     console.error("pack decode failed:", detail);
-    setStatusAndAnnounce("error", `icon pack rejected — ${detail}`);
+    flashStatus(`icon pack rejected — ${detail}`, "error");
     return;
   }
   registry = registerPack(registry, decoded.value);
   iconImages.clear(); // drop stale glyphs so overridden packs re-rasterise
-  setStatusAndAnnounce("ok", `loaded icon pack "${decoded.value.meta.id}"`);
+  flashStatus(`loaded icon pack "${decoded.value.meta.id}"`);
   void renderFromText(editor.value());
 };
 
@@ -5913,23 +5994,23 @@ shareBtn.addEventListener("click", () => {
   const url = shareUrl();
   if (url.length > SHARE_URL_MAX) {
     history.replaceState(null, "", url);
-    setStatusAndAnnounce(
-      "warning",
+    flashStatus(
       `diagram is large — share link is ${url.length} chars and may be truncated when pasted (it's in the address bar)`,
+      "warning",
     );
     return;
   }
   const clip = navigator.clipboard;
   if (clip === undefined) {
     history.replaceState(null, "", url);
-    setStatusAndAnnounce("ok", "shareable link is in the address bar");
+    flashStatus("shareable link is in the address bar");
     return;
   }
   void clip.writeText(url).then(
-    () => setStatusAndAnnounce("ok", "shareable link copied to clipboard"),
+    () => flashStatus("shareable link copied to clipboard"),
     () => {
       history.replaceState(null, "", url);
-      setStatusAndAnnounce("ok", "shareable link is in the address bar");
+      flashStatus("shareable link is in the address bar");
     },
   );
 });
@@ -6021,6 +6102,7 @@ const onTextChange = (text: string): void => {
   recordTypingStart();
   // Persist immediately so a reload (or a crash) right after the last keystroke never loses it. Then
   // either render now (leading edge of a burst) or queue a trailing render for when the cooldown ends.
+  sourcePersistenceArmed = true; // a hand edit takes ownership of shared/example-link source
   saveSource(text);
   if (renderCooldown === null) {
     void renderFromText(text); // leading edge of a burst: render now
@@ -6059,7 +6141,11 @@ const navController = createNavigator({
   canConnect: (kind) => familyAffordances(kind).connect,
   describeConnect,
   isViewerMode: () => viewerMode,
-  editor,
+  getSource: () => editor.value(),
+  commitSourceEdit: (text) => {
+    recordHistory();
+    setSourceValue(text);
+  },
   scrollToLogical,
   announce,
   paintScene,
@@ -6093,7 +6179,15 @@ setSourceCollapsed(loadSourceCollapsed(), false);
 // authoritative shared text (identical when this client seeds; the room's text when it joins one).
 // Fit the whole diagram in the viewport on first paint, so a wide one (e.g. a full git-flow) is visible
 // at once instead of running off the edge. `fitView` caps at 100%, so a small diagram is left untouched.
-void renderFromText(initialSource).then(() => fitView());
+// Kept as a handle so collab-boot messages can sequence AFTER the first render — the render completion
+// sets the summary status, which would silently clobber anything shown before it.
+const initialRenderDone = renderFromText(initialSource).then(() => fitView());
+// A typo'd ?example= link silently showed the visitor's own persisted diagram — say what happened.
+if (exampleParam !== null && exampleFromUrl === null) {
+  void initialRenderDone.then(() => {
+    flashStatus(`unknown example "${exampleParam}" — showing your diagram instead`, "warning");
+  });
+}
 
 // Collab runtime (experimental): every `?collab` run uses the same Yjs-backed document. Production/dev
 // builds also connect that document to the relay so peers' source-text and overlay edits arrive (the
@@ -6121,6 +6215,14 @@ if (collabSession !== null) {
   const wsAllowed = wsOverride !== null && sameOriginWs(wsOverride);
   if (wsOverride !== null && !wsAllowed) {
     console.error(`collab: rejected ?ws= relay override (not same-origin): ${wsOverride}`);
+    // The user asked for a specific relay and is NOT on it — say so in the UI, not just the console
+    // (silently proceeding on the default relay misrepresents where their edits go).
+    void initialRenderDone.then(() => {
+      flashStatus(
+        "rejected the ?ws= relay override (not same-origin) — using the default relay",
+        "warning",
+      );
+    });
   }
   const wsBase = wsAllowed ? wsOverride : `${scheme}://${location.hostname || "localhost"}:1234`;
   session.onOverlayChange(() => {
@@ -6131,7 +6233,7 @@ if (collabSession !== null) {
   // rather than throwing inside the Yjs observer.
   session.onStatusChange((status) => {
     if (status === "overlay-rejected") {
-      setStatus("warning", "⚠ a remote change was rejected (incompatible overlay) — ignoring it");
+      flashStatus("⚠ a remote change was rejected (incompatible overlay) — ignoring it", "warning");
     }
   });
   // Label this client for presence — remote cursors show this name/colour.
@@ -6169,9 +6271,9 @@ if (collabSession !== null) {
     // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
     const onReconnectStatus = (status: ReconnectStatus): void => {
       if (status === "reconnecting") {
-        setStatus("warning", "⚠ reconnecting to the collaboration relay…");
+        flashStatus("⚠ reconnecting to the collaboration relay…", "warning");
       } else if (status === "reconnected") {
-        setStatus("ok", "reconnected to the collaboration relay");
+        flashStatus("reconnected to the collaboration relay");
       }
     };
     const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(collabRoom)}`, {
@@ -6184,13 +6286,15 @@ if (collabSession !== null) {
       // the user must know they're no longer shared.
       onClose: () => {
         console.error("collab: disconnected from the relay");
-        setStatus("warning", "disconnected from the collaboration relay — editing locally");
+        flashStatus("disconnected from the collaboration relay — editing locally", "warning");
       },
     });
   } else if (useRelayTransport) {
-    window.setTimeout(() => {
-      setStatus("warning", "sign in to connect to the collaboration relay");
-    }, 0);
+    // After the initial render, not a bare setTimeout(0) — the render summary lands asynchronously and
+    // would overwrite this, leaving an auth-required user with no clue why nothing syncs.
+    void initialRenderDone.then(() => {
+      flashStatus("sign in to connect to the collaboration relay", "warning");
+    });
   } else {
     const store = localCollabStore;
     if (store === null) throw new Error("backend-free collab store was not initialised");
@@ -6209,7 +6313,7 @@ if (collabSession !== null) {
       onControl: applyRole,
       onClose: () => {
         console.error("collab: disconnected from the in-process relay");
-        setStatus("warning", "disconnected from the collaboration relay — editing locally");
+        flashStatus("disconnected from the collaboration relay — editing locally", "warning");
       },
     });
     // Best-effort: browsers don't reliably wait for async work in unload handlers, but this is the same
@@ -6218,9 +6322,9 @@ if (collabSession !== null) {
     window.addEventListener("beforeunload", () => {
       void flushAll();
     });
-    window.setTimeout(() => {
-      setStatus("ok", "backend-free demo: connected to the in-process collaboration relay");
-    }, 0);
+    void initialRenderDone.then(() => {
+      flashStatus("backend-free demo: connected to the in-process collaboration relay");
+    });
   }
   // Seed the room's source once the initial sync has settled: the first client into an empty room
   // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the

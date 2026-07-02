@@ -1,7 +1,6 @@
 import type { HitTarget, Selection } from "@m/builder";
 import type { DiagramAst, GroupId, Scene, SceneEdgeId, SceneNodeId } from "@m/contracts";
 import { edgeLabelAnchor } from "@m/renderer";
-import type { Editor } from "./editor.js";
 
 // The keyboard diagram navigator: a focusable listbox mirrors the scene's nodes and edges so the
 // diagram is operable without a mouse. Arrow keys move the active option, which drives the canvas
@@ -23,7 +22,10 @@ export interface NavigatorDeps {
   // A family-accurate confirmation for a completed connect ("merged X into Y", "connected X to Y", …).
   readonly describeConnect: (kind: DiagramAst["kind"], from: string, to: string) => string;
   readonly isViewerMode: () => boolean;
-  readonly editor: Editor;
+  readonly getSource: () => string;
+  // Commit a keyboard-driven source mutation: records an undo point and routes through the app's
+  // programmatic-edit path (never a bare editor.setValue, which would skip both).
+  readonly commitSourceEdit: (text: string) => void;
   readonly scrollToLogical: (logicalX: number, logicalY: number) => void;
   readonly announce: (message: string) => void;
   readonly paintScene: () => void;
@@ -362,12 +364,12 @@ export const createNavigator = (deps: NavigatorDeps): NavigatorController => {
       } else {
         const from = navLabel(navConnectSource);
         const to = navLabel(item.id);
-        const text = deps.appendEdge(ast.kind, deps.editor.value(), navConnectSource, item.id);
+        const text = deps.appendEdge(ast.kind, deps.getSource(), navConnectSource, item.id);
         navConnectSource = null;
-        if (text === deps.editor.value()) {
+        if (text === deps.getSource()) {
           announce("connect made no change");
         } else {
-          deps.editor.setValue(text);
+          deps.commitSourceEdit(text);
           void deps.renderFromText(text);
           announce(deps.describeConnect(ast.kind, from, to));
         }
