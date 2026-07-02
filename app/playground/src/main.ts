@@ -146,6 +146,7 @@ import {
   type CollabSocket,
   type ReconnectStatus,
 } from "@m/collab";
+import { appLog } from "./log.js";
 import { createEditor, type Editor } from "./editor.js";
 import { EXAMPLES, SAMPLE } from "./examples.js";
 import { createLocalDocument } from "./document-model.js";
@@ -607,7 +608,7 @@ if (authConfig !== null && useRelayTransport) {
         },
         storage: sessionStorage,
       }).catch((error: unknown) => {
-        console.error(`collab auth: login start failed: ${messageOf(error)}`);
+        appLog("error", "auth-login-failed", messageOf(error));
         flashStatus("collaboration sign-in failed", "error");
       });
       return;
@@ -649,7 +650,7 @@ if (useCollab) {
         // `serialized` is the document model's own JSON — a parse failure here is a programming error.
         // Still save (losing the identity stamp beats losing the overlay), but never silently: an
         // identity-less overlay skips the staleness check on the next load.
-        console.error("overlay identity attach failed — saving without identity:", messageOf(e));
+        appLog("error", "overlay-identity-attach-failed", messageOf(e));
         saveOverlay(serialized);
       }
     },
@@ -891,7 +892,7 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
     if (iconImages.has(key)) continue;
     const resolved = findIcon(registry, node.icon.pack, node.icon.name);
     if (!isOk(resolved)) {
-      console.error("icon resolve failed:", resolved.error.message);
+      appLog("error", "icon-resolve-failed", resolved.error.message);
       failed.push(key);
       continue;
     }
@@ -900,7 +901,7 @@ const ensureIcons = async (s: Scene): Promise<readonly string[]> => {
       // dark mode; vendor packs keep their source SVG colors.
       iconImages.set(key, await rasterizeIcon(resolved.value, activeTheme().text));
     } catch (e) {
-      console.error("icon decode failed:", key, messageOf(e));
+      appLog("error", "icon-decode-failed", `${key}: ${messageOf(e)}`);
       failed.push(key);
     }
   }
@@ -2579,7 +2580,7 @@ const loadCollapsed = (): string[] => {
     const v: unknown = raw === null ? [] : JSON.parse(raw);
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
   } catch (e) {
-    console.error("collapse state load failed", e);
+    appLog("error", "collapse-state-load-failed", messageOf(e));
     return [];
   }
 };
@@ -2588,7 +2589,7 @@ const persistCollapsed = (): void => {
   try {
     localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...cloudCollapsed]));
   } catch (e) {
-    console.error("collapse state persist failed", e);
+    appLog("error", "collapse-state-persist-failed", messageOf(e));
   }
 };
 
@@ -2696,13 +2697,13 @@ const getActiveStyle = (family: StyleFamily): LayoutStyle => {
     const valid = validated(stored);
     if (stored !== null && valid === null) {
       // An unrecognized persisted value must not silently behave as "all style flags off".
-      console.error(`ignoring unknown stored layout style "${stored}" for ${family}`);
+      appLog("error", "layout-style-unknown", `${family}: "${stored}"`);
     }
     return valid ?? defaultStyleForFamily(family);
   } catch (e) {
     // Storage can be unavailable (private mode, blocked); the default is the right outcome, but the
     // failure itself is never silent.
-    console.error("layout-style read failed:", messageOf(e));
+    appLog("error", "layout-style-read-failed", messageOf(e));
     return defaultStyleForFamily(family);
   }
 };
@@ -2712,7 +2713,7 @@ const setActiveStyle = (family: StyleFamily, style: LayoutStyle): void => {
   try {
     localStorage.setItem(`mermollusc-style-${family}`, style);
   } catch (e) {
-    console.error("layout-style persist failed:", messageOf(e));
+    appLog("error", "layout-style-persist-failed", messageOf(e));
     flashStatus("couldn't save the layout-style preference (storage unavailable)", "warning");
   }
 };
@@ -2799,7 +2800,7 @@ const renderFromText = async (text: string): Promise<void> => {
     // overwriting the saved preference) so the lint marker + click-to-locate are reachable.
     if (workbench.hasAttribute("data-source-collapsed")) setSourceCollapsed(false, false);
     const detail = parsed.error.errors.join("; ");
-    console.error("parse failed:", detail);
+    appLog("error", "parse-failed", detail);
     const pos = parsed.error.positions[0];
     if (pos === undefined) {
       setStatusAndAnnounce("error", `parse error — ${detail}`);
@@ -2826,7 +2827,7 @@ const renderFromText = async (text: string): Promise<void> => {
   const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded(), activeStyle);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
-    console.error("layout failed:", laid.error.message);
+    appLog("error", "layout-failed", laid.error.message);
     setStatusAndAnnounce("error", `layout error — ${laid.error.message}`);
     if (ast !== null) applyKind(ast.kind);
     return;
@@ -2994,7 +2995,7 @@ const relax = async (): Promise<void> => {
   const activeStyle = ast !== null ? getActiveStyle(familyOfKind(ast.kind)) : "classic";
   const laid = await layout(ast, seed, measureLabel, activeStyle);
   if (!isOk(laid)) {
-    console.error("relax failed:", laid.error.message);
+    appLog("error", "relax-failed", laid.error.message);
     flashStatus(`relax failed — ${laid.error.message}`, "error");
     return;
   }
@@ -4013,7 +4014,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (next === editor.value().slice(span.start, span.end)) return;
       const checked = validateLabel(next, contextFor(editor.value(), span));
       if (!isOk(checked)) {
-        console.error("relabel rejected:", checked.error.message);
+        appLog("error", "relabel-rejected", checked.error.message);
         flashStatus(`can't rename — ${checked.error.message}`, "error");
         return;
       }
@@ -4033,7 +4034,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (next.length === 0) return;
       const checked = validateLabel(next, "quoted");
       if (!isOk(checked)) {
-        console.error("relabel rejected:", checked.error.message);
+        appLog("error", "relabel-rejected", checked.error.message);
         flashStatus(`can't rename — ${checked.error.message}`, "error");
         return;
       }
@@ -4053,7 +4054,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
       if (next.length === 0) return;
       const out = addEdgeLabel(editor.value(), arrowSpan, next);
       if (!isOk(out)) {
-        console.error("edge label rejected:", out.error.message);
+        appLog("error", "edge-label-rejected", out.error.message);
         flashStatus(`can't label edge — ${out.error.message}`, "error");
         return;
       }
@@ -4099,7 +4100,7 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
         commit: (next) => {
           const patched = relabelNode(editor.value(), src, nodeId, next, isDotImport);
           if (!isOk(patched)) {
-            console.error("relabel failed:", patched.error.message);
+            appLog("error", "relabel-rejected", patched.error.message);
             flashStatus(`can't rename — ${patched.error.message}`, "error");
             return;
           }
@@ -5352,7 +5353,7 @@ ctxColourSwatches.addEventListener("click", (ev) => {
   if (adv === null) {
     // Markup drift (a swatch whose data-accent isn't a NodeAccent) must fail loudly, not be cast into
     // the closed union and silently stored.
-    console.error("swatch has an unknown data-accent value:", btn.getAttribute("data-accent"));
+    appLog("error", "swatch-accent-unknown", btn.getAttribute("data-accent"));
     return;
   }
   setNodeColour(adv);
@@ -5675,7 +5676,7 @@ styleSelect.addEventListener("change", () => {
   // string — validate it back into the union rather than cast.
   const newStyle = FAMILY_STYLES[family].find((s) => s.value === styleSelect.value)?.value;
   if (newStyle === undefined) {
-    console.error(`style select produced an unknown value: ${styleSelect.value}`);
+    appLog("error", "style-select-unknown", styleSelect.value);
     return;
   }
   setActiveStyle(family, newStyle);
@@ -5696,14 +5697,14 @@ const loadPack = async (file: File): Promise<void> => {
     json = JSON.parse(text);
   } catch (e) {
     const detail = messageOf(e);
-    console.error("pack parse failed:", detail);
+    appLog("error", "icon-pack-parse-failed", detail);
     flashStatus(`icon pack is not valid JSON — ${detail}`, "error");
     return;
   }
   const decoded = decodePack(json);
   if (!isOk(decoded)) {
     const detail = decoded.error.issues.join("; ");
-    console.error("pack decode failed:", detail);
+    appLog("error", "icon-pack-decode-failed", detail);
     flashStatus(`icon pack rejected — ${detail}`, "error");
     return;
   }
@@ -6049,9 +6050,9 @@ const applyOverlayJson = (raw: string, whence: string): void => {
       );
       loadedOverlayIdentity = decoded.value.identity ?? null;
       activeOverlayIdentity = decoded.value.identity ?? null;
-    } else console.error("ignoring invalid overlay from", whence, decoded.error.issues.join("; "));
+    } else appLog("error", "overlay-rejected", `${whence}: ${decoded.error.issues.join("; ")}`);
   } catch (e) {
-    console.error("ignoring corrupt overlay from", whence, messageOf(e));
+    appLog("error", "overlay-rejected", `${whence}: ${messageOf(e)}`);
   }
 };
 if (!useRelayTransport && !useStoredLocalCollabRoom) {
@@ -6187,7 +6188,7 @@ if (collabSession !== null) {
   };
   const wsAllowed = wsOverride !== null && sameOriginWs(wsOverride);
   if (wsOverride !== null && !wsAllowed) {
-    console.error(`collab: rejected ?ws= relay override (not same-origin): ${wsOverride}`);
+    appLog("error", "ws-override-rejected", wsOverride);
     // The user asked for a specific relay and is NOT on it — say so in the UI, not just the console
     // (silently proceeding on the default relay misrepresents where their edits go).
     void initialRenderDone.then(() => {
@@ -6244,7 +6245,7 @@ if (collabSession !== null) {
       // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
       // the user must know they're no longer shared.
       onClose: () => {
-        console.error("collab: disconnected from the relay");
+        appLog("error", "collab-disconnected");
         flashStatus("disconnected from the collaboration relay — editing locally", "warning");
       },
     });

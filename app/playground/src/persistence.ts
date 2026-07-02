@@ -1,4 +1,5 @@
 import { messageOf } from "@m/std";
+import { appLog } from "./log.js";
 
 // Everything the playground persists is a localStorage key namespaced "mermollusc-", so Reset can wipe
 // the group in one sweep. The source text, the sidecar overlay (manual positions + groups), and the
@@ -46,7 +47,7 @@ export const hashValue = (key: string): string | null => {
     try {
       return decodeURIComponent(part.slice(eq + 1));
     } catch (e) {
-      console.error("ignoring malformed URL hash for key", key, messageOf(e));
+      appLog("error", "url-hash-malformed", `${key}: ${messageOf(e)}`);
       return null;
     }
   }

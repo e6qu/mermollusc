@@ -1,5 +1,14 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Structured logging: the app honours the §8 Logger contract
+
+- All 32 free-form `console.error` calls across `main.ts`/`image-export.ts`/`persistence.ts` now route
+  through `src/log.ts`: `appLog(level, event, data)` emits structured JSON lines via `@m/std`'s
+  `consoleLogger`, with `AppEvent` a 25-member closed union (parse-failed, layout-failed,
+  relabel-rejected, icon-pack-decode-failed, ws-override-rejected, …) and `data` carrying the
+  per-occurrence detail. Grep `"module":"app"` in the console to filter; grep an event name to find its
+  one failure class. Zero free-form console logging remains in the app's source.
+
 ## 2026-07-02 — Classic mode draws Mermaid-style spline edges (layered family)
 
 - The last appearance-level Mermaid-parity gap: classic mode now renders the ELK layered family's edges
