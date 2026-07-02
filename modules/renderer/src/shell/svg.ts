@@ -1,3 +1,4 @@
+import { assertNever } from "@m/std";
 import { labelLines, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
 import { accentFill, bandFill, defaultTheme, type Theme } from "./paint.js";
@@ -63,7 +64,7 @@ const labelLineHeight = (font: string): number => {
 const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>): string => {
   switch (cmd.kind) {
     case "box":
-      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${accentFill(cmd.accent, theme)}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
+      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${accentFill(cmd.accent, theme)}" stroke="${theme.nodeStroke}" stroke-width="1.5"/>`;
     case "stateStart":
       return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(Math.max(3, cmd.radius - 3))}" fill="${theme.stroke}"/>`;
     case "junction":
@@ -78,7 +79,7 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const hw = cmd.width / 2;
       const hh = cmd.height / 2;
       const pts = `${num(cmd.cx)},${num(cmd.cy - hh)} ${num(cmd.cx + hw)},${num(cmd.cy)} ${num(cmd.cx)},${num(cmd.cy + hh)} ${num(cmd.cx - hw)},${num(cmd.cy)}`;
-      return `<polygon points="${pts}" fill="${theme.nodeFill}" stroke="${theme.stroke}" stroke-width="1.5"/>`;
+      return `<polygon points="${pts}" fill="${theme.nodeFill}" stroke="${theme.nodeStroke}" stroke-width="1.5"/>`;
     }
     case "actor": {
       const figureH = cmd.height - 16;
@@ -113,8 +114,9 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
               return `Q ${num(p.cx)} ${num(p.cy)}, ${num(p.x)} ${num(p.y)}`;
             case "cubicTo":
               return `C ${num(p.c1x)} ${num(p.c1y)}, ${num(p.c2x)} ${num(p.c2y)}, ${num(p.x)} ${num(p.y)}`;
+            default:
+              return assertNever(p);
           }
-          return "";
         })
         .join(" ");
       const path = `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;

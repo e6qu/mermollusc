@@ -2,6 +2,11 @@
 
 **State:** flowchart layout + relax (semi-interactive) implemented; `make check` green.
 
+**Defaults:** `layout`/`layoutDiagram` default to the `"classic"` style — the closest match to real
+Mermaid output — with the house styles (tidy candidate search, organic force, bus/trunk routing) opt-in
+via the closed `LayoutStyle` union. Two honest parity gaps remain (see `DO_NEXT.md`): the engine is ELK
+layered (Mermaid's default is dagre), and edges are orthogonal polylines (Mermaid draws splines).
+
 **Current architecture note:** network root zones now lay out left-to-right with vendored default
 icons, cloud uses semantic architecture accents with vendored default icons and a wider tier row budget,
 state diagrams honor source direction, timeline event connectors are real edges, and graph endpoints use

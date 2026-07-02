@@ -65,3 +65,18 @@ test("opening a share link never overwrites the visitor's persisted diagram", as
   await page.goto("/");
   await expectSourceMatches(page, /Precious Work/);
 });
+
+test("a share link's &style= travels with the diagram but never overwrites the visitor's preference", async ({
+  page,
+}) => {
+  const shared = encodeURIComponent("flowchart TD\n  a[One] --> b[Two]\n");
+  await page.goto(`/#src=${shared}&style=tidy`);
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  // The sender's style applies to what they shared…
+  await expect(page.locator("#layout-style")).toHaveValue("tidy");
+  // …but a fresh visit without the link is back on the visitor's own default.
+  await page.goto("/");
+  await page.reload();
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await expect(page.locator("#layout-style")).toHaveValue("classic");
+});

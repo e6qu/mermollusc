@@ -148,22 +148,22 @@ exports[`pipeline goldens > lays out gantt-excludes to a stable display list 1`]
 
 exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 [
-  "polyline 205,44 283,78 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 210,30 420,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 494,30 542,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 352,84 542,42 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 144,44 176,78 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 145,30 233,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 261,30 291,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 203,85 291,37 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "actor 16,5 72x50",
   "label "main" 52,47 center",
   "actor 16,67 72x50",
   "label "develop" 52,109 center",
-  "box 136,16 74x28 r8",
-  "label "16b1d37" 173,30 center",
-  "box 278,78 74x28 r8",
-  "label "5b98d26" 315,92 center",
-  "box 420,16 74x28 r8",
-  "label "b2e4827" 457,30 center",
-  "box 542,16 114x28 r8",
-  "label "8629dcb [v1]" 599,30 center",
+  "box 117,16 28x28 r14",
+  "label "" 131,30 center",
+  "box 175,78 28x28 r14",
+  "label "" 189,92 center",
+  "box 233,16 28x28 r14",
+  "label "" 247,30 center",
+  "box 291,16 28x28 r14",
+  "label "" 305,30 center",
 ]
 `;
 

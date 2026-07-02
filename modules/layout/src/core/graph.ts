@@ -71,6 +71,22 @@ export interface LayoutError {
   readonly message: string;
 }
 
+// Every layout/routing style any family accepts — a closed union so an unrecognized persisted value is
+// rejected at the boundary instead of silently behaving as "all style flags off". "classic" is the
+// default everywhere: the closest match to real Mermaid output. The house styles (tidy/organic/bus/
+// trunk/relaxed/pills/…) are opt-in.
+export type LayoutStyle =
+  | "classic"
+  | "tidy"
+  | "organic"
+  | "bus"
+  | "trunk"
+  | "relaxed"
+  | "radial"
+  | "columns"
+  | "pills"
+  | "donut";
+
 // Measures a label's rendered text width in px. Injected so the shell can use a real canvas
 // `measureText`; the default reproduces the long-standing char-width heuristic, keeping pure
 // layouts deterministic (and their tests stable) when no measurer is supplied.

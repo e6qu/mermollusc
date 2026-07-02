@@ -275,6 +275,7 @@ describe("paint", () => {
     const theme: Theme = {
       background: "#000000",
       nodeFill: "#000001",
+      nodeStroke: "#000004",
       stroke: "#000002",
       text: "#000003",
       font: "11px monospace",

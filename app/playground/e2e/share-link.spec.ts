@@ -33,7 +33,10 @@ test("Share copies the current source without overwriting the current URL", asyn
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   const hash = new URL(copied).hash;
   expect(hash.startsWith("#src=")).toBe(true);
-  expect(decodeURIComponent(hash.slice("#src=".length))).toBe(edited);
+  // The hash carries `src` plus the active layout style (so the recipient sees the same rendering).
+  const src = hash.slice("#src=".length).split("&")[0] ?? "";
+  expect(decodeURIComponent(src)).toBe(edited);
+  expect(hash).toContain("&style=classic");
 });
 
 test("Share puts an oversized link in the address bar while warning", async ({ page }) => {

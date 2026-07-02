@@ -1,5 +1,31 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Mermaid-parity rendering defaults; house styles opt-in
+
+- Inverted the style defaults to match the product requirement: every family with a Mermaid equivalent
+  now defaults to `classic` (previously ~10 of 15 defaulted to house styles marketed as
+  "(Recommended)"). `defaultStyleForFamily` returns `classic` except network (tidy router), cloud
+  (trunk), mindmap (radial IS the Mermaid shape), timeline (single real implementation). The renderer's
+  default palette now matches mermaid's own `theme-default.js` (lavender fills, purple node borders,
+  dark lines) and classic renders plain edges (no house chevrons/hops) on canvas AND in PNG/SVG exports.
+- Cleaned the style dropdown of verified no-ops: c4/block/network/cloud's fake "Classic Mermaid"
+  entries, timeline's dead "Classic Columns", and the unreachable `dot` entry are gone; mindmap's
+  "Classic Tree" is relabelled "Boxed Radial" (it reshapes nodes, positions stay radial). Styles are a
+  closed `LayoutStyle` union end to end; stored/DOM/URL values are validated at the boundary and an
+  unknown persisted style logs loudly instead of silently disabling every flag.
+- Share links carry the active layout style (`&style=`), applied for the recipient's visit without
+  persisting (their own choice supersedes it); covered in `e2e/ux-regressions.spec.ts`.
+- Fixed a style-dropdown bug the audit missed: `updateStyleOptions`/`syncStyleFlags` read the
+  module-level `ast`, which still holds the PREVIOUS diagram during a render — so the dropdown lagged
+  one render behind on every family switch (a cloud diagram showed the flowchart family's options; two
+  e2e specs had unknowingly baked this in). Both now take the freshly parsed kind explicitly.
+- e2e updates: tidy/organic/bus/trunk specs assert the new defaults (trunk/bus now genuinely exercise
+  the cloud family); fit-on-load opts into the wide pills style via the new `#style=` link param
+  (classic gitGraph is compact and fits at 100%); share-link spec asserts the style param. Layout prop
+  tests run both classic and tidy pipelines. Coverage ratchets for layout/renderer re-based — both had
+  silently drifted far above actual on main (nothing runs `make cov`; gate wiring tracked in module
+  DO_NEXTs).
+
 ## 2026-07-02 — UX-audit fix pass: undo integrity, data-loss guards, status-channel discipline
 
 - A four-way audit (known bugs, rendering modes, UI/UX flows, architecture conformance) surfaced eleven

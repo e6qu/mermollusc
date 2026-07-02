@@ -1,5 +1,19 @@
 # @m/app (playground) — bugs
 
+Resolved (Mermaid-parity defaults pass, 2026-07-02):
+
+- ~~**The style dropdown lagged one render behind the diagram.**~~ Fixed — `updateStyleOptions`/
+  `syncStyleFlags` read the module-level `ast`, which during a render still holds the PREVIOUS diagram
+  (it's swapped only after layout succeeds), so switching families showed the old family's option list
+  and value (a cloud diagram displayed the flowchart list; the bus/trunk e2e specs had silently baked
+  the wrong list in). Both now receive the freshly parsed diagram kind.
+- ~~**Selecting several style options did nothing.**~~ Fixed by removal/relabel — "Classic Mermaid" for
+  c4/block/network/cloud and timeline's "Classic Columns" were verified no-ops (the layouts ignore the
+  style); mindmap's "Classic Tree" promised a tree layout but only reshaped nodes (now "Boxed Radial").
+- ~~**An unrecognized persisted style value silently behaved as "all style flags off".**~~ Fixed —
+  stored/DOM/URL style values are validated against the family's closed option list; unknown values log
+  loudly and fall back to the default.
+
 Resolved (UX/fail-loud audit pass, 2026-07-02):
 
 - ~~**Space was hijacked from every focused button.**~~ Fixed — the global Space-to-pan shortcut now

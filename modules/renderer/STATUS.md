@@ -2,9 +2,16 @@
 
 **State:** Canvas2D renderer implemented; `make check` green.
 
-**Current architecture note:** container display boxes now honor `SceneNode.accent`, the palette maps
-semantic cloud/network accents to theme-aware colours, and plated edge labels render at 66% opacity in
-canvas and SVG.
+**Current architecture note:** the default (light) theme now matches real Mermaid's palette — values
+taken from mermaid's own `theme-default.js` (`mainBkg #ECECFF`, `border1 #9370DB`, text/line `#333`),
+with `Theme.nodeStroke` split from `Theme.stroke` so node borders can be Mermaid-purple while lines stay
+dark, exactly like Mermaid. `toDisplayList(scene, drawJunctions, plainEdges)` grew a `plainEdges` flag:
+the classic/Mermaid-parity look drops the two house edge decorations (per-segment direction chevrons and
+crossing "hop" arcs), which real Mermaid does not draw. The font deliberately stays ours (matching
+Mermaid's 16px trebuchet would resize every node via `measureText` — a follow-up in `DO_NEXT.md`, not a
+silent side effect of a palette change). Container display boxes honor `SceneNode.accent`, the palette
+maps semantic cloud/network accents to theme-aware colours, and plated edge labels render at 66% opacity
+in canvas and SVG.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported

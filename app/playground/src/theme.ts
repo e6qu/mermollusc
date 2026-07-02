@@ -12,6 +12,7 @@ const prefersDark = (): boolean =>
 const forcedTheme = (font: string): Theme => ({
   background: "Canvas",
   nodeFill: "Canvas",
+  nodeStroke: "CanvasText",
   stroke: "CanvasText",
   text: "CanvasText",
   font,

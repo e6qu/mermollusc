@@ -104,6 +104,7 @@ import {
   GANTT_LEFT_GUTTER,
   layout,
   layoutDiagram,
+  type LayoutStyle,
   respreadPorts,
   retidyRoutes,
   snapSceneEdgesToMountPoints,
@@ -953,7 +954,7 @@ const shownScene = (base: Scene): Scene => {
   // key so the release paint re-routes even though the overrides didn't change on the final frame.
   const interacting = isInteracting();
   const family = ast?.kind ?? null;
-  const activeStyle = family !== null ? getActiveStyle(familyOfKind(family)) : "tidy";
+  const activeStyle = family !== null ? getActiveStyle(familyOfKind(family)) : "classic";
   if (
     shownCacheResult !== null &&
     shownCacheScene === base &&
@@ -1056,10 +1057,12 @@ const paintScene = (): void => {
   const active = activeTheme();
   canvas.style.backgroundColor = active.background;
   // Build the display list once and reuse it for both the main canvas and the minimap overview. Junction
-  // dots are drawn only for the box-routed families under the bus rendering option.
+  // dots are drawn only for the box-routed families under the bus rendering option. Classic mode drops
+  // the house edge decorations (direction chevrons, crossing hops) real Mermaid doesn't draw.
   const cmds = toDisplayList(
     shown,
     (busEnabled || trunkEnabled) && ast !== null && SPREAD_FAMILIES.has(ast.kind),
+    plainEdgesActive(),
   );
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
@@ -2670,27 +2673,113 @@ const persistCollapsed = (): void => {
   }
 };
 
-const familyOfKind = (kind: string): string => {
-  if (["flowchart", "state", "er", "class", "requirement"].includes(kind)) return "layered";
-  if (kind === "cloud" || kind === "network") return kind;
+const familyOfKind = (kind: DiagramAst["kind"]): StyleFamily => {
+  if (
+    kind === "flowchart" ||
+    kind === "state" ||
+    kind === "er" ||
+    kind === "class" ||
+    kind === "requirement"
+  ) {
+    return "layered";
+  }
   if (kind === "c4") return "box";
   if (kind === "block") return "grid";
-  return kind; // sequence, gitGraph, timeline, mindmap, pie, gantt
+  return kind; // cloud, network, sequence, gitGraph, timeline, mindmap, pie, gantt
 };
 
-const defaultStyleForFamily = (family: string): string => {
-  if (family === "sequence" || family === "pie" || family === "gantt") return "classic";
+// The default rendering matches real Mermaid as closely as we can ("classic"); the house styles
+// (tidy/organic/bus/trunk/pills/relaxed) are strictly opt-in. The two exceptions are non-Mermaid
+// families with no parity target (network keeps its tidy router, cloud its trunk routing) and mindmap,
+// where the radial layout IS the Mermaid-like shape.
+const defaultStyleForFamily = (family: StyleFamily): LayoutStyle => {
   if (family === "mindmap") return "radial";
   if (family === "timeline") return "columns";
-  if (family === "gitGraph") return "pills";
   if (family === "cloud") return "trunk";
-  return "tidy"; // layered, box, grid
+  if (family === "network") return "tidy";
+  return "classic"; // layered, box, grid, sequence, gitGraph, pie, gantt
 };
 
-const getActiveStyle = (family: string): string => {
+// Map of styles available per family. Every entry changes real behavior — options that were verified to
+// be no-ops (a "Classic Mermaid" for families whose layout ignores the style) are gone, not relabelled.
+const FAMILY_STYLES: Record<StyleFamily, readonly { value: LayoutStyle; label: string }[]> = {
+  layered: [
+    { value: "classic", label: "Classic Mermaid (default)" },
+    { value: "tidy", label: "Tidy Mollusc" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+    { value: "organic", label: "Organic Force" },
+  ],
+  box: [
+    { value: "classic", label: "Standard (default)" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+  ],
+  grid: [
+    { value: "classic", label: "Standard (default)" },
+    { value: "bus", label: "Bus Routing" },
+    { value: "trunk", label: "Trunk Routing" },
+  ],
+  network: [
+    { value: "tidy", label: "Network Tidy (default)" },
+    { value: "bus", label: "Network Bus Routing" },
+    { value: "trunk", label: "Network Trunk Routing" },
+  ],
+  cloud: [
+    { value: "trunk", label: "Cloud Trunk Routing (default)" },
+    { value: "tidy", label: "Cloud Tidy" },
+    { value: "bus", label: "Cloud Bus Routing" },
+  ],
+  sequence: [
+    { value: "classic", label: "Classic Mermaid (default)" },
+    { value: "relaxed", label: "Relaxed Mollusc" },
+  ],
+  mindmap: [
+    { value: "radial", label: "Radial Spoke (default)" },
+    { value: "classic", label: "Boxed Radial" },
+  ],
+  timeline: [{ value: "columns", label: "Spine Columns" }],
+  gitGraph: [
+    { value: "classic", label: "Classic Mermaid (default)" },
+    { value: "pills", label: "Mollusc Pills" },
+  ],
+  pie: [
+    { value: "classic", label: "Classic Pie (default)" },
+    { value: "donut", label: "Donut Chart" },
+  ],
+  gantt: [{ value: "classic", label: "Classic Gantt" }],
+};
+type StyleFamily =
+  | "layered"
+  | "box"
+  | "grid"
+  | "network"
+  | "cloud"
+  | "sequence"
+  | "mindmap"
+  | "timeline"
+  | "gitGraph"
+  | "pie"
+  | "gantt";
+
+// A share link may carry the sender's layout style (`&style=`); it overrides the local preference until
+// the recipient picks a style themselves, and is never persisted on their machine.
+let styleFromUrl: string | null = hashValue("style");
+
+const getActiveStyle = (family: StyleFamily): LayoutStyle => {
+  const allowed = FAMILY_STYLES[family];
+  const validated = (raw: string | null): LayoutStyle | null =>
+    allowed.find((s) => s.value === raw)?.value ?? null;
+  const fromUrl = validated(styleFromUrl);
+  if (fromUrl !== null) return fromUrl;
   try {
-    const val = localStorage.getItem(`mermollusc-style-${family}`);
-    return val !== null ? val : defaultStyleForFamily(family);
+    const stored = localStorage.getItem(`mermollusc-style-${family}`);
+    const valid = validated(stored);
+    if (stored !== null && valid === null) {
+      // An unrecognized persisted value must not silently behave as "all style flags off".
+      console.error(`ignoring unknown stored layout style "${stored}" for ${family}`);
+    }
+    return valid ?? defaultStyleForFamily(family);
   } catch (e) {
     // Storage can be unavailable (private mode, blocked); the default is the right outcome, but the
     // failure itself is never silent.
@@ -2699,7 +2788,8 @@ const getActiveStyle = (family: string): string => {
   }
 };
 
-const setActiveStyle = (family: string, style: string): void => {
+const setActiveStyle = (family: StyleFamily, style: LayoutStyle): void => {
+  styleFromUrl = null; // an explicit choice supersedes a share link's style override
   try {
     localStorage.setItem(`mermollusc-style-${family}`, style);
   } catch (e) {
@@ -2708,81 +2798,28 @@ const setActiveStyle = (family: string, style: string): void => {
   }
 };
 
-// Map of styles available per family:
-const FAMILY_STYLES = {
-  layered: [
-    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
-    { value: "classic", label: "Classic Mermaid" },
-    { value: "bus", label: "Bus Routing" },
-    { value: "trunk", label: "Trunk Routing" },
-    { value: "organic", label: "Organic Force" },
-  ],
-  box: [
-    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
-    { value: "classic", label: "Classic Mermaid" },
-    { value: "bus", label: "Bus Routing" },
-    { value: "trunk", label: "Trunk Routing" },
-  ],
-  grid: [
-    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
-    { value: "classic", label: "Classic Mermaid" },
-    { value: "bus", label: "Bus Routing" },
-    { value: "trunk", label: "Trunk Routing" },
-  ],
-  network: [
-    { value: "tidy", label: "Network Tidy (Recommended)" },
-    { value: "bus", label: "Network Bus Routing" },
-    { value: "trunk", label: "Network Trunk Routing" },
-    { value: "classic", label: "Classic Mermaid" },
-  ],
-  cloud: [
-    { value: "trunk", label: "Cloud Trunk Routing (Recommended)" },
-    { value: "tidy", label: "Cloud Tidy" },
-    { value: "bus", label: "Cloud Bus Routing" },
-    { value: "classic", label: "Classic Mermaid" },
-  ],
-  sequence: [
-    { value: "classic", label: "Classic Mermaid" },
-    { value: "relaxed", label: "Relaxed Mollusc" },
-  ],
-  mindmap: [
-    { value: "radial", label: "Radial Spoke (Recommended)" },
-    { value: "classic", label: "Classic Tree" },
-  ],
-  timeline: [
-    { value: "columns", label: "Spine Columns (Recommended)" },
-    { value: "classic", label: "Classic Columns" },
-  ],
-  gitGraph: [
-    { value: "pills", label: "Mollusc Pills (Recommended)" },
-    { value: "classic", label: "Classic Mermaid" },
-  ],
-  pie: [
-    { value: "classic", label: "Classic Pie" },
-    { value: "donut", label: "Donut Chart" },
-  ],
-  gantt: [{ value: "classic", label: "Classic Gantt" }],
-  dot: [
-    { value: "tidy", label: "Tidy Mollusc (Recommended)" },
-    { value: "classic", label: "Classic Mermaid" },
-  ],
-} as const;
-
-let tidyEnabled = true;
+let tidyEnabled = false;
 let busEnabled = false;
 let trunkEnabled = false;
 
-const syncStyleFlags = (): void => {
-  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
+// Both take the diagram kind explicitly: during a render the module-level `ast` still holds the
+// PREVIOUS diagram (it's only swapped after layout succeeds), so reading it here made the style
+// dropdown and flags lag one render behind on every family switch.
+const syncStyleFlags = (kind: DiagramAst["kind"] | null): void => {
+  const family = kind !== null ? familyOfKind(kind) : "layered";
   const style = getActiveStyle(family);
   tidyEnabled = style === "tidy" || style === "bus" || style === "trunk";
   busEnabled = style === "bus";
   trunkEnabled = style === "trunk";
 };
 
-const updateStyleOptions = (): void => {
-  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
-  const styles = FAMILY_STYLES[family as keyof typeof FAMILY_STYLES] ?? FAMILY_STYLES.layered;
+// Classic mode renders plain Mermaid-style edges: no per-segment direction chevrons, no crossing hops.
+const plainEdgesActive = (): boolean =>
+  getActiveStyle(ast !== null ? familyOfKind(ast.kind) : "layered") === "classic";
+
+const updateStyleOptions = (kind: DiagramAst["kind"] | null): void => {
+  const family = kind !== null ? familyOfKind(kind) : "layered";
+  const styles = FAMILY_STYLES[family];
 
   styleSelect.innerHTML = "";
   for (const s of styles) {
@@ -2858,9 +2895,9 @@ const renderFromText = async (text: string): Promise<void> => {
   // gates the Add button on it.
   isDotImport = result.family === "dot";
   lastDirection = "direction" in diagram ? diagram.direction : null;
-  updateStyleOptions();
-  syncStyleFlags();
-  const activeStyle = diagram !== null ? getActiveStyle(familyOfKind(diagram.kind)) : "tidy";
+  updateStyleOptions(diagram.kind);
+  syncStyleFlags(diagram.kind);
+  const activeStyle = diagram !== null ? getActiveStyle(familyOfKind(diagram.kind)) : "classic";
   const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded(), activeStyle);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
   if (!isOk(laid)) {
@@ -3029,7 +3066,7 @@ const relax = async (): Promise<void> => {
   const seed = new Map<NodeId, Point>(
     shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
   );
-  const activeStyle = ast !== null ? getActiveStyle(familyOfKind(ast.kind)) : "tidy";
+  const activeStyle = ast !== null ? getActiveStyle(familyOfKind(ast.kind)) : "classic";
   const laid = await layout(ast, seed, measureLabel, activeStyle);
   if (!isOk(laid)) {
     console.error("relax failed:", laid.error.message);
@@ -5709,9 +5746,15 @@ sketchBtn.addEventListener("click", () => {
 
 styleSelect.addEventListener("change", () => {
   const family = ast !== null ? familyOfKind(ast.kind) : "layered";
-  const newStyle = styleSelect.value;
+  // The select only ever holds values from FAMILY_STYLES[family], but the DOM hands back a plain
+  // string — validate it back into the union rather than cast.
+  const newStyle = FAMILY_STYLES[family].find((s) => s.value === styleSelect.value)?.value;
+  if (newStyle === undefined) {
+    console.error(`style select produced an unknown value: ${styleSelect.value}`);
+    return;
+  }
   setActiveStyle(family, newStyle);
-  syncStyleFlags();
+  syncStyleFlags(ast?.kind ?? null);
 
   void renderFromText(editor.value()).then(() => {
     flashStatus(`layout style changed to ${newStyle}`);
@@ -5954,6 +5997,7 @@ installImageExport({
   getScene: () => scene,
   shownScene,
   isRenderValid: () => currentRenderValid,
+  plainEdges: plainEdgesActive,
   activeTheme,
   getDirection: () => lastDirection,
   iconImages,
@@ -5969,7 +6013,11 @@ installImageExport({
 // (exports already honour the overlay; Share now matches them). In collab mode the shared room owns the
 // overlay, so the link stays source-only there.
 const shareUrl = (): string => {
-  const base = `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}`;
+  // The active layout style travels with the link: without it, a diagram authored under one style
+  // arrives re-laid-out under the recipient's own default and looks nothing like what was shared.
+  const styleParam =
+    ast !== null ? `&style=${encodeURIComponent(getActiveStyle(familyOfKind(ast.kind)))}` : "";
+  const base = `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}${styleParam}`;
   if (useCollab) return base;
   const overrides = doc.overrides();
   const groups = doc.groups();

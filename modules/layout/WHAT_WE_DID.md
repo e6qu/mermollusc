@@ -1,5 +1,16 @@
 # @m/layout — work log
 
+## 2026-07-02 — Classic (Mermaid-parity) is the default layout style
+
+- `layout`/`layoutDiagram` default to `"classic"` instead of `"tidy"`, and `layoutStyle` is now the
+  closed `LayoutStyle` union (exported from `@m/layout`) instead of a raw string — an unrecognized
+  persisted style value is rejected at the boundary rather than silently behaving as "all flags off".
+  The tidy candidate search, bus/trunk routing, and organic force layout are unchanged, just opt-in.
+  The flowchart property tests now run every generated graph under BOTH classic and tidy so the
+  invariants (and coverage) hold for both pipelines. Re-based the coverage ratchet, which had silently
+  drifted ~6 points above actual on main (nothing in the hook pipeline runs `make cov` — gate wiring
+  tracked in DO_NEXT).
+
 ## 2026-06-30 — Cardinal mount invariant sweep
 
 - Added `cardinalMountViolations(scene)` and `edgesUseCardinalMounts(scene)` as exported pure

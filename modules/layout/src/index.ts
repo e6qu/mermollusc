@@ -35,6 +35,7 @@ export type {
   LayoutGraph,
   PositionedGraph,
   LayoutError,
+  LayoutStyle,
   MeasureText,
   EnergyBreakdown,
 } from "./core/index.js";

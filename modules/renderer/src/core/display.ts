@@ -655,7 +655,13 @@ const busJunctions = (scene: Scene): DrawCmd[] => {
 // it crosses, rather than slicing visibly across the box; edge labels ride on top (with their plate)
 // so they stay readable even when an edge passes close to a node. `drawJunctions` (the opt-in bus
 // rendering) adds a dot wherever edges branch off a shared backbone, drawn just above the edges.
-export const toDisplayList = (scene: Scene, drawJunctions = false): DrawCmd[] => {
+// `plainEdges` (the classic/Mermaid-parity look) drops the two house edge decorations — per-segment
+// direction chevrons and crossing "hop" arcs — which real Mermaid does not draw.
+export const toDisplayList = (
+  scene: Scene,
+  drawJunctions = false,
+  plainEdges = false,
+): DrawCmd[] => {
   const crossingsMap = edgeCrossings(scene.edges);
 
   const edges: DrawCmd[] = [];
@@ -680,9 +686,9 @@ export const toDisplayList = (scene: Scene, drawJunctions = false): DrawCmd[] =>
       dashed: edge.stroke === "dashed",
       fromMarker,
       toMarker,
-      midMarkers: directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved),
+      midMarkers: plainEdges ? [] : directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved),
       curved: edge.curved,
-      path: buildEdgePath(pts, edge.curved, crossingsMap.get(idx) ?? []),
+      path: buildEdgePath(pts, edge.curved, plainEdges ? [] : (crossingsMap.get(idx) ?? [])),
     });
     if (edge.label !== null) {
       // A router that reserved space for the label (ELK) supplies its centre; otherwise derive it from

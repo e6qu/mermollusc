@@ -62,6 +62,7 @@ import type {
   LayoutError,
   LayoutGraph,
   LayoutNode,
+  LayoutStyle,
   MeasureText,
   PositionedGraph,
   PositionedNode,
@@ -325,7 +326,7 @@ export const layout = async (
   ast: FlowchartAst,
   seed: ReadonlyMap<NodeId, Point>,
   measure: MeasureText,
-  layoutStyle: string = "tidy",
+  layoutStyle: LayoutStyle = "classic",
 ): Promise<Result<Scene, LayoutError>> => {
   const tidy = layoutStyle === "tidy" || layoutStyle === "bus" || layoutStyle === "trunk";
   const organic = layoutStyle === "organic";
@@ -816,7 +817,7 @@ const layoutByFamily = async (
   ast: DiagramAst,
   measure: MeasureText,
   collapsed: ReadonlySet<NodeId>,
-  layoutStyle: string,
+  layoutStyle: LayoutStyle,
 ): Promise<Result<Scene, LayoutError>> => {
   const tidy = layoutStyle === "tidy" || layoutStyle === "bus" || layoutStyle === "trunk";
   const classic = layoutStyle === "classic";
@@ -885,8 +886,8 @@ export const layoutDiagram = async (
   measure: MeasureText,
   // Ids of cloud groups the editor has collapsed (hidden contents); empty for every other family.
   collapsed: ReadonlySet<NodeId> = new Set(),
-  // The layout style name: "tidy" (default), "classic", "organic", "relaxed", "bus", "trunk" etc.
-  layoutStyle = "tidy",
+  // "classic" (the default; closest to real Mermaid output) or an opt-in house style — see LayoutStyle.
+  layoutStyle: LayoutStyle = "classic",
 ): Promise<Result<Scene, LayoutError>> => {
   const routed = await layoutByFamily(ast, measure, collapsed, layoutStyle);
   return map(routed, (scene) => {

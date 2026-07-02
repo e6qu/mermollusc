@@ -61,4 +61,5 @@ export type {
   PositionedNode,
   PositionedEdge,
   LayoutError,
+  LayoutStyle,
 } from "./graph.js";
