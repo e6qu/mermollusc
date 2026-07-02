@@ -789,9 +789,13 @@ export const wrapCloudGroup = (
     .sort((a, b) => a - b);
   if (idxs.length < 2) return text;
   const captured = idxs.map((i) => (lines[i] ?? "").trim());
-  for (let k = idxs.length - 1; k >= 0; k--) lines.splice(idxs[k] ?? 0, 1);
+  // Iterate the index VALUES, not positions into `idxs` — a `?? 0` default on a missed position would
+  // silently splice line 0 (a silent-default hazard, even if unreachable today).
+  for (const idx of [...idxs].reverse()) lines.splice(idx, 1);
   const block = [`  group "${label}" {`, ...captured.map((l) => `    ${l}`), "  }"];
-  lines.splice(idxs[0] ?? 0, 0, ...block);
+  const insertAt = idxs[0];
+  if (insertAt === undefined) return text; // unreachable: idxs.length >= 2 was checked above
+  lines.splice(insertAt, 0, ...block);
   return lines.join("\n");
 };
 

@@ -70,7 +70,10 @@ const instantiateWasm = async (
   try {
     const result = await WebAssembly.instantiateStreaming(fetch(url), importObject);
     return result.instance;
-  } catch {
+  } catch (e) {
+    // Log before retrying: if the wasm itself is corrupt (not just a content-type header), the retry
+    // re-downloads and fails with a LESS specific error — the first one is the diagnostic that matters.
+    console.error("wasm relay: instantiateStreaming failed, retrying buffered:", e);
     const bytes = await (await fetch(url)).arrayBuffer();
     const result = await WebAssembly.instantiate(bytes, importObject);
     return result.instance;

@@ -1,5 +1,9 @@
 # @m/relay — work log
 
+- `make cov` now enforces a total-coverage floor (69%): `-coverpkg=./...` credits cross-package coverage
+  (relay.Core is exercised mostly through cmd/relay-server's integration harness, which plain
+  per-package profiles don't count — they misleadingly reported relay/ at 16%), and an awk gate exits
+  non-zero below the ratchet, matching the TS modules' vitest convention. Runs in the pre-push gate.
 - Milestone 2: compiled the same relay core to WebAssembly (`cmd/relay-wasm`, `//go:build js && wasm`) so
   the backend-free demo runs the real relay in-process instead of skipping it. Verified the async
   JS-bridging pattern (calling a `Promise`-returning JS function — here, the JS-callback `Store` wrapping

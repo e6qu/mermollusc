@@ -1,6 +1,7 @@
 # @m/contracts — do next
 
-- Add the next AST variants as families land: sequence, C4/architecture, block/network.
+- *(done)* All fifteen diagram families have AST variants (flowchart, sequence, C4, block, network,
+  cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt) — see STATUS.md.
 - *(done)* `LayoutOverrides` is the shared sidecar contract (`nodeId → { position, size?, pinned }`);
   `OverlayDoc.replaceOverrides` lets regenerate replace only the unpinned portion of the map.
 - *(done)* Type-level tests (`expectTypeOf`) pin `DiagramAst` narrowing + closed-union `kind` (test/unit/ast-union).

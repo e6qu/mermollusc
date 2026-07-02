@@ -54,7 +54,9 @@ test("⌘Z undoes a node drag and ⌘⇧Z redoes it", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("canvas ⌘Z drives the overlay history only, never the source text", async ({ page }) => {
+test("undoing a drag restores the position without touching unchanged source text", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const box = await page.locator("#stage").boundingBox();
@@ -69,8 +71,8 @@ test("canvas ⌘Z drives the overlay history only, never the source text", async
   await expect.poll(() => overrideCount(page)).toBe(1);
   expect(await sourceValue(page)).toBe(textBefore);
 
-  // ⌘Z with focus outside the editor undoes the drag (overlay history), leaving the text untouched —
-  // the two histories are independent.
+  // ⌘Z undoes the drag from the unified history; the entry's text equals the current text (a drag never
+  // edits the source), so restoring it is a no-op on the editor.
   await page.keyboard.press("Control+z");
   await expect.poll(() => overrideCount(page)).toBe(0);
   expect(await sourceValue(page)).toBe(textBefore);

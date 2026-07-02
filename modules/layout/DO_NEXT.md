@@ -58,10 +58,10 @@ Sequenced, deterministic wins instead: (1) port assignment in route.ts to fix ed
 nodes; (2) expose `elk.layered.edgeRouting` + edge spacing; (3) per-family `elk.algorithm` selector
 (layered/stress/mrtree/radial) reusing elkjs's built-in algorithms.
 
-## Edge-routing (LAYOUT_RESEARCH steps 1–2: DONE)
-Deterministic port assignment (`spreadPorts`) shipped for cloud/block; ELK edge spacing tuned. Remaining:
-extend `spreadPorts` to network/c4 (currently centre-to-centre straight lines), and obstacle-avoidance so
-a spread lane doesn't cross an intervening node (step 3 — the larger piece).
+## Edge-routing (LAYOUT_RESEARCH steps 1–3: DONE)
+Deterministic port assignment (`spreadPorts`) shipped for all four box-routed families (cloud, block,
+c4, network — verified: all call it), ELK edge spacing tuned, and obstacle avoidance shipped as the maze
+router (`mazeRoute`/`mazeAroundObstacles`).
 - *(done)* Prevent massive outer-edge detours around dense diagrams (like Cloud) by separating crossings and overlaps in the routing cost function (`CROSSING_COST = 10`, `OVERLAP_COST = 150`), favoring short direct paths with minor crossings over huge empty loops while strictly preventing parallel lines from overlapping.
 
 

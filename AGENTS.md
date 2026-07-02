@@ -52,10 +52,12 @@ Read it before touching any module. These rules **override** convenience.
 mermollusc/
 ├── AGENTS.md / CLAUDE.md(symlink) / PLAN.md
 ├── Makefile          root fan-out (runs targets across modules in DAG order)
-├── module.mk         shared make targets, included by every module
+├── module.mk         shared make targets, included by every TS module
 ├── tsconfig.base.json / biome.json / pnpm-workspace.yaml (catalog = pinned versions)
 ├── tools/            guard-types.mjs (type-policy guard), new-module.mjs (generator)
-├── modules/<m>/      self-contained module (see §2)
+├── modules/<m>/      self-contained TS module (see §2)
+├── modules/relay/    the collaboration relay — Go, not TS: its own Makefile implements the same
+│                       target names (§6) with Go bodies; no package.json/tsconfig; five doc files as usual
 └── app/playground/   the web app wiring all modules together
 ```
 
@@ -108,9 +110,13 @@ The five doc files, by purpose:
 
 ```
 std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- app
+                                                     relay (Go) <- app (dev server / e2e webServer)
 ```
 
 `std` depends on nothing. Importing "upward" (e.g. `std` importing `parser`) is forbidden.
+`modules/relay` is Go and shares no code with the TS graph — the app couples to it only over the wire
+protocol (`@m/collab`'s transport speaks to the native binary) and, for the backend-free demo, through
+the compiled WASM artifact (`cmd/relay-wasm` driven by `@m/collab`'s `wasm-relay.ts`).
 
 ## 5. Functional core / imperative shell
 

@@ -1,6 +1,6 @@
 import { brand, point, size, type LogRecord } from "@m/std";
 import type { GroupMember, Groups, LayoutOverrides, SceneNodeId } from "@m/contracts";
-import { Doc, encodeStateAsUpdate } from "yjs";
+import { applyUpdate, Doc, encodeStateAsUpdate, type Map as YMap } from "yjs";
 import { describe, expect, it, vi } from "vitest";
 import { type CollabEvent, type CollabStatus, createCollabSession } from "../../src/index.js";
 
@@ -240,6 +240,39 @@ describe("collab session — source channel", () => {
     expect(s.source()).toBe("flowchart TD\n  A --> B\n");
     expect(s.seedSourceIfEmpty("something else")).toBe(false); // already non-empty
     expect(s.source()).toBe("flowchart TD\n  A --> B\n");
+    s.destroy();
+  });
+});
+
+describe("collab session — corrupt group members container", () => {
+  it("ungroupAt degrades loudly (no throw) when a remote peer replaced a parent's members Y.Array", () => {
+    const records: LogRecord<CollabEvent>[] = [];
+    const s = createCollabSession({
+      initialOverrides: new Map(),
+      initialGroups: new Map(),
+      initialSource: "",
+      save: () => {},
+      logger: { log: (r) => records.push(r) },
+    });
+    s.overlay.groupNodes([node("a"), node("b")]); // inner
+    const [inner] = [...s.overlay.groups().keys()];
+    if (inner === undefined) throw new Error("no inner group minted");
+    s.overlay.groupNodes([{ kind: "group", id: inner }, node("c")]); // outer nests inner
+    const outer = [...s.overlay.groups().keys()].find((k) => k !== inner);
+    if (outer === undefined) throw new Error("no outer group minted");
+
+    // A malicious/buggy peer replaces the outer group's members Y.Array with a plain string. The decode
+    // guard keeps last-good cache; the targeted splice in ungroupAt must then reject the corrupt
+    // container loudly instead of calling toArray() on a string and throwing out of the transaction.
+    const peer = new Doc();
+    applyUpdate(peer, s.state());
+    const yOuter = peer.getMap<YMap<unknown>>("groups").get(outer);
+    if (yOuter === undefined) throw new Error("outer group missing in peer doc");
+    yOuter.set("members", "corrupt");
+    s.applyUpdate(encodeStateAsUpdate(peer));
+
+    expect(() => s.overlay.ungroupAt(inner)).not.toThrow();
+    expect(records.map((r) => r.event)).toContain("overlay-decode-rejected");
     s.destroy();
   });
 });

@@ -11,9 +11,8 @@
   ~1.45MB gzipped measured on the actual build) and patches the built demo's CSP with the narrow
   `'wasm-unsafe-eval'` allowance WASM compilation requires. Verified end-to-end via a rewritten
   `e2e-pages/backend-free-collab.spec.ts`.
-- **No coverage gate yet.** The TS modules ratchet `vitest` coverage thresholds (`make cov`); this module's
-  `make cov` just runs `go test -cover` with no enforced floor. Both milestones' shapes have settled now —
-  worth adding a ratchet.
+- *(done)* **Coverage gate.** `make cov` enforces a 69% total floor (`COV_MIN` in the Makefile) using
+  `-coverpkg=./...` cross-package counting, and runs in the repo's pre-push gate with the TS modules.
 - **Production store** (Postgres update-log + S3 snapshots, per `docs/collab-editor-plan.md` §10.3) is
   unblocked by this port's async-capable `Store` interface but not implemented here — still future work,
   same as it was for the JS relay.

@@ -66,7 +66,7 @@
   relationship lines whose operator (`<|--`/`--|>`/`*--`/`o--`/`-->`/`..>`/`..|>`/`--`) splits into
   `fromArrow`/`toArrow` (`ClassArrow`) + a dashed flag. Members carry visibility (`+`/`-`/`#`/`~`) and
   a field/method `kind`; a `<<interface>>`/`<<abstract>>` body line → `ClassEntity.stereotype`.
-  (Multiplicity labels + generics are future work.)
+  Per-end multiplicity (`A "1" --> "*" B`) and generics (`List~T~` → `List<T>`) parse and render.
 - `parseRequirement(text)` / `parseRequirementWithSource(text)` → `RequirementAst` (+ `ReqSource`:
   entity-name spans): `requirementDiagram` subset — `requirement foo { key: value … }` /
   `element bar { … }` declarations (the six requirement types + `element`; body lines split on the

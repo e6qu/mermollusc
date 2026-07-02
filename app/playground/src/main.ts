@@ -37,6 +37,7 @@ import {
   deleteGitCommit,
   deleteGitBranch,
   descendantsOf,
+  arrangeDeltas,
   emptySelection,
   hitTest,
   applyStyles,
@@ -60,7 +61,7 @@ import {
   topGroupOfNode,
   validateLabel,
 } from "@m/builder";
-import type { HitTarget, LabelContext, Selection } from "@m/builder";
+import type { AlignKind, HitTarget, LabelContext, Selection, UnitBox } from "@m/builder";
 import type {
   BlockSource,
   C4Source,
@@ -135,6 +136,7 @@ import {
   reconnectingWebSocketTransport,
   type AsyncRoomStore,
   type CollabSession,
+  type CollabSocket,
   type ReconnectStatus,
 } from "@m/collab";
 import { createEditor, type Editor } from "./editor.js";
@@ -1953,16 +1955,6 @@ const updateGroupButtons = (): void => {
   updateTask(caps);
 };
 
-type AlignKind = "left" | "right" | "top" | "bottom" | "centerX" | "centerY" | "distH" | "distV";
-
-interface UnitBox {
-  readonly leaves: readonly SceneNodeId[];
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
-
 // Each movable selection unit (loose node or top group) with the bounding box of its leaves, in
 // shown coordinates. Alignment translates a whole unit, so a group keeps its internal layout.
 const selectedUnitBoxes = (shown: Scene): UnitBox[] => {
@@ -1992,86 +1984,6 @@ const selectedUnitBoxes = (shown: Scene): UnitBox[] => {
     units.push({ leaves, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
   }
   return units;
-};
-
-// Fold-based min/max — never `Math.min(...arr)`, whose argument spread throws (RangeError) once the
-// array is large enough (a select-all-then-align on a big diagram would hit that limit).
-const minOf = (ns: readonly number[]): number =>
-  ns.reduce((m, n) => Math.min(m, n), Number.POSITIVE_INFINITY);
-const maxOf = (ns: readonly number[]): number =>
-  ns.reduce((m, n) => Math.max(m, n), Number.NEGATIVE_INFINITY);
-
-// The per-leaf translation that aligns/distributes the unit boxes. Distribute spaces the unit
-// centres evenly between the extreme units (which stay put); align snaps an edge or centre axis.
-const arrangeDeltas = (
-  kind: AlignKind,
-  units: readonly UnitBox[],
-): Map<SceneNodeId, { readonly dx: number; readonly dy: number }> => {
-  const deltas = new Map<SceneNodeId, { readonly dx: number; readonly dy: number }>();
-  const put = (u: UnitBox, dx: number, dy: number): void => {
-    for (const leaf of u.leaves) deltas.set(leaf, { dx, dy });
-  };
-  const lefts = units.map((u) => u.x);
-  const rights = units.map((u) => u.x + u.w);
-  const tops = units.map((u) => u.y);
-  const bottoms = units.map((u) => u.y + u.h);
-  switch (kind) {
-    case "left": {
-      const t = minOf(lefts);
-      for (const u of units) put(u, t - u.x, 0);
-      break;
-    }
-    case "right": {
-      const t = maxOf(rights);
-      for (const u of units) put(u, t - u.w - u.x, 0);
-      break;
-    }
-    case "top": {
-      const t = minOf(tops);
-      for (const u of units) put(u, 0, t - u.y);
-      break;
-    }
-    case "bottom": {
-      const t = maxOf(bottoms);
-      for (const u of units) put(u, 0, t - u.h - u.y);
-      break;
-    }
-    case "centerX": {
-      const axis = (minOf(lefts) + maxOf(rights)) / 2;
-      for (const u of units) put(u, axis - u.w / 2 - u.x, 0);
-      break;
-    }
-    case "centerY": {
-      const axis = (minOf(tops) + maxOf(bottoms)) / 2;
-      for (const u of units) put(u, 0, axis - u.h / 2 - u.y);
-      break;
-    }
-    case "distH": {
-      const sorted = [...units].sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2));
-      const first = sorted[0];
-      const last = sorted[sorted.length - 1];
-      if (first === undefined || last === undefined) break;
-      const lo = first.x + first.w / 2;
-      const step = (last.x + last.w / 2 - lo) / (sorted.length - 1);
-      sorted.forEach((u, i) => {
-        put(u, lo + i * step - u.w / 2 - u.x, 0);
-      });
-      break;
-    }
-    case "distV": {
-      const sorted = [...units].sort((a, b) => a.y + a.h / 2 - (b.y + b.h / 2));
-      const first = sorted[0];
-      const last = sorted[sorted.length - 1];
-      if (first === undefined || last === undefined) break;
-      const lo = first.y + first.h / 2;
-      const step = (last.y + last.h / 2 - lo) / (sorted.length - 1);
-      sorted.forEach((u, i) => {
-        put(u, 0, lo + i * step - u.h / 2 - u.y);
-      });
-      break;
-    }
-  }
-  return deltas;
 };
 
 const applyArrange = (kind: AlignKind): void => {
@@ -6309,11 +6221,23 @@ if (collabSession !== null) {
     if (ast !== null) applyKind(ast.kind);
     updateGroupButtons();
   };
+  // Both transports (a real network WebSocket, or the same relay compiled to WASM and driven
+  // in-process) end in the identical connectTransport call — the two paths differ only in which
+  // function produced the CollabSocket and whether an auth token rides the first frame.
+  const connectCollab = (socket: CollabSocket, authToken: string | null): void => {
+    connectTransport(session, socket, {
+      ...(authToken === null ? {} : { authToken }),
+      onControl: applyRole,
+      // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
+      // the user must know they're no longer shared.
+      onClose: () => {
+        console.error("collab: disconnected from the relay");
+        flashStatus("disconnected from the collaboration relay — editing locally", "warning");
+      },
+    });
+  };
   const canConnectRelay = authConfig === null || authSession !== null;
   if (useRelayTransport && canConnectRelay) {
-    // A resolved Auth0 access token is sent as the first WebSocket auth frame, never in the relay URL.
-    // Absent in local dev → the relay's default allow-all accepts.
-    const token = authSession?.accessToken ?? null;
     // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
     // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
     // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
@@ -6327,16 +6251,9 @@ if (collabSession !== null) {
     const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(collabRoom)}`, {
       onStatus: onReconnectStatus,
     });
-    connectTransport(session, socket, {
-      ...(token === null ? {} : { authToken: token }),
-      onControl: applyRole,
-      // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
-      // the user must know they're no longer shared.
-      onClose: () => {
-        console.error("collab: disconnected from the relay");
-        flashStatus("disconnected from the collaboration relay — editing locally", "warning");
-      },
-    });
+    // A resolved Auth0 access token is sent as the first WebSocket auth frame, never in the relay URL.
+    // Absent in local dev → the relay's default allow-all accepts.
+    connectCollab(socket, authSession?.accessToken ?? null);
   } else if (useRelayTransport) {
     // After the initial render, not a bare setTimeout(0) — the render summary lands asynchronously and
     // would overwrite this, leaving an auth-required user with no clue why nothing syncs.
@@ -6357,13 +6274,7 @@ if (collabSession !== null) {
       `${import.meta.env.BASE_URL}wasm_exec.js`,
     );
     const { socket, flushAll } = await connectWasmRelay({ room: collabRoom, store });
-    connectTransport(session, socket, {
-      onControl: applyRole,
-      onClose: () => {
-        console.error("collab: disconnected from the in-process relay");
-        flashStatus("disconnected from the collaboration relay — editing locally", "warning");
-      },
-    });
+    connectCollab(socket, null);
     // Best-effort: browsers don't reliably wait for async work in unload handlers, but this is the same
     // durability gap a hard-killed production relay process has (see modules/relay/BUGS.md) — not a
     // demo-specific shortcut.

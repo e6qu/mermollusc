@@ -56,6 +56,17 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Coverage ratchets — at push, not every commit (full coverage instrumentation is slow). Without
+      # this gate the per-module thresholds drifted silently for months (found 2026-07-02: layout was 6
+      # and renderer 10 points below their ratchets on main, with every hook green).
+      - id: cov
+        name: coverage ratchets (vitest per-module thresholds)
+        entry: make cov
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
       # SAST — slower, so it runs at push rather than every commit.
       - id: sast
         name: SAST strict (semgrep)
