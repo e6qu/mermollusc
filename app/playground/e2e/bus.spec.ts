@@ -13,13 +13,14 @@ test("Bus toggle re-renders the architecture diagram without errors and never ed
     .toBeGreaterThan(0);
   const src = await sourceValue(page);
 
+  // The dropdown tracks the cloud family (trunk routing is its default).
   const styleSelect = page.locator("#layout-style");
-  await expect(styleSelect).toHaveValue("tidy");
+  await expect(styleSelect).toHaveValue("trunk");
   await styleSelect.selectOption("bus");
   await expect(styleSelect).toHaveValue("bus");
   // A rendering option never edits the diagram text.
   expect(await sourceValue(page)).toBe(src);
-  await styleSelect.selectOption("tidy");
-  await expect(styleSelect).toHaveValue("tidy");
+  await styleSelect.selectOption("trunk");
+  await expect(styleSelect).toHaveValue("trunk");
   expect(errors).toEqual([]);
 });

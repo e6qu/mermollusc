@@ -4,7 +4,9 @@ import { setSource } from "./support/source.js";
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
-test("the Tidy toggle re-lays-out, announces, and persists across reload", async ({ page }) => {
+test("Classic Mermaid is the default; the opt-in Tidy style persists across reload", async ({
+  page,
+}) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
@@ -17,23 +19,24 @@ test("the Tidy toggle re-lays-out, announces, and persists across reload", async
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
+  // The Mermaid-parity default: house styles are opt-in, never the out-of-the-box behavior.
   const styleSelect = page.locator("#layout-style");
-  await expect(styleSelect).toHaveValue("tidy");
-
-  await styleSelect.selectOption("classic");
   await expect(styleSelect).toHaveValue("classic");
-  await expect(page.locator("#status")).toContainText(/layout style changed to classic/i);
+
+  await styleSelect.selectOption("tidy");
+  await expect(styleSelect).toHaveValue("tidy");
+  await expect(page.locator("#status")).toContainText(/layout style changed to tidy/i);
   // The diagram still renders cleanly after the re-layout.
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   // Preference survives a reload.
   await page.reload();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await expect(page.locator("#layout-style")).toHaveValue("classic");
+  await expect(page.locator("#layout-style")).toHaveValue("tidy");
 
   // And toggles back.
-  await page.locator("#layout-style").selectOption("tidy");
-  await expect(page.locator("#layout-style")).toHaveValue("tidy");
+  await page.locator("#layout-style").selectOption("classic");
+  await expect(page.locator("#layout-style")).toHaveValue("classic");
 
   expect(errors).toEqual([]);
 });

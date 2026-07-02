@@ -71,6 +71,53 @@ describe("toDisplayList", () => {
     expect(directed?.kind === "polyline" ? directed.midMarkers.length : -1).toBe(2); // one per leg
     const undirected = toDisplayList(threeLeg("none")).find((c) => c.kind === "polyline");
     expect(undirected?.kind === "polyline" ? undirected.midMarkers.length : -1).toBe(0);
+    // plainEdges (the classic/Mermaid-parity look) suppresses the chevrons even on directed edges.
+    const plain = toDisplayList(threeLeg("arrow"), false, true).find((c) => c.kind === "polyline");
+    expect(plain?.kind === "polyline" ? plain.midMarkers.length : -1).toBe(0);
+  });
+
+  it("plainEdges drops crossing hops: two crossing edges draw as straight lineTo paths", () => {
+    // Crossing detection skips edges that share an endpoint, so the two edges connect disjoint pairs.
+    const straight = (
+      id: string,
+      from: string,
+      to: string,
+      wp: Scene["edges"][number]["waypoints"],
+    ) => ({
+      id: seid(id),
+      from: snid(from),
+      to: snid(to),
+      waypoints: wp,
+      label: null,
+      stroke: "solid" as const,
+      fromEnd: "none" as const,
+      toEnd: "arrow" as const,
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
+      labelPos: null,
+    });
+    const crossing: Scene = {
+      ...scene,
+      edges: [
+        straight("h", "A", "B", [point(0, 50), point(100, 50)]),
+        straight("v", "C", "D", [point(50, 0), point(50, 100)]),
+      ],
+    };
+    // With decorations on, the later edge hops the earlier one (an arc appears in its path).
+    const decorated = toDisplayList(crossing).filter((c) => c.kind === "polyline");
+    const hasArc = decorated.some(
+      (c) => c.kind === "polyline" && c.path.some((p) => p.kind === "quadTo" || p.kind === "cubicTo"),
+    );
+    expect(hasArc).toBe(true);
+    // Plain (classic) edges never hop — every path segment stays a straight lineTo.
+    const plain = toDisplayList(crossing, false, true).filter((c) => c.kind === "polyline");
+    for (const c of plain) {
+      if (c.kind !== "polyline") continue;
+      for (const p of c.path) {
+        expect(p.kind === "moveTo" || p.kind === "lineTo").toBe(true);
+      }
+    }
   });
 
   it("marks a bus junction where an edge branches off a backbone another continues along (opt-in only)", () => {

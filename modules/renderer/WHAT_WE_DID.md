@@ -1,5 +1,16 @@
 # @m/renderer — work log
 
+- Mermaid-parity default appearance: `defaultTheme` now carries real Mermaid's palette (from mermaid's
+  own `theme-default.js`, with provenance in the source comment), and `Theme` gained a `nodeStroke` knob
+  split from `stroke` so node borders render Mermaid-purple (`#9370DB`) while edge lines/markers stay
+  dark (`#333`) — one knob previously drove both. `toDisplayList` gained a `plainEdges` default param:
+  the classic look suppresses per-segment direction chevrons and crossing hop arcs (house inventions
+  with no Mermaid counterpart); covered by new display-list unit tests for both decorations. Also fixed
+  a pre-existing unreachable `return ""` after an exhaustive switch in `svg.ts` (now `assertNever`).
+  Deliberately NOT changed: the font (16px trebuchet would resize every node via measureText — tracked
+  in DO_NEXT) and edge geometry (Mermaid draws splines; we draw orthogonal polylines — also DO_NEXT).
+  Re-based the coverage ratchet, which had silently drifted ~10 points above actual on main (nothing in
+  the hook pipeline runs `make cov` — gate wiring tracked in DO_NEXT).
 - Added ratio-based routed-label helpers (`edgeLabelAnchorAt`, `pathRatioNearest`) and exported them
   through the public renderer barrel so app overlays can move labels along the exact rendered route.
 - `labelLines` now defines multiline splitting for both actual newlines and literal `\n`; canvas and SVG

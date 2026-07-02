@@ -5,9 +5,17 @@ canvas, and hosts the e2e / golden tests.
 
 ## Demo rendering parity
 
+- **Default rendering matches real Mermaid as closely as possible.** Every family with a Mermaid
+  equivalent defaults to the `classic` style (Mermaid palette, plain spline-free edges without house
+  chevrons/hops, no tidy post-passes); the house styles (Tidy Mollusc, Organic Force, Bus/Trunk routing,
+  Mollusc Pills, Relaxed) are strictly opt-in and never labelled "Recommended". The only exceptions are
+  non-Mermaid families with no parity target (network defaults to its tidy router, cloud to trunk
+  routing) and mindmap, where radial IS the Mermaid-like shape. Overlays (positions, groups, styles) sit
+  on top of whichever mode is active. Share links carry the active style (`&style=`), which overrides
+  the recipient's preference for that visit without persisting.
 - Keep the demo catalog at parity with renderer/layout capabilities. Cloud and network are first-class
   style families, cloud defaults to trunk routing, and examples exercise architecture colours, crossing
-  hints, Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
+  hints (under opt-in house styles), Gantt/timeline drag behavior, and realistic BPMN workflow glyphs.
 - Keep edge labels as first-class canvas objects: label hit-testing, dragging, selection handles, inline
   editors, selected-edge route handles, and export coordinates must all use the same route-relative
   anchor.

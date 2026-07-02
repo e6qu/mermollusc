@@ -27,7 +27,10 @@
 - `Canvas2D` — structural subset of `CanvasRenderingContext2D`; a real context is assignable.
 - Pie/donut wedges render through the same display-list `wedge` command in canvas and SVG.
 - Edge route paths are built once in `src/core/path.ts` as backend-agnostic `PathCmd`s, including
-  curved edges and crossing hops, then consumed by both canvas and SVG.
+  curved edges and crossing hops, then consumed by both canvas and SVG. The chevron/hop decorations are
+  house additions: `toDisplayList`'s `plainEdges` flag (the classic/Mermaid-parity look) omits them.
+- The default light theme is Mermaid's own default palette (provenance in `paint.ts`); `Theme.nodeStroke`
+  is split from `Theme.stroke` because Mermaid borders nodes (purple) differently from its lines (dark).
 - Edge labels are explicit callouts: both canvas and SVG draw a padded 66%-opacity background plate and
   66%-opacity foreground text behind labelled connectors so network/cloud labels stay readable without
   becoming opaque blocks.

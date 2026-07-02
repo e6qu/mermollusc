@@ -41,6 +41,9 @@ const iconKey = (pack: string, name: string): string => `${pack}/${name}`;
 export interface Theme {
   readonly background: string;
   readonly nodeFill: string;
+  // Node OUTLINES only (boxes, diamonds); lines/markers/pseudo-states use `stroke`. Split because real
+  // Mermaid borders nodes in a different colour (purple) than its edge lines (dark grey).
+  readonly nodeStroke: string;
   readonly stroke: string;
   readonly text: string;
   readonly font: string;
@@ -105,11 +108,17 @@ export const bandFill = (fill: BandFill, theme: Theme): string => {
   }
 };
 
+// The light theme matches real Mermaid's default palette — values taken from mermaid's own
+// theme-default.js (https://github.com/mermaid-js/mermaid, packages/mermaid/src/themes/theme-default.js:
+// mainBkg '#ECECFF', border1 '#9370DB', textColor/lineColor '#333'), so an out-of-the-box diagram reads
+// like Mermaid output. The font stays ours: matching Mermaid's 16px trebuchet would resize every node
+// (it feeds measureText) — tracked as a follow-up, not silently mixed into a palette change.
 export const defaultTheme: Theme = {
   background: "#ffffff",
-  nodeFill: "#eef2ff",
-  stroke: "#334155",
-  text: "#0f172a",
+  nodeFill: "#ECECFF",
+  nodeStroke: "#9370DB",
+  stroke: "#333333",
+  text: "#333333",
   font: "14px sans-serif",
   sketch: false,
 };
@@ -117,6 +126,7 @@ export const defaultTheme: Theme = {
 export const darkTheme: Theme = {
   background: "#0f172a",
   nodeFill: "#1e293b",
+  nodeStroke: "#94a3b8",
   stroke: "#94a3b8",
   text: "#e2e8f0",
   font: "14px sans-serif",
@@ -254,7 +264,7 @@ export const paint = (
   for (const cmd of cmds) {
     switch (cmd.kind) {
       case "box": {
-        ctx.strokeStyle = theme.stroke;
+        ctx.strokeStyle = theme.nodeStroke;
         const fill = accentFill(cmd.accent, theme);
         if (theme.sketch) {
           sketchFillRect(ctx, fill, theme.background, cmd.x, cmd.y, cmd.width, cmd.height);
@@ -305,7 +315,7 @@ export const paint = (
       case "diamond": {
         const hw = cmd.width / 2;
         const hh = cmd.height / 2;
-        ctx.strokeStyle = theme.stroke;
+        ctx.strokeStyle = theme.nodeStroke;
         if (theme.sketch) {
           const s = seedOf(cmd.cx, cmd.cy, cmd.width);
           // Opaque base + translucent accent so an edge routed under the diamond is occluded (the sketch

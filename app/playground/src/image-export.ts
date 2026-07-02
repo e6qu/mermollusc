@@ -21,6 +21,9 @@ export interface ImageExportDeps {
   // The scene with the manual overlay applied (the same one painted on screen).
   readonly shownScene: (base: Scene) => Scene;
   readonly isRenderValid: () => boolean;
+  // True when the active layout style renders plain (Mermaid-parity) edges — exports must match what
+  // the on-screen canvas draws, chevrons/hops included or omitted alike.
+  readonly plainEdges: () => boolean;
   readonly activeTheme: () => Theme;
   readonly getDirection: () => FlowDirection | null;
   readonly iconImages: ReadonlyMap<string, CanvasImageSource>;
@@ -53,7 +56,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     octx.fillStyle = active.background;
     octx.fillRect(0, 0, logicalWidth, logicalHeight);
     octx.translate(margin - shown.extent.origin.x, margin - shown.extent.origin.y);
-    paint(octx, toDisplayList(shown), deps.iconImages, active);
+    paint(octx, toDisplayList(shown, false, deps.plainEdges()), deps.iconImages, active);
     return out;
   };
 
@@ -166,7 +169,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value, deps.activeTheme().text));
       else console.error("icon resolve failed:", resolved.error.message);
     }
-    const svg = toSvg(toDisplayList(shown), {
+    const svg = toSvg(toDisplayList(shown, false, deps.plainEdges()), {
       width: Math.ceil(shown.extent.size.width) + margin * 2,
       height: Math.ceil(shown.extent.size.height) + margin * 2,
       origin: shown.extent.origin,

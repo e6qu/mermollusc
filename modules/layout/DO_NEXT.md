@@ -1,6 +1,13 @@
 # @m/layout — do next
 
-- Wire relax/regenerate buttons in the app (pass the current scene positions as the seed).
+- **Mermaid parity gaps in "classic".** Classic is the default and skips the house post-passes, but two
+  measurable differences from real Mermaid remain: the engine (ELK layered vs Mermaid's default dagre —
+  different rank/order heuristics produce visibly different node orderings on some graphs) and edge
+  geometry (orthogonal polylines vs Mermaid's splines — the spline half is renderer work, tracked in
+  `modules/renderer/DO_NEXT.md`). Either close them or document classic as "Mermaid-like, ELK-routed".
+- **Wire `make cov` into a gate.** The coverage ratchet had drifted ~6 points above actual on main with
+  nobody noticing, because neither pre-commit nor pre-push runs `make cov`. Re-based 2026-07-02; decide
+  where the gate runs so a ratchet miss actually fails something.
 - Refine regenerate to re-layout only *unpinned* nodes (ELK can't cleanly fix a subset; needs a
   per-node fixed-position approach or post-pass).
 - *(done)* Add a broader route invariant sweep that checks every routed graph family for cardinal

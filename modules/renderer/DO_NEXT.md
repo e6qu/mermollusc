@@ -1,5 +1,15 @@
 # @m/renderer — do next
 
+- **Mermaid font parity.** The default palette now matches mermaid's `theme-default.js`, but the font is
+  still `14px sans-serif` vs Mermaid's `16px "trebuchet ms"` — changing it resizes every node (the font
+  feeds `measureText`), which shifts every golden and the e2e pixel coordinates, so it needs its own
+  sweep with visual re-verification rather than riding along on a palette change.
+- **Mermaid edge-geometry parity.** Classic mode now drops the house chevrons/hops, but edges are still
+  rounded-corner orthogonal polylines; real Mermaid draws smooth splines (basis curves). A classic-mode
+  spline `PathCmd` builder over the same waypoints would close most of the remaining visual gap.
+- **Wire `make cov` into a gate.** The coverage ratchet had drifted ~10 points above actual on main with
+  nobody noticing, because neither pre-commit nor pre-push runs `make cov`. Re-based 2026-07-02; decide
+  where the gate runs (pre-push? CI?) so a ratchet miss actually fails something.
 - Sketch mode is in (self-rolled seeded jitter plus subtle box fills; `theme.sketch`, app toggle).
   Possible upgrades:
   swap to **rough.js** (MIT) for hachure fills if richer texture is wanted, and bundle a handwriting
