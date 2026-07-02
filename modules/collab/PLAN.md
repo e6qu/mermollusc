@@ -49,9 +49,10 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   authorizeRoom, rateLimit, now })` — auth-frame-gated, crash-guarded, rate-limited,
   tag-allow-listed, room-name-validated, flushes on
   SIGINT/SIGTERM), `store.mjs` (`createMemoryRoomStore` / `createFileRoomStore` with legacy aliases —
-  the `RoomStore` durability seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token verification), and
-  `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default / `canWrite` —
-  per-document roles + tenant isolation).
+  the `RoomStore` durability seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token
+  verification), `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default /
+  `canWrite` — per-document roles + tenant isolation), and `membership.mjs`
+  (`loadMembershipRoleResolver(MEMBERSHIP_FILE)` — strict room/member role source).
 
 ## Design notes
 
@@ -69,5 +70,6 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 Phase 1 (this module): done — the Yjs document, in-memory convergence, transport, source binding, and
 presence. Phase 2 is in progress on the repo's relay/app path: persistence, Auth0 verification, browser
-PKCE login, rooms/RBAC, and role-aware UI are in; the production store remains. Phase 3 covers pub/sub,
+PKCE login, rooms/RBAC, a static membership source, and role-aware UI are in; the production store
+remains. Phase 3 covers pub/sub,
 audit/observability, offline buffering, compaction, and compliance hooks.
