@@ -11,7 +11,7 @@ import type {
   SceneNode,
   SceneWedge,
 } from "@m/contracts";
-import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt } from "./path.js";
+import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt, splinePath } from "./path.js";
 import type { PathCmd } from "./path.js";
 
 export { bezierControls, roundedCorners, smoothSegments } from "./path.js";
@@ -650,17 +650,23 @@ const busJunctions = (scene: Scene): DrawCmd[] => {
   return out;
 };
 
+// How classic (Mermaid-parity) mode finishes edges, vs the decorated house look:
+// - "decorated": per-segment direction chevrons + crossing hop arcs (the house style).
+// - "plain": no decorations; the routed polyline as-is. For families whose lanes are precision-routed
+//   around obstacles (the maze-routed box families), where smoothing would cut corners INTO them.
+// - "spline": no decorations; a smooth curve through the waypoints — Mermaid's basis-curve look, for
+//   the ELK layered family.
+export type EdgeFinish = "decorated" | "plain" | "spline";
+
 // Three layers, back to front: edge lines + end markers, then nodes, then edge labels. Edges under
 // nodes means a straight centre-to-centre link (network/cloud/block) is cleanly occluded by any node
 // it crosses, rather than slicing visibly across the box; edge labels ride on top (with their plate)
 // so they stay readable even when an edge passes close to a node. `drawJunctions` (the opt-in bus
 // rendering) adds a dot wherever edges branch off a shared backbone, drawn just above the edges.
-// `plainEdges` (the classic/Mermaid-parity look) drops the two house edge decorations — per-segment
-// direction chevrons and crossing "hop" arcs — which real Mermaid does not draw.
 export const toDisplayList = (
   scene: Scene,
   drawJunctions = false,
-  plainEdges = false,
+  edgeFinish: EdgeFinish = "decorated",
 ): DrawCmd[] => {
   const crossingsMap = edgeCrossings(scene.edges);
 
@@ -686,9 +692,19 @@ export const toDisplayList = (
       dashed: edge.stroke === "dashed",
       fromMarker,
       toMarker,
-      midMarkers: plainEdges ? [] : directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved),
+      midMarkers:
+        edgeFinish === "decorated"
+          ? directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved)
+          : [],
       curved: edge.curved,
-      path: buildEdgePath(pts, edge.curved, plainEdges ? [] : (crossingsMap.get(idx) ?? [])),
+      path:
+        edgeFinish === "spline"
+          ? splinePath(pts)
+          : buildEdgePath(
+              pts,
+              edge.curved,
+              edgeFinish === "decorated" ? (crossingsMap.get(idx) ?? []) : [],
+            ),
     });
     if (edge.label !== null) {
       // A router that reserved space for the label (ELK) supplies its centre; otherwise derive it from

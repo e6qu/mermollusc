@@ -8,8 +8,10 @@ font taken from mermaid's own `theme-default.js` (`mainBkg #ECECFF`, `border1 #9
 `Theme.stroke` so node borders can be Mermaid-purple while lines stay dark, exactly like Mermaid.
 `toDisplayList(scene, drawJunctions, plainEdges)` carries a `plainEdges` flag: the
 classic/Mermaid-parity look drops the two house edge decorations (per-segment direction chevrons and
-crossing "hop" arcs), which real Mermaid does not draw. The remaining parity gap is edge GEOMETRY
-(orthogonal polylines vs Mermaid's splines — see `DO_NEXT.md`). Container display boxes honor
+crossing "hop" arcs), which real Mermaid does not draw. Classic additionally draws the ELK layered family's edges as smooth
+Catmull-Rom splines through the routed waypoints (`EdgeFinish = "decorated" | "plain" | "spline"`) —
+the last appearance-level parity gap closed; what remains is the engine difference (ELK vs dagre, a
+layout concern). Container display boxes honor
 `SceneNode.accent`, the palette maps semantic cloud/network accents to theme-aware colours, and plated
 edge labels render at 66% opacity in canvas and SVG.
 

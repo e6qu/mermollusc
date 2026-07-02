@@ -72,7 +72,7 @@ describe("toDisplayList", () => {
     const undirected = toDisplayList(threeLeg("none")).find((c) => c.kind === "polyline");
     expect(undirected?.kind === "polyline" ? undirected.midMarkers.length : -1).toBe(0);
     // plainEdges (the classic/Mermaid-parity look) suppresses the chevrons even on directed edges.
-    const plain = toDisplayList(threeLeg("arrow"), false, true).find((c) => c.kind === "polyline");
+    const plain = toDisplayList(threeLeg("arrow"), false, "plain").find((c) => c.kind === "polyline");
     expect(plain?.kind === "polyline" ? plain.midMarkers.length : -1).toBe(0);
   });
 
@@ -111,7 +111,7 @@ describe("toDisplayList", () => {
     );
     expect(hasArc).toBe(true);
     // Plain (classic) edges never hop — every path segment stays a straight lineTo.
-    const plain = toDisplayList(crossing, false, true).filter((c) => c.kind === "polyline");
+    const plain = toDisplayList(crossing, false, "plain").filter((c) => c.kind === "polyline");
     for (const c of plain) {
       if (c.kind !== "polyline") continue;
       for (const p of c.path) {
@@ -791,6 +791,54 @@ describe("roundedCorners", () => {
     if (verticalEdgeCmd?.kind === "polyline") {
       const pathKinds = verticalEdgeCmd.path.map((p) => p.kind);
       expect(pathKinds).not.toContain("quadTo");
+    }
+  });
+});
+
+describe("spline edge finish", () => {
+  const bent: Scene = {
+    ...scene,
+    edges: [
+      {
+        id: seid("e"),
+        from: snid("A"),
+        to: snid("B"),
+        waypoints: [point(0, 0), point(100, 0), point(100, 100)],
+        label: null,
+        stroke: "solid",
+        fromEnd: "none",
+        toEnd: "arrow",
+        curved: false,
+        fromLabel: null,
+        toLabel: null,
+        labelPos: null,
+      },
+    ],
+  };
+
+  it("spline renders the whole route as cubic curves through the waypoints, with no decorations", () => {
+    const edge = toDisplayList(bent, false, "spline").find((c) => c.kind === "polyline");
+    if (edge?.kind !== "polyline") throw new Error("no polyline");
+    expect(edge.midMarkers).toEqual([]);
+    // Every drawn segment is a cubic; the path still passes through the interior waypoint's target.
+    const kinds = edge.path.map((p) => p.kind);
+    expect(kinds[0]).toBe("moveTo");
+    expect(kinds.slice(1).every((k) => k === "cubicTo")).toBe(true);
+    const last = edge.path[edge.path.length - 1];
+    if (last === undefined || last.kind !== "cubicTo") throw new Error("no cubic tail");
+    expect([last.x, last.y]).toEqual([100, 100]);
+  });
+
+  it("a straight 2-point edge stays visually straight under spline (collinear controls)", () => {
+    const straightScene: Scene = { ...scene }; // the base scene's edge is (30,40)->(30,80), vertical
+    const edge = toDisplayList(straightScene, false, "spline").find((c) => c.kind === "polyline");
+    if (edge?.kind !== "polyline") throw new Error("no polyline");
+    for (const p of edge.path) {
+      if (p.kind === "cubicTo") {
+        expect(p.c1x).toBe(30);
+        expect(p.c2x).toBe(30);
+        expect(p.x).toBe(30);
+      }
     }
   });
 });

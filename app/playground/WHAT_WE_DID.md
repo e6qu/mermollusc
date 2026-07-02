@@ -1,5 +1,17 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Classic mode draws Mermaid-style spline edges (layered family)
+
+- The last appearance-level Mermaid-parity gap: classic mode now renders the ELK layered family's edges
+  as smooth basis-curve splines through the routed waypoints, exactly the Mermaid look. `plainEdges`
+  became the closed `EdgeFinish` union; the app maps classic → `"spline"` for layered, `"plain"` for
+  the maze-routed box families (their precision lanes must not be corner-cut by smoothing), and
+  `"decorated"` for the house styles. Exports (PNG/SVG) follow the same finish. Edge hit-testing and
+  label anchors still use the waypoint polyline — the spline passes through every waypoint, so the
+  deviation between them is bounded; the full e2e suite (256 specs) confirms edge interactions are
+  unaffected. Verified visually on the sample and a busy flowchart. Remaining parity gap after this:
+  the ELK-vs-dagre engine difference (a layout ordering concern, tracked in modules/layout).
+
 ## 2026-07-02 — Mermaid font parity; e2e specs anchored to nodes, not pixels
 
 - The renderer's default themes now use Mermaid's own 16px trebuchet font (completing appearance parity
