@@ -57,10 +57,17 @@
 - *(done)* **Membership source:** `MEMBERSHIP_FILE` now loads a strict static room/member role source
   behind `authorizeRoom`, so auth-on deployments can grant room access without putting all per-room
   roles into the token.
-- **Same-key merge for groups (own PR — architectural):** group objects are stored whole (LWW per group).
-  Finer merge means modelling members as a nested `Y.Array`/`Y.Map` — but that diverges from this module's
-  deliberate invariant that *each group is one Y.Map value encoded through the builder's shared per-entry
-  encoder* (the single source of truth shared with JSON persistence; see `session.ts`). Nesting a CRDT
-  inside the group needs its own encode/decode path, multi-client convergence tests, and a wire-format
-  change — a deliberate design decision for an experimental, gated feature's rare scenario (two clients
-  editing one group's membership at once). It deserves a focused PR, not a bundled line-item.
+- *(done)* **Same-key merge for groups:** a group is now a nested `Y.Map` (`id`/`label`/`locked` fields +
+  a nested `members` `Y.Array`) instead of one flat value — `label`/`locked` stay per-field LWW, and
+  `members` merges per-element (like `Y.Text`), so two peers editing *different members of the same
+  group* concurrently (dissolving different children into a shared parent; pruning different dead nodes
+  from the same group) both survive instead of one whole-group write clobbering the other. The JSON wire
+  shape is unchanged (`encodeGroupEntry`/`decodeOverlay` still speak the flat `{id,label,members,locked}`
+  shape); only the live Yjs container and `session.ts`'s mutators (`groupNodes`/`ungroupAt`/
+  `setGroupLocked`/`setGroupLabel`/`pruneGroupsTo`/`replace`) changed, plus the `yGroups` observer (now
+  `observeDeep`, since nested-array edits are invisible to a shallow `observe`). This IS a breaking Yjs
+  wire-format change for any pre-existing persisted room (a stale flat group value now decodes as
+  malformed and is rejected loudly, same as any other corrupt overlay) — acceptable since the feature is
+  still experimental/gated and has no production store yet (see the remaining item below). (+ two new
+  convergence tests reproducing the old bug — concurrent ungroup-into-shared-parent and concurrent prune
+  of the same group both used to silently drop one side's edit — plus group undo/redo unit tests.)

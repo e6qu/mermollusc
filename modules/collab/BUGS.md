@@ -7,6 +7,18 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
   `Y.Text` merges both inserts. Robust fix needs server-side first-write coordination (the relay owns
   the seed), a later phase.
 
+Resolved (same-key group merge):
+
+- ~~**Concurrent edits to the same group's membership silently dropped one side.**~~ Fixed — a group was
+  stored as one flat whole-value `Y.Map` entry (LWW per group), so two clients concurrently editing the
+  *same* group's membership (e.g. each ungrouping a different child into a shared parent, or each
+  pruning a different dead node from the same group) had one client's whole-group rewrite silently
+  clobber the other's — in the ungroup case this could even leave a **dangling reference** to an
+  already-deleted group id in the surviving parent's members. A group is now a nested `Y.Map`
+  (`id`/`label`/`locked` fields + a nested `members` `Y.Array`), so member-level edits merge per-element
+  like `Y.Text` instead of whole-group LWW. (+ two convergence tests that fail against the old
+  implementation and pass against the new one.)
+
 Resolved (hardening sweep):
 
 - ~~**Auth-on relay required all per-room roles to ride inside OIDC token claims.**~~ Fixed — the relay

@@ -1,6 +1,7 @@
 import {
+  Array as YArray,
   Doc,
-  type Map as YMap,
+  Map as YMap,
   type Text as YText,
   UndoManager,
   applyUpdate,
@@ -19,6 +20,7 @@ import {
   encodeOverrideEntry,
   group,
   moveNode,
+  parentOf,
   pruneGroups,
   resizeNode,
   serializeOverlay,
@@ -26,7 +28,14 @@ import {
   setLocked,
   ungroup,
 } from "@m/builder";
-import type { EdgeStyles, Groups, LayoutOverrides, NodeStyles, OverlayDoc } from "@m/contracts";
+import type {
+  EdgeStyles,
+  Group,
+  Groups,
+  LayoutOverrides,
+  NodeStyles,
+  OverlayDoc,
+} from "@m/contracts";
 import {
   brand,
   type DecodeError,
@@ -104,10 +113,39 @@ const LOCAL = Symbol("collab/local");
 const REMOTE = Symbol("collab/remote");
 const SEED = Symbol("collab/seed");
 
-// Each override/group is one Y.Map value (CRDT merges per-entry), encoded through the builder's shared
-// per-entry encoders — the same source of truth as JSON persistence, so the wire shapes can't drift and
-// a newly-added domain field is a compile error there rather than a silent drop.
+// Each override is one Y.Map value (CRDT merges per-entry), encoded through the builder's shared
+// per-entry encoder — the same source of truth as JSON persistence, so the wire shape can't drift and a
+// newly-added domain field is a compile error there rather than a silent drop.
 const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+
+// A group's wire-shaped member (see `encodeGroupEntry`), as it lives inside a group's nested `members`
+// Y.Array.
+type EncodedMember = { readonly kind: "node" | "group"; readonly id: string };
+const memberKey = (m: { readonly kind: string; readonly id: string }): string =>
+  `${m.kind}:${m.id}`;
+
+// A group is a nested Y.Map (`id`/`label`/`locked` fields + a nested `members` Y.Array), NOT one flat
+// value — so two peers editing *different members of the same group* concurrently both survive (each
+// insert/delete on the members Y.Array is its own CRDT op), instead of one whole-group write clobbering
+// the other's. `label`/`locked` stay per-field LWW within the group's own Y.Map. JSON persistence is
+// unaffected: `encodeGroupEntry`/`decodeOverlay` still speak the flat `{id,label,members,locked}` shape;
+// only the *live* Yjs container differs, flattened back via `.toJSON()` in `materialize()`.
+const buildGroupType = (g: Group): YMap<unknown> => {
+  const enc = encodeGroupEntry(g);
+  const yGroup = new YMap<unknown>();
+  yGroup.set("id", enc.id);
+  yGroup.set("label", enc.label);
+  yGroup.set("locked", enc.locked);
+  const yMembers = new YArray<EncodedMember>();
+  if (enc.members.length > 0) yMembers.push(enc.members);
+  yGroup.set("members", yMembers);
+  return yGroup;
+};
+// The value type of a group's own Y.Map is heterogeneous (string/boolean/nested Y.Array), so reading
+// its `members` field back out needs a narrowing cast — the Yjs-adapter equivalent of `decode()` at a
+// boundary whose shape this module itself defined and controls (see `buildGroupType` above).
+const groupMembers = (yGroup: YMap<unknown>): YArray<EncodedMember> =>
+  yGroup.get("members") as YArray<EncodedMember>;
 
 export const createCollabSession = (opts: {
   readonly initialOverrides: LayoutOverrides;
@@ -122,7 +160,7 @@ export const createCollabSession = (opts: {
   const doc = new Doc();
   const yText: YText = doc.getText("source");
   const yOverrides: YMap<unknown> = doc.getMap("overrides");
-  const yGroups: YMap<unknown> = doc.getMap("groups");
+  const yGroups: YMap<YMap<unknown>> = doc.getMap("groups");
   // Presence is ephemeral and travels on its own frame (see the transport), so the awareness origin is
   // distinct from the doc origins — applied remote presence isn't re-broadcast.
   const awareness = new Awareness(doc);
@@ -147,8 +185,12 @@ export const createCollabSession = (opts: {
       overrides.push([k, v]);
     });
     const groups: Array<[string, unknown]> = [];
+    // A group value that isn't the nested Y.Map this session writes (a stale pre-redesign flat value,
+    // or a malicious peer's substitute) can't be flattened — push `null` so the shared decoder rejects
+    // it as malformed, same as any other corrupt entry, rather than throwing here on a missing
+    // `.toJSON`.
     yGroups.forEach((v, k) => {
-      groups.push([k, v]);
+      groups.push([k, v instanceof YMap ? v.toJSON() : null]);
     });
     return decodeOverlay({ overrides, groups });
   };
@@ -161,17 +203,6 @@ export const createCollabSession = (opts: {
       }
       for (const k of [...yOverrides.keys()])
         if (!next.has(brand<string, "SceneNodeId">(k))) yOverrides.delete(k);
-    }, LOCAL);
-  };
-
-  const writeGroups = (next: Groups): void => {
-    doc.transact(() => {
-      for (const [id, g] of next) {
-        const enc = encodeGroupEntry(g);
-        if (!sameJson(yGroups.get(id), enc)) yGroups.set(id, enc);
-      }
-      for (const k of [...yGroups.keys()])
-        if (!next.has(brand<string, "GroupId">(k))) yGroups.delete(k);
     }, LOCAL);
   };
 
@@ -188,7 +219,7 @@ export const createCollabSession = (opts: {
     doc.transact(() => {
       if (opts.initialSource.length > 0) yText.insert(0, opts.initialSource);
       for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverrideEntry(o));
-      for (const [id, g] of opts.initialGroups) yGroups.set(id, encodeGroupEntry(g));
+      for (const [id, g] of opts.initialGroups) yGroups.set(id, buildGroupType(g));
     }, SEED);
   }
 
@@ -230,8 +261,11 @@ export const createCollabSession = (opts: {
   // these bound would leak the session (and its captured listener Sets) for any retained doc reference.
   const onOverridesChange = (e: { transaction: { origin: unknown } }): void =>
     onMapChange(e.transaction.origin);
-  const onGroupsChange = (e: { transaction: { origin: unknown } }): void =>
-    onMapChange(e.transaction.origin);
+  // Deep: group mutations now include nested-array member edits (see `buildGroupType`), which a shallow
+  // `observe` on `yGroups` itself would miss — only `observeDeep` sees changes inside a group's already-
+  // integrated nested Y.Map/Y.Array.
+  const onGroupsChange = (_events: unknown, transaction: { origin: unknown }): void =>
+    onMapChange(transaction.origin);
   const onTextChange = (e: { transaction: { origin: unknown } }): void => {
     if (e.transaction.origin === LOCAL) return;
     const text = yText.toString();
@@ -242,7 +276,7 @@ export const createCollabSession = (opts: {
     for (const l of updateListeners) l(update);
   };
   yOverrides.observe(onOverridesChange);
-  yGroups.observe(onGroupsChange);
+  yGroups.observeDeep(onGroupsChange);
   yText.observe(onTextChange);
   doc.on("update", onDocUpdate);
 
@@ -295,39 +329,89 @@ export const createCollabSession = (opts: {
       // the same moment can't both mint `g0` and overwrite each other in the shared map. The decoder
       // accepts any `z.string()`, and no consumer parses the suffix numerically, so the richer id is a
       // drop-in.
-      const next = group(
-        cache.groups,
-        brand<string, "GroupId">(`g${awareness.clientID}-${groupSeq++}`),
-        units,
-      );
-      writeGroups(next);
+      const id = brand<string, "GroupId">(`g${awareness.clientID}-${groupSeq++}`);
+      const next = group(cache.groups, id, units);
+      const g = next.get(id);
+      if (g !== undefined) {
+        doc.transact(() => {
+          yGroups.set(id, buildGroupType(g));
+        }, LOCAL);
+      }
       cache = { overrides: cache.overrides, groups: next };
     },
     ungroupAt: (top) => {
+      const dissolved = cache.groups.get(top);
+      if (dissolved === undefined) return; // nothing to dissolve — matches the pure core's no-op
+      const parent = parentOf(cache.groups, { kind: "group", id: top });
       const next = ungroup(cache.groups, top);
-      writeGroups(next);
+      doc.transact(() => {
+        yGroups.delete(top);
+        if (parent === null) return;
+        const yParent = yGroups.get(parent);
+        if (yParent === undefined) return;
+        // Splice the freed members in at the dissolved group's own position in the parent's members
+        // Y.Array — a targeted list-CRDT op, so a peer concurrently splicing a *different* dissolved
+        // (or otherwise edited) member elsewhere in the same parent isn't clobbered by a whole-group
+        // rewrite.
+        const yMembers = groupMembers(yParent);
+        const idx = yMembers.toArray().findIndex((m) => m.kind === "group" && m.id === top);
+        if (idx === -1) return;
+        yMembers.delete(idx, 1);
+        const freed = encodeGroupEntry(dissolved).members;
+        if (freed.length > 0) yMembers.insert(idx, freed);
+      }, LOCAL);
       cache = { overrides: cache.overrides, groups: next };
     },
     setGroupLocked: (top, locked) => {
       const next = setLocked(cache.groups, top, locked);
-      writeGroups(next);
+      if (next === cache.groups) return;
+      doc.transact(() => {
+        yGroups.get(top)?.set("locked", locked);
+      }, LOCAL);
       cache = { overrides: cache.overrides, groups: next };
     },
     setGroupLabel: (id, label) => {
       const next = setGroupLabel(cache.groups, id, label);
-      writeGroups(next);
+      if (next === cache.groups) return;
+      doc.transact(() => {
+        yGroups.get(id)?.set("label", label);
+      }, LOCAL);
       cache = { overrides: cache.overrides, groups: next };
     },
     pruneGroupsTo: (liveNodeIds) => {
       const next = pruneGroups(cache.groups, liveNodeIds);
       if (next === cache.groups) return false;
-      writeGroups(next);
+      doc.transact(() => {
+        // `pruneGroups` only ever shrinks membership, so the write-side only ever needs to *delete*
+        // vanished entries (dead node members, or a member group that itself pruned away to nothing) —
+        // never reorder or insert, which keeps this a set of targeted per-member removals rather than a
+        // whole-group rewrite.
+        for (const key of [...yGroups.keys()]) {
+          const survivor = next.get(brand<string, "GroupId">(key));
+          if (survivor === undefined) {
+            yGroups.delete(key);
+            continue;
+          }
+          const yGroup = yGroups.get(key);
+          if (yGroup === undefined) continue;
+          const keep = new Set(survivor.members.map(memberKey));
+          const yMembers = groupMembers(yGroup);
+          const current = yMembers.toArray();
+          for (let i = current.length - 1; i >= 0; i--) {
+            const cur = current[i];
+            if (cur !== undefined && !keep.has(memberKey(cur))) yMembers.delete(i, 1);
+          }
+        }
+      }, LOCAL);
       cache = { overrides: cache.overrides, groups: next };
       return true;
     },
     replace: (overrides, groups, edgeStyles, nodeStyles) => {
       writeOverrides(overrides);
-      writeGroups(groups);
+      doc.transact(() => {
+        for (const key of [...yGroups.keys()]) yGroups.delete(key);
+        for (const [id, g] of groups) yGroups.set(id, buildGroupType(g));
+      }, LOCAL);
       cacheEdgeStyles = edgeStyles;
       cacheNodeStyles = nodeStyles;
       cache = { overrides, groups };
@@ -410,7 +494,7 @@ export const createCollabSession = (opts: {
     },
     destroy: () => {
       yOverrides.unobserve(onOverridesChange);
-      yGroups.unobserve(onGroupsChange);
+      yGroups.unobserveDeep(onGroupsChange);
       yText.unobserve(onTextChange);
       doc.off("update", onDocUpdate);
       overlayListeners.clear();
