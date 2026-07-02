@@ -1,5 +1,18 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Playwright's collab relay is now the Go binary (`modules/relay`)
+
+- `playwright.config.ts`'s `webServer` entry for the dev collab relay now runs `modules/relay`'s Go binary
+  (`cd ../../modules/relay && go run ./cmd/relay-server`) instead of `node modules/collab/server/relay.mjs`
+  — that Node relay no longer exists (moved to Go, Milestone 1 of a native+WASM rewrite; see
+  `modules/relay/PLAN.md`). The full e2e suite (251 specs, including all `collab-*` cross-tab flows) passed
+  unchanged against it. One real bug surfaced by that run, fixed in `modules/relay`: `coder/websocket`'s
+  default same-origin check rejected every real browser connection (the app and the relay are always
+  different origins — different ports), silently breaking cross-tab sync/presence/role propagation while
+  single-tab flows kept working; the `ws`-based Node relay never checked Origin at all, so this was a
+  behavioral regression from the port, not a pre-existing gap — go run/e2e was the only thing that could
+  have caught it, no unit test exercises two real browser tabs against a real dev server + relay pair.
+
 ## 2026-07-02 — Pages demo e2e joins the root gate
 
 - Switched the backend-free Pages collab runtime from Web Storage snapshots to

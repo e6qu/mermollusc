@@ -18,3 +18,7 @@ modules/icons/vendor/restricted/*
 # Temporary test outputs
 sweep_temp.json
 app/playground/sweep_temp.json
+
+# Go build/test artifacts (modules/relay)
+coverage.out
+/modules/relay/relay-server

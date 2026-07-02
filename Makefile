@@ -3,7 +3,7 @@
 
 # DAG order (std first, app last). Importing upward is forbidden; see AGENTS.md §4.
 MODULES := modules/std modules/contracts modules/parser modules/layout \
-           modules/renderer modules/icons modules/builder modules/collab app/playground
+           modules/renderer modules/icons modules/builder modules/collab modules/relay app/playground
 
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
@@ -43,16 +43,17 @@ e2e-api:
 pages-build:
 	@node tools/build-pages.mjs
 
-# Collaborative relay (WebSocket). Run alongside `make -C app/playground run`, then open two tabs at
-# /?collab&room=demo to edit together. Optional — the app runs fully single-user without it. Set
-# PERSIST_DIR to keep rooms across restarts (default: in-memory).
+# Collaborative relay (WebSocket, Go — see modules/relay). Run alongside `make -C app/playground run`,
+# then open two tabs at /?collab&room=demo to edit together. Optional — the app runs fully single-user
+# without it. Set PERSIST_DIR to keep rooms across restarts (default: in-memory).
 collab-server:
-	@PORT=$${PORT:-1234} node modules/collab/server/relay.mjs
+	@$(MAKE) --no-print-directory -C modules/relay run
 
 doctor:
 	@command -v pnpm >/dev/null || { echo "pnpm not found"; exit 1; }
 	@command -v node >/dev/null || { echo "node not found"; exit 1; }
-	@echo "node $$(node -v) / pnpm $$(pnpm -v) — ok"
+	@command -v go >/dev/null || { echo "go not found (needed for modules/relay)"; exit 1; }
+	@echo "node $$(node -v) / pnpm $$(pnpm -v) / $$(go version) — ok"
 
 # make new-module NAME=foo DESC="..." DEPS="@m/std,@m/contracts"
 new-module:

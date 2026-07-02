@@ -48,9 +48,6 @@ catalogs:
     fast-check:
       specifier: 4.8.0
       version: 4.8.0
-    jose:
-      specifier: 6.2.3
-      version: 6.2.3
     tsup:
       specifier: 8.5.1
       version: 8.5.1
@@ -63,9 +60,6 @@ catalogs:
     vitest:
       specifier: 4.1.8
       version: 4.1.8
-    ws:
-      specifier: 8.21.0
-      version: 8.21.0
     y-codemirror.next:
       specifier: 0.3.5
       version: 0.3.5
@@ -214,12 +208,6 @@ importers:
       fake-indexeddb:
         specifier: 'catalog:'
         version: 6.2.5
-      jose:
-        specifier: 'catalog:'
-        version: 6.2.3
-      ws:
-        specifier: 'catalog:'
-        version: 8.21.0
 
   modules/contracts:
     dependencies:
@@ -1027,9 +1015,6 @@ packages:
     resolution: {integrity: sha512-HGYWWS/ehqTV3xN10i23tkPkpH46MLCIMFNCaaKNavAXTF1RkqxawEPtnjnGZ6XKSInBKkiOA5BKS+aZiY3AvA==}
     engines: {node: '>=8'}
 
-  jose@6.2.3:
-    resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
-
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -1419,18 +1404,6 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
-
-  ws@8.21.0:
-    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   y-codemirror.next@0.3.5:
     resolution: {integrity: sha512-VluNu3e5HfEXybnypnsGwKAj+fKLd4iAnR7JuX1Sfyydmn1jCBS5wwEL/uS04Ch2ib0DnMAOF6ZRR/8kK3wyGw==}
@@ -2015,8 +1988,6 @@ snapshots:
       html-escaper: 2.0.2
       istanbul-lib-report: 3.0.1
 
-  jose@6.2.3: {}
-
   joycon@3.1.1: {}
 
   js-tokens@10.0.0: {}
@@ -2343,8 +2314,6 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
-
-  ws@8.21.0: {}
 
   y-codemirror.next@0.3.5(@codemirror/state@6.6.0)(@codemirror/view@6.43.1)(yjs@13.6.31):
     dependencies:

@@ -16,31 +16,31 @@
   `setLocalUser` labels the client and the source binding tracks the local cursor into awareness, so
   remote carets render in peers' editors. Follow-up: presence on the **canvas** (remote selection
   highlights) + a viewport/active-users indicator.
-- *(done)* **Durable persistence:** the relay (`server/relay.mjs`) has a pluggable `RoomStore`
-  (`server/store.mjs`) — memory default + a file-snapshot store (`PERSIST_DIR`); rooms survive a restart.
-  Every connection passes an `authorize(req)` hook (default allow) — the auth seam. The server is
-  optional; single-user local needs none of it.
+- *(done)* **Durable persistence:** the relay has a pluggable `RoomStore` — memory default + a
+  file-snapshot store (`PERSIST_DIR`); rooms survive a restart. Every connection passes an `authorize(req)`
+  hook (default allow) — the auth seam. The server is optional; single-user local needs none of it. (Now
+  in `modules/relay`, Go — see below.)
 - *(done)* **Browser room snapshot seam:** `src/shell/store.ts` provides memory + Web Storage
   `RoomStore` implementations and `createCollabSession` can hydrate from a saved Yjs `initialUpdate`.
   The Pages demo can persist a local room through the same whole-snapshot contract as the relay.
-- *(done)* **Server/browser store semantics aligned:** the Node relay memory store now copies snapshots
-  on save/load just like the browser `RoomStore`, and the relay uses the same `RoomStore` constructor
-  naming (`createMemoryRoomStore` / `createFileRoomStore`).
-- *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the first client auth frame against the
-  issuer JWKS (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated;
-  default allow. Decided to extend our own relay rather than adopt Hocuspocus (§10.5).
+- *(done)* **Server/browser store semantics aligned:** the relay's memory store copies snapshots on
+  save/load just like the browser `RoomStore`, and both speak the same load/save contract.
+- *(done)* **Auth0 OIDC handshake:** the relay verifies the first client auth frame against the issuer
+  JWKS; admits or closes 1008 (buffering during the async check). Env-gated; default allow. Decided to
+  extend our own relay rather than adopt Hocuspocus (§10.5).
 - *(done)* **Browser Auth0 login:** the app now runs an env-gated Auth0 Authorization Code + PKCE
   browser flow, stores the access token for the browser session, sends it as the first WebSocket auth
   frame, and uses token claims for presence name/colour.
-- *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles + isolates tenants; the relay
-  closes 1008 on no access and enforces viewers read-only.
+- *(done)* **Rooms + RBAC:** the relay resolves per-document roles + isolates tenants; closes 1008 on no
+  access and enforces viewers read-only.
 - *(done)* **Role-aware client:** the relay sends the role (a CONTROL frame); the app makes a viewer's
   editor + canvas read-only with a "view only" badge. Follow-up: a presence "active users" list
   (names/colours from awareness), and owner-only affordances (e.g. manage members) once memberships exist.
 - **Production `RoomStore`:** swap the file store for Postgres (update log = audit trail) + S3
-  (snapshots) + Redis fan-out. Browser-local embedded storage is now represented by the async IndexedDB
-  room store behind the same snapshot interface; SQLite/WASM remains optional only if future queries
-  outgrow whole-room snapshots.
+  (snapshots) + Redis fan-out — now tracked in `modules/relay/DO_NEXT.md` (the relay's async-capable
+  `Store` interface already accommodates this). Browser-local embedded storage is now represented by the
+  async IndexedDB room store behind the same snapshot interface; SQLite/WASM remains optional only if
+  future queries outgrow whole-room snapshots.
 - *(done)* **Decode-failure surfacing:** a corrupt peer overlay no longer throws inside the Y observer —
   `materialize` returns the decode `Result`; the observer logs `overlay-decode-rejected` via a
   `Logger<CollabEvent>` (threaded through `createCollabSession({ logger })`), surfaces a `CollabStatus`
@@ -57,6 +57,14 @@
 - *(done)* **Membership source:** `MEMBERSHIP_FILE` now loads a strict static room/member role source
   behind `authorizeRoom`, so auth-on deployments can grant room access without putting all per-room
   roles into the token.
+- *(done)* **Relay moved to Go (`modules/relay`), Milestone 1 of a native+WASM rewrite:** the entire
+  server — room registry, RBAC, rate limiting, frame protocol, auth, persistence — moved out of this
+  module's `server/*.mjs` into a new Go module, verified as a drop-in replacement (a ported copy of the
+  old `relay.test.mjs`/`rbac.test.mjs`/`membership.test.mjs`/`store.test.mjs`/`auth.test.mjs` suites, plus
+  the full existing `app/playground` Playwright e2e suite passing unchanged against it). `@m/collab` now
+  owns only the browser-side Yjs document/transport. Milestone 2 (compiling the same Go core to
+  WebAssembly so the backend-free demo runs the real relay in-process, instead of skipping it) is tracked
+  in `modules/relay/DO_NEXT.md`, not here.
 - *(done)* **Same-key merge for groups:** a group is now a nested `Y.Map` (`id`/`label`/`locked` fields +
   a nested `members` `Y.Array`) instead of one flat value — `label`/`locked` stay per-field LWW, and
   `members` merges per-element (like `Y.Text`), so two peers editing *different members of the same

@@ -25,10 +25,8 @@ catalog:
   "@codemirror/lint": 6.9.7
   "@lezer/highlight": 1.2.3
   yjs: 13.6.31
-  ws: 8.21.0
   y-codemirror.next: 0.3.5
   y-protocols: 1.0.7
-  jose: 6.2.3
   fake-indexeddb: 6.2.5
 
 # esbuild's postinstall fetches its platform binary; vitest and tsup need it.
