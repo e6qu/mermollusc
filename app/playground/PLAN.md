@@ -66,11 +66,17 @@ canvas, and hosts the e2e / golden tests.
   pass cardinal endpoint mount guards for routed graph families, lower to a display list, and export as
   SVG. Network and cloud examples are explicit catalog requirements.
 - Support the backend-free GitHub Pages demo build at `/demo/`: the app stays local-only there, but
-  `?collab` still uses the real in-browser `@m/collab` Yjs document/runtime and omits only the relay
-  transport. Persist backend-free collab rooms through the shared browser `RoomStore` whole-snapshot
-  seam, backed by IndexedDB in the Pages build, and keep URL share/example loads higher precedence than
-  stored local rooms. Do not fake-disable production-capable client paths in the demo. Keep the
-  dedicated Pages e2e target in the root pre-push gate and aligned with this contract.
+  `?collab` still uses the real in-browser `@m/collab` Yjs document/runtime, connected to the *real*
+  relay (`modules/relay`'s `cmd/relay-wasm`, compiled to WebAssembly and driven in-process via
+  `connectWasmRelay` — RBAC, room registry, and debounced persistence all genuinely run, not skipped) —
+  never a real network socket, but never a fake/mocked backend either. Persist backend-free collab rooms
+  through the shared browser `RoomStore` whole-snapshot seam, backed by IndexedDB in the Pages build (fed
+  to the relay as JS-callback load/save, not reimplemented in Go), and keep URL share/example loads
+  higher precedence than stored local rooms. Do not fake-disable production-capable client paths in the
+  demo. `tools/build-pages.mjs` compiles the WASM artifact and patches only the *built* demo's CSP with
+  the narrow `'wasm-unsafe-eval'` allowance WASM compilation requires — this app's own checked-in
+  `index.html` keeps the stricter policy. Keep the dedicated Pages e2e target in the root pre-push gate
+  and aligned with this contract.
 - Keep collaboration relay credentials out of transport URLs: page-provided tokens may seed the client
   session, but relay transport sends them through the first WebSocket auth frame and the app CSP must
   name the allowed HTTP/WebSocket connection targets.

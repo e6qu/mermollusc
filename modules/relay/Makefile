@@ -8,7 +8,7 @@ MODULE := relay
 
 .PHONY: install build typecheck lint lint-fix fmt fmt-check \
         test test-unit test-int test-e2e test-watch cov \
-        run stop clean doc-check check
+        run stop clean doc-check check build-wasm test-wasm
 
 install:    ; go mod download
 build:      ; go build ./...
@@ -41,7 +41,18 @@ run:
 stop:
 	@echo "[$(MODULE)] no persistent process tracked here — stop the foreground go run, or kill by PORT"
 
-clean:      ; rm -f coverage.out relay-server
+# cmd/relay-wasm is //go:build js && wasm — native `build`/`test`/`check` above skip it transparently
+# (the build constraint excludes it under any non-js/wasm GOOS/GOARCH). These two targets are the
+# explicit, demo-build-shaped verification for that path: build-wasm mirrors what tools/build-pages.mjs
+# does; test-wasm drives the real compiled output through Go's own Node-based WASM test runner
+# (go_js_wasm_exec, which ships alongside wasm_exec.js at $(go env GOROOT)/lib/wasm) — genuine execution,
+# not a native-side approximation.
+build-wasm:
+	@GOOS=js GOARCH=wasm go build -o relay.wasm ./cmd/relay-wasm
+test-wasm:
+	@PATH="$$(go env GOROOT)/lib/wasm:$$PATH" GOOS=js GOARCH=wasm go test ./cmd/relay-wasm/...
+
+clean:      ; rm -f coverage.out relay-server relay.wasm
 
 doc-check:
 	@for f in PLAN STATUS WHAT_WE_DID DO_NEXT BUGS; do \

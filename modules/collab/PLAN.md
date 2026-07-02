@@ -47,9 +47,15 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   persist whole-room Yjs snapshots for backend-free runtime parity.
 - Server: moved to **`modules/relay`** (Go, not TypeScript — see that module's own docs). This module no
   longer has a `server/` directory; `@m/collab` owns only the browser-side Yjs document/transport, which
-  speaks the same wire protocol to whichever relay is running (the Go native binary in production, and —
-  Milestone 2 — the same core compiled to WebAssembly for the backend-free demo). `make collab-server` at
-  the repo root still runs *a* relay for local two-tab dev; it now runs `modules/relay`'s binary.
+  speaks the same wire protocol to whichever relay is running (the Go native binary in production, or the
+  same core compiled to WebAssembly for the backend-free demo). `make collab-server` at the repo root
+  still runs *a* relay for local two-tab dev; it now runs `modules/relay`'s binary.
+- **WASM relay seam (`src/shell/wasm-relay.ts`):** `loadWasmRelay()` (script-injects `wasm_exec.js`,
+  instantiates `relay.wasm`) and `connectWasmRelay({ room, store })` (returns a `CollabSocket` wired to
+  the WASM module's four exported functions, fed into the same `connectTransport` the real-relay path
+  uses) — this is what makes the backend-free demo run the real relay in-process instead of skipping it.
+  `WasmRelayGlobal` is injectable so the wiring logic unit-tests without a browser; the loading mechanics
+  themselves are browser-only and covered by `app/playground`'s Playwright e2e suite instead.
 
 ## Design notes
 

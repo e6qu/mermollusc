@@ -18,3 +18,5 @@ export type {
   ReconnectDeps,
 } from "./transport.js";
 export type { AsyncRoomStore, RoomStore } from "./store.js";
+export { loadWasmRelay, connectWasmRelay } from "./wasm-relay.js";
+export type { WasmRelayGlobal, WasmRelayConnection } from "./wasm-relay.js";

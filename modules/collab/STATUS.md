@@ -2,10 +2,12 @@
 
 **State:** Phase 1 feature-complete; **Phase 2 in progress**. The relay itself (persistence, Auth0 OIDC
 verification, rooms + RBAC, static membership source) moved out of this module into **`modules/relay`**
-(Go, native + — Milestone 2 — WebAssembly for the backend-free demo; see that module's own docs). This
+(Go, native for production, WebAssembly for the backend-free demo; see that module's own docs). This
 module now owns only the browser-side Yjs document/transport, which speaks the same wire protocol to
-whichever relay is running. The app runs single-user by default; with `?collab` set it connects to the
-relay (via `reconnectingWebSocketTransport`) and binds the editor to the shared doc.
+whichever relay is running. The app runs single-user by default; with `?collab` set it connects to a
+relay — a real network one (via `reconnectingWebSocketTransport`) in production/dev, or the same relay
+core compiled to WASM and driven in-process (via `connectWasmRelay`) in the backend-free demo — and binds
+the editor to the shared doc.
 
 - **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + an overrides `Y.Map` +
   a groups `Y.Map`). Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/
@@ -37,6 +39,15 @@ relay (via `reconnectingWebSocketTransport`) and binds the editor to the shared 
   `createWebStorageRoomStore`, and async `createIndexedDbRoomStore` expose the same whole-Yjs-state
   snapshot contract to browser runtimes. `createCollabSession({ initialUpdate })` hydrates from that
   stored snapshot before any source/overlay seed is applied.
+- **WASM relay (`src/shell/wasm-relay.ts`):** `loadWasmRelay()` lazily loads `modules/relay`'s
+  `cmd/relay-wasm` build (script-inject `wasm_exec.js`, `fetch` + `WebAssembly.instantiateStreaming` the
+  `.wasm`, falling back to the buffered `instantiate` path if a static file server doesn't send
+  `Content-Type: application/wasm`); `connectWasmRelay({ room, store })` drives it in-process and returns
+  a `CollabSocket` fed into the same `connectTransport` the real-relay path uses. This is the seam the
+  backend-free demo uses to run the *real* relay (RBAC, room registry, persistence via the injected
+  `store`) instead of skipping it — verified end-to-end by `app/playground/e2e-pages/
+  backend-free-collab.spec.ts` (a genuine CONTROL frame sets the role badge; an override survives reload
+  via the relay's own debounced save into IndexedDB; zero real `WebSocket`s ever open).
 - **Reconnecting transport (`src/shell/transport.ts`):** `reconnectingWebSocketTransport(url, deps)` is a
   self-healing `CollabSocket` — on the inner socket's close it mints a **fresh** WebSocket and re-binds
   all listeners (a dead socket's listeners never fire again), retrying with exponential backoff + jitter
@@ -66,7 +77,8 @@ relay (via `reconnectingWebSocketTransport`) and binds the editor to the shared 
 - **Presence:** a y-protocols `Awareness` rides the same transport on a distinct frame. `setLocalUser`
   labels the client (name/colour); the source binding tracks the local cursor into awareness, so remote
   carets/selections render in peers' editors. Ephemeral — relayed, never stored.
-- **Verified:** 57 tests green (46 unit + 11 integration) — single-client overlay (incl.
+- **Verified:** 64 tests green (53 unit + 11 integration, incl. 7 for `wasm-relay.ts`'s wiring logic) —
+  single-client overlay (incl.
   `replaceOverrides` and **group undo/redo**: a minted group, a top-level ungroup, and a nested-subgroup
   ungroup that splices its freed leaves into the parent's members array) + undo/redo + source + the
   **corrupt-remote-overlay** path (logs `overlay-decode-rejected`, surfaces `overlay-rejected`, keeps
@@ -83,10 +95,15 @@ relay (via `reconnectingWebSocketTransport`) and binds the editor to the shared 
   implementation, dependency-injected the same way the app injects the real browser `indexedDB`):
   round-trip + miss, copy-on-save/load, persistence across separate store handles opened against the same
   factory, a stored Yjs snapshot hydrating a session, and the non-binary-value-in-store rejection path.
-  Module-wide coverage: 92.2% stmts/77.1% branch/89.5% funcs/96.0% lines against a 92/76/89/95 ratchet
-  (`vitest.config.ts`) — `make cov` passes. The relay's own RBAC/rate-limit/crash-guard/room-name/auth
-  test suite now lives in `modules/relay` (Go); the real relay + socket path (incl. live source + remote
-  cursors) is covered end-to-end by the app's Playwright two-tab specs, which exercise whichever relay
+  Module-wide coverage: 85.7% stmts/73.1% branch/85.0% funcs/88.9% lines against an 85/73/84/88 ratchet
+  (`vitest.config.ts`) — `make cov` passes. The ratchet dropped from the module's earlier 92/76/89/95 to
+  account for `wasm-relay.ts`'s loading mechanics (script injection, fetch, `WebAssembly` instantiation),
+  which — like `store.ts`'s IndexedDB path before it needed `fake-indexeddb` — are real browser API
+  orchestration with no meaningful Node-side unit test; covered by the Playwright e2e suite instead.
+  `connectWasmRelay`'s wiring logic (the part most likely to have bugs) IS unit-tested, via an injectable
+  `WasmRelayGlobal`. The relay's own RBAC/rate-limit/crash-guard/room-name/auth test suite now lives in
+  `modules/relay` (Go); the real relay + socket path (incl. live source + remote cursors) is covered
+  end-to-end by the app's Playwright two-tab specs, which exercise whichever relay
   `make collab-server` is currently running.
 - **Boundary discipline:** peer/Y data is decoded through `@m/builder`'s Zod overlay decoder before it
   becomes branded state. The materialise step RETURNS the decode `Result` (no throw inside the Yjs
@@ -98,6 +115,7 @@ relay (via `reconnectingWebSocketTransport`) and binds the editor to the shared 
   (Playwright covers the single-tab Yjs path, two-tab overlay convergence, source sync, and presence).
 
 **Phase 1 is feature-complete.** **Phase 2 is in progress.** Landed: the repo's relay (now `modules/relay`,
-Go), persistence, Auth0 verification, browser login, rooms/RBAC, membership source, and role-aware app UI.
-Next: the production store (see `modules/relay/DO_NEXT.md`) and Milestone 2 (WASM + demo integration).
-Phase 3 covers pub/sub, audit/observability, offline buffering, compaction, and compliance hooks.
+Go, native + WASM), persistence, Auth0 verification, browser login, rooms/RBAC, membership source,
+role-aware app UI, and a backend-free demo that runs the real relay in-process instead of skipping it.
+Next: the production store (see `modules/relay/DO_NEXT.md`). Phase 3 covers pub/sub, audit/observability,
+offline buffering, compaction, and compliance hooks.

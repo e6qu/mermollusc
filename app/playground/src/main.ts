@@ -127,8 +127,10 @@ import {
 } from "@m/std";
 import {
   connectTransport,
+  connectWasmRelay,
   createCollabSession,
   createIndexedDbRoomStore,
+  loadWasmRelay,
   reconnectingWebSocketTransport,
   type AsyncRoomStore,
   type CollabSession,
@@ -6192,15 +6194,32 @@ if (collabSession !== null) {
   } else {
     const store = localCollabStore;
     if (store === null) throw new Error("backend-free collab store was not initialised");
-    const saveSnapshot = (): void => {
-      store.save(collabRoom, session.state()).catch((error: unknown) => {
-        console.error(`backend-free collab store save failed: ${messageOf(error)}`);
-        setStatus("error", "backend-free room save failed");
-      });
-    };
-    session.onUpdate(saveSnapshot);
+    // The backend-free demo runs the SAME relay production runs, compiled to WebAssembly and driven
+    // in-process — not a separate reimplementation. Persistence happens inside the relay core itself
+    // (debounced, same as production) via `store`, not by hand-saving every session.onUpdate here.
+    // relay.wasm/wasm_exec.js are shipped next to the built app (see tools/build-pages.mjs), so they must
+    // be resolved under Vite's configured base path, not the site root — the Pages demo isn't hosted at
+    // the domain root.
+    await loadWasmRelay(
+      `${import.meta.env.BASE_URL}relay.wasm`,
+      `${import.meta.env.BASE_URL}wasm_exec.js`,
+    );
+    const { socket, flushAll } = await connectWasmRelay({ room: collabRoom, store });
+    connectTransport(session, socket, {
+      onControl: applyRole,
+      onClose: () => {
+        console.error("collab: disconnected from the in-process relay");
+        setStatus("warning", "disconnected from the collaboration relay — editing locally");
+      },
+    });
+    // Best-effort: browsers don't reliably wait for async work in unload handlers, but this is the same
+    // durability gap a hard-killed production relay process has (see modules/relay/BUGS.md) — not a
+    // demo-specific shortcut.
+    window.addEventListener("beforeunload", () => {
+      void flushAll();
+    });
     window.setTimeout(() => {
-      setStatus("ok", "backend-free demo: using the local collaboration document");
+      setStatus("ok", "backend-free demo: connected to the in-process collaboration relay");
     }, 0);
   }
   // Seed the room's source once the initial sync has settled: the first client into an empty room

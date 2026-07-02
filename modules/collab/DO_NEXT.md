@@ -57,14 +57,14 @@
 - *(done)* **Membership source:** `MEMBERSHIP_FILE` now loads a strict static room/member role source
   behind `authorizeRoom`, so auth-on deployments can grant room access without putting all per-room
   roles into the token.
-- *(done)* **Relay moved to Go (`modules/relay`), Milestone 1 of a native+WASM rewrite:** the entire
-  server — room registry, RBAC, rate limiting, frame protocol, auth, persistence — moved out of this
-  module's `server/*.mjs` into a new Go module, verified as a drop-in replacement (a ported copy of the
-  old `relay.test.mjs`/`rbac.test.mjs`/`membership.test.mjs`/`store.test.mjs`/`auth.test.mjs` suites, plus
-  the full existing `app/playground` Playwright e2e suite passing unchanged against it). `@m/collab` now
-  owns only the browser-side Yjs document/transport. Milestone 2 (compiling the same Go core to
-  WebAssembly so the backend-free demo runs the real relay in-process, instead of skipping it) is tracked
-  in `modules/relay/DO_NEXT.md`, not here.
+- *(done)* **Relay moved to Go (`modules/relay`), native + WASM:** the entire server — room registry,
+  RBAC, rate limiting, frame protocol, auth, persistence — moved out of this module's `server/*.mjs` into
+  a new Go module, verified as a drop-in replacement (a ported copy of the old `relay.test.mjs`/
+  `rbac.test.mjs`/`membership.test.mjs`/`store.test.mjs`/`auth.test.mjs` suites, plus the full existing
+  `app/playground` Playwright e2e suite passing unchanged against it). `@m/collab` now owns only the
+  browser-side Yjs document/transport. The same relay core also compiles to WebAssembly
+  (`src/shell/wasm-relay.ts`), so the backend-free demo runs the real relay in-process instead of skipping
+  it — see `modules/relay/DO_NEXT.md` for what's still open there (the production store).
 - *(done)* **Same-key merge for groups:** a group is now a nested `Y.Map` (`id`/`label`/`locked` fields +
   a nested `members` `Y.Array`) instead of one flat value — `label`/`locked` stay per-field LWW, and
   `members` merges per-element (like `Y.Text`), so two peers editing *different members of the same
