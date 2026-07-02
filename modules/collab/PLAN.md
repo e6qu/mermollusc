@@ -56,12 +56,17 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 ## Design notes
 
-- **Storage shape mirrors `serializeOverlay`.** Each override/group is stored in its `Y.Map` in the
-  exact plain-object shape `@m/builder`'s `decodeOverlay` already validates, so materialising the
-  branded maps reuses that decoder verbatim.
-- **Per-key LWW.** Overrides/groups are keyed by id, so concurrent edits to *different* elements both
-  survive; concurrent edits to the *same* element converge to one agreed value. Source text merges at
-  the character level (`Y.Text`).
+- **Storage shape mirrors `serializeOverlay`** on the wire: `decodeOverlay` (materialising) and
+  `encodeGroupEntry`/`encodeOverrideEntry` (writing) still speak the exact flat plain-object shape JSON
+  persistence uses. Only the *live* Yjs container differs from that flat shape — see the next point.
+- **Per-key LWW for overrides; per-member CRDT for group membership.** Overrides are keyed by id, so
+  concurrent edits to *different* nodes both survive and concurrent edits to the *same* node converge to
+  one agreed value (whole-value LWW). A group, though, is a nested `Y.Map` (`id`/`label`/`locked` fields
+  + a nested `members` `Y.Array`) rather than one flat value: `label`/`locked` are per-field LWW, and
+  `members` merges per-element like `Y.Text` — two peers editing *different members of the same group*
+  concurrently (e.g. each dissolving a different child into a shared parent, or each pruning a different
+  dead node from the same group) both survive, instead of one whole-group write silently dropping the
+  other's edit. Source text merges at the character level (`Y.Text`).
 - **Origins.** Local edits use a `LOCAL` transaction origin (tracked for undo, broadcast on `onUpdate`);
   applied remote updates use `REMOTE` (not re-broadcast); the initial seed uses `SEED` (kept out of
   history). Undo/redo is a `Y.UndoManager` scoped to `LOCAL` — each user undoes only their own edits.

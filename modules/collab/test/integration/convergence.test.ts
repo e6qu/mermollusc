@@ -126,6 +126,71 @@ describe("collab convergence — overlay", () => {
     b.destroy();
   });
 
+  it("two clients concurrently ungrouping different children of the same parent both survive", () => {
+    const a = blank();
+    a.overlay.groupNodes([{ kind: "node", id: n("A") }, { kind: "node", id: n("B") }]);
+    const g1 = [...a.overlay.groups().keys()][0];
+    a.overlay.groupNodes([{ kind: "node", id: n("C") }, { kind: "node", id: n("D") }]);
+    const g2 = [...a.overlay.groups().keys()].find((k) => k !== g1);
+    if (g1 === undefined || g2 === undefined) throw new Error("inner groups not minted");
+    a.overlay.groupNodes([
+      { kind: "group", id: g1 },
+      { kind: "group", id: g2 },
+      { kind: "node", id: n("E") },
+    ]);
+    const parent = [...a.overlay.groups().keys()].find((k) => k !== g1 && k !== g2);
+    if (parent === undefined) throw new Error("parent group not minted");
+
+    const b = blank();
+    b.applyUpdate(a.state());
+
+    // Each client dissolves a DIFFERENT child of the same parent while apart. Under the old whole-group
+    // LWW write, whichever client's rewrite of the parent's members landed last would win outright —
+    // dropping the other's freed members and leaving a dangling reference to an already-deleted group.
+    a.overlay.ungroupAt(g1);
+    b.overlay.ungroupAt(g2);
+    exchange(a, b);
+    exchange(a, b);
+
+    for (const s of [a, b]) {
+      expect(s.overlay.groups().size).toBe(1); // both children dissolved; only the parent remains
+      const pg = s.overlay.groups().get(parent);
+      expect(pg).toBeDefined();
+      const keys = new Set(pg?.members.map((m) => `${m.kind}:${m.id}`));
+      expect(keys).toEqual(new Set(["node:A", "node:B", "node:C", "node:D", "node:E"]));
+    }
+    a.destroy();
+    b.destroy();
+  });
+
+  it("two clients concurrently pruning different dead members of the same group both survive", () => {
+    const a = blank();
+    a.overlay.groupNodes([
+      { kind: "node", id: n("A") },
+      { kind: "node", id: n("B") },
+      { kind: "node", id: n("C") },
+    ]);
+    const [gid] = [...a.overlay.groups().keys()];
+    if (gid === undefined) throw new Error("no group minted");
+    const b = blank();
+    b.applyUpdate(a.state());
+
+    // Each client learns of a DIFFERENT dead node and prunes it from the same group while apart. Under
+    // the old whole-group LWW write, one client's prune would silently undo the other's.
+    a.overlay.pruneGroupsTo(new Set([n("B"), n("C")])); // A died
+    b.overlay.pruneGroupsTo(new Set([n("A"), n("C")])); // B died
+    exchange(a, b);
+    exchange(a, b);
+
+    for (const s of [a, b]) {
+      const g = s.overlay.groups().get(gid);
+      expect(g).toBeDefined();
+      expect(g?.members.map((m) => m.id)).toEqual(["C"]); // both A and B pruned, C survives
+    }
+    a.destroy();
+    b.destroy();
+  });
+
   it("a concurrent group on one side merges with a move on the other", () => {
     const a = blank();
     const b = blank();

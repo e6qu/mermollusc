@@ -8,10 +8,23 @@ production store. The app runs
 single-user by default; with `?collab` set it connects to the relay (via `reconnectingWebSocketTransport`)
 and binds the editor to the shared doc.
 
-- **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides/groups `Y.Map`s).
-  Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/label/prune/replace/
-  replaceOverrides/clear, undo/redo via `Y.UndoManager`, persist via injected `save`). Source channel:
-  `source`/`setSource`/`spliceSource` + `onSourceChange`. Binary sync: `state`/`applyUpdate`/`onUpdate`.
+- **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + an overrides `Y.Map` +
+  a groups `Y.Map`). Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/
+  label/prune/replace/replaceOverrides/clear, undo/redo via `Y.UndoManager`, persist via injected
+  `save`). Source channel: `source`/`setSource`/`spliceSource` + `onSourceChange`. Binary sync:
+  `state`/`applyUpdate`/`onUpdate`.
+- **Per-member group merge:** a group is a nested `Y.Map` (`id`/`label`/`locked` + a nested `members`
+  `Y.Array`), not one flat LWW value — `label`/`locked` are per-field LWW, `members` merges per-element
+  like `Y.Text`. Two peers concurrently editing *different members of the same group* (e.g. each
+  dissolving a different child into a shared parent, or each pruning a different dead node from the same
+  group) both survive; previously the second write's whole-group `.set()` silently clobbered the first's.
+  `groupNodes`/`ungroupAt`/`setGroupLocked`/`setGroupLabel`/`pruneGroupsTo`/`replace` all write through
+  targeted per-field/per-member Yjs ops instead of a whole-group re-encode. JSON persistence is
+  unaffected (`encodeGroupEntry`/`decodeOverlay` still speak the flat wire shape); `materialize()`
+  flattens each nested group back via `.toJSON()`, rejecting (as a decode failure, never a throw) any
+  group value that isn't the expected nested `Y.Map` — including a stale pre-redesign flat value, so an
+  old persisted room fails loudly on load rather than silently misbehaving. The `yGroups` observer is now
+  `observeDeep` (a shallow `observe` can't see edits inside an already-integrated nested type).
 - **Transport:** `connectTransport(session, socket)` binds the binary-sync seam to any `CollabSocket`;
   `webSocketTransport(url)`/`connectWebSocket(session, url)` use the platform `WebSocket`.
 - **Server (`server/relay.mjs`):** a server-authoritative relay (rooms by URL path; per-room `Y.Doc`;
@@ -91,21 +104,28 @@ and binds the editor to the shared doc.
 - **Presence:** a y-protocols `Awareness` rides the same transport on a distinct frame. `setLocalUser`
   labels the client (name/colour); the source binding tracks the local cursor into awareness, so remote
   carets/selections render in peers' editors. Ephemeral — relayed, never stored.
-- **Verified:** 74 tests green — single-client overlay (incl. `replaceOverrides`) + undo/redo + source +
-  the **corrupt-remote-overlay** path (logs `overlay-decode-rejected`, surfaces `overlay-rejected`,
-  keeps last-good, no throw) (unit); transport wiring over in-memory paired sockets + a mocked-`WebSocket`
-  `webSocketTransport` + presence-frame routing + the **reconnecting transport** (backoff schedule,
-  re-mint-on-drop + re-fire-onOpen state re-exchange, budget-exhausted `disconnected` + consumer onClose,
-  user-close stops retry) (unit); two-peer **convergence** (integration): late-joiner catch-up, concurrent
-  moves of different nodes (no lost update), same-node LWW agreement, **two-client concurrent grouping
-  both survive** (collision-proof ids), group⊕move merge, character-level source merge, remote-only
-  notifications, and a property test that any interleaving converges. **Relay** integration (over a real
-  socket): RBAC viewer-read-only / editor-relayed / forbidden-1008 / bad-token-1008 / role-announced,
-  plus the new hardening — **crash-guard** survival of a malformed CRDT frame, **invalid room name** /
-  empty-segment / 3-segment → 1008, **tag allow-list** (unknown + inbound CONTROL dropped, presence
-  relayed), and **rate-limit** breach on frames/sec and bytes/sec → 1008. The **real** relay + socket
-  path (incl. live source + remote cursors) is also covered end-to-end by the app's Playwright two-tab
-  specs. Coverage ~97% stmts / 94.6% funcs (ratchet in `vitest.config.ts`).
+- **Verified:** 92 tests green — single-client overlay (incl. `replaceOverrides` and **group undo/redo**:
+  a minted group, a top-level ungroup, and a nested-subgroup ungroup that splices its freed leaves into
+  the parent's members array) + undo/redo + source + the **corrupt-remote-overlay** path (logs
+  `overlay-decode-rejected`, surfaces `overlay-rejected`, keeps last-good, no throw) (unit); transport
+  wiring over in-memory paired sockets + a mocked-`WebSocket` `webSocketTransport` + presence-frame
+  routing + the **reconnecting transport** (backoff schedule, re-mint-on-drop + re-fire-onOpen state
+  re-exchange, budget-exhausted `disconnected` + consumer onClose, user-close stops retry) (unit);
+  two-peer **convergence** (integration): late-joiner catch-up, concurrent moves of different nodes (no
+  lost update), same-node LWW agreement, **two-client concurrent grouping both survive**
+  (collision-proof ids), **two clients concurrently ungrouping different children of the same parent
+  both survive** (no dangling group reference), **two clients concurrently pruning different dead
+  members of the same group both survive** (neither client's removal is dropped), group⊕move merge,
+  character-level source merge, remote-only notifications, and a property test that any interleaving
+  converges. **Relay** integration (over a real socket): RBAC viewer-read-only / editor-relayed /
+  forbidden-1008 / bad-token-1008 / role-announced, plus the hardening — **crash-guard** survival of a
+  malformed CRDT frame, **invalid room name** / empty-segment / 3-segment → 1008, **tag allow-list**
+  (unknown + inbound CONTROL dropped, presence relayed), and **rate-limit** breach on frames/sec and
+  bytes/sec → 1008. The **real** relay + socket path (incl. live source + remote cursors) is also covered
+  end-to-end by the app's Playwright two-tab specs. Module-wide coverage currently sits at 84.5%
+  stmts/72.2% branch/79.7% funcs against a 95/88/94 ratchet (`vitest.config.ts`) — `make cov` fails on
+  under-covered browser `store.ts` (its IndexedDB/Web Storage paths aren't exercised by vitest; pre-dates
+  this change) — a separate, unrelated gap, not touched here.
 - **Server (`.mjs`) tests:** a `RoomStore` round-trip incl. fresh-instance-over-same-dir (≈ restart);
   a **local JWKS harness** for the OIDC verifier — a valid token is accepted (user + tenant + roles
   surfaced), while missing/malformed/wrong-audience/wrong-issuer/expired tokens are rejected; and

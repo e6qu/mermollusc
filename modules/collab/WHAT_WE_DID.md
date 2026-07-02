@@ -1,5 +1,20 @@
 # @m/collab — work log
 
+- Same-key merge for groups: a group's Yjs storage changed from one flat whole-value `Y.Map` entry to a
+  nested `Y.Map` (`id`/`label`/`locked` fields + a nested `members` `Y.Array`), so concurrent edits to
+  *different members of the same group* (dissolving different children into a shared parent; pruning
+  different dead nodes from the same group) both survive instead of one whole-group write silently
+  dropping the other's. `groupNodes`/`ungroupAt`/`setGroupLocked`/`setGroupLabel`/`pruneGroupsTo`/
+  `replace` now write through targeted per-field/per-member Yjs ops; the `yGroups` observer switched from
+  `observe` to `observeDeep` (needed to see edits inside an already-integrated nested type). JSON
+  persistence is untouched — `encodeGroupEntry`/`decodeOverlay` still speak the flat wire shape;
+  `materialize()` flattens each nested group via `.toJSON()` and rejects (as an ordinary decode failure,
+  never a throw) any group value that isn't the expected nested `Y.Map`, including a stale pre-redesign
+  flat value — a breaking Yjs wire-format change, acceptable since the feature has no production store
+  yet. Verified two new convergence tests reproduce the old bug against the prior implementation (a
+  dangling group reference after concurrent ungroup; a dropped removal after concurrent prune) and pass
+  against the new one, plus three new group undo/redo unit tests (mint, top-level ungroup, nested-ungroup
+  splice) covering `UndoManager`'s handling of the new nested structure.
 - Added a server-side static membership source (`server/membership.mjs`). `MEMBERSHIP_FILE` points the
   relay at a strict JSON `{ rooms: { room: { subject: role } } }` file, loaded at startup; malformed
   files throw loudly, auth-on deployments fail closed for missing rooms/subjects, tenant isolation still

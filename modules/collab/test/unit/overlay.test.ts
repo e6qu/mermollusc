@@ -164,6 +164,50 @@ describe("collab session — undo/redo (UndoManager)", () => {
     s.destroy();
   });
 
+  it("undoes and redoes a groupNodes call", () => {
+    const s = newSession({});
+    s.overlay.record();
+    s.overlay.groupNodes([node("a"), node("b")]);
+    expect(s.overlay.groups().size).toBe(1);
+    expect(s.overlay.undo()).toBe(true);
+    expect(s.overlay.groups().size).toBe(0);
+    expect(s.overlay.redo()).toBe(true);
+    expect(s.overlay.groups().size).toBe(1);
+    s.destroy();
+  });
+
+  it("undoes a top-level ungroupAt, restoring the group", () => {
+    const s = newSession({});
+    s.overlay.groupNodes([node("a"), node("b"), node("c")]);
+    const [id] = [...s.overlay.groups().keys()];
+    if (id === undefined) throw new Error("no group minted");
+    s.overlay.record();
+    s.overlay.ungroupAt(id);
+    expect(s.overlay.groups().size).toBe(0);
+    expect(s.overlay.undo()).toBe(true);
+    expect(s.overlay.groups().size).toBe(1);
+    expect(s.overlay.groups().get(id)?.members).toEqual([node("a"), node("b"), node("c")]);
+    s.destroy();
+  });
+
+  it("undoes an ungroupAt that dissolved a nested subgroup, restoring the parent's spliced-in members", () => {
+    const s = newSession({});
+    s.overlay.groupNodes([node("a"), node("b")]); // the inner group
+    const [inner] = [...s.overlay.groups().keys()];
+    if (inner === undefined) throw new Error("no inner group minted");
+    s.overlay.groupNodes([{ kind: "group", id: inner }, node("c")]); // outer nests inner
+    const outer = [...s.overlay.groups().keys()].find((k) => k !== inner);
+    if (outer === undefined) throw new Error("no outer group minted");
+    s.overlay.record();
+    s.overlay.ungroupAt(inner);
+    expect(s.overlay.groups().size).toBe(1);
+    expect(s.overlay.groups().get(outer)?.members).toEqual([node("a"), node("b"), node("c")]);
+    expect(s.overlay.undo()).toBe(true);
+    expect(s.overlay.groups().size).toBe(2);
+    expect(s.overlay.groups().get(outer)?.members).toEqual([{ kind: "group", id: inner }, node("c")]);
+    s.destroy();
+  });
+
   it("clearHistory empties the undo stack", () => {
     const s = newSession({});
     s.overlay.record();
