@@ -112,7 +112,14 @@ import {
   trunkRoutes,
 } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
-import { edgeLabelAnchorAt, labelLines, paint, pathRatioNearest, toDisplayList } from "@m/renderer";
+import {
+  type EdgeFinish,
+  edgeLabelAnchorAt,
+  labelLines,
+  paint,
+  pathRatioNearest,
+  toDisplayList,
+} from "@m/renderer";
 import {
   assertNever,
   brand,
@@ -1064,7 +1071,7 @@ const paintScene = (): void => {
   const cmds = toDisplayList(
     shown,
     (busEnabled || trunkEnabled) && ast !== null && SPREAD_FAMILIES.has(ast.kind),
-    plainEdgesActive(),
+    edgeFinishActive(),
   );
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
@@ -2725,9 +2732,15 @@ const syncStyleFlags = (kind: DiagramAst["kind"] | null): void => {
   trunkEnabled = style === "trunk";
 };
 
-// Classic mode renders plain Mermaid-style edges: no per-segment direction chevrons, no crossing hops.
-const plainEdgesActive = (): boolean =>
-  getActiveStyle(ast !== null ? familyOfKind(ast.kind) : "layered") === "classic";
+// Classic mode renders Mermaid-style edges: no house chevrons/hops, and — for the ELK layered family —
+// smooth basis-curve splines like real Mermaid draws. The maze-routed box families (c4/block/network/
+// cloud) keep straight lanes even in classic: their routes are precision-threaded around obstacles, and
+// smoothing would cut corners into the very boxes the router avoided.
+const edgeFinishActive = (): EdgeFinish => {
+  const family = ast !== null ? familyOfKind(ast.kind) : "layered";
+  if (getActiveStyle(family) !== "classic") return "decorated";
+  return family === "layered" ? "spline" : "plain";
+};
 
 const updateStyleOptions = (kind: DiagramAst["kind"] | null): void => {
   const family = kind !== null ? familyOfKind(kind) : "layered";
@@ -5909,7 +5922,7 @@ installImageExport({
   getScene: () => scene,
   shownScene,
   isRenderValid: () => currentRenderValid,
-  plainEdges: plainEdgesActive,
+  edgeFinish: edgeFinishActive,
   activeTheme,
   getDirection: () => lastDirection,
   iconImages,

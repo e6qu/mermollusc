@@ -1,5 +1,12 @@
 # @m/renderer — work log
 
+- Mermaid edge-geometry parity: `toDisplayList`'s boolean `plainEdges` became the closed
+  `EdgeFinish` union (`"decorated" | "plain" | "spline"`). `"spline"` draws a smooth Catmull-Rom-derived
+  cubic path through every routed waypoint (`splinePath` — built on the existing `smoothSegments`), the
+  Mermaid basis-curve look; a straight run stays straight by construction (collinear controls), so
+  2-point edges are unchanged. The app maps classic mode to spline for the ELK layered family and plain
+  for the maze-routed box families, whose precision lanes must not be corner-cut. Unit tests cover the
+  cubic path shape and the straight-run invariant.
 - Mermaid font parity: the default themes now use Mermaid's own font
   (`16px "trebuchet ms", verdana, arial, sans-serif`, from `theme-default.js` — same provenance as the
   palette), completing the appearance half of parity. The font feeds `measureText`, so every node

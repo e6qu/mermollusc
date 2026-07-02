@@ -12,6 +12,7 @@ export {
 export { toDot } from "./dot.js";
 export type {
   DrawCmd,
+  EdgeFinish,
   EndMarker,
   LabelAlign,
   MarkerPolygon,

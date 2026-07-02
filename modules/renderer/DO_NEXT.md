@@ -5,9 +5,12 @@
   palette). The node-size shift this caused was absorbed by converting the affected e2e specs from
   hardcoded pixel offsets to the `__nodeRect`-anchored helpers in `e2e/support/nodes.ts` — new specs
   must use those helpers, never magic coordinates.
-- **Mermaid edge-geometry parity.** Classic mode now drops the house chevrons/hops, but edges are still
-  rounded-corner orthogonal polylines; real Mermaid draws smooth splines (basis curves). A classic-mode
-  spline `PathCmd` builder over the same waypoints would close most of the remaining visual gap.
+- *(done)* **Mermaid edge-geometry parity.** Classic mode draws smooth Catmull-Rom-derived cubic
+  splines through the routed waypoints (`splinePath`, the `"spline"` `EdgeFinish`) for the ELK layered
+  family — the Mermaid basis-curve look. The maze-routed box families keep straight lanes even in
+  classic (`"plain"`): smoothing would cut corners into the obstacles their router avoided. Hit-testing
+  and label anchors still use the waypoint polyline; the spline passes through every waypoint, so the
+  deviation is bounded and the full e2e suite confirms interactions are unaffected.
 - **Wire `make cov` into a gate.** The coverage ratchet had drifted ~10 points above actual on main with
   nobody noticing, because neither pre-commit nor pre-push runs `make cov`. Re-based 2026-07-02; decide
   where the gate runs (pre-push? CI?) so a ratchet miss actually fails something.

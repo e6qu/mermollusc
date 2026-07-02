@@ -320,6 +320,27 @@ export const roundedCorners = (points: readonly Point[], radius: number): readon
   return ops;
 };
 
+// A smooth Catmull-Rom-derived cubic path through EVERY waypoint — the Mermaid basis-curve look for
+// classic mode. A straight run stays straight (collinear control points), so 2-point edges (sequence
+// messages, simple links) are unchanged by construction.
+export const splinePath = (pts: readonly Point[]): readonly PathCmd[] => {
+  const first = pts[0];
+  if (first === undefined) return [];
+  const path: PathCmd[] = [{ kind: "moveTo", x: first.x, y: first.y }];
+  for (const s of smoothSegments(pts)) {
+    path.push({
+      kind: "cubicTo",
+      c1x: s.c1.x,
+      c1y: s.c1.y,
+      c2x: s.c2.x,
+      c2y: s.c2.y,
+      x: s.to.x,
+      y: s.to.y,
+    });
+  }
+  return path;
+};
+
 export interface CurveSegment {
   readonly c1: Point;
   readonly c2: Point;
