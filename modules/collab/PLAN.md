@@ -45,14 +45,11 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 - Browser-compatible stores: sync `RoomStore` implementations (`createMemoryRoomStore()`,
   `createWebStorageRoomStore(storage, keyPrefix?)`) plus async `createIndexedDbRoomStore(indexedDB)`
   persist whole-room Yjs snapshots for backend-free runtime parity.
-- Server (optional, `server/`): `relay.mjs` (`startRelay({ store, authorize, authRequired,
-  authorizeRoom, rateLimit, now })` — auth-frame-gated, crash-guarded, rate-limited,
-  tag-allow-listed, room-name-validated, flushes on
-  SIGINT/SIGTERM), `store.mjs` (`createMemoryRoomStore` / `createFileRoomStore` with legacy aliases —
-  the `RoomStore` durability seam), `auth.mjs` (`createVerifier` / `createAuth0Authorizer` — OIDC token
-  verification), `rbac.mjs` (`createClaimsRoleResolver({ defaultRole })` — **fails closed** by default /
-  `canWrite` — per-document roles + tenant isolation), and `membership.mjs`
-  (`loadMembershipRoleResolver(MEMBERSHIP_FILE)` — strict room/member role source).
+- Server: moved to **`modules/relay`** (Go, not TypeScript — see that module's own docs). This module no
+  longer has a `server/` directory; `@m/collab` owns only the browser-side Yjs document/transport, which
+  speaks the same wire protocol to whichever relay is running (the Go native binary in production, and —
+  Milestone 2 — the same core compiled to WebAssembly for the backend-free demo). `make collab-server` at
+  the repo root still runs *a* relay for local two-tab dev; it now runs `modules/relay`'s binary.
 
 ## Design notes
 

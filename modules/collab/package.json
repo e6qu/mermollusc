@@ -20,9 +20,7 @@
     "@codemirror/view": "catalog:"
   },
   "devDependencies": {
-    "ws": "catalog:",
     "@types/node": "catalog:",
-    "jose": "catalog:",
     "fake-indexeddb": "catalog:"
   }
 }

@@ -1,0 +1,550 @@
+// Package relay is the portable core of the collaborative relay: room registry, RBAC enforcement, rate
+// limiting, frame protocol, and CRDT merge (via y-crdt) — ported in *behavior* from the JS relay this
+// replaces. It is parameterized entirely over the Socket/Store/Authorizer/RoomAuthorizer interfaces above,
+// with zero knowledge of how a connection actually arrived (a real network socket, or — Milestone 2 — an
+// in-process WASM-side connection): that is the one implementation both production and the demo run.
+//
+// The JS original could rely on single-threaded execution to serialize all room/socket mutations for
+// free; Go connections run on real goroutines, so this port adds an explicit mutex (see Core.mu) around
+// every mutation of shared state. That is the one behavioral difference from the JS source, and it is a
+// correctness requirement of the language change, not a "mode".
+package relay
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"net/url"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
+	ycrdt "github.com/skyterra/y-crdt"
+)
+
+// Frame tags — identical to the JS relay's wire protocol.
+const (
+	tagDoc     byte = 0
+	tagAware   byte = 1
+	tagControl byte = 2
+	tagAuth    byte = 3
+)
+
+const (
+	saveDebounce       = 400 * time.Millisecond
+	maxPendingFrames   = 64
+	maxRooms           = 10_000
+	viewerDropLogEvery = 5 * time.Second
+)
+
+var segmentRE = regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
+
+// Close codes (RFC 6455 / the JS relay's usage).
+const (
+	closePolicy        = 1008
+	closeInternal      = 1011
+	closeTryAgainLater = 1013
+)
+
+// Logger is the minimal logging seam — defaults to the standard library logger. Injectable so tests stay
+// quiet without needing a real io.Writer plumbing exercise.
+type Logger interface {
+	Printf(format string, args ...any)
+}
+
+// Options configures a Core. All fields are optional; the zero value matches the JS relay's own
+// zero-config defaults (in-memory-equivalent via the caller's Store, allow-all auth, editor-by-default
+// RBAC, DefaultRateLimit, wall-clock time).
+type Options struct {
+	Store         Store
+	Authorize     Authorizer
+	AuthRequired  bool
+	AuthorizeRoom RoomAuthorizer
+	RateLimit     RateLimit
+	Now           func() time.Time
+	Logger        Logger
+}
+
+// Core is the room registry + connection admission logic. Safe for concurrent use by multiple goroutines
+// (one per connection, typically).
+type Core struct {
+	mu    sync.Mutex
+	rooms map[string]*room
+
+	store         Store
+	authorize     Authorizer
+	authRequired  bool
+	authorizeRoom RoomAuthorizer
+	rateLimit     RateLimit
+	now           func() time.Time
+	log           Logger
+}
+
+type room struct {
+	doc       *ycrdt.Doc
+	sockets   map[Socket]struct{}
+	saveTimer *time.Timer
+}
+
+// New builds a Core. A nil/zero-value Options field falls back to the same defaults `startRelay` uses in
+// the JS relay.
+func New(opts Options) *Core {
+	if opts.Store == nil {
+		opts.Store = newDefaultMemoryStore()
+	}
+	if opts.Authorize == nil {
+		opts.Authorize = AllowAll
+	}
+	if opts.AuthorizeRoom == nil {
+		opts.AuthorizeRoom = NewClaimsRoleResolver(RoleEditor)
+	}
+	if opts.RateLimit == (RateLimit{}) {
+		opts.RateLimit = DefaultRateLimit
+	}
+	if opts.Now == nil {
+		opts.Now = time.Now
+	}
+	if opts.Logger == nil {
+		opts.Logger = log.Default()
+	}
+	return &Core{
+		rooms:         make(map[string]*room),
+		store:         opts.Store,
+		authorize:     opts.Authorize,
+		authRequired:  opts.AuthRequired,
+		authorizeRoom: opts.AuthorizeRoom,
+		rateLimit:     opts.RateLimit,
+		now:           opts.Now,
+		log:           opts.Logger,
+	}
+}
+
+// roomName extracts and validates the room id from a connection URL's path. Returns ("", false) for a
+// malformed name — the caller rejects rather than normalising a bad name.
+func roomName(rawURL string) (string, bool) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", false
+	}
+	raw, err := url.PathUnescape(strings.TrimLeft(u.Path, "/"))
+	if err != nil {
+		return "", false
+	}
+	if raw == "" {
+		return "default", true
+	}
+	if !validRoomName(raw) {
+		return "", false
+	}
+	return raw, true
+}
+
+// validRoomName: one or two non-empty `<tenant>/<id>` segments; `.`/`..` and empty segments are barred.
+func validRoomName(name string) bool {
+	segments := strings.Split(name, "/")
+	if len(segments) == 0 || len(segments) > 2 {
+		return false
+	}
+	for _, seg := range segments {
+		if seg == "" || seg == "." || seg == ".." {
+			return false
+		}
+		if !segmentRE.MatchString(seg) {
+			return false
+		}
+	}
+	return true
+}
+
+func docFrame(payload []byte) []byte {
+	frame := make([]byte, len(payload)+1)
+	frame[0] = tagDoc
+	copy(frame[1:], payload)
+	return frame
+}
+
+func controlFrame(message string) []byte {
+	frame := make([]byte, len(message)+1)
+	frame[0] = tagControl
+	copy(frame[1:], message)
+	return frame
+}
+
+// loadRoom returns the room for name, loading it from the store on first touch. Returns (nil, nil) if the
+// room cap is hit for a brand-new room. Concurrent first-touches of the SAME new room are coalesced via
+// pendingLoads so two callers never create two divergent Docs for one room name (the JS original didn't
+// need this — synchronous execution made it unreachable there; Go's real concurrency makes it reachable).
+func (c *Core) loadRoom(name string) (*room, error) {
+	c.mu.Lock()
+	if r, ok := c.rooms[name]; ok {
+		c.mu.Unlock()
+		return r, nil
+	}
+	if len(c.rooms) >= maxRooms {
+		c.mu.Unlock()
+		return nil, nil
+	}
+	c.mu.Unlock()
+
+	snapshot, err := c.safeLoad(name)
+	if err != nil {
+		return nil, err
+	}
+	doc := ycrdt.NewDoc(name, false, nil, nil, false)
+	if snapshot != nil {
+		if err := applyUpdateGuarded(doc, snapshot); err != nil {
+			return nil, fmt.Errorf("stored snapshot for room %q is corrupt: %w", name, err)
+		}
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if r, ok := c.rooms[name]; ok {
+		return r, nil // a concurrent loader won the race — use its room, discard ours
+	}
+	if len(c.rooms) >= maxRooms {
+		return nil, nil
+	}
+	r := &room{doc: doc, sockets: make(map[Socket]struct{})}
+	c.rooms[name] = r
+	return r, nil
+}
+
+func (c *Core) safeLoad(name string) ([]byte, error) {
+	snapshot, err := c.store.Load(name)
+	if err != nil {
+		c.log.Printf("relay: store.Load(%q) failed — %v", name, err)
+		return nil, nil
+	}
+	return snapshot, nil
+}
+
+func (c *Core) safeSave(name string, r *room) {
+	c.mu.Lock()
+	snapshot := ycrdt.EncodeStateAsUpdate(r.doc, nil)
+	c.mu.Unlock()
+	if err := c.store.Save(name, snapshot); err != nil {
+		c.log.Printf("relay: store.Save(%q) failed — %v", name, err)
+	}
+}
+
+func (c *Core) flush(name string, r *room) {
+	c.mu.Lock()
+	if r.saveTimer != nil {
+		r.saveTimer.Stop()
+		r.saveTimer = nil
+	}
+	c.mu.Unlock()
+	c.safeSave(name, r)
+}
+
+// FlushAll persists every room's latest snapshot — call on a clean shutdown before exiting so a
+// SIGINT/SIGTERM doesn't drop an edit still inside the debounce window.
+func (c *Core) FlushAll() {
+	c.mu.Lock()
+	rooms := make(map[string]*room, len(c.rooms))
+	for name, r := range c.rooms {
+		rooms[name] = r
+	}
+	c.mu.Unlock()
+	for name, r := range rooms {
+		c.flush(name, r)
+	}
+}
+
+// applyUpdateGuarded applies a CRDT update, recovering a panic (a malformed update makes y-crdt panic,
+// mirroring the JS relay's throwing `applyUpdate`) into an error so one bad frame can't crash the relay.
+func applyUpdateGuarded(doc *ycrdt.Doc, update []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	ycrdt.ApplyUpdate(doc, update, nil)
+	return nil
+}
+
+var errAuthCheckFailed = errors.New("authorize check failed")
+
+// conn is one connection's admission state machine.
+type conn struct {
+	core   *Core
+	socket Socket
+
+	mu                sync.Mutex
+	phase             string // pending | open | closed
+	pending           [][]byte
+	room              *room
+	name              string
+	role              Role
+	bucket            *rateBucket
+	lastViewerDropLog time.Time
+}
+
+// Connect admits a new connection. req.URL selects the room; if AuthRequired, admission waits for the
+// first AUTH-tagged frame before proceeding (buffering any frames sent before it, up to
+// maxPendingFrames). Blocks until the connection is fully torn down (call it in its own goroutine per
+// connection — see cmd/relay-server for the real transport adapter).
+func (c *Core) Connect(socket Socket, req *Request) {
+	cn := &conn{
+		core:   c,
+		socket: socket,
+		phase:  "pending",
+		bucket: newRateBucket(c.rateLimit, c.now),
+	}
+
+	socket.OnMessage(func(data []byte) {
+		cn.mu.Lock()
+		phase := cn.phase
+		if phase == "open" {
+			cn.mu.Unlock()
+			cn.handle(data)
+			return
+		}
+		if phase != "pending" {
+			cn.mu.Unlock()
+			return
+		}
+		if len(cn.pending) >= maxPendingFrames {
+			cn.mu.Unlock()
+			cn.reject(closePolicy, "flood before auth")
+			return
+		}
+		if c.authRequired {
+			cn.mu.Unlock()
+			cn.startAuthFromFrame(data, req)
+			return
+		}
+		cn.pending = append(cn.pending, data)
+		cn.mu.Unlock()
+	})
+
+	done := make(chan struct{})
+	socket.OnClose(func() {
+		cn.mu.Lock()
+		cn.phase = "closed"
+		r := cn.room
+		name := cn.name
+		cn.mu.Unlock()
+		if r != nil {
+			c.mu.Lock()
+			delete(r.sockets, socket)
+			empty := len(r.sockets) == 0
+			c.mu.Unlock()
+			if empty {
+				c.flush(name, r)
+				c.mu.Lock()
+				delete(c.rooms, name)
+				c.mu.Unlock()
+			}
+		}
+		close(done)
+	})
+
+	if !c.authRequired {
+		cn.admit(context.Background(), req)
+	}
+	<-done
+}
+
+func (cn *conn) admit(ctx context.Context, req *Request) {
+	c := cn.core
+	auth, err := c.authorize(ctx, req)
+	if err != nil {
+		c.log.Printf("relay: authorize threw — %v", err)
+		cn.mu.Lock()
+		cn.phase = "closed"
+		cn.mu.Unlock()
+		cn.socket.Close(closeInternal, "auth error")
+		return
+	}
+	if cn.closedNow() {
+		return // client gave up while we verified
+	}
+	if !auth.OK {
+		reason := auth.Reason
+		if reason == "" {
+			reason = "unauthorized"
+		}
+		cn.reject(closePolicy, reason)
+		return
+	}
+
+	name, ok := roomName(req.URL)
+	if !ok {
+		cn.reject(closePolicy, "invalid room name")
+		return
+	}
+
+	role := c.authorizeRoom(auth.User, name)
+	if cn.closedNow() {
+		return
+	}
+	if role == "" {
+		cn.reject(closePolicy, fmt.Sprintf("forbidden: %s", name))
+		return
+	}
+
+	r, err := c.loadRoom(name)
+	if err != nil {
+		c.log.Printf("relay: loadRoom(%q) failed — %v", name, err)
+		cn.mu.Lock()
+		cn.phase = "closed"
+		cn.mu.Unlock()
+		cn.socket.Close(closeInternal, "room load error")
+		return
+	}
+	if r == nil {
+		cn.reject(closeTryAgainLater, "server full")
+		return
+	}
+
+	cn.mu.Lock()
+	cn.role = role
+	cn.room = r
+	cn.name = name
+	cn.mu.Unlock()
+
+	c.mu.Lock()
+	r.sockets[cn.socket] = struct{}{}
+	c.mu.Unlock()
+
+	if !cn.socket.IsOpen() {
+		cn.mu.Lock()
+		cn.phase = "closed"
+		cn.mu.Unlock()
+		c.mu.Lock()
+		delete(r.sockets, cn.socket)
+		empty := len(r.sockets) == 0
+		c.mu.Unlock()
+		if empty {
+			c.flush(name, r)
+			c.mu.Lock()
+			delete(c.rooms, name)
+			c.mu.Unlock()
+		}
+		return
+	}
+
+	c.mu.Lock()
+	state := ycrdt.EncodeStateAsUpdate(r.doc, nil)
+	c.mu.Unlock()
+	cn.socket.Send(controlFrame(string(role)))
+	cn.socket.Send(docFrame(state))
+
+	cn.mu.Lock()
+	cn.phase = "open"
+	pending := cn.pending
+	cn.pending = nil
+	cn.mu.Unlock()
+	for _, data := range pending {
+		cn.handle(data)
+	}
+}
+
+func (cn *conn) closedNow() bool {
+	cn.mu.Lock()
+	defer cn.mu.Unlock()
+	return cn.phase == "closed"
+}
+
+func (cn *conn) startAuthFromFrame(frame []byte, req *Request) {
+	if len(frame) == 0 || frame[0] != tagAuth {
+		cn.mu.Lock()
+		cn.pending = append(cn.pending, frame)
+		cn.mu.Unlock()
+		return
+	}
+	authed := *req
+	authed.AuthToken = string(frame[1:])
+	cn.admit(context.Background(), &authed)
+}
+
+func (cn *conn) handle(frame []byte) {
+	c := cn.core
+	if len(frame) == 0 {
+		return
+	}
+	if !cn.bucket.allow(len(frame)) {
+		cn.reject(closePolicy, "rate limit exceeded")
+		return
+	}
+	tag := frame[0]
+	if tag != tagDoc && tag != tagAware {
+		cn.throttledLog("relay: dropped frame with unknown tag %d in room %q", int(tag), cn.roomNameSnapshot())
+		return
+	}
+
+	cn.mu.Lock()
+	r := cn.room
+	name := cn.name
+	role := cn.role
+	cn.mu.Unlock()
+
+	if tag == tagDoc {
+		if !CanWrite(role) {
+			cn.throttledLog("relay: dropped doc edit from viewer in room %q", name)
+			return
+		}
+		c.mu.Lock()
+		err := applyUpdateGuarded(r.doc, frame[1:])
+		c.mu.Unlock()
+		if err != nil {
+			c.log.Printf("relay: malformed doc update in room %q — %v", name, err)
+			return
+		}
+		c.mu.Lock()
+		if r.saveTimer != nil {
+			r.saveTimer.Stop()
+		}
+		r.saveTimer = time.AfterFunc(saveDebounce, func() {
+			c.mu.Lock()
+			r.saveTimer = nil
+			c.mu.Unlock()
+			c.safeSave(name, r)
+		})
+		c.mu.Unlock()
+	}
+
+	c.mu.Lock()
+	peers := make([]Socket, 0, len(r.sockets))
+	for peer := range r.sockets {
+		if peer != cn.socket {
+			peers = append(peers, peer)
+		}
+	}
+	c.mu.Unlock()
+	for _, peer := range peers {
+		if peer.IsOpen() {
+			peer.Send(frame)
+		}
+	}
+}
+
+func (cn *conn) roomNameSnapshot() string {
+	cn.mu.Lock()
+	defer cn.mu.Unlock()
+	return cn.name
+}
+
+func (cn *conn) throttledLog(format string, args ...any) {
+	cn.mu.Lock()
+	now := cn.core.now()
+	if now.Sub(cn.lastViewerDropLog) < viewerDropLogEvery {
+		cn.mu.Unlock()
+		return
+	}
+	cn.lastViewerDropLog = now
+	cn.mu.Unlock()
+	cn.core.log.Printf(format, args...)
+}
+
+func (cn *conn) reject(code int, reason string) {
+	cn.core.log.Printf("relay: rejected connection (%s)", reason)
+	cn.mu.Lock()
+	cn.phase = "closed"
+	cn.mu.Unlock()
+	cn.socket.Close(code, reason)
+}

@@ -168,26 +168,28 @@ after merge — the invariant holds without coordination.
 - **Phase 1 — proof of merge (feature-complete).** `@m/collab`'s `createCollabSession` (Yjs `Y.Doc` =
   source `Y.Text` + overlay `Y.Map`s) implements the `OverlayDoc` port; two-peer convergence is proven by
   tests. In: a **dev WebSocket transport** (`connectTransport`/`webSocketTransport` + the
-  server-authoritative relay `modules/collab/server/relay.mjs`, `make collab-server`), the **live source binding**
+  server-authoritative relay, `make collab-server`), the **live source binding**
   (`sourceBinding()` via y-codemirror.next), and **presence** (a y-protocols `Awareness` on a distinct
   transport frame — remote cursors via `setLocalUser`). Two app tabs on `?collab&room=…` now edit the
   **overlay and the diagram text** live and see each other's **cursors**, each re-deriving its diagram
   locally (Playwright covers overlay convergence, source sync, and presence).
 - **Phase 2 — durable + secured (in progress).** **Persistence is in:** the relay has a pluggable
-  `RoomStore` (`server/store.mjs`) — in-memory default + a file-snapshot store (`PERSIST_DIR`), so rooms
-  survive a restart (verified). **OIDC auth is in:** `server/auth.mjs` verifies the connection's first
-  auth frame against the issuer's JWKS (Auth0; `jose`), checking signature + issuer + audience + expiry;
-  the relay admits or closes (1008) the connection, buffering document/presence frames during the async check. Auth is
-  **env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`) so local dev / e2e stay zero-auth. We're **extending
-  our own relay** (not Hocuspocus, §10.5) — no client-provider migration. **Rooms + RBAC are in:**
-  `server/rbac.mjs` resolves a per-document role (owner/editor/viewer) from the token's per-room `roles`
-  claim and isolates **tenants** by room prefix (`<tenant>/…`); the relay closes 1008 on no access and
-  enforces **viewers read-only** (their document frames are dropped server-side). The **client reflects
-  the role** — the relay sends it as a control frame and a viewer's editor + canvas go read-only with a
-  badge. The browser now obtains the relay access token through an Auth0 Authorization Code + PKCE flow
-  and uses token claims for presence identity. A strict `MEMBERSHIP_FILE` can provide room/member roles
-  server-side when token claims are too small or slow-moving. **Remaining:** the production `RoomStore`
-  (Postgres update log + S3 snapshots + Redis fan-out).
+  `RoomStore` — in-memory default + a file-snapshot store (`PERSIST_DIR`), so rooms survive a restart
+  (verified). **OIDC auth is in:** the relay verifies the connection's first auth frame against the
+  issuer's JWKS (Auth0), checking signature + issuer + audience + expiry; the relay admits or closes
+  (1008) the connection, buffering document/presence frames during the async check. Auth is **env-gated**
+  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`) so local dev / e2e stay zero-auth. **Rooms + RBAC are in:** the relay
+  resolves a per-document role (owner/editor/viewer) from the token's per-room `roles` claim and isolates
+  **tenants** by room prefix (`<tenant>/…`); closes 1008 on no access and enforces **viewers read-only**
+  (their document frames are dropped server-side). The **client reflects the role** — the relay sends it
+  as a control frame and a viewer's editor + canvas go read-only with a badge. The browser now obtains the
+  relay access token through an Auth0 Authorization Code + PKCE flow and uses token claims for presence
+  identity. A strict `MEMBERSHIP_FILE` can provide room/member roles server-side when token claims are too
+  small or slow-moving. **The relay itself moved from `modules/collab/server/*.mjs` (Node) to
+  `modules/relay` (Go)** — see §10.6 — verified as a behavioral drop-in (a ported copy of its own test
+  suite, plus the full app e2e suite passing unchanged against it). **Remaining:** the production
+  `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out), and Milestone 2 of the Go move
+  (compiling the same relay core to WebAssembly so the backend-free demo runs it in-process).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 
@@ -205,12 +207,24 @@ after merge — the invariant holds without coordination.
    commitment.
 4. **Auth / tenancy → OIDC via Auth0** (decided 2026-06-20). JWKS token verification from the first WS
    auth frame; tenant = org boundary; per-tenant region-pinned storage.
-5. **Server stack → extend our own minimal Node relay** (reconsidered 2026-06-20, was "adopt
-   Hocuspocus"). The relay (`modules/collab/server/`) already speaks our compact framed protocol and
-   keeps the client unchanged, so persistence and the OIDC handshake bolt onto it directly — no
-   client-provider migration. Adopting Hocuspocus stays the fallback if its built-in scaling
-   (Redis fan-out) or extension ecosystem is later worth the migration; the relay is IO-bound, so Node
-   suffices regardless. (Revisit a custom Go/Rust relay only if Phase 3 fan-out demands it.)
+5. **Server stack → extend our own minimal relay** (reconsidered 2026-06-20, was "adopt
+   Hocuspocus"). The relay speaks our compact framed protocol and keeps the client unchanged, so
+   persistence and the OIDC handshake bolt onto it directly — no client-provider migration. Adopting
+   Hocuspocus stays the fallback if its built-in scaling (Redis fan-out) or extension ecosystem is later
+   worth the migration.
+6. **Relay implementation → Go, not Node** (revised 2026-07-02, supersedes decision 5's "Node suffices
+   regardless" framing — that framing was about ops load, a reason that didn't apply once the actual
+   trigger showed up). The trigger wasn't Phase 3 fan-out (what decision 5 anticipated revisiting for) —
+   it was the backend-free demo needing to run the *real* relay (not a separate reimplementation) with
+   zero server infrastructure, which needs a build that runs both as a native server binary and inside a
+   browser tab. Go compiles the identical source to both targets; a portable-TypeScript-in-browser
+   approach was considered and rejected in favor of Go specifically because "one source, two compiled
+   targets" is a more literal guarantee of "the same backend everywhere" than "the same interpreted JS
+   running in two hosts." Verified before committing: `github.com/skyterra/y-crdt` (an unofficial Go
+   Yjs-CRDT reimplementation) is bidirectionally wire-compatible with the real `yjs` package this repo
+   already uses (tested, not assumed) — the one hard technical risk this decision depended on. See
+   `modules/relay/PLAN.md` for the module's design; Milestone 2 (the actual WASM build, for the demo) is
+   still open.
 
 ## 11. Risks & open questions
 

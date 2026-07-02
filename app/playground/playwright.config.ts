@@ -37,7 +37,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `node ../../modules/collab/server/relay.mjs`,
+      command: `cd ../../modules/relay && go run ./cmd/relay-server`,
       port: WS_PORT,
       env: { PORT: String(WS_PORT) },
       reuseExistingServer: false,

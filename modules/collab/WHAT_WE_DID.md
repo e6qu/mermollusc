@@ -1,5 +1,18 @@
 # @m/collab — work log
 
+- Moved the relay server out of this module entirely, into a new `modules/relay` Go module (Milestone 1 of
+  a native+WASM rewrite — see that module's own `PLAN.md`/`STATUS.md`/`WHAT_WE_DID.md`). Deleted
+  `server/relay.mjs`/`rbac.mjs`/`auth.mjs`/`membership.mjs`/`store.mjs` and their `.mjs` integration tests,
+  and the now-unused `ws`/`jose` dev dependencies (and their `pnpm-workspace.yaml` catalog pins). Swapped
+  root `Makefile`'s `collab-server` target and `app/playground/playwright.config.ts`'s `webServer` entry to
+  the Go binary; the full existing `app/playground` Playwright e2e suite (251 specs) passed unchanged
+  against it — the real proof this is a drop-in, not a narrower reimplementation. One genuine bug surfaced
+  by that run and fixed in `modules/relay`: `coder/websocket`'s default same-origin check rejected every
+  real cross-tab connection (the app and the relay are always on different ports = different origins; the
+  `ws`-based JS relay never checked Origin at all), silently breaking cross-tab sync/presence/role
+  propagation while single-tab flows kept working — not something the module's own unit/integration tests
+  could have caught, since they never exercise two real browser tabs against a real dev-server + relay
+  pair the way the app's e2e suite does.
 - Closed the `store.ts` coverage gap: `createIndexedDbRoomStore`'s IndexedDB path (`requestResult`,
   `transactionDone`, `openRoomDatabase`, and the store itself) had no tests — vitest's Node environment
   has no `IndexedDB`, and the only exercise was the app's Playwright e2e. Added `fake-indexeddb` (a real

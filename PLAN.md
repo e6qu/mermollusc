@@ -31,7 +31,8 @@ std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- 
 | `@m/renderer` | Scene → canvas (Canvas2D display list + painter) |
 | `@m/icons` | icon-pack registry + loaders (OSS bundled; cloud packs user-loaded) |
 | `@m/builder` | hit-testing, selection, sidecar overrides, two-way text patching |
-| `@m/collab` | Yjs `OverlayDoc` + `Y.Text` source binding + presence + WebSocket transport + optional durable relay (`server/`) — CRDT collaboration |
+| `@m/collab` | Yjs `OverlayDoc` + `Y.Text` source binding + presence + WebSocket transport — CRDT collaboration |
+| `modules/relay` (Go, not `@m/*`) | the optional durable relay: room registry, RBAC, rate limiting, auth, persistence — native binary for production, WASM (Milestone 2) for the backend-free demo |
 | `@m/app` (playground) | wires everything; hosts node e2e + Playwright flows |
 
 ## Decisions (locked)
