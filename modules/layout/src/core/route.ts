@@ -508,19 +508,31 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     const anchor = e.labelPos;
     if (e.label === null || anchor === null) return e;
 
+    // A label may live inside the endpoints' enclosing CONTAINERS (that's its natural home) — but the
+    // endpoint leaf boxes themselves are obstacles: a label sitting on its own edge's node ("filtered"
+    // stamped over the Internet box) reads as a bug just as much as one on an unrelated node. If no
+    // clear spot exists within DECOLLIDE_MAX the label stays put, so a short edge with nowhere to go
+    // degrades exactly as before.
     const related = new Set<string>();
-    let currFrom = nodesMap.get(e.from);
-    while (currFrom !== undefined && currFrom !== null) {
-      related.add(currFrom.id);
-      currFrom = currFrom.parent !== null ? nodesMap.get(currFrom.parent) : undefined;
-    }
-    let currTo = nodesMap.get(e.to);
-    while (currTo !== undefined && currTo !== null) {
-      related.add(currTo.id);
-      currTo = currTo.parent !== null ? nodesMap.get(currTo.parent) : undefined;
-    }
+    const addAncestors = (id: string): void => {
+      const leaf = nodesMap.get(id);
+      let cur = leaf?.parent != null ? nodesMap.get(leaf.parent) : undefined;
+      while (cur !== undefined) {
+        related.add(cur.id);
+        cur = cur.parent !== null ? nodesMap.get(cur.parent) : undefined;
+      }
+    };
+    addAncestors(e.from);
+    addAncestors(e.to);
+    const isEndpoint = (id: string): boolean => id === e.from || id === e.to;
 
-    const obstacles = scene.nodes.filter((n) => !related.has(n.id));
+    const obstacles = scene.nodes.filter((n) => {
+      if (related.has(n.id)) return false;
+      // An edge attached directly to a container keeps that container out of its obstacle set — the
+      // label near its border would otherwise be pushed entirely outside the group.
+      if (isEndpoint(n.id) && n.shape === "container") return false;
+      return true;
+    });
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
     const ax: number = anchor.x;
     const ay: number = anchor.y;
@@ -1487,7 +1499,44 @@ export const retidyRoutes = (scene: Scene): Scene => {
   return changed ? { ...scene, edges } : scene;
 };
 
-export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
+// Drop interior waypoints whose removal deviates the path by less than `tol` px (Ramer–Douglas–Peucker,
+// endpoints fixed — the cardinal-mount invariant only constrains endpoints). Mount clamping and lane
+// spreading can disagree by a few pixels, and `alignAdjacentToMount` turns that disagreement into tiny
+// Z-shaped stubs right at the arrowheads; a sub-tolerance diagonal is invisible where the stub was loud.
+const simplifyMicroJogs = (pts: readonly Point[], tol: number): Point[] => {
+  if (pts.length <= 2) return [...pts];
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  if (first === undefined || last === undefined) return [...pts];
+  const dx = last.x - first.x;
+  const dy = last.y - first.y;
+  const len = Math.hypot(dx, dy);
+  let worst = 0;
+  let worstIdx = -1;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i];
+    if (p === undefined) continue;
+    const d =
+      len < 1e-9
+        ? Math.hypot(p.x - first.x, p.y - first.y)
+        : Math.abs(dy * p.x - dx * p.y + last.x * first.y - last.y * first.x) / len;
+    if (d > worst) {
+      worst = d;
+      worstIdx = i;
+    }
+  }
+  if (worstIdx === -1) return tol > 0 ? [first, last] : [...pts]; // collinear: identity at tol 0
+  if (worst < tol) return [first, last];
+  const head = simplifyMicroJogs(pts.slice(0, worstIdx + 1), tol);
+  const tail = simplifyMicroJogs(pts.slice(worstIdx), tol);
+  return [...head.slice(0, -1), ...tail];
+};
+
+// Applied only by layoutDiagram's outer snap (see the microJogTol parameter): spreadPorts' own internal
+// snap runs with 0 so unit-scale routing tests (and any tiny-geometry caller) keep exact waypoints.
+export const MICRO_JOG_TOL = 7;
+
+export const snapSceneEdgesToMountPoints = (scene: Scene, microJogTol = 0): Scene => {
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
   const obstacleBoxes = obstaclesForEdges(scene);
   const edges = scene.edges.map((e): SceneEdge => {
@@ -1519,11 +1568,15 @@ export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
     if (pts.length === 2) {
       const start = pts[0];
       const end = pts[1];
+      // A nearly-axis-aligned diagonal (a few px of drift from mount rounding / lane spreading) reads
+      // FAR better as a barely-perceptible straight line than as a tiny Z-shaped stub — only elbow when
+      // both deltas are big enough that the elbow looks intentional.
+      const ELBOW_MIN = 10;
       if (
         start !== undefined &&
         end !== undefined &&
-        Math.abs(start.x - end.x) > 1e-6 &&
-        Math.abs(start.y - end.y) > 1e-6
+        Math.abs(start.x - end.x) > ELBOW_MIN &&
+        Math.abs(start.y - end.y) > ELBOW_MIN
       ) {
         const firstElbow = point(start.x, end.y);
         const secondElbow = point(end.x, start.y);
@@ -1533,7 +1586,7 @@ export const snapSceneEdgesToMountPoints = (scene: Scene): Scene => {
         pts.splice(1, 0, firstHits <= secondHits ? firstElbow : secondElbow);
       }
     }
-    const compacted = compactPoints(pts);
+    const compacted = simplifyMicroJogs(compactPoints(pts), microJogTol);
     const [w0, w1, ...wr] = compacted;
     if (w0 !== undefined && w1 !== undefined) {
       const snappedWaypoints = twoOrMore(w0, w1, ...wr);

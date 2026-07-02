@@ -108,7 +108,6 @@ import {
   type LayoutStyle,
   respreadPorts,
   retidyRoutes,
-  snapSceneEdgesToMountPoints,
   trunkRoutes,
 } from "@m/layout";
 import { parseDiagramWithSource } from "@m/parser";
@@ -209,6 +208,9 @@ declare global {
     __nodeBounds?: (
       nodeId: string,
     ) => { x: number; y: number; w: number; h: number; shape: string } | null;
+    // e2e hook: an edge's shown waypoints (scene coordinates) — regression guard for scene-corruption
+    // bugs (an app-side post-pass once collapsed every sequence message onto the header row).
+    __edgeWaypoints?: (edgeId: string) => { x: number; y: number }[] | null;
     // e2e hook: a node's currently-shown accent (the visual-only colour preference).
     __nodeAccent?: (nodeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
@@ -1446,9 +1448,12 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
     case "cloud":
     case "block":
       return { connect: true, iconOverride: true, addNode: true, resizable: true };
+    case "c4":
+      // Boxes and boundaries are free-geometry rectangles; resizing is a display override, the same
+      // contract as flowchart nodes/subgraphs.
+      return { connect: true, iconOverride: false, addNode: true, resizable: true };
     case "sequence":
     case "state":
-    case "c4":
     case "er":
     case "class":
       return { connect: true, iconOverride: false, addNode: true, resizable: false };
@@ -2743,6 +2748,19 @@ const edgeFinishActive = (): EdgeFinish => {
   return family === "layered" ? "spline" : "plain";
 };
 
+// Keep the Examples select showing the example the source currently IS (loaded via the picker or a
+// `?example=` link), and drop back to the placeholder as soon as an edit makes it something else — the
+// select is a statement about the current document, not a fire-and-forget action button.
+const syncExampleSelect = (text: string): void => {
+  for (const [name, exampleText] of EXAMPLES) {
+    if (exampleText === text) {
+      exampleEl.value = name;
+      return;
+    }
+  }
+  exampleEl.value = "";
+};
+
 const updateStyleOptions = (kind: DiagramAst["kind"] | null): void => {
   const family = kind !== null ? familyOfKind(kind) : "layered";
   const styles = FAMILY_STYLES[family];
@@ -2823,6 +2841,7 @@ const renderFromText = async (text: string): Promise<void> => {
   lastDirection = "direction" in diagram ? diagram.direction : null;
   updateStyleOptions(diagram.kind);
   syncStyleFlags(diagram.kind);
+  syncExampleSelect(text);
   const activeStyle = diagram !== null ? getActiveStyle(familyOfKind(diagram.kind)) : "classic";
   const laid = await layoutDiagram(diagram, measureLabel, collapsedBranded(), activeStyle);
   if (mySeq !== renderSeq) return; // a newer render started while we awaited layout — drop this one
@@ -2851,7 +2870,12 @@ const renderFromText = async (text: string): Promise<void> => {
     }`,
   );
   ast = diagram;
-  scene = snapSceneEdgesToMountPoints(laid.value);
+  // No snap here: `layoutDiagram` already snaps edge endpoints to cardinal mounts for exactly the box
+  // families that want it (`usesCardinalMounts`) and runs label decollision after. The unconditional
+  // app-side re-snap this replaces corrupted every other family (sequence messages dragged onto the
+  // header boxes, mindmap/gitGraph elbows, detached timeline connectors) and clobbered decollided edge
+  // labels back onto the nodes they'd just been moved off.
+  scene = laid.value;
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   navController.rebuild();
@@ -3108,6 +3132,12 @@ window.__nodeRect = (nodeId) => {
     w: node.bounds.size.width * viewScale,
     h: node.bounds.size.height * viewScale,
   };
+};
+window.__edgeWaypoints = (edgeId) => {
+  if (scene === null) return null;
+  const edge = shownScene(scene).edges.find((e) => e.id === edgeId);
+  if (edge === undefined) return null;
+  return edge.waypoints.map((p) => ({ x: p.x, y: p.y }));
 };
 window.__nodeBounds = (nodeId) => {
   if (scene === null) return null;
@@ -5617,17 +5647,18 @@ forcedColorsQuery?.addEventListener("change", () => {
 });
 syncThemeLabel();
 
-// Examples menu: drop in a known-good starter for any family so the syntax is discoverable, then
-// reset the select back to its placeholder.
+// Examples menu: drop in a known-good starter for any family so the syntax is discoverable. The select
+// KEEPS showing the loaded example (syncExampleSelect below re-derives it from the source on every
+// render, so it also reflects `?example=` links and falls back to the placeholder once the user edits
+// the text into something that is no longer that example).
 exampleEl.addEventListener("change", () => {
   if (viewerMode) {
-    exampleEl.value = "";
+    syncExampleSelect(editor.value());
     flashStatus("view only — loading an example needs editor access", "warning");
     return;
   }
   const name = exampleEl.value;
   const text = EXAMPLES.get(name);
-  exampleEl.value = "";
   if (text === undefined) return;
   // Loading an example replaces the whole source and clears the manual layout/groups (a different
   // diagram — the old positions no longer apply). Guard the destructive swap only when there's real
@@ -5640,6 +5671,7 @@ exampleEl.addEventListener("change", () => {
     ? "Load this example for everyone in the room? The shared diagram and its manual layout will be replaced (undo restores them)."
     : "Replace your current diagram? Undo restores your text and layout.";
   if ((useCollab || (!isPristine && current !== text)) && !window.confirm(prompt)) {
+    syncExampleSelect(current); // the select must not keep advertising the declined example
     return;
   }
   // One undoable step: the swap (text + overlay clear) lands on the history stack, so ⌘Z genuinely

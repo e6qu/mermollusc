@@ -1,5 +1,8 @@
 # @m/renderer — work log
 
+- Edge-label plates are opaque now (plate and text alpha 1, canvas + SVG): the 66% translucency let
+  the routed line show through the label text, which users read as a broken "strikethrough" on dense
+  network/cloud diagrams — and real Mermaid uses opaque label backgrounds anyway.
 - Mermaid edge-geometry parity: `toDisplayList`'s boolean `plainEdges` became the closed
   `EdgeFinish` union (`"decorated" | "plain" | "spline"`). `"spline"` draws a smooth Catmull-Rom-derived
   cubic path through every routed waypoint (`splinePath` — built on the existing `smoothSegments`), the

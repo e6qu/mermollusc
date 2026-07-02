@@ -192,9 +192,9 @@ describe("paint", () => {
     const plate = ctx.fillRects.find((r) => r.w === 40);
     if (plate === undefined) throw new Error("missing edge label plate");
     expect(plate.h).toBeGreaterThan(18);
-    expect(plate.alpha).toBe(0.66);
+    expect(plate.alpha).toBe(1); // opaque plate — the line never shows through
     const edgeText = ctx.fillTexts.find((t) => t.text === "edge");
-    expect(edgeText?.alpha).toBe(0.66);
+    expect(edgeText?.alpha).toBe(1);
   });
 
   it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {

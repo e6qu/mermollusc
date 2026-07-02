@@ -53,8 +53,8 @@ const attr = (s: string): string => esc(s).replace(/"/g, "&quot;");
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
-const EDGE_LABEL_TEXT_ALPHA = "0.66";
-const EDGE_LABEL_PLATE_ALPHA = "0.66";
+const EDGE_LABEL_TEXT_ALPHA = "1";
+const EDGE_LABEL_PLATE_ALPHA = "1";
 
 const labelLineHeight = (font: string): number => {
   const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];

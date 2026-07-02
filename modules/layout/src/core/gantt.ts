@@ -1,5 +1,5 @@
-import { err, ok, point, rect, type Result } from "@m/std";
-import { sceneNodeId } from "@m/contracts";
+import { err, ok, point, rect, twoOrMore, type Result } from "@m/std";
+import { sceneEdgeId, sceneNodeId } from "@m/contracts";
 import type {
   Decoration,
   GanttAst,
@@ -7,6 +7,7 @@ import type {
   GanttStatus,
   NodeAccent,
   Scene,
+  SceneEdge,
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
@@ -25,6 +26,8 @@ export const LEFT_GUTTER = 96; // exported with DAY_WIDTH so source rewrites use
 const ROW_HEIGHT = 30;
 const BAR_HEIGHT = 22;
 const LABEL_PAD = 12;
+// Horizontal lead-out past the later of the two bar ends, so the elbow never overlaps either bar.
+const DEP_LEAD = 8;
 const TOP_AXIS = 22; // band above the bars for the date captions
 
 // A validated `GanttDate` (ISO `YYYY-MM-DD`, a real calendar day) → a whole-day number (days since the
@@ -57,7 +60,9 @@ const isWeekend = (day: number): boolean => {
 // (resolved in order, so a task can only follow one declared before it). When the diagram `excludes`
 // weekends/holidays, those days are non-working: a start landing on one shifts to the next working day,
 // and a duration is spent only on working days (so the bar stretches across the skipped ones). Bars are
-// widened to fit their label so the text stays readable. No edges — `after` is positional.
+// widened to fit their label so the text stays readable. Each `after` dependency also draws a thin
+// elbow connector from the predecessor bar's end into the successor bar's start (the MS-Project-style
+// hook), so the schedule's structure is visible, not just its dates.
 export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, LayoutError> => {
   const excludeDays = new Set<number>(ast.excludeDates.map(parseDay));
   const isExcluded = (day: number): boolean =>
@@ -86,6 +91,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   };
 
   const ends = new Map<string, number>();
+  const deps: Array<{ readonly from: string; readonly to: string }> = [];
   const placed: Array<{
     readonly id: string;
     readonly label: string;
@@ -134,6 +140,9 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       startDay,
       endDay,
     });
+    if (task.start.kind === "after") {
+      for (const ref of task.start.refs) deps.push({ from: ref, to: task.id });
+    }
   }
 
   if (placed.length === 0)
@@ -222,7 +231,45 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     lastSection = p.section;
   });
 
-  return ok({ nodes, edges: [], wedges: [], decorations, extent: rect(0, 0, width, bottom) });
+  // Dependency connectors: from the predecessor bar's visual end, a short lead-out, down (or up, for a
+  // same-row-direction quirk) to the successor's row, then into the successor bar's start. Bar bounds
+  // (not raw day maths) anchor both ends, so label-widened bars and centred milestones stay attached.
+  const rowOf = new Map(placed.map((p, i) => [p.id, i]));
+  const edges: SceneEdge[] = [];
+  for (const dep of deps) {
+    const fromRow = rowOf.get(dep.from);
+    const toRow = rowOf.get(dep.to);
+    if (fromRow === undefined || toRow === undefined) continue; // unknown refs already errored above
+    const fromNode = nodes[fromRow];
+    const toNode = nodes[toRow];
+    if (fromNode === undefined || toNode === undefined) continue;
+    const fromX = fromNode.bounds.origin.x + fromNode.bounds.size.width;
+    const fromY = fromNode.bounds.origin.y + fromNode.bounds.size.height / 2;
+    const toX = toNode.bounds.origin.x;
+    const toY = toNode.bounds.origin.y + toNode.bounds.size.height / 2;
+    const leadX = Math.max(fromX, toX) + DEP_LEAD;
+    edges.push({
+      id: sceneEdgeId(`dep:${dep.from}->${dep.to}`),
+      from: sceneNodeId(dep.from),
+      to: sceneNodeId(dep.to),
+      waypoints: twoOrMore(
+        point(fromX, fromY),
+        point(leadX, fromY),
+        point(leadX, toY),
+        point(toX, toY),
+      ),
+      label: null,
+      stroke: "solid",
+      fromEnd: "none",
+      toEnd: "arrow",
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
+      labelPos: null,
+    });
+  }
+
+  return ok({ nodes, edges, wedges: [], decorations, extent: rect(0, 0, width, bottom) });
 };
 
 // Family-context style invariant: a Gantt chart stacks one task per row, top-to-bottom in task order, so

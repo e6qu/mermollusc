@@ -1,5 +1,33 @@
 # @m/app (playground) — bugs
 
+Resolved (family bug sweep, 2026-07-03 — every report reproduced with screenshots before fixing):
+
+- ~~**Sequence diagrams collapsed onto the header row.**~~ Fixed — the app unconditionally ran
+  `snapSceneEdgesToMountPoints` on EVERY family's scene (since the cardinal-mounts PR), clamping
+  sequence message endpoints from their lifeline rows onto the actor header boxes. The same corruption
+  elbowed mindmap spokes and gitGraph diagonals and detached timeline card connectors (the "timeline is
+  not movable correctly" report — the card moved, its connector didn't). The app-side snap is gone
+  entirely: `layoutDiagram` already snaps exactly the cardinal-mount families internally. Guarded by
+  `e2e/family-regressions.spec.ts` reading shown-scene geometry via a new `__edgeWaypoints` hook.
+- ~~**Edge labels were struck through / stamped over their own nodes (network, cloud).**~~ Fixed twice
+  over: label decollision ran BEFORE the mount snap, which recomputes every labelPos — clobbering every
+  adjustment (order swapped in `layoutDiagram`; endpoint boxes joined the obstacle set); and the 66%
+  translucent label plates let the routed line show through the text (plates are opaque now,
+  Mermaid-style).
+- ~~**Block/flowchart routes had Z-stubs at arrowheads and could cross nodes under classic.**~~ Fixed —
+  micro-jog cleanup in the snap, and the maze/crossing/overlap passes now run for classic too (they are
+  correctness, not house style; the opt-in tidy candidate search remains the house behavior).
+- ~~**C4 boundaries and boxes were not resizable.**~~ Fixed — c4 is a free-geometry rect family
+  (`resizable: true`), same display-override contract as flowchart nodes/subgraphs.
+- ~~**The Examples select forgot its selection.**~~ Fixed — the select is synced from the source on
+  every render: it shows the example the document currently IS (picker loads and `?example=` links
+  alike) and drops to the placeholder once an edit diverges; declining the replace-confirm no longer
+  leaves it advertising the declined example. The per-family layout style is untouched by example
+  switches (each family keeps its own default/choice, shown with its "(default)" marker).
+- ~~**Gantt charts hid their dependency structure.**~~ Fixed in layout — `after` refs now draw elbow
+  connectors from predecessor end to successor start (real Mermaid draws none at all; the schedule
+  logic itself was always applied).
+
 Resolved (Mermaid-parity defaults pass, 2026-07-02):
 
 - ~~**The style dropdown lagged one render behind the diagram.**~~ Fixed — `updateStyleOptions`/

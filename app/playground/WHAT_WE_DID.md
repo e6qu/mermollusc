@@ -1,5 +1,24 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Family bug sweep: one root cause, many symptoms
+
+- User reports: sequence broken, block/network/cloud routing broken, timeline not movable, C4 boundary
+  not resizable, example select forgetting, gantt missing dependencies. Every report was REPRODUCED
+  with screenshots before any fix, then re-verified after. The dominant root cause was one line: an
+  unconditional app-side `snapSceneEdgesToMountPoints` on every render (from the cardinal-mounts era)
+  that corrupted every non-box family's edges — sequence messages clamped onto the header boxes,
+  mindmap/gitGraph elbows, detached timeline connectors. Deleted (the layout module already snaps
+  exactly the right families internally, gated on `usesCardinalMounts`).
+- The rest: label decollision re-ordered after the snap that was clobbering it + endpoint boxes as
+  label obstacles + opaque label plates (renderer) killed the "struck-through label" look;
+  maze/crossing/overlap passes classified as correctness (they run under classic now); micro-jog
+  cleanup removed the Z-stubs; gantt grew dependency connectors; gitGraph classic tags lanes with
+  pills; C4 became resizable; the Examples select stays in sync with the source. New
+  `e2e/family-regressions.spec.ts` + a `__edgeWaypoints` e2e hook guard the scene-corruption class.
+- Known remaining (documented in `modules/layout/DO_NEXT.md`): span-wide block boxes funnel edges
+  through single side-centre mounts, so dense block diagrams still route wrap-arounds — needs
+  multi-mount sides, the same redesign as block column spans / per-edge ports.
+
 ## 2026-07-02 — Structured logging: the app honours the §8 Logger contract
 
 - All 32 free-form `console.error` calls across `main.ts`/`image-export.ts`/`persistence.ts` now route

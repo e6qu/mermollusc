@@ -1,5 +1,28 @@
 # @m/layout — work log
 
+## 2026-07-03 — Family bug sweep (verified from user reports, screenshot-driven)
+
+- **Label decollision ran before the mount snap, which recomputes every labelPos** — so every adjusted
+  label was silently clobbered back onto whatever it had been moved off ("filtered"/"443/tcp" stamped
+  over their own nodes). `layoutDiagram` now snaps first and decollides LAST; the decollide obstacle set
+  additionally includes the edge's own endpoint leaf boxes (enclosing containers stay legitimate label
+  space, and the stay-put fallback is unchanged).
+- **Obstacle avoidance is correctness, not house style**: the maze reroute + crossing minimisation +
+  overlap separation passes ran only under the opt-in tidy search, so classic (the default) could route
+  edges through nodes. They now run for every flowchart layout, and the spread families (block/network/
+  cloud/c4) get a corrective `mazeRerouteEdges` after port spreading (clean edges untouched; trunk/bus
+  own their geometry).
+- **Micro-jog cleanup**: mount clamping vs lane spreading can disagree by a few px, and
+  `alignAdjacentToMount` turned that into tiny Z-stubs at arrowheads. The 2-point elbow insertion now
+  skips near-axis-aligned edges (`ELBOW_MIN`), and `layoutDiagram`'s snap runs an endpoint-fixed
+  Ramer–Douglas–Peucker pass (`MICRO_JOG_TOL`, parameterised so `spreadPorts`' internal snap and its
+  unit-scale tests keep exact waypoints).
+- **Gantt draws its dependencies**: each `after` ref becomes an elbow connector from the predecessor
+  bar's visual end into the successor bar's start (bar bounds anchor both ends, so label-widened bars
+  and centred milestones stay attached).
+- **gitGraph classic tags lanes with label pills** (Mermaid-style); the house stickman stays in the
+  opt-in Pills style.
+
 ## 2026-07-02 — Classic (Mermaid-parity) is the default layout style
 
 - `layout`/`layoutDiagram` default to `"classic"` instead of `"tidy"`, and `layoutStyle` is now the
