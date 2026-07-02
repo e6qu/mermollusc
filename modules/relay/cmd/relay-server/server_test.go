@@ -307,3 +307,78 @@ func TestByteRateLimitCloses1008(t *testing.T) {
 		t.Errorf("close code = %d, want %d", code, websocket.StatusPolicyViolation)
 	}
 }
+
+// readAdmission collects the admission sequence: every frame up to and including the initial DOC frame
+// (role control, optional seed control, doc state). Bounded by the protocol itself — never by a timeout
+// whose context cancellation would close the connection out from under the test.
+func readAdmission(t *testing.T, conn *websocket.Conn) [][]byte {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	var frames [][]byte
+	for {
+		_, data, err := conn.Read(ctx)
+		if err != nil {
+			t.Fatalf("readAdmission: %v", err)
+		}
+		frames = append(frames, data)
+		if len(data) > 0 && data[0] == tagDoc {
+			return frames
+		}
+	}
+}
+
+func countSeedGrants(frames [][]byte) int {
+	n := 0
+	for _, f := range frames {
+		if len(f) > 0 && f[0] == tagControl && string(f[1:]) == "seed" {
+			n++
+		}
+	}
+	return n
+}
+
+func TestSeedGrantGoesToExactlyOneOfTwoJoiners(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	a := open(t, base)
+	b := open(t, base)
+	total := countSeedGrants(readAdmission(t, a)) + countSeedGrants(readAdmission(t, b))
+	if total != 1 {
+		t.Fatalf("seed grants across both admissions = %d, want exactly 1", total)
+	}
+}
+
+func TestSeedGrantNotSentForRoomWithContent(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	a := open(t, base)
+	// Seed the room for real, then let the debounced save + broadcast settle.
+	send(t, a, frame(tagDoc, docUpdate(t, "flowchart TD\n  X --> Y\n")))
+	readUntil(t, a, 2*time.Second, func(f []byte) bool { return len(f) > 0 && f[0] == tagControl })
+	time.Sleep(100 * time.Millisecond)
+
+	b := open(t, base)
+	if n := countSeedGrants(readAdmission(t, b)); n != 0 {
+		t.Fatalf("a joiner of a room WITH content received %d seed grant(s), want 0", n)
+	}
+}
+
+func TestSeedGrantMovesToSurvivorWhenSeederLeavesEmptyRoom(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	a := open(t, base)
+	// A holds the grant (first into the empty room) but never seeds.
+	if n := countSeedGrants(readAdmission(t, a)); n != 1 {
+		t.Fatalf("first joiner received %d grant(s), want 1", n)
+	}
+	b := open(t, base)
+	if n := countSeedGrants(readAdmission(t, b)); n != 0 {
+		t.Fatalf("second joiner received %d grant(s) while the seeder was alive, want 0", n)
+	}
+	// The seeder dies without seeding — the grant must move to B, or the room stays empty forever.
+	_ = a.CloseNow()
+	got := readUntil(t, b, 2*time.Second, func(f []byte) bool {
+		return len(f) > 0 && f[0] == tagControl && string(f[1:]) == "seed"
+	})
+	if got == nil {
+		t.Fatal("survivor never received the re-granted seed control")
+	}
+}

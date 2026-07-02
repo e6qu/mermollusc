@@ -6,7 +6,8 @@ compiled to WebAssembly, in-process, instead of skipping the relay. The supersed
 `modules/collab/server/*.mjs` files are gone.
 
 - **Core (`relay/`):** `Core.Connect(socket, req)` — the full admission state machine (auth, room
-  resolution, RBAC, snapshot load, CONTROL + initial DOC frame, pending-frame replay), frame handling
+  resolution, RBAC, snapshot load, CONTROL role + one-per-empty-room "seed" grant + initial DOC frame,
+  pending-frame replay), frame handling
   (tag allow-list, rate limiting, crash-guarded `ApplyUpdate`, debounced save, broadcast), and room
   registry (`FlushAll` for clean shutdown) — parameterized over `Socket`/`Store`/`Authorizer`/
   `RoomAuthorizer`, with zero knowledge of native vs. WASM. `y-crdt` verified bidirectionally
