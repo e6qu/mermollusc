@@ -1,5 +1,11 @@
 # @m/layout — do next
 
+- **Span-wide block boxes funnel every edge through one side-centre mount.** Cardinal mounts are the
+  side CENTRES only, so a full-width block row (`lb:4`) forces all its edges through a single point —
+  the crossing optimiser then legitimately prefers wrap-around routes that read as broken. Real fix is
+  multiple mount slots per (long) side — the same redesign the block column-spans item and the
+  "per-edge port choice" item already point at; do them together.
+
 - **Mermaid parity gap in "classic": the engine.** Edge-geometry parity is done (the renderer draws
   classic layered-family edges as splines); the remaining measurable difference from real Mermaid is
   ELK layered vs Mermaid's default dagre — different rank/order heuristics produce visibly different

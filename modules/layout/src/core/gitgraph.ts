@@ -180,8 +180,9 @@ export const layoutGitGraph = (
         id: sceneNodeId(`branch:${b.name}`),
         bounds: rect(x, y, headW, HEAD_H),
         label: b.name,
-        // A stickman per branch — the person working that line of development.
-        shape: "actor",
+        // Classic (Mermaid parity) tags each lane with a plain label pill, like real Mermaid's branch
+        // tags; the opt-in Pills style keeps the house stickman — the person working that line.
+        shape: classic ? "rect" : "actor",
         parent: null,
         icon: null,
         rows: null,

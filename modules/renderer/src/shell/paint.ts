@@ -145,8 +145,8 @@ const labelLineHeight = (font: string): number => {
 const scaleFont = (font: string, factor: number): string =>
   font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${(Number(n) * factor).toFixed(1)}px`);
 
-const EDGE_LABEL_TEXT_ALPHA = 0.66;
-const EDGE_LABEL_PLATE_ALPHA = 0.66;
+const EDGE_LABEL_TEXT_ALPHA = 1;
+const EDGE_LABEL_PLATE_ALPHA = 1;
 
 // Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
 const lcg = (seed: number) => {

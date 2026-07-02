@@ -31,9 +31,9 @@
   house additions: `toDisplayList`'s `plainEdges` flag (the classic/Mermaid-parity look) omits them.
 - The default light theme is Mermaid's own default palette (provenance in `paint.ts`); `Theme.nodeStroke`
   is split from `Theme.stroke` because Mermaid borders nodes (purple) differently from its lines (dark).
-- Edge labels are explicit callouts: both canvas and SVG draw a padded 66%-opacity background plate and
-  66%-opacity foreground text behind labelled connectors so network/cloud labels stay readable without
-  becoming opaque blocks.
+- Edge labels are explicit callouts: both canvas and SVG draw a padded OPAQUE background plate behind
+  labelled connectors (Mermaid-style) — a translucent plate let the routed line strike through the
+  text, which read as a rendering bug on dense network/cloud diagrams.
 
 ## Notes
 

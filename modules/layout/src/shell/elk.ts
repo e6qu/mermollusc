@@ -13,7 +13,12 @@ import {
   type Rect,
   type Result,
 } from "@m/std";
-import { boxCenter, routeWaypoints, snapSceneEdgesToMountPoints } from "../core/route.js";
+import {
+  boxCenter,
+  MICRO_JOG_TOL,
+  routeWaypoints,
+  snapSceneEdgesToMountPoints,
+} from "../core/route.js";
 import type {
   ClassAst,
   ClassMember,
@@ -311,8 +316,11 @@ const elkSelectBest = async (
       });
       continue;
     }
+    // Obstacle avoidance, crossing minimisation, and overlap separation are route CORRECTNESS, not a
+    // house style — real Mermaid doesn't draw edges through nodes either — so they run for classic too.
+    // Only the multi-candidate tidy search above is the opt-in house behavior.
     const scene = map(buildScene(toPositioned(decoded.value)), (value) =>
-      tidy ? separateOverlaps(minimizeCrossings(mazeRerouteEdges(value))) : value,
+      separateOverlaps(minimizeCrossings(mazeRerouteEdges(value))),
     );
     fallback ??= scene; // the default candidate (index 0) is the fallback
     if (scene.ok && styleOk(scene.value)) passing.push(scene.value);
@@ -900,9 +908,18 @@ export const layoutDiagram = async (
         finalScene = trunkRoutes(finalScene);
       } else if (layoutStyle === "bus") {
         finalScene = respreadPorts(finalScene, true);
+      } else {
+        // Corrective, not stylistic: reroute only the spread-lane edges whose current path collides
+        // with a node (mazeRerouteEdges leaves clean edges untouched). Trunk/bus own their geometry.
+        finalScene = mazeRerouteEdges(finalScene);
       }
     }
-    const labelled = decollideEdgeLabels(finalScene, measure);
-    return usesCardinalMounts(ast.kind) ? snapSceneEdgesToMountPoints(labelled) : labelled;
+    // Label decollision runs LAST: the mount snap recomputes every labelPos to its path midpoint, so
+    // running it after decollide silently clobbered every adjusted label back onto whatever it was
+    // colliding with (this is exactly how "filtered"/"443/tcp" ended up stamped over their own nodes).
+    const snapped = usesCardinalMounts(ast.kind)
+      ? snapSceneEdgesToMountPoints(finalScene, MICRO_JOG_TOL)
+      : finalScene;
+    return decollideEdgeLabels(snapped, measure);
   });
 };

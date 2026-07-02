@@ -13,7 +13,8 @@ Catmull-Rom splines through the routed waypoints (`EdgeFinish = "decorated" | "p
 the last appearance-level parity gap closed; what remains is the engine difference (ELK vs dagre, a
 layout concern). Container display boxes honor
 `SceneNode.accent`, the palette maps semantic cloud/network accents to theme-aware colours, and plated
-edge labels render at 66% opacity in canvas and SVG.
+edge labels render on OPAQUE background plates in canvas and SVG (Mermaid-style: the routed
+line never strikes through the label text — translucent plates read as broken on dense diagrams).
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
