@@ -91,7 +91,8 @@ describe("toSvg", () => {
   it("renders edge-label plates as padded rounded callouts", () => {
     expect(svg).toContain(`rx="3" fill="${defaultTheme.background}" fill-opacity="0.66"`);
     expect(svg).toContain(`fill-opacity="0.66">go</tspan>`);
-    expect(svg).toMatch(/<rect x="[-0-9.]+" y="[-0-9.]+" width="28\.80" height="24\.20" rx="3"/);
+    // "go" at the 16px Mermaid-parity font: w = 2 chars × 16px × 0.6 + 2×6 pad; h = 16×1.3 + 2×3 pad.
+    expect(svg).toMatch(/<rect x="[-0-9.]+" y="[-0-9.]+" width="31\.20" height="26\.80" rx="3"/);
   });
 
   it("exports state pseudo-node commands as SVG primitives", () => {

@@ -1,5 +1,15 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Mermaid font parity; e2e specs anchored to nodes, not pixels
+
+- The renderer's default themes now use Mermaid's own 16px trebuchet font (completing appearance parity
+  begun with the palette). Nodes resized ~14%, which invalidated the 27 e2e specs that targeted canvas
+  nodes by hardcoded pixel offsets (`box.x + 88, box.y + 56`). Rather than re-tuning magic numbers to
+  the new metrics — which would break again on ANY future metric change — those specs now use
+  `e2e/support/nodes.ts` (`nodeRect`/`nodeCenter`/`clickNode`/`dragNodeBy`, anchored to the app's
+  `__nodeRect` hook). New canvas specs must use these helpers; hardcoded node coordinates are how 27
+  specs broke at once.
+
 ## 2026-07-02 — Audit housekeeping: docs truth, coverage gate, small refactors
 
 - `AGENTS.md` §1/§4 and `make graph` finally learned `modules/relay` exists (Go, wire-coupled only).

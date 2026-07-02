@@ -1,9 +1,10 @@
 # @m/renderer — do next
 
-- **Mermaid font parity.** The default palette now matches mermaid's `theme-default.js`, but the font is
-  still `14px sans-serif` vs Mermaid's `16px "trebuchet ms"` — changing it resizes every node (the font
-  feeds `measureText`), which shifts every golden and the e2e pixel coordinates, so it needs its own
-  sweep with visual re-verification rather than riding along on a palette change.
+- *(done)* **Mermaid font parity.** `defaultTheme`/`darkTheme` use Mermaid's own
+  `16px "trebuchet ms", verdana, arial, sans-serif` (from `theme-default.js`, same provenance as the
+  palette). The node-size shift this caused was absorbed by converting the affected e2e specs from
+  hardcoded pixel offsets to the `__nodeRect`-anchored helpers in `e2e/support/nodes.ts` — new specs
+  must use those helpers, never magic coordinates.
 - **Mermaid edge-geometry parity.** Classic mode now drops the house chevrons/hops, but edges are still
   rounded-corner orthogonal polylines; real Mermaid draws smooth splines (basis curves). A classic-mode
   spline `PathCmd` builder over the same waypoints would close most of the remaining visual gap.

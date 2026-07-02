@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode, dragNodeBy } from "./support/nodes.js";
 import { setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -12,13 +13,7 @@ test("a dragged position survives a reload (overlay persisted)", async ({ page }
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const base = await canvasWidth(page);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 430, box.y + 70, { steps: 8 });
-  await page.mouse.up();
+  await dragNodeBy(page, "A", 342, 14);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(base);
 
   await page.reload();
@@ -32,13 +27,10 @@ test("a group survives a reload", async ({ page }) => {
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
-  await page.mouse.click(box.x + 88, box.y + 56);
+  await clickNode(page, "A");
   await page.keyboard.down("Shift");
-  await page.mouse.click(box.x + 88, box.y + 150);
+  await clickNode(page, "B");
   await page.keyboard.up("Shift");
   await page.locator("#group").click();
   await expect(page.locator("#ungroup")).toBeEnabled();
@@ -46,7 +38,7 @@ test("a group survives a reload", async ({ page }) => {
   await page.reload();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   // Selecting a previously-grouped node finds its restored group → Ungroup is enabled again.
-  await page.mouse.click(box.x + 88, box.y + 56);
+  await clickNode(page, "A");
   await expect(page.locator("#ungroup")).toBeEnabled();
   expect(errors).toEqual([]);
 });
@@ -59,13 +51,7 @@ test("stale overlay is cleared when manually pasting a different diagram that re
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const baseWidth = await canvasWidth(page);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 300, box.y + 70, { steps: 8 });
-  await page.mouse.up();
+  await dragNodeBy(page, "A", 212, 14);
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(baseWidth);
 
   // Paste a completely different flowchart structure that still reuses IDs A and B.

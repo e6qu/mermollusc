@@ -1,22 +1,27 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode, dragNodeBy, nodeRect } from "./support/nodes.js";
 import { expectSourceMatches, setSource } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 
 // Select the default flowchart's Start node, then shift-add the Choice node below it.
-const selectPair = async (page: Page, box: { x: number; y: number }) => {
-  await page.mouse.click(box.x + 88, box.y + 56);
+const selectPair = async (page: Page) => {
+  await clickNode(page, "A");
   await page.keyboard.down("Shift");
-  await page.mouse.click(box.x + 88, box.y + 150);
+  await clickNode(page, "B");
   await page.keyboard.up("Shift");
 };
 
-const dragRight = async (page: Page, box: { x: number; y: number }) => {
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 430, box.y + 70, { steps: 8 });
-  await page.mouse.up();
+const dragRight = async (page: Page) => {
+  await dragNodeBy(page, "A", 342, 14);
+};
+
+// A point on the group's top edge (the outline / title bar): the group box pads its members'
+// bounds by 10px, so ~6px above the Start node's top lands on it.
+const groupTopEdge = async (page: Page) => {
+  const a = await nodeRect(page, "A");
+  return { x: a.x + a.w / 2, y: a.y - 6 };
 };
 
 test("Group bundles the selection and toggles the controls; Ungroup reverses it", async ({
@@ -27,12 +32,9 @@ test("Group bundles the selection and toggles the controls; Ungroup reverses it"
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
   await expect(page.locator("#group")).toBeDisabled(); // nothing selected
-  await selectPair(page, box);
+  await selectPair(page);
   await expect(page.locator("#group")).toBeEnabled();
 
   await page.locator("#group").click();
@@ -54,21 +56,18 @@ test("a locked group can't be dragged; unlocking restores the move", async ({ pa
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
-  await selectPair(page, box);
+  await selectPair(page);
   await page.locator("#group").click();
   await page.locator("#lock").click();
   await expect(page.locator("#lock")).toHaveText("Unlock");
 
   const locked = await canvasWidth(page);
-  await dragRight(page, box); // locked → ignored, sheet doesn't grow
+  await dragRight(page); // locked → ignored, sheet doesn't grow
   expect(await canvasWidth(page)).toBe(locked);
 
   await page.locator("#lock").click(); // unlock
-  await dragRight(page, box); // now the whole group moves → sheet grows
+  await dragRight(page); // now the whole group moves → sheet grows
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(locked);
 
   expect(errors).toEqual([]);
@@ -84,12 +83,13 @@ test("clicking a group outline selects the whole group", async ({ page }) => {
   expect(box).not.toBeNull();
   if (box === null) return;
 
-  await selectPair(page, box);
+  await selectPair(page);
   await page.locator("#group").click();
   await page.mouse.click(box.x + box.width - 8, box.y + box.height - 8);
   await expect(page.locator("#ungroup")).toBeDisabled();
 
-  await page.mouse.click(box.x + 88, box.y + 30);
+  const edge = await groupTopEdge(page);
+  await page.mouse.click(edge.x, edge.y);
   await expect(page.locator("#ungroup")).toBeEnabled();
   await expect(page.locator("#lock")).toBeEnabled();
   await expect(page.locator("#group")).toBeDisabled();
@@ -103,13 +103,11 @@ test("double-clicking a group outline edits its label", async ({ page }) => {
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
-  await selectPair(page, box);
+  await selectPair(page);
   await page.locator("#group").click();
-  await page.mouse.dblclick(box.x + 88, box.y + 34);
+  const edge = await groupTopEdge(page);
+  await page.mouse.dblclick(edge.x, edge.y);
   const editor = page.locator("#inline-edit");
   await expect(editor).toBeVisible();
   await editor.fill("Core flow");
@@ -129,11 +127,8 @@ test("a group is pruned when its nodes leave the source (no stale resurrection)"
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
-  await selectPair(page, box);
+  await selectPair(page);
   await page.locator("#group").click();
   await expect(page.locator("#ungroup")).toBeEnabled();
 

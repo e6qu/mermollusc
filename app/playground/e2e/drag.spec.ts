@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode, dragNodeBy, nodeCenter } from "./support/nodes.js";
 import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -17,14 +18,8 @@ test("dragging a node past the bounds grows the sheet and keeps the source uncha
   const before = await canvasWidth(page);
   const src = await sourceValue(page);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  // Grab the top "Start" node and drag it well to the right.
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 420, box.y + 56, { steps: 8 });
-  await page.mouse.up();
+  // Grab the "Start" node (A) and drag it well to the right.
+  await dragNodeBy(page, "A", 340, 0);
 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(before);
   // A geometry drag never edits the text.
@@ -41,17 +36,15 @@ test("a shift-selected pair drags together (both move, source untouched)", async
   const before = await canvasWidth(page);
   const src = await sourceValue(page);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  await page.mouse.click(box.x + 88, box.y + 56); // Start
+  await clickNode(page, "A"); // Start
   await page.keyboard.down("Shift");
-  await page.mouse.click(box.x + 88, box.y + 150); // + Choice
+  await clickNode(page, "B"); // + Authorized?
   await page.keyboard.up("Shift");
   // Drag the pair to the right; both move, so the sheet grows.
-  await page.mouse.move(box.x + 88, box.y + 56);
+  const a = await nodeCenter(page, "A");
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 420, box.y + 120, { steps: 8 });
+  await page.mouse.move(a.x + 340, a.y + 60, { steps: 8 });
   await page.mouse.up();
 
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(before);

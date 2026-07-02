@@ -1,5 +1,14 @@
 # @m/renderer — work log
 
+- Mermaid font parity: the default themes now use Mermaid's own font
+  (`16px "trebuchet ms", verdana, arial, sans-serif`, from `theme-default.js` — same provenance as the
+  palette), completing the appearance half of parity. The font feeds `measureText`, so every node
+  resized (~14% wider); all line-height/plate/secondary-line math derives from the font string, so it
+  followed automatically, and the display-list goldens use the deterministic char-width heuristic, so
+  they were unaffected. The real cost was in the app's e2e suite — 27 specs targeted canvas nodes by
+  hardcoded pixel offsets and were converted to `__nodeRect`-anchored helpers instead (see the app's
+  work log). Sketch mode's handwriting font is deliberately unchanged (a house mode, not a parity
+  target).
 - Mermaid-parity default appearance: `defaultTheme` now carries real Mermaid's palette (from mermaid's
   own `theme-default.js`, with provenance in the source comment), and `Theme` gained a `nodeStroke` knob
   split from `stroke` so node borders render Mermaid-purple (`#9370DB`) while edge lines/markers stay
