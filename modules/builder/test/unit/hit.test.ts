@@ -50,4 +50,64 @@ describe("hitTest", () => {
   it("prefers a node over a nearby edge", () => {
     expect(hitTest(scene, point(30, 38))).toEqual({ kind: "node", id: "A" });
   });
+
+  it("prefers an edge over the container it runs through, but the container wins in empty space", () => {
+    const leaf = (id: string, x: number, y: number) => ({
+      id: snid(id),
+      bounds: rect(x, y, 40, 30),
+      label: id,
+      shape: "rect" as const,
+      parent: snid("G"),
+      icon: null,
+      rowDivider: null,
+      subtitle: null,
+      accent: "none" as const,
+      role: "normal" as const,
+      rows: null,
+    });
+    const grouped: Scene = {
+      nodes: [
+        {
+          id: snid("G"),
+          bounds: rect(0, 0, 300, 100),
+          label: "group",
+          shape: "container",
+          parent: null,
+          icon: null,
+          rowDivider: null,
+          subtitle: null,
+          accent: "none",
+          role: "normal",
+          rows: null,
+        },
+        leaf("a", 10, 35),
+        leaf("b", 250, 35),
+      ],
+      edges: [
+        {
+          id: seid("ab"),
+          from: snid("a"),
+          to: snid("b"),
+          waypoints: [point(50, 50), point(250, 50)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 300, 100),
+    };
+    // On the edge, inside the container → the edge (this was unreachable before: the container won).
+    expect(hitTest(grouped, point(150, 50))).toEqual({ kind: "edge", id: "ab" });
+    // Inside the container but away from the edge → the container.
+    expect(hitTest(grouped, point(150, 15))).toEqual({ kind: "node", id: "G" });
+    // A leaf still beats everything.
+    expect(hitTest(grouped, point(20, 50))).toEqual({ kind: "node", id: "a" });
+  });
 });

@@ -155,9 +155,11 @@ import { createNavigator } from "./navigator.js";
 import {
   clearPersisted,
   hashValue,
+  loadMinimapCollapsed,
   loadOverlay,
   loadSource,
   loadSourceCollapsed,
+  saveMinimapCollapsed,
   saveOverlay,
   saveSource,
   saveSourceCollapsed,
@@ -211,6 +213,9 @@ declare global {
     // e2e hook: an edge's shown waypoints (scene coordinates) — regression guard for scene-corruption
     // bugs (an app-side post-pass once collapsed every sequence message onto the header row).
     __edgeWaypoints?: (edgeId: string) => { x: number; y: number }[] | null;
+    // e2e hook: scene → viewport CSS px, so specs can click computed scene geometry (e.g. an edge
+    // midpoint) without duplicating the zoom/scroll math.
+    __sceneToScreen?: (x: number, y: number) => { x: number; y: number } | null;
     // e2e hook: a node's currently-shown accent (the visual-only colour preference).
     __nodeAccent?: (nodeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
@@ -286,6 +291,7 @@ const zoomOutBtn = document.querySelector<HTMLButtonElement>("#zoom-out");
 const zoomResetBtn = document.querySelector<HTMLButtonElement>("#zoom-reset");
 const zoomFitBtn = document.querySelector<HTMLButtonElement>("#zoom-fit");
 const minimap = document.querySelector<HTMLCanvasElement>("#minimap");
+const minimapToggle = document.querySelector<HTMLButtonElement>("#minimap-toggle");
 const groupBtn = document.querySelector<HTMLButtonElement>("#group");
 const ungroupBtn = document.querySelector<HTMLButtonElement>("#ungroup");
 const lockBtn = document.querySelector<HTMLButtonElement>("#lock");
@@ -352,6 +358,7 @@ if (
   zoomResetBtn === null ||
   zoomFitBtn === null ||
   minimap === null ||
+  minimapToggle === null ||
   relaxBtn === null ||
   regenBtn === null ||
   resetPosBtn === null ||
@@ -2291,6 +2298,9 @@ const announce = (message: string): void => {
 // it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
 const minimapView = createMinimap({
   minimap,
+  toggle: minimapToggle,
+  initiallyCollapsed: loadMinimapCollapsed(),
+  persistCollapsed: saveMinimapCollapsed,
   miniCtx,
   stageWrap,
   canvas,
@@ -3132,6 +3142,11 @@ window.__nodeRect = (nodeId) => {
     w: node.bounds.size.width * viewScale,
     h: node.bounds.size.height * viewScale,
   };
+};
+window.__sceneToScreen = (x, y) => {
+  if (scene === null) return null;
+  const p = sceneToScreen(point(x, y));
+  return { x: p.x, y: p.y };
 };
 window.__edgeWaypoints = (edgeId) => {
   if (scene === null) return null;
@@ -5976,7 +5991,9 @@ const shareUrl = (): string => {
   const styleParam =
     ast !== null ? `&style=${encodeURIComponent(getActiveStyle(familyOfKind(ast.kind)))}` : "";
   const base = `${location.origin}${location.pathname}#src=${encodeURIComponent(editor.value())}${styleParam}`;
-  if (useCollab) return base;
+  // In a collab session the meaningful thing to share is the ROOM — the live document — not a frozen
+  // #src snapshot that strips the ?collab/room params (which left no way to invite anyone at all).
+  if (useCollab) return `${location.origin}${location.pathname}${location.search}`;
   const overrides = doc.overrides();
   const groups = doc.groups();
   const edgeStyles = doc.edgeStyles();

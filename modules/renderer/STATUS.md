@@ -12,9 +12,10 @@ crossing "hop" arcs), which real Mermaid does not draw. Classic additionally dra
 Catmull-Rom splines through the routed waypoints (`EdgeFinish = "decorated" | "plain" | "spline"`) —
 the last appearance-level parity gap closed; what remains is the engine difference (ELK vs dagre, a
 layout concern). Container display boxes honor
-`SceneNode.accent`, the palette maps semantic cloud/network accents to theme-aware colours, and plated
-edge labels render on OPAQUE background plates in canvas and SVG (Mermaid-style: the routed
-line never strikes through the label text — translucent plates read as broken on dense diagrams).
+`SceneNode.accent`, the palette maps semantic cloud/network accents to theme-aware colours, and edge
+labels render as bare 75%-alpha text with NO background plate in canvas and SVG — the label decollision
+pass keeps them clear of nodes and lines, and the transparency lets dense diagrams read through the
+label layer instead of white boxes punching holes in it.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported

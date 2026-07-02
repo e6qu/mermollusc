@@ -145,8 +145,7 @@ const labelLineHeight = (font: string): number => {
 const scaleFont = (font: string, factor: number): string =>
   font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${(Number(n) * factor).toFixed(1)}px`);
 
-const EDGE_LABEL_TEXT_ALPHA = 1;
-const EDGE_LABEL_PLATE_ALPHA = 1;
+const EDGE_LABEL_TEXT_ALPHA = 0.75;
 
 // Deterministic LCG so the jitter is stable across repaints (no flicker) and unit-testable.
 const lcg = (seed: number) => {
@@ -443,20 +442,9 @@ export const paint = (
         const lines = labelLines(cmd.text);
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;
-        if (cmd.plate) {
-          // A background plate behind an edge label, so the routed line/markers don't strike through
-          // it. Measured against the base font (the widest line wins); the box is centred on x.
-          ctx.font = theme.font;
-          const widest = lines.reduce((w, l) => Math.max(w, ctx.measureText(l).width), 0);
-          const padX = 6;
-          const padY = 3;
-          const boxW = widest + padX * 2;
-          const boxH = lines.length * lh + padY * 2;
-          ctx.fillStyle = theme.background;
-          ctx.globalAlpha = EDGE_LABEL_PLATE_ALPHA;
-          ctx.fillRect(cmd.x - boxW / 2, top - lh / 2 - padY, boxW, boxH);
-          ctx.globalAlpha = 1;
-        }
+        // Edge labels (`plate: true`) draw as bare 75%-alpha text with NO background plate — the label
+        // decollision pass keeps them off nodes/lines, and the transparency lets the diagram read
+        // through dense label areas instead of white boxes punching holes in it.
         for (const [i, line] of lines.entries()) {
           if (i === 0) {
             ctx.fillStyle = theme.text;

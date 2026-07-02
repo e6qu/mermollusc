@@ -886,7 +886,7 @@ export const minimizeCrossings = (scene: Scene): Scene => {
   return { ...scene, edges: bestEdges };
 };
 
-const LANE_GAP = 8; // perpendicular separation between de-stacked parallel edge segments
+const LANE_GAP = 14; // perpendicular separation between de-stacked parallel edge segments
 const OVERLAP_SWEEPS = 4; // bounded passes; each separates the stacks the previous pass exposed
 const SEG_AXIS_EPS = 0.5; // a segment counts as axis-aligned when its extent on one axis is below this
 
@@ -1084,7 +1084,7 @@ const CHANNEL_MARGIN = 16; // extent padding after expansion
 // Width reserved per edge crossing a channel — a bit over one lane (`LANE_GAP`), since a Z-route's two
 // stubs each want a slot. Tuned so dense architecture channels get enough room for the lane pass to
 // de-stack without crossings, while sparse channels (few/no crossing edges) stay compact.
-const CHANNEL_LANE = 13;
+const CHANNEL_LANE = 19; // scales with LANE_GAP (≈ LANE_GAP + 5) so reserved channels fit the lanes
 const MAX_NEST_DEPTH = 64; // group nesting can't realistically exceed this; bounds the ancestor walk
 
 // One contiguous strip of top-level nodes along an axis; the groups in it shift together (rigidly).
@@ -1323,7 +1323,7 @@ export const spreadPorts = (rawScene: Scene): Scene =>
 export const respreadPorts = (scene: Scene, bus = false): Scene => routeSpread(scene, bus);
 
 const TRUNK_MIN = 2; // a fan needs at least this many edges on one node side to become a trunk
-const TRUNK_GAP = 18; // minimum distance from the node to its trunk line
+const TRUNK_GAP = 26; // minimum distance from the node to its trunk line
 
 const samePoint = (a: Point, b: Point): boolean =>
   Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
@@ -1534,7 +1534,7 @@ const simplifyMicroJogs = (pts: readonly Point[], tol: number): Point[] => {
 
 // Applied only by layoutDiagram's outer snap (see the microJogTol parameter): spreadPorts' own internal
 // snap runs with 0 so unit-scale routing tests (and any tiny-geometry caller) keep exact waypoints.
-export const MICRO_JOG_TOL = 7;
+export const MICRO_JOG_TOL = 10;
 
 export const snapSceneEdgesToMountPoints = (scene: Scene, microJogTol = 0): Scene => {
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));

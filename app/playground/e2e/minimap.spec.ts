@@ -14,31 +14,37 @@ const zoomIn = async (page: Page, times: number) => {
   for (let i = 0; i < times; i++) await page.locator("#zoom-in").click();
 };
 
-test("the minimap stays hidden while the diagram fits the stage", async ({ page }) => {
+test("the minimap is an always-available overview and collapses on demand", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  // Default sample is small and fits at 100% — no overview needed.
+  // Shown for every diagram now (not just when the sheet overflows — fit-on-load meant it never was).
+  await expect(page.locator("#minimap")).toBeVisible();
+  await expect(page.locator("#minimap-toggle")).toBeVisible();
+
+  // Collapse hides the map (the toggle stays, to bring it back), and the choice survives a reload.
+  await page.locator("#minimap-toggle").click();
   await expect(page.locator("#minimap")).toBeHidden();
+  await expect(page.locator("#minimap-toggle")).toBeVisible();
+  await page.reload();
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await expect(page.locator("#minimap")).toBeHidden();
+
+  await page.locator("#minimap-toggle").click();
+  await expect(page.locator("#minimap")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("the minimap appears when the sheet overflows and hides again when it fits", async ({
-  page,
-}) => {
+test("the minimap still renders after zooming into an overflowing diagram", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-
   await zoomIn(page, 4);
   await expect(page.locator("#minimap")).toBeVisible();
-
-  await page.locator("#zoom-fit").click();
-  await expect(page.locator("#minimap")).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -107,14 +113,14 @@ test("the minimap can pan the stage from the keyboard", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("the minimap recalculates overflow after viewport resize", async ({ page }) => {
+test("the minimap re-renders (no error) after a viewport resize", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await expect(page.locator("#minimap")).toBeHidden();
+  await expect(page.locator("#minimap")).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("#minimap")).toBeVisible();

@@ -1,5 +1,9 @@
 # @m/builder — work log
 
+- `hitTest` priority is leaf nodes → edges → containers (was: all nodes → edges). A container's bounds
+  cover everything inside it, so testing containers before edges made every edge routed through a
+  group (block composites, cloud groups, subgraphs) unclickable — the click always selected the
+  container. Unit-tested with an edge crossing a container.
 - Adopted the app's align/distribute math as `src/core/arrange.ts` (`arrangeDeltas`/`AlignKind`/
   `UnitBox` — pure unit-box geometry, boundary hygiene: it had lived in `app/playground/src/main.ts`),
   with unit tests. Also hardened `wrapCloudGroup`'s splice loop: iterating index VALUES instead of

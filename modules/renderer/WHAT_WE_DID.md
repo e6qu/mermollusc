@@ -1,5 +1,9 @@
 # @m/renderer — work log
 
+- Edge labels are bare 75%-alpha text now — no background plate at all (user direction, reversing the
+  short-lived opaque plates): decollision keeps labels clear of geometry, and transparent text lets a
+  dense diagram read through its label layer. Canvas + SVG; the `plate` flag survives as the edge-label
+  text-treatment marker.
 - Edge-label plates are opaque now (plate and text alpha 1, canvas + SVG): the 66% translucency let
   the routed line show through the label text, which users read as a broken "strikethrough" on dense
   network/cloud diagrams — and real Mermaid uses opaque label backgrounds anyway.

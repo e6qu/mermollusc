@@ -13,8 +13,7 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   editable label".
 - **Collab join flash.** Joining an existing room paints the local/sample diagram first, then swaps
   when the sync settles (~300ms) — suppress the first paint or show "syncing…" until the seed decision.
-- **No room-invite affordance.** `shareUrl` strips `?collab`/`room`, so a collab user can't share a
-  join link; add an explicit "Copy room link" action.
+- *(done)* **Room-invite affordance** — in a collab session, Share copies the room link itself.
 - **Gantt keyboard parity.** Bar reschedule/duration are mouse-only (`keyboardResizeSelection` excludes
   gantt); add Alt+Arrow day-shift/duration keys. Gantt `after` dependencies also have no canvas
   Connect even though the grammar expresses them.
