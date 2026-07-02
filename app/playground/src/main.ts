@@ -154,6 +154,13 @@ import { createThemeController } from "./theme.js";
 import { applyPlatformModifiers } from "./platform.js";
 import { rasterizeIcon, svgDataUrl } from "./raster.js";
 import { buildSyntaxReference } from "./syntax-reference.js";
+import {
+  authConfigFromEnv,
+  clearAuth0Session,
+  resumeAuth0Session,
+  startAuth0Login,
+  type AuthSession,
+} from "./auth.js";
 
 const GANTT_DAY_MS = 86_400_000;
 
@@ -233,6 +240,7 @@ const addBtn = document.querySelector<HTMLButtonElement>("#add-node");
 const connectBtn = document.querySelector<HTMLButtonElement>("#connect");
 const themeBtn = document.querySelector<HTMLButtonElement>("#theme");
 const sketchBtn = document.querySelector<HTMLButtonElement>("#sketch");
+const authToggleBtn = document.querySelector<HTMLButtonElement>("#auth-toggle");
 const styleSelect = document.querySelector<HTMLSelectElement>("#layout-style");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
@@ -336,6 +344,7 @@ if (
   connectBtn === null ||
   themeBtn === null ||
   sketchBtn === null ||
+  authToggleBtn === null ||
   styleSelect === null ||
   loadPackEl === null ||
   exampleEl === null ||
@@ -531,6 +540,23 @@ const collabRoom = collabParams.get("room") ?? "playground";
 const backendFreeDemo = import.meta.env.VITE_BACKEND_FREE_DEMO === "1";
 const useCollab = collabRequested;
 const useRelayTransport = useCollab && !backendFreeDemo;
+const authConfig = authConfigFromEnv(import.meta.env, location);
+const authSession: AuthSession | null =
+  useRelayTransport && authConfig !== null
+    ? await resumeAuth0Session(authConfig, {
+        crypto,
+        fetch,
+        location,
+        navigate: (url) => {
+          location.assign(url);
+        },
+        now: () => Date.now(),
+        replaceUrl: (url) => {
+          history.replaceState(null, "", url);
+        },
+        storage: sessionStorage,
+      })
+    : null;
 const localCollabStore: AsyncRoomStore | null =
   useCollab && !useRelayTransport ? await createIndexedDbRoomStore(indexedDB) : null;
 
@@ -542,6 +568,38 @@ const exampleFromUrl = exampleParam === null ? null : (EXAMPLES.get(exampleParam
 const initialSource = fromHash ?? exampleFromUrl ?? loadSource() ?? SAMPLE;
 const useStoredLocalCollabRoom =
   localCollabStore !== null && fromHash === null && exampleFromUrl === null;
+
+if (authConfig !== null && useRelayTransport) {
+  authToggleBtn.hidden = false;
+  authToggleBtn.textContent = authSession === null ? "Sign in" : authSession.user.name;
+  authToggleBtn.title =
+    authSession === null
+      ? "Sign in to the collaboration relay"
+      : "Sign out of this browser session";
+  authToggleBtn.addEventListener("click", () => {
+    if (authSession === null) {
+      startAuth0Login(authConfig, {
+        crypto,
+        fetch,
+        location,
+        navigate: (url) => {
+          location.assign(url);
+        },
+        now: () => Date.now(),
+        replaceUrl: (url) => {
+          history.replaceState(null, "", url);
+        },
+        storage: sessionStorage,
+      }).catch((error: unknown) => {
+        console.error(`collab auth: login start failed: ${messageOf(error)}`);
+        setStatus("error", "collaboration sign-in failed");
+      });
+      return;
+    }
+    clearAuth0Session(authConfig, sessionStorage);
+    location.reload();
+  });
+}
 
 let collabSession: CollabSession | null = null;
 let doc: OverlayDoc;
@@ -6074,11 +6132,14 @@ if (collabSession !== null) {
       setStatus("warning", "⚠ a remote change was rejected (incompatible overlay) — ignoring it");
     }
   });
-  // Label this client for presence — remote cursors show this name/colour. A random pick is fine for
-  // the experimental flag; real identity arrives with auth (Phase 2).
+  // Label this client for presence — remote cursors show this name/colour.
   const PRESENCE_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080"];
-  const color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)] ?? "#4363d8";
-  session.setLocalUser({ name: `User ${1 + Math.floor(Math.random() * 99)}`, color });
+  if (authSession === null) {
+    const color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)] ?? "#4363d8";
+    session.setLocalUser({ name: `User ${1 + Math.floor(Math.random() * 99)}`, color });
+  } else {
+    session.setLocalUser({ name: authSession.user.name, color: authSession.user.color });
+  }
   // The relay sends this client's granted role (a control frame). A viewer's editor + canvas go
   // read-only, with a badge — the server already drops a viewer's edits, so this is the matching UX.
   const roleBadge = document.querySelector<HTMLElement>("#role-badge");
@@ -6096,11 +6157,11 @@ if (collabSession !== null) {
     if (ast !== null) applyKind(ast.kind);
     updateGroupButtons();
   };
-  if (useRelayTransport) {
-    // A `?token=` from the page (an Auth0 access token, once login is wired) is sent as the first
-    // WebSocket auth frame, never in the relay URL. Absent in local dev → the relay's default allow-all
-    // accepts.
-    const token = collabParams.get("token");
+  const canConnectRelay = authConfig === null || authSession !== null;
+  if (useRelayTransport && canConnectRelay) {
+    // A resolved Auth0 access token is sent as the first WebSocket auth frame, never in the relay URL.
+    // Absent in local dev → the relay's default allow-all accepts.
+    const token = authSession?.accessToken ?? null;
     // A self-healing transport: a dropped socket reconnects (exponential backoff) and re-exchanges state,
     // so a brief blip no longer permanently desyncs the room. Transient drops surface a "reconnecting"
     // banner; only a give-up (backoff exhausted) reaches `onClose`, where we fall back to local editing.
@@ -6124,6 +6185,10 @@ if (collabSession !== null) {
         setStatus("warning", "disconnected from the collaboration relay — editing locally");
       },
     });
+  } else if (useRelayTransport) {
+    window.setTimeout(() => {
+      setStatus("warning", "sign in to connect to the collaboration relay");
+    }, 0);
   } else {
     const store = localCollabStore;
     if (store === null) throw new Error("backend-free collab store was not initialised");

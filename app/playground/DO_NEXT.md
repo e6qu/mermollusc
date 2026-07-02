@@ -87,8 +87,10 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   present, skips only the relay, and persists whole Yjs room snapshots through `@m/collab`'s IndexedDB
   `RoomStore`. The built-artifact Pages suite now runs from root `make e2e-pages` and the pre-push
   gate, and asserts the IndexedDB room snapshot directly.
-- **Production store + browser login.** Postgres/S3 durable store and the browser Auth0 login flow are
-  the Phase 2 remainder.
+- **Production store + membership source.** Postgres/S3 durable store plus a real per-room membership
+  source remain for the auth-on relay path.
+- *(done)* **Browser Auth0 login.** Env-gated Auth0 Authorization Code + PKCE now supplies the relay
+  access token and presence identity.
 - *(done)* **WS auth hardening (before auth ships).** Tokens now travel in the first WebSocket auth
   frame after open, and `index.html` carries a `connect-src` CSP.
 

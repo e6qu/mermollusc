@@ -112,7 +112,10 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   root pre-push hook runs this Pages gate alongside the live-app UI suite.
 - **Collaboration transport hardening:** browser relay tokens no longer ride in WebSocket URLs; the
   page passes them to `@m/collab` as the first auth frame before document or awareness state, and the
-  app CSP names the allowed local and secure WebSocket connection targets.
+  app CSP names the allowed HTTPS, local, and secure WebSocket connection targets. When
+  `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, and `VITE_AUTH0_AUDIENCE` are set, the app performs an
+  Auth0 Authorization Code + PKCE login, stores the access token for the browser session, sends it as
+  that first auth frame, and labels presence from token claims instead of the anonymous random user.
 - **Pipeline goldens (`test/integration/golden.test.ts`):** one snapshot per family of the
   parse→layout(heuristic)→display-list geometry (rounded integers) — deterministic, font-free, and
   part of `make check`. Guards against geometry regressions like an edge label drifting onto a node;

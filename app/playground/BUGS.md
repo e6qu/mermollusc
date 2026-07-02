@@ -2,8 +2,11 @@
 
 Resolved (mount-point and label pass, 2026-06-30):
 
-- ~~**Relay auth tokens were encoded into WebSocket URLs.**~~ Fixed — the app passes page tokens through
-  `connectTransport` as the first auth frame, and the app shell includes a `connect-src` CSP.
+- ~~**Auth-enabled collab still had no browser login or identity-backed presence.**~~ Fixed — the app
+  now has an env-gated Auth0 PKCE flow, sends the resulting access token as the first auth frame, and
+  labels presence from token claims.
+- ~~**Relay auth tokens were encoded into WebSocket URLs.**~~ Fixed — the app passes Auth0 access tokens
+  through `connectTransport` as the first auth frame, and the app shell includes a `connect-src` CSP.
 - ~~**Backend-free Pages collab e2e was not part of the root gate.**~~ Fixed — root `make e2e-pages`
   now delegates to the app's built-artifact Pages suite, and the pre-push hook runs it alongside the
   live UI e2e checks.

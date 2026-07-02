@@ -9,6 +9,10 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
 
 Resolved (hardening sweep):
 
+- ~~**Browser collab identity was still a random placeholder after relay auth existed.**~~ Fixed — an
+  env-gated Auth0 PKCE browser flow now supplies the access token for the first auth frame and derives
+  presence name/colour from token claims.
+
 - ~~**Auth0 access tokens rode in the WebSocket URL.**~~ Fixed — clients now send the token as the first
   auth frame after the socket opens, and auth-enabled relays wait for that frame before admitting
   document/presence traffic.

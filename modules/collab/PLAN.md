@@ -68,6 +68,6 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 ## Roadmap
 
 Phase 1 (this module): done — the Yjs document, in-memory convergence, transport, source binding, and
-presence. Phase 2 is in progress on the repo's relay: persistence, Auth0 verification, rooms/RBAC, and
-role-aware UI are in; browser login and the production store remain. Phase 3 covers pub/sub,
+presence. Phase 2 is in progress on the repo's relay/app path: persistence, Auth0 verification, browser
+PKCE login, rooms/RBAC, and role-aware UI are in; the production store remains. Phase 3 covers pub/sub,
 audit/observability, offline buffering, compaction, and compliance hooks.

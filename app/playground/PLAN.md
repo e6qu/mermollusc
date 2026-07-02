@@ -74,6 +74,9 @@ canvas, and hosts the e2e / golden tests.
 - Keep collaboration relay credentials out of transport URLs: page-provided tokens may seed the client
   session, but relay transport sends them through the first WebSocket auth frame and the app CSP must
   name the allowed HTTP/WebSocket connection targets.
+- Keep browser collaboration login env-gated and dependency-light: when Auth0 Vite vars are present,
+  use Authorization Code + PKCE to obtain the access token, feed it only to the first auth frame, and
+  derive presence identity from token claims; when absent, local/dev/Pages behavior remains zero-auth.
 - Keep the production build inspectable: Vite chunking should split editor, layout engine, collab,
   icon registry, and pipeline code so startup weight decisions are visible in build output.
 - Feature-detect HTML-in-Canvas (`drawElement`) and select the renderer backend.

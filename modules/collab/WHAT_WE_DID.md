@@ -1,5 +1,10 @@
 # @m/collab — work log
 
+- Wired the browser Auth0 side of Phase 2 in the app: an env-gated Authorization Code + PKCE client
+  obtains an access token, stores it only for the browser session, sends it as the first WebSocket auth
+  frame, and derives collaborative presence name/colour from token claims. Focused app integration tests
+  cover config gating, PKCE login URL construction, callback code exchange, callback URL cleanup, token
+  storage, and identity extraction.
 - Moved WebSocket auth tokens out of relay URLs: `connectTransport` now sends `TransportHooks.authToken`
   as tag 3 before document/presence frames, and auth-enabled relays wait for that auth frame before
   admitting a socket. Unit/integration tests prove the auth frame order and that URL query tokens are no
@@ -79,8 +84,8 @@
   verify the connection's first auth frame against the issuer JWKS via `jose` — signature + issuer +
   audience + expiry — returning `{ok,user}` or a reason. The relay's connection handler is now async: it
   buffers frames during verification, then admits (sends state) or closes 1008. Auth is env-gated
-  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default allow-all, so dev/e2e stay zero-auth. The app forwards a
-  page token as the first auth frame when present. Pinned `jose` 6.2.3.
+  (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default allow-all, so dev/e2e stay zero-auth. The app forwards the
+  browser Auth0 access token as the first auth frame when present. Pinned `jose` 6.2.3.
   Test: a local JWKS harness (generated RSA key + a local endpoint + signed tokens) covering accept +
   every rejection; the relay admit/reject + buffering flow verified manually.
 - Phase 2 — rooms + RBAC (server-enforced). The verifier now surfaces `tenant` (Auth0 `org_id`) + per-

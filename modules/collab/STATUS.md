@@ -1,9 +1,9 @@
 # @m/collab — status
 
 **State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence, Auth0 OIDC
-verification, **and rooms + RBAC** at the relay. CRDT document, WebSocket transport, live source
-binding, presence, restart-survival, token-verified connections, and server-enforced per-document
-roles + tenant isolation. Remaining Phase 2: the browser login + the production store. The app runs
+verification, browser PKCE login, **and rooms + RBAC** at the relay. CRDT document, WebSocket transport,
+live source binding, presence, restart-survival, token-verified connections, and server-enforced
+per-document roles + tenant isolation. Remaining Phase 2: the production store. The app runs
 single-user by default; with `?collab` set it connects to the relay (via `reconnectingWebSocketTransport`)
 and binds the editor to the shared doc.
 
@@ -34,6 +34,10 @@ and binds the editor to the shared doc.
   claims), or rejects (the relay closes 1008, buffering document/presence frames during the async
   check). **Env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE`); default is allow-all, so local dev / e2e
   stay zero-auth.
+- **Browser Auth0 login:** the app has an env-gated Auth0 Authorization Code + PKCE client
+  (`VITE_AUTH0_DOMAIN` / `VITE_AUTH0_CLIENT_ID` / `VITE_AUTH0_AUDIENCE`). A signed-in browser stores the
+  access token in session storage, sends it through `TransportHooks.authToken` as the first auth frame,
+  and derives presence name/colour from token claims instead of the old random placeholder.
 - **RBAC (`server/rbac.mjs`):** `authorizeRoom({ user, room })` resolves the role (owner/editor/viewer)
   or null (no access). The default resolver isolates **tenants** (a tenant-bound user reaches only
   rooms namespaced `<tenant>/…`) and reads **per-room roles** from token claims (authoritative when
@@ -112,5 +116,5 @@ and binds the editor to the shared doc.
   (Playwright covers the single-tab Yjs path, two-tab overlay convergence, source sync, and presence).
 
 **Phase 1 is feature-complete.** **Phase 2 is in progress.** Landed: the repo's relay, persistence,
-Auth0 verification, rooms/RBAC, and role-aware app UI. Next: browser login and the production store;
+Auth0 verification, browser login, rooms/RBAC, and role-aware app UI. Next: the production store;
 Phase 3 covers pub/sub, audit/observability, offline buffering, compaction, and compliance hooks.

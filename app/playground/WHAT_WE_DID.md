@@ -537,11 +537,17 @@
   with a pluggable `RoomStore` (rooms survive restart via `PERSIST_DIR`); the Playwright webServer +
   `make collab-server` point at the new path. No app behaviour change — single-user local still needs
   no server, and the `?collab` path is unchanged.
-- Collab Phase 2 — forward a page token to the relay as the first WebSocket auth frame (an Auth0 access
-  token, once login is wired); the relay verifies it when auth is enabled. Absent in local dev → the
-  relay's default allow-all accepts, so single-user and the `?collab` flow are unchanged.
+- Collab Phase 2 — forward an Auth0 access token to the relay as the first WebSocket auth frame; the
+  relay verifies it when auth is enabled. Absent in local dev → the relay's default allow-all accepts,
+  so single-user and the `?collab` flow are unchanged.
 - Collab hardening — the relay URL no longer carries tokens, and `index.html` now ships a CSP with
   `connect-src` scoped to same-origin, local dev endpoints, and secure WebSockets.
+- Collab Phase 2 — browser Auth0 login. When `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, and
+  `VITE_AUTH0_AUDIENCE` are configured, the app exposes a Sign in/out control, runs Authorization Code
+  + PKCE through Auth0, stores the access token in session storage, sends it as the first WebSocket auth
+  frame, and derives presence name/colour from token claims. The app CSP now permits HTTPS token
+  exchange endpoints, while backend-free Pages remains zero-relay/zero-auth unless those env vars are
+  intentionally supplied for a relay-backed build.
 - Collab Phase 2 — role-aware UI. The relay sends the granted role (a control frame); the app applies
   it via `connectWebSocket`'s `onControl`. A viewer's editor goes read-only (new `editor.setReadOnly`)
   and the canvas mutations (drag/resize/delete/nudge/rename) are guarded by a `viewerMode` flag, with
