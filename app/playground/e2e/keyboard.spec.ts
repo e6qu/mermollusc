@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode } from "./support/nodes.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -34,11 +35,7 @@ test("arrow keys nudge the selection and the whole run is one undo", async ({ pa
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-
-  await page.mouse.click(box.x + 88, box.y + 56); // select the Start node
+  await clickNode(page, "A"); // select the Start node
   expect(await overrideCount(page)).toBe(0);
 
   await page.keyboard.press("ArrowRight");

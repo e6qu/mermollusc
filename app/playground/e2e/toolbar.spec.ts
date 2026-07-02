@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { dragNodeBy } from "./support/nodes.js";
 import { watchPipelineErrors } from "./support/render.js";
 
 const canvasWidth = (page: Page) =>
@@ -45,17 +46,9 @@ test("Regenerate preserves pinned manual node overrides", async ({ page }) => {
   const errors = watchPipelineErrors(page);
 
   await page.goto("/");
-  const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  if (box !== null) {
-    await page.mouse.move(box.x + 88, box.y + 56);
-    await page.mouse.down();
-    await page.mouse.move(box.x + 300, box.y + 240, { steps: 8 });
-    await page.mouse.up();
-  }
+  await dragNodeBy(page, "A", 212, 184);
   await expect.poll(() => overrideCount(page)).toBe(1);
 
   await page.locator("#regenerate").click();

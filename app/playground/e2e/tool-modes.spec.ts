@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { nodeCenter } from "./support/nodes.js";
 import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -49,11 +50,11 @@ test("the Connect tool draws an edge from a plain drag between two nodes", async
   await page.keyboard.press("c");
   expect(await tool(page)).toBe("connect");
 
-  const box = await page.locator("#stage").boundingBox();
-  if (box === null) throw new Error("no canvas box");
-  await page.mouse.move(box.x + 88, box.y + 56); // Start (A)
+  const a = await nodeCenter(page, "A"); // Start
+  const b = await nodeCenter(page, "B"); // Choice
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 88, box.y + 150, { steps: 6 }); // Choice (B)
+  await page.mouse.move(b.x, b.y, { steps: 6 });
   await page.mouse.up();
 
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /5 edge/);
@@ -82,11 +83,13 @@ test("modifier accelerators still work under the Select tool (no regression)", a
   const box = await page.locator("#stage").boundingBox();
   if (box === null) throw new Error("no canvas box");
 
-  // ⌥-drag connect still works without arming the Connect tool.
+  // ⌥-drag connect (Start → Choice) still works without arming the Connect tool.
+  const a = await nodeCenter(page, "A");
+  const b = await nodeCenter(page, "B");
   await page.keyboard.down("Alt");
-  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 88, box.y + 150, { steps: 6 });
+  await page.mouse.move(b.x, b.y, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /5 edge/);

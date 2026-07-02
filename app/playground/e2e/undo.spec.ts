@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode, dragNodeBy, nodeCenter } from "./support/nodes.js";
 import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -12,18 +13,11 @@ const overrideCount = (page: Page) =>
     return parsed.overrides?.length ?? 0;
   });
 
-const nodeCenter = (page: Page, nodeId: string) =>
-  page.evaluate((id) => {
-    const rect = (window as any).__nodeRect(id);
-    if (rect === null) throw new Error(`node not found: ${id}`);
-    return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
-  }, nodeId);
-
 // Select the default flowchart's Start node, then shift-add the Choice node below it.
-const selectPair = async (page: Page, box: { x: number; y: number }) => {
-  await page.mouse.click(box.x + 88, box.y + 56);
+const selectPair = async (page: Page) => {
+  await clickNode(page, "A");
   await page.keyboard.down("Shift");
-  await page.mouse.click(box.x + 88, box.y + 150);
+  await clickNode(page, "B");
   await page.keyboard.up("Shift");
 };
 
@@ -33,16 +27,10 @@ test("⌘Z undoes a node drag and ⌘⇧Z redoes it", async ({ page }) => {
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
   expect(await overrideCount(page)).toBe(0);
 
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 300, box.y + 240, { steps: 8 });
-  await page.mouse.up();
+  await dragNodeBy(page, "A", 212, 184);
   await expect.poll(() => overrideCount(page)).toBe(1); // the drag wrote a position override
 
   await page.keyboard.press("Control+z");
@@ -59,15 +47,10 @@ test("undoing a drag restores the position without touching unchanged source tex
 }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  if (box === null) return;
 
   const textBefore = await sourceValue(page);
   // Drag a node → one overlay override (the editor text is unchanged by a drag).
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 280, box.y + 220, { steps: 8 });
-  await page.mouse.up();
+  await dragNodeBy(page, "A", 192, 164);
   await expect.poll(() => overrideCount(page)).toBe(1);
   expect(await sourceValue(page)).toBe(textBefore);
 
@@ -84,11 +67,8 @@ test("⌘Z undoes a Group", async ({ page }) => {
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
 
-  await selectPair(page, box);
+  await selectPair(page);
   await page.locator("#group").click();
   await expect(page.locator("#ungroup")).toBeEnabled(); // a group exists
 

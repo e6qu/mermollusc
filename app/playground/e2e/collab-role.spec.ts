@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collabUrl } from "./collab-url.js";
+import { dragNodeBy } from "./support/nodes.js";
 
 // The role-aware client: when the relay grants the `viewer` role, the editor and the canvas tools go
 // read-only and a "view only" badge shows; an `editor` grant restores editing. Driven through the
@@ -17,12 +18,7 @@ declare global {
 }
 
 const dragStartNode = async (page: Page) => {
-  const box = await page.locator("#stage").boundingBox();
-  if (box === null) throw new Error("no stage box");
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 300, box.y + 240, { steps: 6 });
-  await page.mouse.up();
+  await dragNodeBy(page, "A", 212, 184);
 };
 
 test("a viewer role makes the editor + tools read-only; editor restores it", async ({ page }) => {

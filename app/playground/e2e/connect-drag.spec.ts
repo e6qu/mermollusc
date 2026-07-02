@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { nodeCenter } from "./support/nodes.js";
 import { sourceValue } from "./support/source.js";
 
 const canvasWidth = (page: Page) =>
@@ -14,15 +15,14 @@ test("⌥-drag from one node to another creates an edge", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /flowchart diagram: 4 node.*4 edge/);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
+  const a = await nodeCenter(page, "A");
+  const b = await nodeCenter(page, "B");
 
-  // hold ⌥ across the drag from Start (≈88,56) to Choice (≈88,150)
+  // hold ⌥ across the drag from Start (A) to Choice (B)
   await page.keyboard.down("Alt");
-  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 88, box.y + 150, { steps: 6 });
+  await page.mouse.move(b.x, b.y, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
 
@@ -41,9 +41,10 @@ test("⌥-drag released on empty space creates no edge", async ({ page }) => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   const box = await page.locator("#stage").boundingBox();
   if (box === null) return;
+  const a = await nodeCenter(page, "A");
 
   await page.keyboard.down("Alt");
-  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(box.x + 700, box.y + 600, { steps: 6 }); // far from any node
   await page.mouse.up();

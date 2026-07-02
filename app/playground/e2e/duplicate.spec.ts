@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { clickNode } from "./support/nodes.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -26,10 +27,7 @@ test("⌘D duplicates the selected node into the source and pins it nearby", asy
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", /flowchart diagram: 4 node/);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  await page.mouse.click(box.x + 88, box.y + 56); // select the Start node
+  await clickNode(page, "A"); // select the Start node
 
   await page.keyboard.press("ControlOrMeta+d");
 

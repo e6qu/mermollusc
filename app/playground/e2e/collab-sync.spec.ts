@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { collabUrl } from "./collab-url.js";
+import { dragNodeBy } from "./support/nodes.js";
 
 // The end-to-end proof of the dev WebSocket transport: two independent browser contexts ("tabs") open
 // the same `?collab&room=…`, and an overlay drag in one appears in the other via the relay. Both tabs
@@ -32,13 +33,7 @@ test("two ?collab tabs converge: a drag in one tab appears in the other", async 
   await expect.poll(() => remoteOverrideCount(b)).toBe(0);
 
   // drag the Start node in tab A
-  const box = await a.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-  await a.mouse.move(box.x + 88, box.y + 56);
-  await a.mouse.down();
-  await a.mouse.move(box.x + 320, box.y + 250, { steps: 8 });
-  await a.mouse.up();
+  await dragNodeBy(a, "A", 232, 194);
 
   // tab B receives the override over the relay
   await expect.poll(() => remoteOverrideCount(b), { timeout: 6000 }).toBe(1);

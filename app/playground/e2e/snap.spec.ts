@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { nodeCenter } from "./support/nodes.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -21,18 +22,16 @@ test("a single-node drag snaps to an alignment line, and releases the snap when 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
-  const box = await page.locator("#stage").boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
+  const a = await nodeCenter(page, "A");
 
   // grab the Start node and nudge it 3px right — within the snap threshold of the shared spine centre
-  await page.mouse.move(box.x + 88, box.y + 56);
+  await page.mouse.move(a.x, a.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 91, box.y + 56, { steps: 3 });
+  await page.mouse.move(a.x + 3, a.y, { steps: 3 });
   expect(await snapActive(page)).toBe(true);
 
   // drag well clear of any alignment → no snap
-  await page.mouse.move(box.x + 240, box.y + 56, { steps: 4 });
+  await page.mouse.move(a.x + 152, a.y, { steps: 4 });
   expect(await snapActive(page)).toBe(false);
 
   await page.mouse.up();

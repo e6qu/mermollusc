@@ -108,18 +108,20 @@ export const bandFill = (fill: BandFill, theme: Theme): string => {
   }
 };
 
-// The light theme matches real Mermaid's default palette — values taken from mermaid's own
+// The light theme matches real Mermaid's defaults — palette AND font taken from mermaid's own
 // theme-default.js (https://github.com/mermaid-js/mermaid, packages/mermaid/src/themes/theme-default.js:
-// mainBkg '#ECECFF', border1 '#9370DB', textColor/lineColor '#333'), so an out-of-the-box diagram reads
-// like Mermaid output. The font stays ours: matching Mermaid's 16px trebuchet would resize every node
-// (it feeds measureText) — tracked as a follow-up, not silently mixed into a palette change.
+// mainBkg '#ECECFF', border1 '#9370DB', textColor/lineColor '#333', fontFamily '"trebuchet ms", verdana,
+// arial, sans-serif', fontSize 16px), so an out-of-the-box diagram reads like Mermaid output. The font
+// feeds measureText, so it also sizes nodes the way Mermaid would.
+const MERMAID_FONT = '16px "trebuchet ms", verdana, arial, sans-serif';
+
 export const defaultTheme: Theme = {
   background: "#ffffff",
   nodeFill: "#ECECFF",
   nodeStroke: "#9370DB",
   stroke: "#333333",
   text: "#333333",
-  font: "14px sans-serif",
+  font: MERMAID_FONT,
   sketch: false,
 };
 
@@ -129,7 +131,7 @@ export const darkTheme: Theme = {
   nodeStroke: "#94a3b8",
   stroke: "#94a3b8",
   text: "#e2e8f0",
-  font: "14px sans-serif",
+  font: MERMAID_FONT,
   sketch: false,
 };
 

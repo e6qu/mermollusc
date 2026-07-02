@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { dragNodeBy } from "../e2e/support/nodes.js";
 
 const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
@@ -82,12 +83,8 @@ test("built Pages demo runs the real relay in-process (WASM) — RBAC role, zero
   // zero-auth default in production.
   await expect(page.locator("#role-badge")).toHaveText("editor");
 
-  const box = await page.locator("#stage").boundingBox();
-  if (box === null) throw new Error("no canvas box");
-  await page.mouse.move(box.x + 88, box.y + 56);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 280, box.y + 220, { steps: 8 });
-  await page.mouse.up();
+  // Drag the sample's Start node (A) — anchored via the shared node helper, never pixel offsets.
+  await dragNodeBy(page, "A", 192, 164);
 
   await expect.poll(() => overrideCount(page)).toBeGreaterThan(0);
   // The relay's own save-debounce (400ms, same as production — see modules/relay/relay/core.go) means
