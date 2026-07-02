@@ -1,9 +1,10 @@
 # @m/collab — status
 
 **State:** Phase 1 feature-complete; **Phase 2 in progress** — durable persistence, Auth0 OIDC
-verification, browser PKCE login, **and rooms + RBAC** at the relay. CRDT document, WebSocket transport,
-live source binding, presence, restart-survival, token-verified connections, and server-enforced
-per-document roles + tenant isolation. Remaining Phase 2: the production store. The app runs
+verification, browser PKCE login, **rooms + RBAC**, and a static membership source at the relay. CRDT
+document, WebSocket transport, live source binding, presence, restart-survival, token-verified
+connections, and server-enforced per-document roles + tenant isolation. Remaining Phase 2: the
+production store. The app runs
 single-user by default; with `?collab` set it connects to the relay (via `reconnectingWebSocketTransport`)
 and binds the editor to the shared doc.
 
@@ -48,6 +49,11 @@ and binds the editor to the shared doc.
   Unauthenticated users (auth disabled) always get editor. The relay closes 1008 on no access and
   enforces **viewers read-only** (their inbound document frames are dropped, logged throttled; presence
   still relays).
+- **Membership source (`server/membership.mjs`):** `MEMBERSHIP_FILE=/path/members.json` makes the
+  relay authorize rooms from a strict JSON source (`{ "rooms": { "tenant/room": { "sub": "role" } } }`)
+  instead of requiring every per-room role to ride inside token claims. Malformed files throw at startup.
+  Auth-on deployments still fail closed for missing rooms/subjects; auth-off dev can retain an explicit
+  editor default.
 - **Relay hardening:** a **crash guard** wraps `applyUpdate` (a malformed CRDT frame is logged and
   dropped, never an `uncaughtException`); `socket.on("error")` + `wss.on("error")` keep transport faults
   off `uncaughtException`. A **per-socket token-bucket rate limit** on frames/sec AND bytes/sec
@@ -116,5 +122,5 @@ and binds the editor to the shared doc.
   (Playwright covers the single-tab Yjs path, two-tab overlay convergence, source sync, and presence).
 
 **Phase 1 is feature-complete.** **Phase 2 is in progress.** Landed: the repo's relay, persistence,
-Auth0 verification, browser login, rooms/RBAC, and role-aware app UI. Next: the production store;
+Auth0 verification, browser login, rooms/RBAC, membership source, and role-aware app UI. Next: the production store;
 Phase 3 covers pub/sub, audit/observability, offline buffering, compaction, and compliance hooks.

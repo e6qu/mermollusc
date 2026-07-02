@@ -54,9 +54,9 @@
   `ReconnectStatus` (reconnecting/reconnected/disconnected) and the session's `onStatusChange`
   (`overlay-rejected`) as status-bar messages, and passes a console logger — all behind the default-off
   `?collab` flag (`app/playground/src/main.ts`).
-- **Membership source (next):** with the fail-closed RBAC default, an auth-on deployment needs a real
-  per-room roles claim (or a server-side membership store behind `authorizeRoom`) so authenticated users
-  aren't all denied. Wire it alongside the production store / room-management path.
+- *(done)* **Membership source:** `MEMBERSHIP_FILE` now loads a strict static room/member role source
+  behind `authorizeRoom`, so auth-on deployments can grant room access without putting all per-room
+  roles into the token.
 - **Same-key merge for groups (own PR — architectural):** group objects are stored whole (LWW per group).
   Finer merge means modelling members as a nested `Y.Array`/`Y.Map` — but that diverges from this module's
   deliberate invariant that *each group is one Y.Map value encoded through the builder's shared per-entry

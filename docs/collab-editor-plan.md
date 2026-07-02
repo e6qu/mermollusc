@@ -1,8 +1,8 @@
 # Collaborative editor — design & scoping (CRDT)
 
 Status: **Phase 0 done; decisions signed off; Phase 1 feature-complete; Phase 2 in progress — durable
-persistence, Auth0 OIDC first-frame verification, browser PKCE login, and rooms + RBAC
-(server-enforced roles + tenant isolation) all landed; next is the production store and membership source. The app always
+persistence, Auth0 OIDC first-frame verification, browser PKCE login, rooms + RBAC, and a static
+membership source all landed; next is the production store. The app always
 runs single-user with zero infra (see §1).** This scopes a real-time,
 multi-user, **enterprise-ready** collaborative editor for mermollusc, with low latency and no
 performance compromises. It is a deliberate expansion beyond today's purely-client, no-backend
@@ -185,8 +185,9 @@ after merge — the invariant holds without coordination.
   enforces **viewers read-only** (their document frames are dropped server-side). The **client reflects
   the role** — the relay sends it as a control frame and a viewer's editor + canvas go read-only with a
   badge. The browser now obtains the relay access token through an Auth0 Authorization Code + PKCE flow
-  and uses token claims for presence identity. **Remaining:** the production `RoomStore` (Postgres
-  update log + S3 snapshots + Redis fan-out) and a real membership source.
+  and uses token claims for presence identity. A strict `MEMBERSHIP_FILE` can provide room/member roles
+  server-side when token claims are too small or slow-moving. **Remaining:** the production `RoomStore`
+  (Postgres update log + S3 snapshots + Redis fan-out).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 

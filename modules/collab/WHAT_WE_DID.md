@@ -1,5 +1,10 @@
 # @m/collab — work log
 
+- Added a server-side static membership source (`server/membership.mjs`). `MEMBERSHIP_FILE` points the
+  relay at a strict JSON `{ rooms: { room: { subject: role } } }` file, loaded at startup; malformed
+  files throw loudly, auth-on deployments fail closed for missing rooms/subjects, tenant isolation still
+  applies, and auth-off dev can keep an explicit editor default. Integration tests cover decoding,
+  invalid roles, tenant denial, default-role posture, and file loading.
 - Wired the browser Auth0 side of Phase 2 in the app: an env-gated Authorization Code + PKCE client
   obtains an access token, stores it only for the browser session, sends it as the first WebSocket auth
   frame, and derives collaborative presence name/colour from token claims. Focused app integration tests

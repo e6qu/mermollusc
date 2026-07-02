@@ -212,11 +212,11 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
     tabs share overlay **and** text live and see each other's cursors.
   - **Phase 2 — durable + secured (in progress).** Landed: a pluggable `RoomStore` (memory + file
     snapshots; rooms survive restart), **Auth0 OIDC verification** at the relay handshake (JWKS via
-    `jose`, env-gated), and **rooms + RBAC** (server-enforced per-document roles + tenant isolation;
-    viewers read-only) — with the **client reflecting the role** (a viewer's editor + canvas are
-    read-only). Decided to extend our own relay (not Hocuspocus, §10.5). Next: the browser Auth0 login,
-    then the production store (Postgres + S3). The app always runs single-user with zero infra — collab
-    is an optional mechanism, never a fork.
+    `jose`, env-gated), **browser Auth0 login**, **rooms + RBAC** (server-enforced per-document roles +
+    tenant isolation; viewers read-only), and a static **membership source** (`MEMBERSHIP_FILE`) — with
+    the **client reflecting the role** (a viewer's editor + canvas are read-only). Decided to extend our
+    own relay (not Hocuspocus, §10.5). Next: the production store (Postgres + S3). The app always runs
+    single-user with zero infra — collab is an optional mechanism, never a fork.
   - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
     observability/SLOs, offline buffer, compaction, compliance hooks.
 - **Comprehensive, searchable audit trail.** (Folded into the collaborative-editor plan — the CRDT
@@ -234,7 +234,7 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
    **collaborative-editor Phase 0 seam** is done (the `OverlayDoc` document model in the app — see
    Future bets), and Phase 2 server work is partially landed. Next candidates: keep
    `docs/user_stories.md` aligned with UX/API behavior, continue collaborative-editor Phase 2
-   (browser Auth0 login + production store), build HTML-in-Canvas backend selection once the platform
+   (production store), build HTML-in-Canvas backend selection once the platform
    API is stable, or do deeper bundle/startup lazy-loading. The *External review backlog* is resolved.
 3. `make check` is the gate (typecheck + lint + guard + fmt + tests). `make hooks` installs the
    pre-commit pipeline; `make deps-check` audits version pins. Commit per task; the repo lives at

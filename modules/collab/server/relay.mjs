@@ -16,6 +16,7 @@
 import { WebSocketServer } from "ws";
 import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { createAuth0Authorizer } from "./auth.mjs";
+import { loadMembershipRoleResolver } from "./membership.mjs";
 import { canWrite, createClaimsRoleResolver } from "./rbac.mjs";
 import { createFileRoomStore, createMemoryRoomStore } from "./store.mjs";
 
@@ -370,19 +371,27 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const store = persistDir ? createFileRoomStore(persistDir) : createMemoryRoomStore();
   const domain = process.env.AUTH0_DOMAIN;
   const audience = process.env.AUTH0_AUDIENCE;
+  const membershipFile = process.env.MEMBERSHIP_FILE;
   // Auth is on only when both Auth0 env vars are set. When OFF, a verified token can't exist, so we
   // grant role-less users `editor` (dev/e2e). When ON, the resolver fails closed (defaultRole null):
   // a verified token lacking a per-room role is denied, never silently promoted to editor.
   const authEnabled = Boolean(domain && audience);
   const authorize = authEnabled ? createAuth0Authorizer({ domain, audience }) : () => true;
-  const authorizeRoom = createClaimsRoleResolver({ defaultRole: authEnabled ? null : "editor" });
+  const defaultRole = authEnabled ? null : "editor";
+  const authorizeRoom =
+    membershipFile === undefined
+      ? createClaimsRoleResolver({ defaultRole })
+      : loadMembershipRoleResolver(membershipFile, { defaultRole });
   const wss = startRelay({ port, store, authorize, authRequired: authEnabled, authorizeRoom });
   wss.on("listening", () => {
     const addr = wss.address();
     const actual = typeof addr === "object" && addr !== null ? addr.port : port;
     const mode = persistDir ? `file:${persistDir}` : "memory";
     const auth = authEnabled ? `auth0:${domain}` : "none";
-    console.log(`collab relay listening on localhost:${actual} (WebSocket, persistence=${mode}, auth=${auth})`);
+    const membership = membershipFile === undefined ? "token-claims" : `file:${membershipFile}`;
+    console.log(
+      `collab relay listening on localhost:${actual} (WebSocket, persistence=${mode}, auth=${auth}, membership=${membership})`,
+    );
   });
   // Flush all dirty rooms on a clean shutdown so a SIGINT/SIGTERM doesn't drop the post-debounce edits.
   const shutdown = (signal) => {

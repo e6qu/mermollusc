@@ -9,6 +9,10 @@ Known issues surfaced by the audit sweep and deliberately deferred (not yet fixe
 
 Resolved (hardening sweep):
 
+- ~~**Auth-on relay required all per-room roles to ride inside OIDC token claims.**~~ Fixed — the relay
+  can now load a strict server-side membership file via `MEMBERSHIP_FILE`, preserving fail-closed access
+  without bloating tokens.
+
 - ~~**Browser collab identity was still a random placeholder after relay auth existed.**~~ Fixed — an
   env-gated Auth0 PKCE browser flow now supplies the access token for the first auth frame and derives
   presence name/colour from token claims.
