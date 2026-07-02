@@ -21,7 +21,8 @@
   `fill-opacity` on the trailing `<tspan>`s.
 - HTML-in-Canvas: `htmlInCanvasSupported()` detection is in; build the actual rich-label backend
   once the API ships in stable Chromium (it's flag-only today, so unverifiable here).
-- Add golden/pixel tests in `app` once the pipeline is wired end-to-end.
+- *(mostly done)* Display-list goldens exist in `app` (`test/integration/golden.test.ts`, one per
+  example); only the optional PIXEL golden (paint regressions rather than geometry) remains open.
 - *(done)* Edge-label plates are padded in both canvas and SVG so labelled network/cloud connectors read
   as callouts, not text stamped directly onto the stroke.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label

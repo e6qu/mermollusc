@@ -30,9 +30,15 @@ test-int:   ; go test ./auth/... ./cmd/...
 test-e2e:
 	@echo "no e2e suite here — app/playground's e2e-ui exercises this relay end-to-end as the real backend"
 test-watch: ; go test ./... -count=1
+# -coverpkg=./... credits cross-package coverage (relay.Core is exercised mostly through
+# cmd/relay-server's integration harness, which plain per-package profiles don't count). The awk gate is
+# the enforced ratchet — same convention as the TS modules' vitest thresholds: set just below current
+# coverage, raise as it climbs, never lower silently.
+COV_MIN := 69
 cov:
-	@go test ./... -coverprofile=coverage.out -covermode=atomic
-	@go tool cover -func=coverage.out
+	@go test ./... -coverprofile=coverage.out -covermode=atomic -coverpkg=./...
+	@go tool cover -func=coverage.out | tail -1
+	@go tool cover -func=coverage.out | awk -v min=$(COV_MIN) '/^total:/ { sub(/%/, "", $$NF); if ($$NF + 0 < min) { printf "ERROR: total coverage %s%% is below the %s%% ratchet\n", $$NF, min; exit 1 } }'
 
 check: typecheck lint fmt-check test
 

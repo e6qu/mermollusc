@@ -1,5 +1,25 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Audit housekeeping: docs truth, coverage gate, small refactors
+
+- `AGENTS.md` §1/§4 and `make graph` finally learned `modules/relay` exists (Go, wire-coupled only).
+- `make cov` joined the pre-push gate — the per-module coverage ratchets had drifted silently for
+  months (layout −6, renderer −10, builder −1..−10 points below their thresholds on main) because
+  nothing ran them; relay's `cov` now actually enforces a floor too (`-coverpkg` cross-package
+  counting + an awk ratchet, 69%).
+- Align/distribute math (`arrangeDeltas`) moved from `main.ts` into `@m/builder` core with unit tests;
+  the relay and wasm-relay collab branches share one `connectCollab` helper (they had duplicated the
+  same `connectTransport` call and onClose wording).
+- Stale-docs sweep across parser/contracts/layout/renderer/app (verified each claim in code first);
+  re-triaged two "maybe fixed" bugs visually — c4/network edge labels still bleed onto their own
+  endpoint boxes on short segments (item narrowed: endpoint ancestors are excluded from the label
+  decollision obstacle set), while skipped-over-node avoidance is confirmed shipped.
+- `routeWaypoints`' degenerate-section straight line is now documented in `modules/layout/PLAN.md` as a
+  defined-geometry boundary contract; `htmlInCanvasSupported` stays exported as the documented,
+  blocked-on-Chromium detection seam (both audit items resolved by decision, recorded in DO_NEXT).
+- The structured-logging gap (§8: ~29 free-form `console.error` calls) is recorded in DO_NEXT for its
+  own focused pass.
+
 ## 2026-07-02 — Mermaid-parity rendering defaults; house styles opt-in
 
 - Inverted the style defaults to match the product requirement: every family with a Mermaid equivalent

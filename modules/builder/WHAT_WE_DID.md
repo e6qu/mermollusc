@@ -1,5 +1,10 @@
 # @m/builder — work log
 
+- Adopted the app's align/distribute math as `src/core/arrange.ts` (`arrangeDeltas`/`AlignKind`/
+  `UnitBox` — pure unit-box geometry, boundary hygiene: it had lived in `app/playground/src/main.ts`),
+  with unit tests. Also hardened `wrapCloudGroup`'s splice loop: iterating index VALUES instead of
+  positions removed a `?? 0` default that would have silently spliced line 0 on a missed access. Coverage
+  ratchet re-based (it had drifted below actual unenforced; `make cov` now runs in the pre-push gate).
 - Added a no-style `applyStyles(..., snapToMountPoints)` unit regression so display-only mount snapping
   stays covered even when the overlay has no edge/node style entries.
 - Cleaned stale builder docs now that app inline relabel commits validate source spans through

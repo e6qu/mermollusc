@@ -143,9 +143,13 @@ const buildGroupType = (g: Group): YMap<unknown> => {
 };
 // The value type of a group's own Y.Map is heterogeneous (string/boolean/nested Y.Array), so reading
 // its `members` field back out needs a narrowing cast — the Yjs-adapter equivalent of `decode()` at a
-// boundary whose shape this module itself defined and controls (see `buildGroupType` above).
-const groupMembers = (yGroup: YMap<unknown>): YArray<EncodedMember> =>
-  yGroup.get("members") as YArray<EncodedMember>;
+// boundary whose shape this module itself defined and controls (see `buildGroupType` above). The
+// container shape is validated (a corrupt remote value could put anything at "members"); only the
+// element type remains asserted, matching what `buildGroupType` writes.
+const groupMembers = (yGroup: YMap<unknown>): YArray<EncodedMember> | null => {
+  const raw = yGroup.get("members");
+  return raw instanceof YArray ? (raw as YArray<EncodedMember>) : null;
+};
 
 export const createCollabSession = (opts: {
   readonly initialOverrides: LayoutOverrides;
@@ -354,6 +358,12 @@ export const createCollabSession = (opts: {
         // (or otherwise edited) member elsewhere in the same parent isn't clobbered by a whole-group
         // rewrite.
         const yMembers = groupMembers(yParent);
+        if (yMembers === null) {
+          // A corrupt remote value at "members" — degrade loudly, keep last-good state (same policy as
+          // the overlay decode guard).
+          opts.logger?.log(stamp("error", "collab", "overlay-decode-rejected"));
+          return;
+        }
         const idx = yMembers.toArray().findIndex((m) => m.kind === "group" && m.id === top);
         if (idx === -1) return;
         yMembers.delete(idx, 1);
@@ -396,6 +406,10 @@ export const createCollabSession = (opts: {
           if (yGroup === undefined) continue;
           const keep = new Set(survivor.members.map(memberKey));
           const yMembers = groupMembers(yGroup);
+          if (yMembers === null) {
+            opts.logger?.log(stamp("error", "collab", "overlay-decode-rejected"));
+            continue;
+          }
           const current = yMembers.toArray();
           for (let i = current.length - 1; i >= 0; i--) {
             const cur = current[i];

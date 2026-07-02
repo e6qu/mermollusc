@@ -40,7 +40,11 @@
   (snapshots) + Redis fan-out — now tracked in `modules/relay/DO_NEXT.md` (the relay's async-capable
   `Store` interface already accommodates this). Browser-local embedded storage is now represented by the
   async IndexedDB room store behind the same snapshot interface; SQLite/WASM remains optional only if
-  future queries outgrow whole-room snapshots.
+  future queries outgrow whole-room snapshots. **Migration note for whoever builds it:** the nested-group
+  redesign (see the work-log entry) was a breaking Yjs wire-format change — any room persisted before it
+  holds flat group values that now decode as malformed and are rejected loudly. Fine today (no production
+  store exists), but a production store MUST ship with a migration or explicit versioning for pre-existing
+  rooms, not inherit that "acceptable while experimental" stance silently.
 - *(done)* **Decode-failure surfacing:** a corrupt peer overlay no longer throws inside the Y observer —
   `materialize` returns the decode `Result`; the observer logs `overlay-decode-rejected` via a
   `Logger<CollabEvent>` (threaded through `createCollabSession({ logger })`), surfaces a `CollabStatus`

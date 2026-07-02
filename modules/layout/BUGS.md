@@ -21,8 +21,12 @@ _None known._
 - ~~**Edge labels overlapped nodes in the absolute-layout families (cloud/c4/network/block).**~~ Fixed —
   these placed edge labels at the routed midpoint (opaque plate) in a tight 24px gap, so a label landed
   on a node ("cloud is bunched up"). Widened `GAP` and, for the orthogonal cloud/block routes, anchored
-  the label on the route's central cross-channel (`routeChannelMid`). A label on a *skipped-over* node
-  still needs real obstacle avoidance (a documented limit, not this class).
+  the label on the route's central cross-channel (`routeChannelMid`). Skipped-over nodes are avoided now
+  too (`decollideEdgeLabels` treats unrelated node/container boundaries as obstacles). Re-triaged
+  visually 2026-07-02: the residual overlap class is a label landing on its OWN edge's endpoint box on a
+  short segment (endpoint ancestors are deliberately excluded from the obstacle set — e.g. network's
+  "filtered" on its Internet endpoint) — tracked in `app/playground/DO_NEXT.md`, a narrower bug than
+  this resolved one.
 
 - ~~**Stack overflow on a duplicate id nested in its twin.**~~ Fixed (pipeline-fuzz find) — `layoutC4`'s
   `place` and `toElkGraph`'s `container` recurse over an id-keyed children map. A source with two

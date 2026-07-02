@@ -20,6 +20,7 @@ $(FANOUT):
 
 graph:
 	@echo "std <- contracts <- { parser, layout, renderer, icons } <- builder <- collab <- app"
+	@echo "                                                    relay (Go) <- app (dev server / e2e webServer)"
 
 deps-check:
 	@node tools/pick-version.mjs --verify-catalog

@@ -1,5 +1,10 @@
 # @m/collab — work log
 
+- Boundary hardening from the audit: `groupMembers` now validates the "members" container is a real
+  `Y.Array` (a corrupt remote value degrades loudly via the `overlay-decode-rejected` event, keeping
+  last-good state — the same policy as the overlay decode guard) instead of casting unconditionally;
+  `wasm-relay.ts` logs the discarded `instantiateStreaming` error before retrying the buffered path, so
+  a corrupt-wasm failure surfaces its specific diagnostic rather than only the retry's vaguer one.
 - Added `src/shell/wasm-relay.ts`: `loadWasmRelay()` + `connectWasmRelay({ room, store })`, the browser
   side of `modules/relay`'s `cmd/relay-wasm` seam. Lets the backend-free demo run the *real* relay
   in-process (RBAC, room registry, debounced persistence via the injected `store`) instead of the old

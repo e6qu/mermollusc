@@ -36,6 +36,12 @@
 
 - Uses the bundled `elkjs/lib/elk.bundled.js` so layout runs in node and the browser without a
   separate worker file. The app may inject a `workerFactory` later to offload to a Web Worker.
+- **Defined-geometry boundary contract for degenerate routes:** ELK can occasionally return an edge
+  section with fewer than two points. `routeWaypoints` then derives a straight line between the two
+  endpoint centres — this is a boundary contract producing real, drawable geometry from data the router
+  failed to provide, not a silent fallback in the §0.1 sense: nothing is hidden (the edge still draws,
+  attached to its true endpoints), and failing the WHOLE diagram with a `LayoutError` over one
+  degenerate internal section would punish the user for a router artifact they can't act on.
 - Node sizing is a heuristic; callers that need visual fidelity pass the same `MeasureText` they use
   for the active renderer theme.
 - `LayoutOverrides` seeds are consumed by the flowchart relax path.

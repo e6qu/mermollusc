@@ -1,3 +1,5 @@
+export { arrangeDeltas } from "./arrange.js";
+export type { AlignKind, UnitBox } from "./arrange.js";
 export { hitTest, descendantsOf } from "./hit.js";
 export type { HitTarget } from "./hit.js";
 export { emptySelection, selectOnly, toggle, isSelected } from "./selection.js";

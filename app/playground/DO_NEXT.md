@@ -4,6 +4,11 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
 ## Deferred from the 2026-07-02 UX audit (real findings, not fixed in that pass)
+- **Structured logging (§8 contract).** The app bypasses the `Logger` contract with ~29 free-form
+  `console.error` calls (main.ts, image-export.ts, persistence.ts) while handing the structured
+  `consoleLogger` to the collab session. Define a closed-union `AppEvent` and route the app's boundary
+  logging through `Logger<AppEvent>` — mechanical but needs per-site event naming, so it deserves its
+  own focused pass rather than riding along on another one.
 - **Bare-edge labelling is flowchart/block-only.** Double-click labelling of an unlabelled edge
   (`wrapBareEdge`) should extend to network/cloud links (grammar supports `: "label"`) and state
   transitions — the graph-wide-scope rule applies; today those families answer "this item has no
@@ -71,14 +76,18 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   original BPMN glyphs remain unchanged.
 - **Container-title visual guard:** Done for every catalog entry via `edgesAvoidContainerHeaders`; future
   demo examples fail integration if a connector cuts through a container title label.
-- **c4 + network edge labels overlap node labels on busy diagrams.** Both use a simple absolute layout
-  with a fixed ~24px inter-node gap, so a wide edge label on a short segment bleeds into neighbouring
-  boxes (worked around in the menu examples with short labels). Reserve horizontal room for edge labels,
-  or route relations around the boxes.
-- **`routeWaypoints` fallback wording.** The straight-line fallback for <2-point ELK sections contradicts
-  layout's "no positional fallback" contract — return a `LayoutError` or carve out the wording.
-- **Renderer-backend selection.** `htmlInCanvasSupported` is exported but unused — wire HTML-in-Canvas
-  detection to an actual backend choice, or drop the dead export.
+- **c4 + network edge labels still bleed into node boxes on busy diagrams** (re-triaged visually
+  2026-07-02: the old "~24px gap" premise is stale — gaps are 44/48px now and `spreadPorts` +
+  `decollideEdgeLabels` run for both families — but short segments still put labels on box borders,
+  e.g. network's "filtered"/"443/tcp", c4's "writes"/"queues"). The remaining fix is label-vs-NODE
+  obstacle avoidance in the decollision pass, which today only avoids other labels/edges.
+- *(done)* **`routeWaypoints` fallback wording** — the `<2`-point case is documented in
+  `modules/layout/PLAN.md` as a defined-geometry boundary contract (a degenerate ELK section still
+  yields real, drawable geometry loudly derived from the node centres), not a silent fallback.
+- *(resolved: keep)* **`htmlInCanvasSupported`** stays exported though the app doesn't call it yet — it
+  is the documented, tested detection seam for the HTML-in-Canvas rich-label backend, which is blocked
+  on the API shipping in stable Chromium (see `modules/renderer/DO_NEXT.md`); deleting and re-adding it
+  when the API lands would lose nothing but the test coverage it already has.
 - **Incremental edge-marker rebuild (perf).** Recompute display-list commands only for edges whose
   endpoints are in the override delta. Home the helper in the renderer core and justify it with a real
   perf trace first — not structural evidence.

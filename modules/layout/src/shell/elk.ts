@@ -606,7 +606,8 @@ const layoutCompartments = async (
     return await elkSelectBest(
       toElkInput(graph, false), // the compartment families (er/class/requirement) stay layered
       (positioned): Result<Scene, LayoutError> => {
-        const posById = new Map(positioned.nodes.map((n) => [n.id as string, n]));
+        // Keyed as plain string (CompartmentBox ids are unbranded); NodeId widens without a cast.
+        const posById = new Map<string, PositionedNode>(positioned.nodes.map((n) => [n.id, n]));
         const edgeById = new Map(edges.map((e) => [e.id, e]));
         const nodes: SceneNode[] = [];
         for (const b of boxes) {
