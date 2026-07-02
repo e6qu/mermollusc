@@ -1,5 +1,10 @@
 # @m/std — work log
 
+- `LogRecord` gained the `data` field AGENTS.md §8 had promised all along (`{ ts, level, module,
+  event, data }`) — the contract had drifted from the spec in the code direction. Required
+  (`string | null`, per the no-optional rule); `stamp` takes it as a defaulted fourth argument, so
+  existing call sites are unchanged. `data` carries the per-occurrence diagnostic detail; the EVENT
+  stays the closed-union identity of the failure class.
 - Scaffolded module skeleton: dirs, five doc files, config, core/shell stubs.
 - Implemented core: `Result`/`Ok`/`Err` with `ok`/`err`/`isOk`/`isErr`/`map`/`mapErr`/`flatMap`/`unwrapOr`;
   `Brand`; geometry types + `rectContains`; `Logger`/`LogRecord`/`LogLevel` contract.

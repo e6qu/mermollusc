@@ -1,6 +1,7 @@
 import type { FlowDirection, Scene } from "@m/contracts";
 import { findIcon, type IconRegistry } from "@m/icons";
 import { type EdgeFinish, paint, toDisplayList, toDot, toSvg, type Theme } from "@m/renderer";
+import { appLog } from "./log.js";
 import { isOk, messageOf } from "@m/std";
 import { buildImagePdf, bytesOf } from "./pdf.js";
 import { svgDataUrl } from "./raster.js";
@@ -79,13 +80,13 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     if (blockStaleExport("PNG export")) return;
     const out = compositeCanvas();
     if (out === null) {
-      console.error("export failed: 2d context unavailable");
+      appLog("error", "export-context-unavailable");
       setStatus("error", "PNG export failed — no 2D context");
       return;
     }
     out.toBlob((blob) => {
       if (blob === null) {
-        console.error("export failed: toBlob returned null");
+        appLog("error", "export-blob-null");
         setStatus("error", "PNG export failed");
         return;
       }
@@ -107,20 +108,20 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     }
     const out = compositeCanvas();
     if (out === null) {
-      console.error("copy failed: 2d context unavailable");
+      appLog("error", "export-context-unavailable");
       setStatus("error", "copy failed — no 2D context");
       return;
     }
     out.toBlob((blob) => {
       if (blob === null) {
-        console.error("copy failed: toBlob returned null");
+        appLog("error", "export-blob-null");
         setStatus("error", "copy failed");
         return;
       }
       void clip.write([new ItemCtor({ "image/png": blob })]).then(
         () => setStatus("ok", "diagram image copied to clipboard"),
         (e: unknown) => {
-          console.error("copy to clipboard failed:", messageOf(e));
+          appLog("error", "clipboard-write-failed", messageOf(e));
           setStatus("warning", "clipboard was blocked — use PNG to download instead");
         },
       );
@@ -131,7 +132,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     if (blockStaleExport("PDF export")) return;
     const out = compositeCanvas();
     if (out === null) {
-      console.error("export failed: 2d context unavailable");
+      appLog("error", "export-context-unavailable");
       setStatus("error", "PDF export failed — no 2D context");
       return;
     }
@@ -167,7 +168,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       if (icons.has(key)) continue;
       const resolved = findIcon(deps.getRegistry(), node.icon.pack, node.icon.name);
       if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value, deps.activeTheme().text));
-      else console.error("icon resolve failed:", resolved.error.message);
+      else appLog("error", "icon-resolve-failed", resolved.error.message);
     }
     const svg = toSvg(toDisplayList(shown, false, deps.edgeFinish()), {
       width: Math.ceil(shown.extent.size.width) + margin * 2,

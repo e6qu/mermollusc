@@ -15,4 +15,5 @@ export const stamp = <TEvent extends string>(
   level: LogLevel,
   module: string,
   event: TEvent,
-): LogRecord<TEvent> => ({ ts: new Date().toISOString(), level, module, event });
+  data: string | null = null,
+): LogRecord<TEvent> => ({ ts: new Date().toISOString(), level, module, event, data });

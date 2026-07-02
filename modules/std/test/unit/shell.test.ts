@@ -12,6 +12,7 @@ const record = (level: LogRecord["level"]): LogRecord => ({
   level,
   module: "std",
   event: "test-event",
+  data: null,
 });
 
 describe("consoleLogger", () => {
@@ -38,9 +39,10 @@ describe("consoleLogger", () => {
 
   it("stamp fills a LogRecord with an ISO timestamp + the given fields", () => {
     const r = stamp("warn", "layout", "relax-failed");
-    expect(r).toMatchObject({ level: "warn", module: "layout", event: "relax-failed" });
+    expect(r).toMatchObject({ level: "warn", module: "layout", event: "relax-failed", data: null });
     expect(r.ts).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
     expect(Number.isNaN(Date.parse(r.ts))).toBe(false);
+    expect(stamp("error", "app", "x", "boom").data).toBe("boom");
   });
 });
 
