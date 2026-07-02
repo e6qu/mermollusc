@@ -29,9 +29,9 @@
 - *(done)* **Auth0 OIDC handshake:** `server/auth.mjs` verifies the first client auth frame against the
   issuer JWKS (`jose`); the relay admits or closes 1008 (buffering during the async check). Env-gated;
   default allow. Decided to extend our own relay rather than adopt Hocuspocus (§10.5).
-- **Browser Auth0 login (next):** wire the Auth0 SPA login so the app obtains a real access token and
-  passes it as the first WebSocket auth frame; carry the verified user identity into **presence** (name/colour from the
-  token, replacing the random pick) and into rooms.
+- *(done)* **Browser Auth0 login:** the app now runs an env-gated Auth0 Authorization Code + PKCE
+  browser flow, stores the access token for the browser session, sends it as the first WebSocket auth
+  frame, and uses token claims for presence name/colour.
 - *(done)* **Rooms + RBAC:** `server/rbac.mjs` resolves per-document roles + isolates tenants; the relay
   closes 1008 on no access and enforces viewers read-only.
 - *(done)* **Role-aware client:** the relay sends the role (a CONTROL frame); the app makes a viewer's
@@ -56,7 +56,7 @@
   `?collab` flag (`app/playground/src/main.ts`).
 - **Membership source (next):** with the fail-closed RBAC default, an auth-on deployment needs a real
   per-room roles claim (or a server-side membership store behind `authorizeRoom`) so authenticated users
-  aren't all denied. Wire it alongside the browser Auth0 login.
+  aren't all denied. Wire it alongside the production store / room-management path.
 - **Same-key merge for groups (own PR — architectural):** group objects are stored whole (LWW per group).
   Finer merge means modelling members as a nested `Y.Array`/`Y.Map` — but that diverges from this module's
   deliberate invariant that *each group is one Y.Map value encoded through the builder's shared per-entry
