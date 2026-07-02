@@ -1,11 +1,18 @@
 # @m/collab — bugs
 
-Known issues surfaced by the audit sweep and deliberately deferred (not yet fixed):
+No known open bugs.
 
-- **Two genuinely-simultaneous fresh clients can both seed a room.** `seedSourceIfEmpty` is atomic
-  within a client, but if two clients open the same empty room and seed within the sync window, the
-  `Y.Text` merges both inserts. Robust fix needs server-side first-write coordination (the relay owns
-  the seed), a later phase.
+Resolved (relay-owned seed grant, 2026-07-02):
+
+- ~~**Two genuinely-simultaneous fresh clients could both seed a room.**~~ Fixed — the relay now grants
+  seed rights to exactly ONE connection per empty room (the reserved "seed" CONTROL message, decided
+  under the relay's admission mutex so concurrent joins can never both win; re-granted to a surviving
+  peer if the holder disconnects while the room is still empty). A connected client seeds only when
+  granted; `seedSourceIfEmpty`'s empty-check stays as a belt. An UNCONNECTED session (auth required,
+  not signed in) still seeds locally — no peer to race, no relay to grant. Covered by three Go
+  admission tests (exactly-one grant across concurrent joins; no grant for a room with content;
+  re-grant to the survivor) and an e2e two-tab race spec asserting exactly one copy of the seeded
+  source in both tabs.
 
 Resolved (same-key group merge):
 

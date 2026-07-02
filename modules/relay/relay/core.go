@@ -86,6 +86,22 @@ type room struct {
 	doc       *ycrdt.Doc
 	sockets   map[Socket]struct{}
 	saveTimer *time.Timer
+	// The one live connection allowed to seed this still-empty room's initial content. Granted to the
+	// first admission into an empty room, re-granted to a surviving peer if the holder disconnects while
+	// the room is still empty, and irrelevant once the doc has content (grants gate on emptiness too).
+	// Fixes the seed race: two fresh clients admitted concurrently would otherwise BOTH see an empty doc
+	// and both insert their initial source, and Y.Text would merge the two inserts into a duplicate.
+	seeder Socket
+}
+
+// The reserved CONTROL message granting seed rights (distinct from the role strings, which are the only
+// other CONTROL payloads). The client seeds the room's initial content only after receiving this.
+const seedGrantMessage = "seed"
+
+// docIsEmpty reports whether the room's doc has no content at all (an empty state vector — nothing was
+// ever inserted, by any client). Callers hold c.mu.
+func docIsEmpty(doc *ycrdt.Doc) bool {
+	return len(ycrdt.GetStateVector(doc.Store)) == 0
 }
 
 // New builds a Core. A nil/zero-value Options field falls back to the same defaults `startRelay` uses in
@@ -329,16 +345,7 @@ func (c *Core) Connect(socket Socket, req *Request) {
 		name := cn.name
 		cn.mu.Unlock()
 		if r != nil {
-			c.mu.Lock()
-			delete(r.sockets, socket)
-			empty := len(r.sockets) == 0
-			c.mu.Unlock()
-			if empty {
-				c.flush(name, r)
-				c.mu.Lock()
-				delete(c.rooms, name)
-				c.mu.Unlock()
-			}
+			c.dropSocket(name, r, socket)
 		}
 		close(done)
 	})
@@ -415,23 +422,24 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 		cn.mu.Lock()
 		cn.phase = "closed"
 		cn.mu.Unlock()
-		c.mu.Lock()
-		delete(r.sockets, cn.socket)
-		empty := len(r.sockets) == 0
-		c.mu.Unlock()
-		if empty {
-			c.flush(name, r)
-			c.mu.Lock()
-			delete(c.rooms, name)
-			c.mu.Unlock()
-		}
+		c.dropSocket(name, r, cn.socket)
 		return
 	}
 
 	c.mu.Lock()
 	state := ycrdt.EncodeStateAsUpdate(r.doc, nil)
+	// Exactly one live connection per empty room may seed it (see room.seeder). Decided under c.mu, so
+	// concurrent admissions can never both win.
+	grantSeed := false
+	if r.seeder == nil && docIsEmpty(r.doc) {
+		r.seeder = cn.socket
+		grantSeed = true
+	}
 	c.mu.Unlock()
 	cn.socket.Send(controlFrame(string(role)))
+	if grantSeed {
+		cn.socket.Send(controlFrame(seedGrantMessage))
+	}
 	cn.socket.Send(docFrame(state))
 
 	cn.mu.Lock()
@@ -441,6 +449,36 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 	cn.mu.Unlock()
 	for _, data := range pending {
 		cn.handle(data)
+	}
+}
+
+// dropSocket removes a departing socket from its room. If the departing connection held the seed grant
+// while the room is still empty, the grant moves to a surviving peer (a seeder that dies before seeding
+// must not leave the room permanently unseedable); the last socket out flushes and forgets the room.
+func (c *Core) dropSocket(name string, r *room, socket Socket) {
+	var regrant Socket
+	c.mu.Lock()
+	delete(r.sockets, socket)
+	if r.seeder == socket {
+		r.seeder = nil
+		if docIsEmpty(r.doc) {
+			for peer := range r.sockets {
+				r.seeder = peer
+				regrant = peer
+				break
+			}
+		}
+	}
+	empty := len(r.sockets) == 0
+	c.mu.Unlock()
+	if regrant != nil {
+		regrant.Send(controlFrame(seedGrantMessage))
+	}
+	if empty {
+		c.flush(name, r)
+		c.mu.Lock()
+		delete(c.rooms, name)
+		c.mu.Unlock()
 	}
 }
 

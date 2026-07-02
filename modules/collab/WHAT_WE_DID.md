@@ -1,5 +1,9 @@
 # @m/collab — work log
 
+- Seed race fixed via relay-owned coordination: `TransportHooks.onControl` now also carries the
+  reserved "seed" grant message (documented in `transport.ts`); the app seeds an empty room only when
+  granted. No wire-format change beyond one new well-known CONTROL string — old role handling is
+  untouched.
 - Boundary hardening from the audit: `groupMembers` now validates the "members" container is a real
   `Y.Array` (a corrupt remote value degrades loudly via the `overlay-decode-rejected` event, keeping
   last-good state — the same policy as the overlay decode guard) instead of casting unconditionally;

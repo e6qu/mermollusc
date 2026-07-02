@@ -30,8 +30,10 @@ const framed = (tag: number, payload: Uint8Array): Uint8Array => {
 };
 
 // Optional hooks. `authToken` sends an access token as the first client frame on every socket open;
-// `onControl` receives a server control message (a short UTF-8 string, e.g. the role); `onClose` fires
-// when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
+// `onControl` receives a server control message (a short UTF-8 string) — today either the granted role
+// ("owner"/"editor"/"viewer") or the reserved "seed" grant, the relay's promise that THIS connection
+// and no other may seed an empty room's initial content (see modules/relay: room.seeder); `onClose`
+// fires when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
 export interface TransportHooks {
   readonly authToken?: string;
   onControl?: (message: string) => void;

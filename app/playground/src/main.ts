@@ -6235,13 +6235,35 @@ if (collabSession !== null) {
     if (ast !== null) applyKind(ast.kind);
     updateGroupButtons();
   };
+  // Seed coordination: the relay grants seed rights ("seed" on the CONTROL channel) to exactly ONE
+  // connection per empty room, so two fresh clients joining simultaneously can no longer both seed and
+  // duplicate the document (the old race — each saw the doc empty before the other's insert arrived).
+  // A connected client seeds only when granted; an UNCONNECTED session (auth required, not signed in)
+  // seeds locally like before — there's no peer to race and no relay to grant.
+  let transportConnected = false;
+  let seedGranted = false;
+  let seedTimerDone = false;
+  const maybeSeed = (): void => {
+    if (!seedTimerDone) return;
+    if (transportConnected && !seedGranted) return;
+    session.seedSourceIfEmpty(initialSource);
+  };
   // Both transports (a real network WebSocket, or the same relay compiled to WASM and driven
   // in-process) end in the identical connectTransport call — the two paths differ only in which
   // function produced the CollabSocket and whether an auth token rides the first frame.
   const connectCollab = (socket: CollabSocket, authToken: string | null): void => {
+    transportConnected = true;
     connectTransport(session, socket, {
       ...(authToken === null ? {} : { authToken }),
-      onControl: applyRole,
+      // The CONTROL channel carries the granted role, plus the reserved "seed" grant message.
+      onControl: (message) => {
+        if (message === "seed") {
+          seedGranted = true;
+          maybeSeed();
+          return;
+        }
+        applyRole(message);
+      },
       // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
       // the user must know they're no longer shared.
       onClose: () => {
@@ -6299,12 +6321,13 @@ if (collabSession !== null) {
       flashStatus("backend-free demo: connected to the in-process collaboration relay");
     });
   }
-  // Seed the room's source once the initial sync has settled: the first client into an empty room
-  // fills it from the resolved initial source; a later joiner finds it non-empty (synced from the
-  // relay) and adopts that instead, so the text isn't duplicated. In backend-free demo mode this seeds
-  // the local in-browser document after the editor binding is mounted.
+  // Seed the room's source once the initial sync has settled AND (when connected) the relay granted
+  // this client the seed rights: the granted client fills an empty room from its resolved initial
+  // source; every other joiner adopts the synced content instead. The empty-check in seedSourceIfEmpty
+  // stays as a belt on top of the grant.
   window.setTimeout(() => {
-    session.seedSourceIfEmpty(initialSource);
+    seedTimerDone = true;
+    maybeSeed();
   }, 300);
   window.__collabOverrideCount = () => doc.overrides().size;
   window.__collabSetRole = applyRole; // e2e hook: drive the role without a real RBAC server

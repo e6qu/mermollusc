@@ -1,5 +1,15 @@
 # @m/relay — work log
 
+- Relay-owned seed coordination (fixes the last open bug in the repo — the collab seed race): the
+  admission path grants the reserved "seed" CONTROL message to exactly one connection per EMPTY room
+  (`room.seeder`, decided under `c.mu` so concurrent admissions can never both win; emptiness =
+  `GetStateVector(doc.Store)` empty). If the holder disconnects while the room is still empty, the
+  grant moves to a surviving peer (`dropSocket`, shared by the close and failed-admission paths) — a
+  seeder that dies before seeding must not leave the room permanently unseedable. Three admission
+  tests cover exactly-one-of-two, no-grant-with-content, and re-grant-to-survivor; a fourth harness
+  lesson recorded here: coder/websocket closes the connection when a Read context is canceled, so
+  frame assertions must be bounded by the protocol (read up to the admission's DOC frame), never by a
+  read-window timeout.
 - `make cov` now enforces a total-coverage floor (69%): `-coverpkg=./...` credits cross-package coverage
   (relay.Core is exercised mostly through cmd/relay-server's integration harness, which plain
   per-package profiles don't count — they misleadingly reported relay/ at 16%), and an awk gate exits

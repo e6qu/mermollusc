@@ -28,9 +28,12 @@ deps-check:
 hooks:
 	@pre-commit install --install-hooks
 
-# Runs semgrep directly (not via pre-commit) so the pre-commit `sast` hook can call this.
+# Runs semgrep directly (not via pre-commit) so the pre-commit `sast` hook can call this. Semgrep's
+# OCaml TLS stack needs an explicit trust-anchor file on macOS (it fails loudly hunting a nix path
+# otherwise) — point it at the OS bundle when the caller hasn't set one and the bundle exists.
 sast:
-	@uvx --from semgrep==$(SEMGREP_VERSION) semgrep scan --config p/default --error --quiet --skip-unknown-extensions modules app tools
+	@if [ -z "$$SSL_CERT_FILE" ] && [ -f /etc/ssl/cert.pem ]; then export SSL_CERT_FILE=/etc/ssl/cert.pem; fi; \
+	uvx --from semgrep==$(SEMGREP_VERSION) semgrep scan --config p/default --error --quiet --skip-unknown-extensions modules app tools
 
 e2e-ui:
 	@$(MAKE) --no-print-directory -C app/playground test-e2e-ui
