@@ -23,3 +23,7 @@ app/playground/sweep_temp.json
 coverage.out
 /modules/relay/relay-server
 /modules/relay/relay.wasm
+
+# Staged into public/ only during tools/build-pages.mjs runs (removed on success; never committed)
+/app/playground/public/relay.wasm
+/app/playground/public/wasm_exec.js

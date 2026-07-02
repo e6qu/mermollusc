@@ -1,5 +1,37 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — UX-audit fix pass: undo integrity, data-loss guards, status-channel discipline
+
+- A four-way audit (known bugs, rendering modes, UI/UX flows, architecture conformance) surfaced eleven
+  real UX bugs plus a set of fail-loud violations; this pass fixes the app-level ones. Undo integrity:
+  example load and Add node are single recorded history steps; the navigator's keyboard connect commits
+  through a recording `commitSourceEdit` port; every programmatic source mutation goes through one
+  `setSourceValue` helper that refreshes the typing-session snapshot (stale snapshots were silently
+  corrupting the next typing session's undo entry after ANY canvas-driven edit); the overlay similarity
+  wipe no longer destroys the history stacks, surfaces in the status bar, and is skipped during
+  undo/redo-driven renders (it used to wipe the exact state undo had just restored).
+- Data-loss guards: viewing a `#src=` share link or `?example=` URL no longer overwrites the visitor's
+  persisted diagram (persistence stays disarmed until their own first edit); loading an example in a
+  collab room no longer drops `?collab`/`room`/`ws` from the URL, and its confirm dialog says the swap
+  affects every peer.
+- Status-channel discipline: `flashStatus` now carries a level and owns ALL action outcomes (rejections,
+  confirmations, collab connection changes), while `setStatus` is reserved for parse/layout/render
+  state — so an action error never dims a valid diagram, a confirmation never erases a live parse
+  error's surfacing or the canvas's screen-reader description, and boot-time collab notices sequence
+  after the initial render instead of being clobbered by its summary. Share gates on a valid render;
+  export tooltips are restored rather than erased; rejected `?ws=` overrides and unknown `?example=`
+  names surface in the UI instead of only the console.
+- Fail-loud fixes per the repo contract: the empty catch in `setActiveStyle` and the silent fallbacks in
+  `getActiveStyle`/the local-document identity-attach path now log (and, where user-relevant, flash);
+  the swatch `data-accent` DOM string is validated against the `NodeAccent` union via `nodeAccentOf`
+  instead of being cast.
+- A11y/papercuts: Space activates a focused button instead of arming hand-pan (app-wide keyboard fix);
+  dark-theme flash on load eliminated via a render-blocking `public/theme-boot.js` (external classic
+  script — CSP-compatible); stale "undo (text in editor · layout on canvas)" copy replaced with the
+  unified-history reality; the overflow menu is labelled "Export & more ▾"; silent no-ops (edge restyle
+  on unsupported families, Alt+Arrow resize with nothing resizable, viewer picking an example) explain
+  themselves. New `e2e/ux-regressions.spec.ts` locks in the four highest-impact fixes.
+
 ## 2026-07-02 — Backend-free demo runs the real relay in-process (WASM), not a skip
 
 - `main.ts`'s backend-free branch (`useCollab && !useRelayTransport`) no longer hand-saves

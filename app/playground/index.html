@@ -8,6 +8,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss:; object-src 'none'; base-uri 'self'"
     />
     <title>mermollusc — text → diagram, both ways</title>
+    <script src="./theme-boot.js"></script>
     <style>
       /* Computational notebook/workbench aesthetic: compact command groups, input/output panels, and
          a restrained technical palette. Fonts are deliberately self-contained (no CDN) to honour this
@@ -1146,7 +1147,7 @@
           </div>
           <div class="toolbar-group overflow">
             <button id="more-toggle" type="button" aria-expanded="false" aria-haspopup="menu"
-              aria-controls="more-menu" title="Export, share, and more actions">Export ▾</button>
+              aria-controls="more-menu" title="Export, share, and more actions">Export &amp; more ▾</button>
             <div id="more-menu" class="more-menu" role="menu" aria-label="Export and more actions" hidden>
               <button id="copy-png" type="button" role="menuitem"
                 title="Copy the diagram to the clipboard as an image (paste into docs, chat, issues)">Copy</button>
@@ -1294,8 +1295,8 @@
           <kbd>dbl-click</kbd> edit · <kbd>drag</kbd> move · <kbd>↑↓←→</kbd> nudge ·
           <kbd data-mod="alt">⌥</kbd><kbd>↑↓←→</kbd> resize ·
           <kbd data-mod="shift">⇧</kbd>-drag box-select · <kbd data-mod="mod">⌘</kbd><kbd>A</kbd> all ·
-          <kbd>Del</kbd> remove · <kbd data-mod="mod">⌘</kbd><kbd>Z</kbd> undo (text in editor · layout
-          on canvas)
+          <kbd>Del</kbd> remove · <kbd data-mod="mod">⌘</kbd><kbd>Z</kbd> undo (text + layout, one
+          history)
         </span>
       </footer>
       <input id="inline-edit" type="text" spellcheck="false" aria-label="Rename label" hidden />
@@ -1354,7 +1355,7 @@
             <section>
               <h4>Layout &amp; groups</h4>
               <dl>
-                <dt><span data-mod="mod">⌘</span> Z / <span data-mod="mod">⌘</span> <span data-mod="shift">⇧</span> Z</dt><dd>undo / redo layout</dd>
+                <dt><span data-mod="mod">⌘</span> Z / <span data-mod="mod">⌘</span> <span data-mod="shift">⇧</span> Z</dt><dd>undo / redo (text edits and layout share one history)</dd>
                 <dt>Group / Ungroup</dt><dd>bundle the selection</dd>
                 <dt>Lock</dt><dd>pin a group in place</dd>
                 <dt>Arrange</dt><dd>align / distribute</dd>
