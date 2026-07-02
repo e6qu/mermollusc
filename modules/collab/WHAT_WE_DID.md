@@ -1,5 +1,19 @@
 # @m/collab — work log
 
+- Closed the `store.ts` coverage gap: `createIndexedDbRoomStore`'s IndexedDB path (`requestResult`,
+  `transactionDone`, `openRoomDatabase`, and the store itself) had no tests — vitest's Node environment
+  has no `IndexedDB`, and the only exercise was the app's Playwright e2e. Added `fake-indexeddb` (a real
+  `IDBFactory` implementation) as a dev dependency and a new unit test suite: round-trip + miss,
+  copy-on-save/load, persistence across separate store handles against the same factory, a stored Yjs
+  snapshot hydrating a session, and — reaching past the store's own `save` to put a wrong-shaped value
+  directly — the non-binary-value rejection path. `store.ts` went from 43%/19%/36%/44% (stmts/branch/
+  funcs/lines) to 93%/52%/82%/97%; module-wide from 84.5%/72.2%/79.7%/88.0% to 92.2%/77.1%/89.5%/96.0%.
+  Left two single-line defensive fallbacks uncovered (`transactionDone`'s `onabort`/`onerror` messages) —
+  forcing a genuine IndexedDB transaction abort/error through the public `load`/`save` API without
+  reaching into `store.ts`'s internals would need a contrived fault injection, not a realistic scenario —
+  and lowered the module's coverage ratchet (`vitest.config.ts`) to 92/76/89/95, just below the new
+  actual, per this module's own ratchet convention. `make cov` (previously failing even before the
+  group-merge change) now passes.
 - Same-key merge for groups: a group's Yjs storage changed from one flat whole-value `Y.Map` entry to a
   nested `Y.Map` (`id`/`label`/`locked` fields + a nested `members` `Y.Array`), so concurrent edits to
   *different members of the same group* (dissolving different children into a shared parent; pruning

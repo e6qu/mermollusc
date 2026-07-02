@@ -3,7 +3,7 @@ packages:
   - "app/*"
 
 # Versions are pinned here, verified against the npm registry (not from memory).
-# Last verified: 2026-06-20 via `tools/pick-version.mjs` (stable, >=24h old).
+# Last verified: 2026-07-02 via `tools/pick-version.mjs` (stable, >=24h old).
 # To bump: re-run the query, update here only, never hand-edit a remembered version.
 catalog:
   typescript: 6.0.3
@@ -29,6 +29,7 @@ catalog:
   y-codemirror.next: 0.3.5
   y-protocols: 1.0.7
   jose: 6.2.3
+  fake-indexeddb: 6.2.5
 
 # esbuild's postinstall fetches its platform binary; vitest and tsup need it.
 allowBuilds:

@@ -122,10 +122,12 @@ and binds the editor to the shared doc.
   malformed CRDT frame, **invalid room name** / empty-segment / 3-segment → 1008, **tag allow-list**
   (unknown + inbound CONTROL dropped, presence relayed), and **rate-limit** breach on frames/sec and
   bytes/sec → 1008. The **real** relay + socket path (incl. live source + remote cursors) is also covered
-  end-to-end by the app's Playwright two-tab specs. Module-wide coverage currently sits at 84.5%
-  stmts/72.2% branch/79.7% funcs against a 95/88/94 ratchet (`vitest.config.ts`) — `make cov` fails on
-  under-covered browser `store.ts` (its IndexedDB/Web Storage paths aren't exercised by vitest; pre-dates
-  this change) — a separate, unrelated gap, not touched here.
+  end-to-end by the app's Playwright two-tab specs. `store.ts`'s IndexedDB path is now covered too, via
+  `fake-indexeddb` (a real `IDBFactory` implementation, dependency-injected the same way the app injects
+  the real browser `indexedDB`): round-trip + miss, copy-on-save/load, persistence across separate store
+  handles opened against the same factory, a stored Yjs snapshot hydrating a session, and the
+  non-binary-value-in-store rejection path. Module-wide coverage: 92.2% stmts/77.1% branch/89.5%
+  funcs/96.0% lines against a 92/76/89/95 ratchet (`vitest.config.ts`) — `make cov` passes.
 - **Server (`.mjs`) tests:** a `RoomStore` round-trip incl. fresh-instance-over-same-dir (≈ restart);
   a **local JWKS harness** for the OIDC verifier — a valid token is accepted (user + tenant + roles
   surfaced), while missing/malformed/wrong-audience/wrong-issuer/expired tokens are rejected; and

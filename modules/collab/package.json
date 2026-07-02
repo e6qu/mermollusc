@@ -22,6 +22,7 @@
   "devDependencies": {
     "ws": "catalog:",
     "@types/node": "catalog:",
-    "jose": "catalog:"
+    "jose": "catalog:",
+    "fake-indexeddb": "catalog:"
   }
 }
