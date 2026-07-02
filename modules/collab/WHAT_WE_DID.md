@@ -1,5 +1,15 @@
 # @m/collab — work log
 
+- Added `src/shell/wasm-relay.ts`: `loadWasmRelay()` + `connectWasmRelay({ room, store })`, the browser
+  side of `modules/relay`'s `cmd/relay-wasm` seam. Lets the backend-free demo run the *real* relay
+  in-process (RBAC, room registry, debounced persistence via the injected `store`) instead of the old
+  "skip transport, hand-save every update" shortcut. `connectWasmRelay` accepts an injectable
+  `WasmRelayGlobal` so its wiring logic (translating between `CollabSocket` and the WASM module's four
+  exported functions) is unit-tested (7 new tests) without a browser; the actual loading mechanics (script
+  injection, `fetch`, `WebAssembly.instantiateStreaming` with a buffered-`instantiate` fallback for static
+  file servers that don't send `Content-Type: application/wasm`) are real browser API orchestration with
+  no meaningful Node-side test, covered by `app/playground`'s Playwright e2e suite instead — lowered the
+  module's coverage ratchet accordingly, same reasoning as `store.ts`'s IndexedDB gap before it.
 - Moved the relay server out of this module entirely, into a new `modules/relay` Go module (Milestone 1 of
   a native+WASM rewrite — see that module's own `PLAN.md`/`STATUS.md`/`WHAT_WE_DID.md`). Deleted
   `server/relay.mjs`/`rbac.mjs`/`auth.mjs`/`membership.mjs`/`store.mjs` and their `.mjs` integration tests,

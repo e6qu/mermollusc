@@ -8,6 +8,8 @@ export {
   createIndexedDbRoomStore,
   createMemoryRoomStore,
   createWebStorageRoomStore,
+  loadWasmRelay,
+  connectWasmRelay,
 } from "./shell/index.js";
 export type {
   CollabSocket,
@@ -16,4 +18,6 @@ export type {
   ReconnectDeps,
   AsyncRoomStore,
   RoomStore,
+  WasmRelayGlobal,
+  WasmRelayConnection,
 } from "./shell/index.js";

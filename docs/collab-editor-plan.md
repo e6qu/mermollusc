@@ -186,10 +186,11 @@ after merge — the invariant holds without coordination.
   relay access token through an Auth0 Authorization Code + PKCE flow and uses token claims for presence
   identity. A strict `MEMBERSHIP_FILE` can provide room/member roles server-side when token claims are too
   small or slow-moving. **The relay itself moved from `modules/collab/server/*.mjs` (Node) to
-  `modules/relay` (Go)** — see §10.6 — verified as a behavioral drop-in (a ported copy of its own test
-  suite, plus the full app e2e suite passing unchanged against it). **Remaining:** the production
-  `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out), and Milestone 2 of the Go move
-  (compiling the same relay core to WebAssembly so the backend-free demo runs it in-process).
+  `modules/relay` (Go, native + WebAssembly)** — see §10.6 — verified as a behavioral drop-in (a ported
+  copy of its own test suite, plus the full app e2e suite passing unchanged against it) for the native
+  side, and end-to-end (a real role badge from a genuine CONTROL frame, real debounced persistence) for
+  the WASM side, which the backend-free demo now runs in-process instead of skipping. **Remaining:** the
+  production `RoomStore` (Postgres update log + S3 snapshots + Redis fan-out).
 - **Phase 3 — scale + enterprise hardening.** Pub/sub fan-out, per-tenant isolation, audit export,
   observability/SLOs, offline buffer, compaction, compliance hooks.
 
@@ -223,8 +224,8 @@ after merge — the invariant holds without coordination.
    running in two hosts." Verified before committing: `github.com/skyterra/y-crdt` (an unofficial Go
    Yjs-CRDT reimplementation) is bidirectionally wire-compatible with the real `yjs` package this repo
    already uses (tested, not assumed) — the one hard technical risk this decision depended on. See
-   `modules/relay/PLAN.md` for the module's design; Milestone 2 (the actual WASM build, for the demo) is
-   still open.
+   `modules/relay/PLAN.md` for the module's design. Both milestones (native parity; the WASM build driving
+   the backend-free demo in-process) are done.
 
 ## 11. Risks & open questions
 

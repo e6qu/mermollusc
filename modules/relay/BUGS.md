@@ -2,8 +2,8 @@
 
 No known open bugs.
 
-Caught and fixed during the Go port (not shipped, so not "resolved" issues in the usual sense — flagged
-here because they're exactly the kind of thing worth remembering when touching this code again):
+Resolved (caught during the Go port/WASM milestones, fixed before shipping — flagged here because they're
+exactly the kind of thing worth remembering when touching this code again):
 
 - **`http.ServeMux`'s implicit path-cleaning silently defeated room-name validation.** `ServeMux`
   auto-redirects a request with repeated slashes or `.`/`..` segments to a "cleaned" URL before any
@@ -26,3 +26,14 @@ here because they're exactly the kind of thing worth remembering when touching t
   the equivalent check-then-create, so single-threaded execution ran it atomically); reachable under Go's
   real parallelism. Fixed with a request-coalescing guard in `loadRoom` (concurrent first-touches of the
   same new room share one in-flight load).
+- **(Milestone 2) `relay.wasm`/`wasm_exec.js` resolved against the site root instead of the demo's base
+  path.** The Pages demo isn't hosted at the domain root (`/mermollusc/demo/`, not `/`); hardcoded
+  `/relay.wasm` URLs 404'd. Neither Go-side nor TypeScript-side unit tests could have caught this — it's a
+  deployment-path concern. Fixed by resolving both URLs against Vite's `import.meta.env.BASE_URL` in
+  `app/playground/src/main.ts`, and only found by actually running the built demo in a real browser.
+- **(Milestone 2) WebAssembly compilation was blocked by the app's Content-Security-Policy.** Browsers
+  refuse `WebAssembly.instantiate()`/`instantiateStreaming()` under `script-src 'self'` alone — confirmed
+  via the actual CSP violation, not assumed. Fixed narrowly: `tools/build-pages.mjs` patches
+  `'wasm-unsafe-eval'` (CSP Level 3 — permits *only* WASM compilation, never `eval()`/`Function()` string
+  execution) into the *built* demo's `index.html` only; `app/playground/index.html` (every other
+  build/deployment of the app) keeps the unmodified, stricter policy.

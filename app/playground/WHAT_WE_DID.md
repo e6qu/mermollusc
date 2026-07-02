@@ -1,5 +1,24 @@
 # @m/app (playground) — work log
 
+## 2026-07-02 — Backend-free demo runs the real relay in-process (WASM), not a skip
+
+- `main.ts`'s backend-free branch (`useCollab && !useRelayTransport`) no longer hand-saves
+  `session.onUpdate` snapshots straight to IndexedDB — it now calls `loadWasmRelay()` +
+  `connectWasmRelay({ room, store })` (`@m/collab`'s new WASM-relay seam, driving `modules/relay`'s
+  `cmd/relay-wasm` in-process) and feeds the result into the *same* `connectTransport(...)` call the
+  real-relay branch already used. Persistence now happens inside the relay core's own debounced save
+  (400ms, same as production), not an ad hoc per-update write. Two real bugs only surfaced by actually
+  running the built demo in a browser (see `modules/relay/BUGS.md` for the full detail): `relay.wasm`/
+  `wasm_exec.js` needed resolving against Vite's `BASE_URL`, not the site root (the Pages demo isn't
+  hosted at the domain root); and WebAssembly compilation is blocked by this app's CSP
+  (`script-src 'self'`) without an explicit allowance. Fixed the CSP gap narrowly in
+  `tools/build-pages.mjs` — it patches `'wasm-unsafe-eval'` into the *built* demo's `index.html` only, so
+  `app/playground/index.html` (every other build/deployment of this app) keeps the unmodified, stricter
+  policy. Rewrote `e2e-pages/backend-free-collab.spec.ts` to prove real relay/RBAC involvement (a role
+  badge from a genuine CONTROL frame, not the `__collabSetRole` test hook other specs use) while keeping
+  the zero-real-`WebSocket` invariant; the full existing `app/playground` e2e suite (251 specs, unchanged)
+  still passes, confirming zero regression to the real-relay production path.
+
 ## 2026-07-02 — Playwright's collab relay is now the Go binary (`modules/relay`)
 
 - `playwright.config.ts`'s `webServer` entry for the dev collab relay now runs `modules/relay`'s Go binary

@@ -62,7 +62,7 @@ const hasIndexedDbRoom = (page: Page, room: string) =>
     room,
   );
 
-test("built Pages demo keeps ?collab backend-free while persisting the local Yjs room", async ({
+test("built Pages demo runs the real relay in-process (WASM) — RBAC role, zero real sockets, persisted room", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -76,6 +76,12 @@ test("built Pages demo keeps ?collab backend-free while persisting the local Yjs
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await expect.poll(() => overrideCount(page)).toBe(0);
 
+  // A role badge showing "editor" here comes from a genuine CONTROL frame the WASM relay's own RBAC
+  // resolver sent — not the __collabSetRole test hook other e2e specs use to fake a server. This is the
+  // proof the real relay core (not a mock) is actually running, same as `relay.NewClaimsRoleResolver`'s
+  // zero-auth default in production.
+  await expect(page.locator("#role-badge")).toHaveText("editor");
+
   const box = await page.locator("#stage").boundingBox();
   if (box === null) throw new Error("no canvas box");
   await page.mouse.move(box.x + 88, box.y + 56);
@@ -84,12 +90,16 @@ test("built Pages demo keeps ?collab backend-free while persisting the local Yjs
   await page.mouse.up();
 
   await expect.poll(() => overrideCount(page)).toBeGreaterThan(0);
-  await expect(hasIndexedDbRoom(page, "pages-e2e")).resolves.toBe(true);
+  // The relay's own save-debounce (400ms, same as production — see modules/relay/relay/core.go) means
+  // persistence lands slightly after the update, not synchronously with it.
+  await expect.poll(() => hasIndexedDbRoom(page, "pages-e2e")).toBe(true);
 
   await page.reload();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   await expect.poll(() => overrideCount(page)).toBeGreaterThan(0);
+  await expect(page.locator("#role-badge")).toHaveText("editor");
 
+  // The relay is real, but it's still driven in-process — never a real network WebSocket.
   expect(websockets).toEqual([]);
   expect(errors).toEqual([]);
 });
