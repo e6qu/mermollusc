@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Edges no longer run along node/container borders
+
+- The trunk router placed channel legs at coordinates that coincided with node/group borders, so the
+  edge line merged into the box outline (obstacle avoidance can't catch a tangent). shownScene now runs
+  the new `separateEdgesFromBorders` pass after its re-route (before decollision), matching layout. The
+  cloud diagram went from 6 border-hugging legs to 0.
 ## 2026-07-03 — Edge labels no longer struck through (orientation-aware)
 
 - The earlier off-line nudge was silently dropped by shownScene's per-render re-routing (which resets
