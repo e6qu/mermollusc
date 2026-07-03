@@ -59,3 +59,29 @@ test("the Colour control cycles a node's accent (visual-only) and persists acros
   await page.locator('#ctx-colour-swatches .swatch[data-accent="none"]').click();
   await expect.poll(() => accent(page, "A")).toBe("none");
 });
+
+test("the swatch picker surfaces all nine accents, including the architecture ones", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart TB\n  A[A] --> B[B]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const box = await page.locator("#stage").boundingBox();
+  if (box === null) throw new Error("no stage box");
+  const a = await page.evaluate(() => window.__nodeRect?.("A") ?? null);
+  if (a === null) throw new Error("no node A");
+  await page.mouse.click(a.x + a.w / 2, a.y + a.h / 2);
+
+  // all nine accents present (was only 4 before) …
+  await expect(page.locator("#ctx-colour-swatches .swatch")).toHaveCount(9);
+  for (const acc of ["compute", "data", "network", "security", "ops"]) {
+    await expect(page.locator(`#ctx-colour-swatches .swatch[data-accent="${acc}"]`)).toBeVisible();
+  }
+  // … and an architecture accent applies + reflects as checked
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="security"]').click();
+  await expect.poll(() => accent(page, "A")).toBe("security");
+  await expect(page.locator('#ctx-colour-swatches .swatch[data-accent="security"]')).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+});

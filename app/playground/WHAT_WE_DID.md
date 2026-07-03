@@ -1,5 +1,13 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Full node colour palette in the swatch picker
+
+- The context-bar swatch picker now surfaces ALL nine node accents (added compute/data/network/
+  security/ops next to none/muted/active/danger) — the plumbing (`setNodeColour`, `NODE_ACCENTS`,
+  the generic swatch reflect/keyboard logic) already supported them; only the four generic swatches
+  were in the HTML. Swatch fills mirror the renderer's `accentFill` light palette (with dark-theme
+  variants). Node-colour e2e extended to assert all nine + an architecture accent applying.
+
 ## 2026-07-03 — Miro-style edge control points
 
 - A selected edge now shows draggable BEND HANDLES (filled dots) at each interior control point plus a
