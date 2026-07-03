@@ -35,7 +35,7 @@ describe("overlay codec", () => {
     const edgeStyles = new Map([
       [
         brand<string, "SceneEdgeId">("e0"),
-        { route: "curved" as const, routeOption: null, labelT: 0.7 },
+        { route: "curved" as const, routeOption: null, labelT: 0.7, waypoints: null },
       ],
     ]);
     const nodeStyles = new Map([[snid("A"), { accent: "active" as const }]]);

@@ -118,4 +118,23 @@ describe("overrides", () => {
     const o = moveNode(new Map(), snid("A"), point(200, 50));
     expect(clearOverride(o, snid("A")).has(snid("A"))).toBe(false);
   });
+
+  it("threads manual edge waypoints between the current endpoints (Miro-style bend points)", () => {
+    const es = new Map([
+      [seid("e0"), { route: "square" as const, routeOption: null, labelT: null, waypoints: [point(80, 40), point(80, 100)] }],
+    ]);
+    const shown = applyStyles(scene, es, new Map());
+    // endpoints kept from the laid-out route; the two manual bends threaded between them
+    expect(shown.edges[0]?.waypoints).toEqual([point(30, 40), point(80, 40), point(80, 100), point(30, 100)]);
+    expect(shown.edges[0]?.curved).toBe(false);
+  });
+
+  it("smooths manual waypoints when the route style is curved", () => {
+    const es = new Map([
+      [seid("e0"), { route: "curved" as const, routeOption: null, labelT: null, waypoints: [point(80, 70)] }],
+    ]);
+    const shown = applyStyles(scene, es, new Map());
+    expect(shown.edges[0]?.waypoints).toEqual([point(30, 40), point(80, 70), point(30, 100)]);
+    expect(shown.edges[0]?.curved).toBe(true);
+  });
 });

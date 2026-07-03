@@ -45,6 +45,7 @@ const EdgeStyleZ = z
     curved: z.boolean().optional(),
     routeOption: z.number().nullable().optional(),
     labelT: z.number().min(0).max(1).nullable().optional(),
+    waypoints: z.array(PointZ).nullable().optional(),
   })
   .transform(
     (o) =>
@@ -52,6 +53,7 @@ const EdgeStyleZ = z
         route: o.route ?? (o.curved === true ? "curved" : "square"),
         routeOption: o.routeOption ?? null,
         labelT: o.labelT ?? null,
+        waypoints: o.waypoints ?? null,
       }) as const,
   );
 const NodeStyleZ = z.object({ accent: z.enum(["none", "muted", "active", "danger"]) });
@@ -89,6 +91,7 @@ export const encodeEdgeStyleEntry = (s: EdgeStyle) =>
     route: s.route,
     routeOption: s.routeOption,
     labelT: s.labelT,
+    waypoints: s.waypoints === null ? null : s.waypoints.map((p) => ({ x: p.x, y: p.y })),
   }) satisfies Record<keyof EdgeStyle, unknown>;
 export const encodeNodeStyleEntry = (s: NodeStyle) =>
   ({ accent: s.accent }) satisfies Record<keyof NodeStyle, unknown>;
@@ -141,7 +144,12 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
     edgeStyles: new Map(
       j.edgeStyles.map(([id, s]) => [
         brand<string, "SceneEdgeId">(id),
-        { route: s.route, routeOption: s.routeOption, labelT: s.labelT },
+        {
+          route: s.route,
+          routeOption: s.routeOption,
+          labelT: s.labelT,
+          waypoints: s.waypoints === null ? null : s.waypoints.map((p) => point(p.x, p.y)),
+        },
       ]),
     ),
     nodeStyles: new Map(

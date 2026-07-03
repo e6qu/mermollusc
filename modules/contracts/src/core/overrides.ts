@@ -22,6 +22,11 @@ export interface EdgeStyle {
   readonly route: EdgeRoute;
   readonly routeOption: number | null;
   readonly labelT: number | null;
+  // Manual control points (Miro-style bend handles): the INTERIOR waypoints the user placed, in absolute
+  // scene coordinates. `null` means auto-routed. When present they define the path — the endpoints still
+  // attach to the current node mounts (so moving a node keeps the connection), and `route` decides how
+  // the segments between the points render (straight legs, or `curved` smooths them).
+  readonly waypoints: readonly Point[] | null;
 }
 export interface NodeStyle {
   readonly accent: NodeAccent;

@@ -91,6 +91,7 @@ import type {
   NodeStyles,
   OverlayDoc,
   Scene,
+  SceneEdge,
   SceneNode,
   SceneEdgeId,
   SceneNodeId,
@@ -539,9 +540,18 @@ let resize: {
 let resizeRecorded = false;
 let labelDrag: { readonly id: SceneEdgeId } | null = null;
 let labelDragRecorded = false;
+// A Miro-style edge bend-point drag: `points` are the edge's live INTERIOR control points (scene
+// coords) being edited, `index` the one under the pointer. Committed to the overlay as manual waypoints.
+let waypointDrag: {
+  readonly id: SceneEdgeId;
+  readonly index: number;
+  readonly points: Array<{ x: number; y: number }>;
+} | null = null;
+let waypointDragRecorded = false;
 const RESIZE_MIN_W = 30;
 const RESIZE_MIN_H = 24;
 const HANDLE_HIT = 7;
+const WAYPOINT_HIT = 8; // pointer radius (screen px, scaled by zoom) for grabbing a bend / add dot
 
 // Icon glyphs rasterised from SVG once, keyed by `${pack}/${name}`, then drawn each paint.
 const iconImages = new Map<string, CanvasImageSource>();
@@ -1066,6 +1076,7 @@ const isInteracting = (): boolean =>
   drag !== null ||
   resize !== null ||
   labelDrag !== null ||
+  waypointDrag !== null ||
   marquee !== null ||
   connectDrag !== null ||
   pan !== null;
@@ -1139,6 +1150,32 @@ const paintScene = (): void => {
     for (const p of tail) ctx.lineTo(p.x, p.y);
     ctx.stroke();
     ctx.setLineDash([]);
+    // Bend-point editing handles (Miro-style), only for a lone selected edge: a small hollow "add" dot
+    // at each segment midpoint (drag to insert a bend) and a filled dot at each interior control point
+    // (drag to move, double-click to remove). Drawn BEFORE the label handle so the label handle stays on
+    // top where they coincide (its drag out-ranks the add-dot's — see the pointerdown priority).
+    if (!viewerMode && singleSelectedEdge(shown)?.id === edge.id) {
+      const bendR = Math.max(4, 5 / viewScale);
+      const addR = Math.max(2.5, 3 / viewScale);
+      const ring = forcedColors() ? "Canvas" : active.background;
+      ctx.lineWidth = Math.max(1, 1.5 / viewScale);
+      for (const m of edgeSegmentMidpoints(edge)) {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, addR, 0, Math.PI * 2);
+        ctx.fillStyle = ring;
+        ctx.fill();
+        ctx.strokeStyle = selectedFill;
+        ctx.stroke();
+      }
+      for (const p of edgeBendPoints(edge)) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, bendR, 0, Math.PI * 2);
+        ctx.fillStyle = selectedFill;
+        ctx.fill();
+        ctx.strokeStyle = ring;
+        ctx.stroke();
+      }
+    }
     const anchor = displayedEdgeLabelAnchor(edge);
     ctx.fillStyle = selectedFill;
     ctx.fillRect(anchor.x - handleSize, anchor.y - handleSize, handleSize * 2, handleSize * 2);
@@ -1603,6 +1640,71 @@ const resizeAnchorAt = (
     }
   }
   return null;
+};
+
+// The single selected edge (nothing else selected), or null — the target of bend-point editing.
+const singleSelectedEdge = (shown: Scene): SceneEdge | null => {
+  if (selection.edges.size !== 1 || selection.nodes.size !== 0) return null;
+  const id = [...selection.edges][0];
+  return shown.edges.find((e) => e.id === id) ?? null;
+};
+
+// An edge's INTERIOR control points as shown (the manual bends, or the router's bends when auto-routed);
+// the two node-attached endpoints are excluded — they follow the nodes, not the pointer.
+const edgeBendPoints = (edge: SceneEdge): readonly Point[] => edge.waypoints.slice(1, -1);
+
+// The midpoint of each drawn segment — a click here inserts a NEW bend point at that spot.
+const edgeSegmentMidpoints = (edge: SceneEdge): Point[] => {
+  const out: Point[] = [];
+  for (let i = 0; i + 1 < edge.waypoints.length; i++) {
+    const a = edge.waypoints[i];
+    const b = edge.waypoints[i + 1];
+    if (a !== undefined && b !== undefined) out.push(point((a.x + b.x) / 2, (a.y + b.y) / 2));
+  }
+  return out;
+};
+
+// Hit-test the selected edge's bend handles / add-dots. A bend `index` is the interior point at that
+// index; an add `seg` is the segment whose midpoint was clicked — inserting there lands a new interior
+// point at interior index `seg` (see the pointerdown handler).
+const waypointHitAt = (
+  edge: SceneEdge,
+  at: Point,
+):
+  | { readonly kind: "bend"; readonly index: number }
+  | { readonly kind: "add"; readonly seg: number }
+  | null => {
+  const r = WAYPOINT_HIT / viewScale;
+  const bends = edgeBendPoints(edge);
+  for (let i = 0; i < bends.length; i++) {
+    const p = bends[i];
+    if (p !== undefined && Math.hypot(p.x - at.x, p.y - at.y) <= r)
+      return { kind: "bend", index: i };
+  }
+  const mids = edgeSegmentMidpoints(edge);
+  for (let i = 0; i < mids.length; i++) {
+    const p = mids[i];
+    if (p !== undefined && Math.hypot(p.x - at.x, p.y - at.y) <= r) return { kind: "add", seg: i };
+  }
+  return null;
+};
+
+// Commit an edge's interior control points to the overlay as manual waypoints — empty clears them (and
+// drops the whole style when nothing else customised the edge, keeping the overlay clean).
+const commitWaypoints = (
+  id: SceneEdgeId,
+  points: ReadonlyArray<{ x: number; y: number }>,
+): void => {
+  const existing = doc.edgeStyles().get(id);
+  const route = existing?.route ?? "square";
+  const routeOption = existing?.routeOption ?? null;
+  const labelT = existing?.labelT ?? null;
+  const wp = points.length === 0 ? null : points.map((p) => point(p.x, p.y));
+  if (wp === null && route === "square" && routeOption === null && labelT === null) {
+    doc.setEdgeStyle(id, null);
+  } else {
+    doc.setEdgeStyle(id, { route, routeOption, labelT, waypoints: wp });
+  }
 };
 
 // What the current selection + family can do — computed once and consumed by BOTH the workbench
@@ -3143,6 +3245,7 @@ window.__setEdgeLabelT = (edgeId, t) => {
     route: existing?.route ?? "square",
     routeOption: existing?.routeOption ?? null,
     labelT: Math.max(0.04, Math.min(0.96, t)),
+    waypoints: existing?.waypoints ?? null,
   });
   doc.persist();
   requestPaint();
@@ -3466,6 +3569,25 @@ canvas.addEventListener("pointerdown", (ev) => {
     canvas.style.cursor = "grabbing";
     return;
   }
+  // Edge bend-point editing (priority bend > label > add-dot): grabbing an existing bend handle drags
+  // that control point — checked BEFORE the label so a bend near the label still wins. The commit is
+  // deferred to the first move, so a plain click (or a double-click-to-relabel) changes nothing.
+  const selEdge = viewerMode ? null : singleSelectedEdge(shown);
+  if (selEdge !== null) {
+    const wh = waypointHitAt(selEdge, at);
+    if (wh !== null && wh.kind === "bend") {
+      ev.preventDefault();
+      waypointDrag = {
+        id: selEdge.id,
+        index: wh.index,
+        points: edgeBendPoints(selEdge).map((p) => ({ x: p.x, y: p.y })),
+      };
+      waypointDragRecorded = false;
+      canvas.setPointerCapture(ev.pointerId);
+      return;
+    }
+  }
+
   // Shift or the platform command key adds to the selection — accept Ctrl too, so additive-click works
   // on Windows/Linux (the help panel advertises "Ctrl click" there).
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
@@ -3490,6 +3612,21 @@ canvas.addEventListener("pointerdown", (ev) => {
     paintScene();
     updateGroupButtons();
     return;
+  }
+
+  // Add-dot insertion is LOWER priority than the label drag above: dragging from a segment's add-dot
+  // inserts a new bend (tentative until the pointer moves, so a plain click adds nothing).
+  if (selEdge !== null) {
+    const wh = waypointHitAt(selEdge, at);
+    if (wh !== null && wh.kind === "add") {
+      ev.preventDefault();
+      const interior = edgeBendPoints(selEdge).map((p) => ({ x: p.x, y: p.y }));
+      interior.splice(wh.seg, 0, { x: at.x, y: at.y });
+      waypointDrag = { id: selEdge.id, index: wh.seg, points: interior };
+      waypointDragRecorded = false;
+      canvas.setPointerCapture(ev.pointerId);
+      return;
+    }
   }
 
   // ⌥-drag from a node (or any drag from a node under the Connect tool) starts a connect — a rubber-band
@@ -3653,6 +3790,17 @@ canvas.addEventListener("pointermove", (ev) => {
     requestPaint();
     return;
   }
+  if (waypointDrag !== null) {
+    const at = scenePoint(ev);
+    if (!waypointDragRecorded) {
+      recordHistory();
+      waypointDragRecorded = true;
+    }
+    waypointDrag.points[waypointDrag.index] = { x: at.x, y: at.y };
+    commitWaypoints(waypointDrag.id, waypointDrag.points);
+    requestPaint();
+    return;
+  }
   if (labelDrag !== null) {
     const shown = scene === null ? null : shownScene(scene);
     const edge = shown?.edges.find((e) => e.id === labelDrag?.id);
@@ -3668,6 +3816,7 @@ canvas.addEventListener("pointermove", (ev) => {
       route: existing?.route ?? "square",
       routeOption: existing?.routeOption ?? null,
       labelT: t,
+      waypoints: existing?.waypoints ?? null,
     });
     requestPaint();
     return;
@@ -3872,6 +4021,20 @@ canvas.addEventListener("pointerup", (ev) => {
       }
     } else {
       paintScene(); // released on empty space / the same node — clear the rubber-band
+    }
+    return;
+  }
+  if (waypointDrag !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    const moved = waypointDragRecorded;
+    waypointDrag = null;
+    waypointDragRecorded = false;
+    if (moved) {
+      doc.persist();
+      requestPaint();
+      updateGroupButtons();
+    } else {
+      paintScene();
     }
     return;
   }
@@ -4337,6 +4500,25 @@ canvas.addEventListener("dblclick", (ev) => {
   if (scene === null || ast === null || viewerMode) return; // a viewer can't rename
   const shown = shownScene(scene);
   const at = scenePoint(ev);
+  // Double-clicking a selected edge's bend handle REMOVES that control point (Miro's white-bullet
+  // reset). Checked before relabel so a bend near the label doesn't open the label editor instead.
+  const selEdge = singleSelectedEdge(shown);
+  if (selEdge !== null) {
+    const wh = waypointHitAt(selEdge, at);
+    if (wh !== null && wh.kind === "bend") {
+      ev.preventDefault();
+      const interior = edgeBendPoints(selEdge)
+        .map((p) => ({ x: p.x, y: p.y }))
+        .filter((_, i) => i !== wh.index);
+      recordHistory();
+      commitWaypoints(selEdge.id, interior);
+      doc.persist();
+      requestPaint();
+      updateGroupButtons();
+      announce(interior.length === 0 ? "edge auto-routed" : "removed a bend point");
+      return;
+    }
+  }
   const hit = hitScene(shown, at);
   const groupHit = hit === null ? groupHitAt(shown, at) : null;
   // If something was hit but it has no editable label (e.g. a gitGraph merge edge, a mindmap spoke, an
@@ -5247,10 +5429,11 @@ const cycleEdgeRoute = (): void => {
     const existing = doc.edgeStyles().get(id);
     const opt = existing?.routeOption ?? null;
     const labelT = existing?.labelT ?? null;
-    if (next === "square" && opt === null && labelT === null) {
+    const wp = existing?.waypoints ?? null;
+    if (next === "square" && opt === null && labelT === null && wp === null) {
       doc.setEdgeStyle(id, null);
     } else {
-      doc.setEdgeStyle(id, { route: next, routeOption: opt, labelT });
+      doc.setEdgeStyle(id, { route: next, routeOption: opt, labelT, waypoints: wp });
     }
   }
   doc.persist();
@@ -5270,6 +5453,7 @@ const cycleEdgeOption = (): void => {
       route: existing?.route ?? "square",
       routeOption: nextOpt,
       labelT: existing?.labelT ?? null,
+      waypoints: existing?.waypoints ?? null,
     });
   }
   doc.persist();
