@@ -1,5 +1,11 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Box-family edges reroute around nodes they crossed/hugged
+
+- shownScene runs the new `rerouteBoxEdges` (after its trunk/bus re-route, before the border pass) for
+  the box families, so a connector that the trunk router sent THROUGH a node or ALONG a border is
+  maze-routed to a cleaner mount pair when one is strictly better on screen. Cloud's dense wiring drops
+  from 8 crossings/hugs to 4; the four-family total 22→18. New e2e asserts the total stays at/under 20.
 ## 2026-07-03 — Edges no longer run along node/container borders
 
 - The trunk router placed channel legs at coordinates that coincided with node/group borders, so the

@@ -1,11 +1,10 @@
 # @m/layout — do next
 
-- **Route cross-group edges AROUND intervening nodes (through-node crossings).** Separate from the
-  border-hug fix: some spread/trunk cross-group edges still pass THROUGH a non-endpoint leaf node's
-  interior (e.g. block `api1→cache` crossing web1/web2; c4 `api→db` crossing cache). The local
-  `separateEdgesFromBorders` nudge only lifts segments off borders it hugs, not deep interior crossings —
-  those need the maze router to run for these re-routed trunk edges, or per-edge port selection. Measured ~22 residual crossings across the four box families; a local
-  interior-aware nudge made it WORSE (relocating crossings), so this needs real rerouting, not nudging.
+- **Squeeze the last box-family crossings/hugs.** `rerouteBoxEdges` maze-routes cross-group edges that
+  cross a node or hug a border to a cleaner mount pair, cutting the four-family total from 22 to 18.
+  The residual 18 are edges the maze can't beat on the current metric (tight channels, mount-anchored
+  L-edges). Further gains need denser routing channels (layout spacing) or per-edge port selection to
+  give the maze more room; the `edge-border-clearance` e2e's total is the scorecard.
 
 - **Mount re-selection to kill the last border-hugs.** `separateEdgesFromBorders` clears interior
   channel legs, but a 3-point L-edge whose first/last (mount-anchored) segment sits exactly on an

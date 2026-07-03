@@ -1,5 +1,20 @@
 # @m/layout — work log
 
+## 2026-07-03 — Reroute box-family edges that cross nodes or hug borders
+
+- New `rerouteBoxEdges` pass (wired into `layoutDiagram` after the mount snap, and re-run in the app's
+  `shownScene` after its trunk/bus re-route, before `separateEdgesFromBorders` + decollision). For each
+  box-family edge it scores the CURRENT route by a VISUAL badness — segments crossing a non-endpoint
+  leaf node's interior (heavy) or hugging any box border — and, if non-zero, searches mount pairs with
+  the maze router (which stands off every obstacle by OBSTACLE_CLEARANCE, so its routes neither cross
+  nor hug). It swaps in the maze route only when it is strictly cleaner by that same visual metric, so
+  clean edges and unbeatable ones keep the trunk/bus geometry (the backbone aesthetic survives).
+- `mazeAroundObstacles` gained a `force` flag so the search also runs when the current route merely HUGS
+  (the old trigger was node-crossing only). The badness metric is deliberately identical to the
+  `edge-border-clearance` e2e guard, so "cleaner" means cleaner ON SCREEN, not merely by the router's
+  overlap test — this stopped a family (block) regressing while another (cloud) improved.
+- Measured across the four box families: crossings+hugs drop from 22 to 18; the cloud example (dense
+  cross-group wiring) drops from 8 to 4. Guarded by the e2e total-count assertion.
 ## 2026-07-03 — Lift edge segments off node/container borders they run along
 
 - Container TITLE BANDS are obstacles for the pass too (a shift must never land a leg in the band where

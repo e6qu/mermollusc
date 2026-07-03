@@ -6,6 +6,7 @@ import {
   mazeRerouteEdges,
   respreadPorts,
   retidyRoutes,
+  rerouteBoxEdges,
   routeWaypoints,
   separateEdgesFromBorders,
   snapSceneEdgesToMountPoints,
@@ -581,6 +582,56 @@ describe("separateEdgesFromBorders", () => {
       wedges: [], decorations: [], extent: rect(0, 0, 440, 340),
     };
     const out = separateEdgesFromBorders(scene);
+    expect(out.edges[0]!.waypoints).toEqual(scene.edges[0]!.waypoints);
+  });
+});
+
+describe("rerouteBoxEdges", () => {
+  const snid = (id: string) => brand<string, "SceneNodeId">(id);
+  const seid = (id: string) => brand<string, "SceneEdgeId">(id);
+  const box = (id: string, x: number, y: number, w: number, h: number) => ({
+    id: snid(id), bounds: rect(x, y, w, h), label: id, shape: "rect" as const, parent: null,
+    icon: null, rowDivider: null, subtitle: null, accent: "none" as const, role: "normal" as const, rows: null,
+  });
+
+  it("reroutes an edge that cuts straight through a non-endpoint node around it", () => {
+    // A and C are in a row with B between them; a straight A->C link at row height crosses B.
+    const scene = {
+      nodes: [box("A", 0, 100, 60, 40), box("B", 160, 100, 60, 40), box("C", 320, 100, 60, 40)],
+      edges: [{
+        id: seid("ac"), from: snid("A"), to: snid("C"),
+        waypoints: twoOrMore(point(60, 120), point(320, 120)), // straight through B's row
+        label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
+        curved: false, fromLabel: null, toLabel: null, labelPos: null,
+      }],
+      wedges: [], decorations: [], extent: rect(0, 0, 400, 240),
+    };
+    const out = rerouteBoxEdges(scene);
+    const wp = out.edges[0]!.waypoints;
+    // no segment passes through B's interior anymore
+    const throughB = wp.some((_, i) => {
+      const a = wp[i], b = wp[i + 1];
+      if (!a || !b) return false;
+      const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+      return x0 < 220 - 2 && x1 > 160 + 2 && y0 < 140 - 2 && y1 > 100 + 2;
+    });
+    expect(throughB).toBe(false);
+    // still connects A to C, and the route actually changed from the through-B straight line
+    expect(wp).not.toEqual(scene.edges[0]!.waypoints);
+  });
+
+  it("leaves a clean edge untouched", () => {
+    const scene = {
+      nodes: [box("A", 0, 0, 60, 40), box("C", 320, 300, 60, 40)],
+      edges: [{
+        id: seid("ac"), from: snid("A"), to: snid("C"),
+        waypoints: twoOrMore(point(30, 40), point(30, 320), point(320, 320)),
+        label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
+        curved: false, fromLabel: null, toLabel: null, labelPos: null,
+      }],
+      wedges: [], decorations: [], extent: rect(0, 0, 400, 360),
+    };
+    const out = rerouteBoxEdges(scene);
     expect(out.edges[0]!.waypoints).toEqual(scene.edges[0]!.waypoints);
   });
 });

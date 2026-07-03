@@ -31,6 +31,7 @@ export {
   containerHeaderBox,
   mazeAroundObstacles,
   snapSceneEdgesToMountPoints,
+  rerouteBoxEdges,
   separateEdgesFromBorders,
   MICRO_JOG_TOL,
 } from "./route.js";
