@@ -1,5 +1,16 @@
 # @m/layout — work log
 
+## 2026-07-03 — Clean edge mounting + off-line labels (user-reported)
+
+- Box-family (block/network/cloud/c4) edges attach at the side-CENTRE mount and separate in TWO
+  dimensions away from the node — a per-rank staggered stub depth plus a per-rank staggered cross-channel
+  leg — so a fan leaves a shared mount cleanly instead of sliding along the border to a spread port that
+  crept toward a corner (`portAt` removed; the along-side jog is gone). Edges never attach at corners.
+- Edge labels are nudged perpendicular OFF their own line in `decollideEdgeLabels` (before the overlap
+  search, so the nudged position is decollided against nodes) — a plate-less label centred on the line
+  read as struck through. The decollide pass also now always adopts the computed position (it used to
+  return the label unchanged when no decollision was needed, discarding the nudge).
+- C4 row/col gap 44→64 so labels on the short inter-node segments have room.
 - Lane separation widened (user report: trunk/bus lines too close): `LANE_GAP` 8→14 with
   `CHANNEL_LANE` rescaled to match (≈ gap + 5, per the coupling note), `TRUNK_GAP` 18→26, and the
   snap's micro-jog tolerance 7→10 (the DNS→CDN stub sat just above 7). Goldens regenerated.

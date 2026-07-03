@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Edge-mount quality: centre mounts, off-line labels, rounded classic edges
+
+- Reproduced each report with screenshots, fixed, re-verified. Box families attach edges at side-centre
+  mounts (no border-sliding, no corner attachment); classic flowchart edges are rounded-corner
+  orthogonal (no spline swoops); edge labels sit beside their line (perpendicular nudge, transparent
+  background kept); mount-point indicators bumped larger on selection; C4 given more room. New
+  family-regression e2e asserts box-family endpoints land on side centres.
 ## 2026-07-03 — Ghost labels, always-on minimap, clickable in-group edges, wider lanes
 
 - Edge labels are bare 75%-alpha text with no plate (user direction; renderer). Trunk/bus/de-stacked

@@ -1,5 +1,17 @@
 # @m/app (playground) — bugs
 
+Resolved (2026-07-03, edge-mount quality pass — all reproduced with screenshots first):
+
+- ~~**Edges ran along node borders and attached at corners.**~~ Fixed in layout — box-family edges
+  attach at side-centre mounts and separate in the channel (staggered stub + cross-leg), never sliding
+  along the border or creeping to a corner.
+- ~~**Classic flowchart edges swooped into node corners.**~~ Fixed — the spline finish is rounded-corner
+  orthogonal now (ELK routes orthogonally, endpoints snap perpendicular), so edges enter/leave straight
+  and on-centre.
+- ~~**Edge labels were struck through by their own line.**~~ Fixed — labels are nudged perpendicular off
+  the line during decollision (above a horizontal run, right of a vertical one), keeping the transparent
+  (plate-less) background.
+
 Resolved (2026-07-03, follow-up sweep):
 
 - ~~**The overview minimap was effectively invisible.**~~ Fixed — it only appeared when the sheet

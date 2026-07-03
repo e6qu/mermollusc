@@ -1095,7 +1095,7 @@ const paintScene = (): void => {
   const overlayHalo = Math.max(3, 8 / viewScale);
   const overlayDash = Math.max(2, 5 / viewScale);
   const handleSize = Math.max(3, 4 / viewScale);
-  const mountRadius = Math.max(3, 4 / viewScale);
+  const mountRadius = Math.max(4, 5.5 / viewScale);
   const selectedStroke = forcedColors() ? "Highlight" : activeTheme().text;
   const selectedFill = forcedColors() ? "Highlight" : "#2563eb";
   for (const edge of shown.edges) {

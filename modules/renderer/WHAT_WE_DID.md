@@ -1,5 +1,11 @@
 # @m/renderer — work log
 
+- Classic layered edges use rounded-corner ORTHOGONAL paths, not Catmull-Rom splines. ELK routes
+  orthogonally and the endpoints are snapped to perpendicular side-centre mounts, so rounding the
+  interior corners keeps every edge entering/leaving a node straight and on-centre — the spline
+  overshot those right angles into swoops that struck node corners. `splinePath` removed
+  (`smoothSegments` retained for the bezier 2-point path). Edge-label placement moved fully into layout
+  (renderer no longer nudges; see @m/layout).
 - Edge labels are bare 75%-alpha text now — no background plate at all (user direction, reversing the
   short-lived opaque plates): decollision keeps labels clear of geometry, and transparent text lets a
   dense diagram read through its label layer. Canvas + SVG; the `plate` flag survives as the edge-label

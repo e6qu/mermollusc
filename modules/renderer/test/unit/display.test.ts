@@ -816,29 +816,30 @@ describe("spline edge finish", () => {
     ],
   };
 
-  it("spline renders the whole route as cubic curves through the waypoints, with no decorations", () => {
+  it("spline rounds the interior corner but keeps straight (perpendicular) endpoint segments", () => {
     const edge = toDisplayList(bent, false, "spline").find((c) => c.kind === "polyline");
     if (edge?.kind !== "polyline") throw new Error("no polyline");
     expect(edge.midMarkers).toEqual([]);
-    // Every drawn segment is a cubic; the path still passes through the interior waypoint's target.
+    // Rounded-corner orthogonal: the corner becomes a quad, but the path starts at the exact endpoint
+    // and ends at the exact endpoint — so the edge enters/leaves nodes straight and on-centre.
     const kinds = edge.path.map((p) => p.kind);
     expect(kinds[0]).toBe("moveTo");
-    expect(kinds.slice(1).every((k) => k === "cubicTo")).toBe(true);
+    expect(kinds).toContain("quadTo"); // the rounded corner
+    const first = edge.path[0];
     const last = edge.path[edge.path.length - 1];
-    if (last === undefined || last.kind !== "cubicTo") throw new Error("no cubic tail");
+    if (first === undefined || last === undefined) throw new Error("empty path");
+    expect([first.x, first.y]).toEqual([0, 0]);
     expect([last.x, last.y]).toEqual([100, 100]);
   });
 
-  it("a straight 2-point edge stays visually straight under spline (collinear controls)", () => {
-    const straightScene: Scene = { ...scene }; // the base scene's edge is (30,40)->(30,80), vertical
+  it("a straight (axis-aligned) 2-point edge stays visually straight under spline", () => {
+    const straightScene: Scene = { ...scene }; // base scene edge is (30,40)->(30,80), vertical
     const edge = toDisplayList(straightScene, false, "spline").find((c) => c.kind === "polyline");
     if (edge?.kind !== "polyline") throw new Error("no polyline");
-    for (const p of edge.path) {
-      if (p.kind === "cubicTo") {
-        expect(p.c1x).toBe(30);
-        expect(p.c2x).toBe(30);
-        expect(p.x).toBe(30);
-      }
-    }
+    // A 2-point edge renders as one cubic with control points collinear on the shared axis (x=30) —
+    // visually a straight vertical line, never a bow.
+    const tail = edge.path[edge.path.length - 1];
+    if (tail === undefined || tail.kind !== "cubicTo") throw new Error("no cubic tail");
+    expect([tail.c1x, tail.c2x, tail.x]).toEqual([30, 30, 30]);
   });
 });

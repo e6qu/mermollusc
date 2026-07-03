@@ -17,7 +17,7 @@ import { clampedWidth, selfLoopWaypoints, selfLoopLabelPos } from "./measure.js"
 
 const PADDING = 16;
 const HEADER = 26; // space at the top of a boundary for its label
-const GAP = 44;
+const GAP = 64; // generous, so edge labels on the short inter-node segments have room to clear
 const LEAF_HEIGHT = 56;
 const LABEL_PADDING = 24;
 const MIN_LEAF_WIDTH = 80;

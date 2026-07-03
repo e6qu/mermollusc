@@ -172,13 +172,6 @@ const facingSide = (from: RouteBox, to: RouteBox): Side => {
       ? "B"
       : "T";
 };
-const portAt = (box: RouteBox, side: Side, rank: number, count: number): Point => {
-  const f = (rank + 1) / (count + 1); // even fractions across the side, never at the corners
-  if (side === "R") return point(box.x + box.w, box.y + box.h * f);
-  if (side === "L") return point(box.x, box.y + box.h * f);
-  if (side === "B") return point(box.x + box.w * f, box.y + box.h);
-  return point(box.x + box.w * f, box.y);
-};
 const mountAt = (box: RouteBox, side: Side): Point => {
   if (side === "R") return point(box.x + box.w, box.y + box.h / 2);
   if (side === "L") return point(box.x, box.y + box.h / 2);
@@ -479,6 +472,33 @@ const DECOLLIDE_DIRS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
   [-1, 0],
 ];
+const LABEL_LINE_CLEARANCE = 10; // perpendicular offset that lifts a label clear of its own line
+
+// Push `anchor` off the edge line: above a horizontal-ish run, to the right of a vertical-ish one —
+// using the segment nearest the anchor. Diagonal runs fall back to an upward push.
+const nudgeOffLine = (
+  anchor: { readonly x: number; readonly y: number },
+  waypoints: readonly Point[],
+): { readonly x: number; readonly y: number } => {
+  let best: { readonly a: Point; readonly b: Point } | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (let i = 0; i + 1 < waypoints.length; i++) {
+    const a = waypoints[i];
+    const b = waypoints[i + 1];
+    if (a === undefined || b === undefined) continue;
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const d = (mx - anchor.x) ** 2 + (my - anchor.y) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = { a, b };
+    }
+  }
+  if (best === null) return anchor;
+  return Math.abs(best.b.x - best.a.x) >= Math.abs(best.b.y - best.a.y)
+    ? { x: anchor.x, y: anchor.y - LABEL_LINE_CLEARANCE }
+    : { x: anchor.x + LABEL_LINE_CLEARANCE, y: anchor.y };
+};
 export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene => {
   interface LabelBox {
     readonly cx: number;
@@ -534,8 +554,12 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
       return true;
     });
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
-    const ax: number = anchor.x;
-    const ay: number = anchor.y;
+    // Nudge the anchor perpendicular to the segment nearest it FIRST, so the (plate-less) text sits
+    // beside the line instead of being struck through by it — then decollision runs from there, keeping
+    // the nudged position off nodes/other labels rather than pushing it back onto one.
+    const nudged = nudgeOffLine(anchor, e.waypoints);
+    const ax: number = nudged.x;
+    const ay: number = nudged.y;
 
     const fits = (cx: number, cy: number, hw: number): boolean =>
       placed.every((p) => !overlaps(cx, cy, hw, p)) &&
@@ -555,7 +579,9 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     const cx = spot?.cx ?? ax;
     const cy = spot?.cy ?? ay;
     placed.push({ cx, cy, halfW });
-    return spot === null ? e : { ...e, labelPos: point(cx, cy) };
+    // Always adopt the computed position — it carries the off-line nudge even when no decollision was
+    // needed (returning `e` unchanged there would leave the label struck through by its own line).
+    return { ...e, labelPos: point(cx, cy) };
   });
   return { ...scene, edges };
 };
@@ -1254,27 +1280,32 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
     const tr = rankOf.get(s.to);
     if (fr === undefined || tr === undefined) return e;
     const fs = s.fs;
+    // Every edge attaches at the SIDE-CENTRE mount (never a spread fraction that creeps toward a corner,
+    // and never a segment sliding along the border). Parallel edges separate in two dimensions AWAY from
+    // the node: a per-rank staggered stub depth (so they turn at different distances) and a per-rank
+    // staggered cross-channel leg — the fan leaves the shared mount cleanly instead of hugging the side.
     const p0 = mountAt(a, fs);
     const p3 = mountAt(b, s.ts);
-    const lane0 = offsetOutside(portAt(a, fs, fr.rank, fr.count), fs, CHANNEL_GAP);
-    const lane3 = offsetOutside(portAt(b, s.ts, tr.rank, tr.count), s.ts, CHANNEL_GAP);
-    const exit0 = offsetOutside(p0, fs, CHANNEL_GAP);
-    const exit3 = offsetOutside(p3, s.ts, CHANNEL_GAP);
-    // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v): the two
-    // mid points sit on the central cross-channel leg. Stagger that leg per source-lane so parallel edges
-    // (e.g. several A→B) don't lay their cross-channel legs on top of each other; clamp into the gap so
-    // the leg stays between the two boxes.
+    const stub0 = CHANNEL_GAP + fr.rank * LANE_GAP;
+    const stub3 = CHANNEL_GAP + tr.rank * LANE_GAP;
+    const exit0 = offsetOutside(p0, fs, stub0);
+    const exit3 = offsetOutside(p3, s.ts, stub3);
+    // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v). Stagger
+    // the central cross leg per source-lane so parallel edges don't lie on top of each other; clamp it
+    // into the gap so the leg stays between the two boxes.
     const horizontal = fs === "L" || fs === "R";
-    const span = horizontal ? Math.abs(lane3.x - lane0.x) : Math.abs(lane3.y - lane0.y);
-    const raw = (fr.rank - (fr.count - 1) / 2) * CHANNEL_GAP;
-    const limit = (span / 2) * 0.6;
+    const span = horizontal ? Math.abs(exit3.x - exit0.x) : Math.abs(exit3.y - exit0.y);
+    const raw = (fr.rank - (fr.count - 1) / 2) * LANE_GAP;
+    const limit = (span / 2) * 0.7;
     const off = Math.max(-limit, Math.min(limit, raw));
-    const midX = (lane0.x + lane3.x) / 2 + (horizontal ? off : 0);
-    const midY = (lane0.y + lane3.y) / 2 + (horizontal ? 0 : off);
-    const sm1 = horizontal ? point(midX, lane0.y) : point(lane0.x, midY);
-    const sm2 = horizontal ? point(midX, lane3.y) : point(lane3.x, midY);
+    const midX = (exit0.x + exit3.x) / 2 + (horizontal ? off : 0);
+    const midY = (exit0.y + exit3.y) / 2 + (horizontal ? 0 : off);
+    const sm1 = horizontal ? point(midX, exit0.y) : point(exit0.x, midY);
+    const sm2 = horizontal ? point(midX, exit3.y) : point(exit3.x, midY);
+    const lane0 = exit0;
+    const lane3 = exit3;
     const obstacles = obstacleBoxes.get(e.id) ?? [];
-    const direct = compactPoints([p0, exit0, lane0, sm1, sm2, lane3, exit3, p3]);
+    const direct = compactPoints([p0, exit0, sm1, sm2, exit3, p3]);
     // Clean staggered route (the overwhelming common case) — unchanged, so clean diagrams don't move.
     if (routeHits(direct, obstacles) === 0) {
       const labelPos = e.labelPos === null ? null : point((sm1.x + sm2.x) / 2, (sm1.y + sm2.y) / 2);

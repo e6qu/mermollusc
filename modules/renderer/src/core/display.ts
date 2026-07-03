@@ -11,7 +11,7 @@ import type {
   SceneNode,
   SceneWedge,
 } from "@m/contracts";
-import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt, splinePath } from "./path.js";
+import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt } from "./path.js";
 import type { PathCmd } from "./path.js";
 
 export { bezierControls, roundedCorners, smoothSegments } from "./path.js";
@@ -697,9 +697,13 @@ export const toDisplayList = (
           ? directionHints(pts, edge.fromEnd, edge.toEnd, edge.curved)
           : [],
       curved: edge.curved,
+      // "spline" (classic layered) draws rounded-corner orthogonal edges: ELK routes orthogonally and
+      // the endpoints are snapped to perpendicular mounts, so rounding the interior corners keeps every
+      // edge entering/leaving a node straight and on-centre (a Catmull-Rom spline overshot those right
+      // angles into swoops that struck node corners). No crossing hops.
       path:
         edgeFinish === "spline"
-          ? splinePath(pts)
+          ? buildEdgePath(pts, true, [])
           : buildEdgePath(
               pts,
               edge.curved,
@@ -707,8 +711,8 @@ export const toDisplayList = (
             ),
     });
     if (edge.label !== null) {
-      // A router that reserved space for the label (ELK) supplies its centre; otherwise derive it from
-      // the routed midpoint.
+      // A router that reserved space for the label (ELK) supplies its centre (already nudged off the
+      // line and decollided against nodes in layout); otherwise derive it from the routed midpoint.
       const anchor = edge.labelPos ?? edgeLabelAnchor(pts);
       labels.push({
         kind: "label",
