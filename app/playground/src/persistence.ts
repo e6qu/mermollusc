@@ -7,6 +7,7 @@ import { appLog } from "./log.js";
 const SOURCE_KEY = "mermollusc-source";
 const OVERLAY_KEY = "mermollusc-overlay";
 const THEME_KEY = "mermollusc-theme";
+const MINIMAP_KEY = "mermollusc-minimap";
 const COLLAPSE_KEY = "mermollusc-source-collapsed";
 const NAMESPACE = "mermollusc-";
 
@@ -18,6 +19,23 @@ export const saveOverlay = (serialized: string): void =>
   localStorage.setItem(OVERLAY_KEY, serialized);
 
 export const loadThemeChoice = (): string | null => localStorage.getItem(THEME_KEY);
+
+// The overview minimap's collapsed/expanded preference ("collapsed" | "open").
+export const loadMinimapCollapsed = (): boolean => {
+  try {
+    return localStorage.getItem(MINIMAP_KEY) === "collapsed";
+  } catch (e) {
+    appLog("error", "minimap-pref-read-failed", messageOf(e));
+    return false;
+  }
+};
+export const saveMinimapCollapsed = (collapsed: boolean): void => {
+  try {
+    localStorage.setItem(MINIMAP_KEY, collapsed ? "collapsed" : "open");
+  } catch (e) {
+    appLog("error", "minimap-pref-persist-failed", messageOf(e));
+  }
+};
 export const saveThemeChoice = (mode: "dark" | "light"): void =>
   localStorage.setItem(THEME_KEY, mode);
 

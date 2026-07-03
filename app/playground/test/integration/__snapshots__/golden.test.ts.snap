@@ -2,12 +2,12 @@
 
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
-  "polyline 48,20 98,20 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 98,20 78,27 78,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 48,20 110,20 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 110,20 84,27 84,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
   "box 0,0 48x40 r0",
   "label "Web" 24,20 center",
-  "box 98,0 48x40 r0",
-  "label "API" 122,20 center",
+  "box 110,0 48x40 r0",
+  "label "API" 134,20 center",
   "box 0,84 48x40 r0",
   "label "DB" 24,104 center",
 ]
@@ -281,7 +281,7 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
   "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "polyline 192,236 192,266 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "polyline 172,266 172,246 83,246 83,168 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
-  "polyline 83,168 84,256 172,256 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
+  "polyline 83,168 84,256 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "stateStart 120,36 r24",
   "stateEnd 120,382 r24",
@@ -291,7 +291,7 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
   "box 47,128 72x40 r8",
   "label "Paused" 83,148 center",
   "label "pause" 99,246 center",
-  "label "resume" 89,268 center",
+  "label "resume" 88,268 center",
 ]
 `;
 

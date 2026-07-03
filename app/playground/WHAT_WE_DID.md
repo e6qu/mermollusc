@@ -1,5 +1,16 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Ghost labels, always-on minimap, clickable in-group edges, wider lanes
+
+- Edge labels are bare 75%-alpha text with no plate (user direction; renderer). Trunk/bus/de-stacked
+  lanes separate at 14px (was 8), with the channel reservation and trunk offsets rescaled to match.
+- The minimap is an always-available overview now (it used to appear only on overflow, which
+  fit-on-load made nearly impossible) with a persisted collapse toggle.
+- Edges routed through containers are clickable (builder hit-test priority: leaves → edges →
+  containers), verified end-to-end on a block composite edge.
+- Collab Share copies the room link (the live document) instead of a frozen snapshot without the room
+  params. New e2e hooks: `__sceneToScreen` (scene→viewport px) joins `__edgeWaypoints`.
+
 ## 2026-07-03 — Family bug sweep: one root cause, many symptoms
 
 - User reports: sequence broken, block/network/cloud routing broken, timeline not movable, C4 boundary

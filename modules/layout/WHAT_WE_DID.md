@@ -1,5 +1,8 @@
 # @m/layout — work log
 
+- Lane separation widened (user report: trunk/bus lines too close): `LANE_GAP` 8→14 with
+  `CHANNEL_LANE` rescaled to match (≈ gap + 5, per the coupling note), `TRUNK_GAP` 18→26, and the
+  snap's micro-jog tolerance 7→10 (the DNS→CDN stub sat just above 7). Goldens regenerated.
 ## 2026-07-03 — Family bug sweep (verified from user reports, screenshot-driven)
 
 - **Label decollision ran before the mount snap, which recomputes every labelPos** — so every adjusted

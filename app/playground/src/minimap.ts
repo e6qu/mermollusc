@@ -13,6 +13,11 @@ export interface MinimapRender {
 // (offscreen cache, viewport scrim, pointer/keyboard nav) behind this deps port.
 export interface MinimapDeps {
   readonly minimap: HTMLCanvasElement;
+  // The collapse toggle: the map is an always-available overview now (not just an overflow aid), so
+  // the user decides whether it takes corner space. The choice persists via `persistCollapsed`.
+  readonly toggle: HTMLButtonElement;
+  readonly initiallyCollapsed: boolean;
+  readonly persistCollapsed: (collapsed: boolean) => void;
   readonly miniCtx: CanvasRenderingContext2D;
   readonly stageWrap: HTMLElement;
   readonly canvas: HTMLCanvasElement;
@@ -29,6 +34,11 @@ export interface MinimapDeps {
   readonly announce: (message: string) => void;
 }
 
+const syncToggle = (toggle: HTMLButtonElement, collapsed: boolean): void => {
+  toggle.setAttribute("aria-pressed", collapsed ? "false" : "true");
+  toggle.textContent = collapsed ? "Map" : "Hide map";
+};
+
 export interface MinimapController {
   // Re-render the (cached) static content; call only when the scene/theme changes.
   readonly rebuildCache: () => void;
@@ -41,6 +51,7 @@ const ACCENT_DARK = "#f0894e";
 
 export const createMinimap = (deps: MinimapDeps): MinimapController => {
   const { minimap, miniCtx, stageWrap, canvas, margin, maxSize } = deps;
+  let collapsed = deps.initiallyCollapsed;
 
   // The static content (background + faint edges + node blocks) is cached to an offscreen canvas,
   // rebuilt only when the scene/theme changes. A scroll then just blits the cache and redraws the
@@ -60,11 +71,6 @@ export const createMinimap = (deps: MinimapDeps): MinimapController => {
     const render = deps.getRender();
     if (render === null || miniCacheCtx === null) return;
     const { scene, logicalWidth, logicalHeight } = render;
-    const viewScale = deps.getViewScale();
-    const overflowing =
-      logicalWidth * viewScale > stageWrap.clientWidth + 1 ||
-      logicalHeight * viewScale > stageWrap.clientHeight + 1;
-    if (!overflowing) return;
 
     const scale = Math.min(maxSize / logicalWidth, maxSize / logicalHeight);
     const dpr = window.devicePixelRatio || 1;
@@ -106,11 +112,13 @@ export const createMinimap = (deps: MinimapDeps): MinimapController => {
 
   const draw = (): void => {
     const render = deps.getRender();
-    if (miniLayout === null || render === null) {
+    if (miniLayout === null || render === null || collapsed) {
       minimap.hidden = true;
+      deps.toggle.hidden = miniLayout === null || render === null; // no diagram → no toggle either
       return;
     }
     minimap.hidden = false;
+    deps.toggle.hidden = false;
     const { logicalWidth, logicalHeight } = render;
     const { scale: miniScale, w: miniW, h: miniH, dpr } = miniLayout;
     const W = Math.round(miniW * dpr);
@@ -233,6 +241,15 @@ export const createMinimap = (deps: MinimapDeps): MinimapController => {
   window.addEventListener("resize", () => {
     rebuildCache();
     draw();
+  });
+
+  syncToggle(deps.toggle, collapsed);
+  deps.toggle.addEventListener("click", () => {
+    collapsed = !collapsed;
+    syncToggle(deps.toggle, collapsed);
+    deps.persistCollapsed(collapsed);
+    draw();
+    deps.announce(collapsed ? "overview map hidden" : "overview map shown");
   });
 
   return { rebuildCache, draw };

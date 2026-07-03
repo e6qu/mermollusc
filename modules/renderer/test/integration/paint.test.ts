@@ -167,7 +167,7 @@ describe("paint", () => {
     );
   });
 
-  it("draws padded plates behind edge labels", () => {
+  it("draws edge labels as bare translucent text (no plate)", () => {
     const labelled: Scene = {
       ...scene,
       edges: [
@@ -189,12 +189,12 @@ describe("paint", () => {
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(labelled), new Map(), { ...defaultTheme, font: "14px sans-serif" });
+    // Bare 75%-alpha text, NO background plate: decollision keeps labels clear; transparency lets the
+    // diagram read through dense label areas instead of boxes punching holes in it.
     const plate = ctx.fillRects.find((r) => r.w === 40);
-    if (plate === undefined) throw new Error("missing edge label plate");
-    expect(plate.h).toBeGreaterThan(18);
-    expect(plate.alpha).toBe(1); // opaque plate — the line never shows through
+    expect(plate).toBeUndefined();
     const edgeText = ctx.fillTexts.find((t) => t.text === "edge");
-    expect(edgeText?.alpha).toBe(1);
+    expect(edgeText?.alpha).toBe(0.75);
   });
 
   it("draws UML class markers (hollow triangle) and a field/method inner divider", () => {

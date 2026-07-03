@@ -1,5 +1,19 @@
 # @m/app (playground) — bugs
 
+Resolved (2026-07-03, follow-up sweep):
+
+- ~~**The overview minimap was effectively invisible.**~~ Fixed — it only appeared when the sheet
+  overflowed the stage, and fit-on-load guarantees most diagrams never overflow. It now shows for
+  every diagram as a corner overview with a collapse toggle ("Hide map"/"Map", persisted preference,
+  wiped by Reset like every mermollusc- key).
+- ~~**Edges inside containers were unclickable.**~~ Fixed in `@m/builder` — hit-test priority is leaf
+  nodes → edges → containers, so an edge routed through a block composite / cloud group / subgraph is
+  selectable; the container still wins in its empty space. Covered by a hit unit test and a block e2e
+  spec (via new `__sceneToScreen` + `__edgeWaypoints` hooks).
+- ~~**Collab Share copied a dead link.**~~ Fixed — in a room, Share copies the ROOM link (the live
+  document) instead of a frozen `#src` snapshot that stripped the `?collab/room` params, which had
+  left no way to invite anyone.
+
 Resolved (family bug sweep, 2026-07-03 — every report reproduced with screenshots before fixing):
 
 - ~~**Sequence diagrams collapsed onto the header row.**~~ Fixed — the app unconditionally ran

@@ -596,6 +596,26 @@
       .minimap:hover { opacity: 1; border-color: var(--primary); }
       .minimap:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; opacity: 1; }
       .minimap[hidden] { display: none; }
+      /* The map + its collapse toggle stack in a corner-pinned column, so the button rides above the
+         map when open and sits alone when collapsed. */
+      .minimap-wrap {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 4;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+      }
+      .minimap-wrap .minimap { position: static; }
+      .minimap-toggle {
+        padding: 3px 8px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.85;
+      }
       /* Zoom cluster pinned to the stage (whiteboard-style), paired with the tool palette on the
          opposite edge. The .toolbar-group class supplies the pill chrome; this only positions it. */
       .stage-zoom { position: absolute; top: 16px; right: 16px; z-index: 4; box-shadow: var(--shadow); }
@@ -1273,15 +1293,24 @@
             <button id="ctx-arrange" type="button">Arrange</button>
             <button id="ctx-delete" type="button" class="danger">Delete</button>
           </div>
-          <canvas
-            id="minimap"
-            class="minimap"
-            role="application"
-            aria-label="Diagram overview. Use arrow keys to pan the stage."
-            tabindex="0"
-            title="Overview — click or drag to navigate"
-            hidden
-          ></canvas>
+          <div class="minimap-wrap">
+            <button
+              id="minimap-toggle"
+              class="minimap-toggle"
+              type="button"
+              aria-pressed="true"
+              title="Collapse or expand the overview map"
+            >Map</button>
+            <canvas
+              id="minimap"
+              class="minimap"
+              role="application"
+              aria-label="Diagram overview. Use arrow keys to pan the stage."
+              tabindex="0"
+              title="Overview — click or drag to navigate"
+              hidden
+            ></canvas>
+          </div>
         </section>
       </main>
 

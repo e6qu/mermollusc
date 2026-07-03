@@ -40,10 +40,16 @@ export const descendantsOf = (scene: Scene, containerId: SceneNodeId): SceneNode
 };
 
 // Nodes sit above edges; later nodes sit above earlier ones, so scan back to front.
+// Priority: leaf nodes, then edges, then containers. A container's bounds cover everything inside it,
+// so testing it before edges made every edge running through a group (block composites, cloud groups,
+// flowchart subgraphs) unclickable — the click always selected the container. A container still wins
+// anywhere in its empty area away from an edge.
 export const hitTest = (scene: Scene, at: Point): HitTarget | null => {
   for (let i = scene.nodes.length - 1; i >= 0; i--) {
     const node = scene.nodes[i];
-    if (node !== undefined && rectContains(node.bounds, at)) return { kind: "node", id: node.id };
+    if (node !== undefined && node.shape !== "container" && rectContains(node.bounds, at)) {
+      return { kind: "node", id: node.id };
+    }
   }
   for (const edge of scene.edges) {
     for (let i = 0; i + 1 < edge.waypoints.length; i++) {
@@ -52,6 +58,12 @@ export const hitTest = (scene: Scene, at: Point): HitTarget | null => {
       if (a !== undefined && b !== undefined && distanceToSegment(at, a, b) <= EDGE_TOLERANCE) {
         return { kind: "edge", id: edge.id };
       }
+    }
+  }
+  for (let i = scene.nodes.length - 1; i >= 0; i--) {
+    const node = scene.nodes[i];
+    if (node !== undefined && node.shape === "container" && rectContains(node.bounds, at)) {
+      return { kind: "node", id: node.id };
     }
   }
   return null;

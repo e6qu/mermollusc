@@ -53,8 +53,7 @@ const attr = (s: string): string => esc(s).replace(/"/g, "&quot;");
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
-const EDGE_LABEL_TEXT_ALPHA = "1";
-const EDGE_LABEL_PLATE_ALPHA = "1";
+const EDGE_LABEL_TEXT_ALPHA = "0.75";
 
 const labelLineHeight = (font: string): number => {
   const px = /(\d+(?:\.\d+)?)px/.exec(font)?.[1];
@@ -145,17 +144,9 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
         .join("");
       const anchor = cmd.align === "left" ? "start" : "middle";
       const text = `<text text-anchor="${anchor}" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
-      if (!cmd.plate) return text;
-      // A background plate behind an edge label. Width is estimated from the longest line (no font
-      // metrics in a pure string backend); a slightly generous box just masks the line cleanly.
-      const fontPx = labelLineHeight(theme.font) / 1.3;
-      const widest = lines.reduce((w, l) => Math.max(w, l.length), 0);
-      const padX = 6;
-      const padY = 3;
-      const boxW = widest * fontPx * 0.6 + padX * 2;
-      const boxH = lines.length * lh + padY * 2;
-      const rect = `<rect x="${num(cmd.x - boxW / 2)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" rx="3" fill="${theme.background}" fill-opacity="${EDGE_LABEL_PLATE_ALPHA}"/>`;
-      return `${rect}${text}`;
+      // Edge labels draw as bare 75%-alpha text with no background plate (matching the canvas
+      // painter): decollision keeps them clear of nodes/lines, and transparency beats white boxes.
+      return text;
     }
     case "wedge": {
       // A full-circle sweep is a legend swatch — a `<circle>` (an SVG arc can't close a full turn).

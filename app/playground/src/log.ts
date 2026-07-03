@@ -20,6 +20,8 @@ export type AppEvent =
   | "layout-style-persist-failed"
   | "layout-style-read-failed"
   | "layout-style-unknown"
+  | "minimap-pref-persist-failed"
+  | "minimap-pref-read-failed"
   | "overlay-identity-attach-failed"
   | "overlay-rejected"
   | "parse-failed"

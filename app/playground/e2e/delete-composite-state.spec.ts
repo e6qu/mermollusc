@@ -14,7 +14,6 @@ test("Delete on a composite state removes its whole block, leaving valid source"
   const errors = watchPipelineErrors(page);
 
   await page.goto("/");
-  const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
 
   await setSource(
@@ -23,16 +22,15 @@ test("Delete on a composite state removes its whole block, leaving valid source"
   );
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  if (box === null) return;
-
   // Deleting a container cascades to its nested children, so the app asks for confirmation — accept it.
   page.on("dialog", (d) => void d.accept());
 
-  // Click the composite container's title strip (above its inner children) to select the whole
-  // composite, then Delete.
-  await page.mouse.click(box.x + 85, box.y + 130);
+  // Click the composite container's TITLE BAND (top ~24px, above its inner children and clear of the
+  // transitions that now out-rank the container in hit-testing) to select the whole composite.
+  const active = await page.evaluate(() => window.__nodeRect?.("Active") ?? null);
+  expect(active).not.toBeNull();
+  if (active === null) return;
+  await page.mouse.click(active.x + active.w / 2, active.y + 10);
   await page.keyboard.press("Delete");
 
   // the brace block and its body are gone — not orphaned
@@ -50,7 +48,6 @@ test("dismissing the container-delete confirmation keeps the whole composite int
   page,
 }) => {
   await page.goto("/");
-  const canvas = page.locator("#stage");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await setSource(
     page,
@@ -60,9 +57,9 @@ test("dismissing the container-delete confirmation keeps the whole composite int
 
   page.on("dialog", (d) => void d.dismiss()); // cancel the confirmation
 
-  const box = await canvas.boundingBox();
-  if (box === null) return;
-  await page.mouse.click(box.x + 85, box.y + 130);
+  const active = await page.evaluate(() => window.__nodeRect?.("Active") ?? null);
+  if (active === null) return;
+  await page.mouse.click(active.x + active.w / 2, active.y + 10);
   await page.keyboard.press("Delete");
 
   // Nothing was removed — the composite and its body survive.
