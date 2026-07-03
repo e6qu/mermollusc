@@ -1,5 +1,13 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Edge labels no longer struck through (orientation-aware)
+
+- The earlier off-line nudge was silently dropped by shownScene's per-render re-routing (which resets
+  labelPos to the line midpoint). Moved the label-vs-line treatment to the renderer (draw time) where
+  nothing can drop it, and made it orientation-aware per the user: horizontal edge labels lift above
+  the line (transparent); vertical edge labels stay in-channel on a small opaque masking plate (less
+  horizontal space than dodging aside). shownScene re-runs decollision after re-routing so labels stay
+  off nodes.
 ## 2026-07-03 — Edge-mount quality: centre mounts, off-line labels, rounded classic edges
 
 - Reproduced each report with screenshots, fixed, re-verified. Box families attach edges at side-centre

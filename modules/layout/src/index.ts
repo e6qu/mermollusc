@@ -8,6 +8,7 @@ export {
   retidyRoutes,
   respreadPorts,
   trunkRoutes,
+  decollideEdgeLabels,
   GANTT_DAY_WIDTH,
   GANTT_LEFT_GUTTER,
   layoutEnergy,

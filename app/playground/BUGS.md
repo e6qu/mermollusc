@@ -1,5 +1,13 @@
 # @m/app (playground) — bugs
 
+Resolved (2026-07-03, edge-label follow-up):
+
+- ~~**Edge labels were still struck through by their line.**~~ Fixed for real — the layout-side off-line
+  nudge was being discarded by shownScene's per-render trunk/bus re-routing (which resets every labelPos
+  to the line midpoint). The label-vs-line treatment now happens in the renderer at draw time
+  (unlosable): horizontal edge labels lift above the line (transparent), vertical ones sit on a small
+  opaque masking plate in the channel.
+
 Resolved (2026-07-03, edge-mount quality pass — all reproduced with screenshots first):
 
 - ~~**Edges ran along node borders and attached at corners.**~~ Fixed in layout — box-family edges

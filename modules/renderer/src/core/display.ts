@@ -118,9 +118,12 @@ export type DrawCmd =
       readonly y: Coordinate;
       readonly text: string;
       readonly align: LabelAlign;
-      // Draw a background plate behind the text (edge labels), so the routed line/markers don't
-      // strike through it. Node/title/row labels sit on a filled box already and set this false.
-      readonly plate: boolean;
+      // How to render the text against the diagram:
+      //  "node"    — full-opacity text on its own filled box (node / title / row / decoration labels).
+      //  "edge"    — 75%-opacity text, NO background (a horizontal edge label lifted above its line).
+      //  "edge-masked" — 75%-opacity text on a small OPAQUE plate masking the line (a vertical edge
+      //             label kept in the channel, so it doesn't consume horizontal space by dodging aside).
+      readonly labelStyle: "node" | "edge" | "edge-masked";
     }
   | {
       // A filled background rectangle (no stroke, no label) drawn behind the content — a Gantt section
@@ -365,7 +368,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     y: cy,
     text: node.label,
     align: "center",
-    plate: false,
+    labelStyle: "node",
   } satisfies DrawCmd;
   if (node.role === "stateStart") {
     return [
@@ -411,7 +414,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + size.height - 8),
         text: node.label,
         align: "center",
-        plate: false,
+        labelStyle: "node",
       },
     ];
   }
@@ -433,7 +436,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + 12),
         text: node.label,
         align: "center",
-        plate: false,
+        labelStyle: "node",
       },
     ];
   }
@@ -485,7 +488,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + SUBTITLE_H / 2 + 2),
         text: node.subtitle,
         align: "center",
-        plate: false,
+        labelStyle: "node",
       });
     }
     cmds.push(
@@ -495,7 +498,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + subH + ROW_TITLE_H / 2),
         text: node.label,
         align: "center",
-        plate: false,
+        labelStyle: "node",
       },
       dividerAt(origin.x, origin.y + titleBand, size.width),
     );
@@ -506,7 +509,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         y: coordinate(origin.y + titleBand + ROW_H * i + ROW_H / 2),
         text: row,
         align: "left",
-        plate: false,
+        labelStyle: "node",
       });
     }
     if (node.rowDivider !== null && node.rowDivider > 0 && node.rowDivider < node.rows.length) {
@@ -531,7 +534,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
       y: coordinate(origin.y + 6 + ICON_SIZE + 6),
       text: node.label,
       align: "center",
-      plate: false,
+      labelStyle: "node",
     },
   ];
 };
@@ -564,7 +567,7 @@ const endLabel = (text: string, end: Point, toward: Point): DrawCmd => {
     y: coordinate(end.y + u.y * END_LABEL_INSET + u.x * END_LABEL_NUDGE),
     text,
     align: "center",
-    plate: true,
+    labelStyle: "edge-masked",
   };
 };
 
@@ -578,6 +581,47 @@ export const edgeLabelAnchor = (
 ): { readonly x: Coordinate; readonly y: Coordinate } => {
   const anchor = edgeLabelAnchorAt(points, 0.5);
   return { x: coordinate(anchor.x), y: coordinate(anchor.y) };
+};
+
+// Squared distance from p to the segment a–b.
+const segDistSq = (px: number, py: number, a: Point, b: Point): number => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
+  const cx = a.x + t * dx;
+  const cy = a.y + t * dy;
+  return (px - cx) ** 2 + (py - cy) ** 2;
+};
+
+// Resolve an edge label against its own line, by the orientation of the segment it LIES ON (nearest by
+// point-to-segment distance — a short perpendicular stub's midpoint can be closer than the run the
+// label sits on). A HORIZONTAL run lifts the label above the line (`masked: false`, no plate, no wasted
+// vertical space). A VERTICAL run leaves it in place and asks for a masking plate (`masked: true`) so
+// the text sits in the channel without dodging sideways. `LABEL_LINE_CLEARANCE` = half the 16px label
+// box + a gap, enough that descenders never touch the line.
+const LABEL_LINE_CLEARANCE = 16;
+const labelVsLine = (
+  x: number,
+  y: number,
+  pts: readonly Point[],
+): { readonly x: number; readonly y: number; readonly masked: boolean } => {
+  let best: { readonly a: Point; readonly b: Point } | null = null;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (a === undefined || b === undefined) continue;
+    const d = segDistSq(x, y, a, b);
+    if (d < bestD) {
+      bestD = d;
+      best = { a, b };
+    }
+  }
+  if (best === null) return { x, y, masked: false };
+  return Math.abs(best.b.x - best.a.x) >= Math.abs(best.b.y - best.a.y)
+    ? { x, y: y - LABEL_LINE_CLEARANCE, masked: false }
+    : { x, y, masked: true };
 };
 
 const JUNCTION_R = 3.2; // radius of a bus-junction dot
@@ -711,16 +755,20 @@ export const toDisplayList = (
             ),
     });
     if (edge.label !== null) {
-      // A router that reserved space for the label (ELK) supplies its centre (already nudged off the
-      // line and decollided against nodes in layout); otherwise derive it from the routed midpoint.
+      // The layout decollides the anchor against nodes. Here, at draw time (so no upstream re-routing or
+      // caching can drop it), we resolve the label vs its own line by the orientation of the segment it
+      // sits on: a HORIZONTAL run lifts the label above the line (transparent — no wasted vertical
+      // space); a VERTICAL run keeps it in the channel on a small opaque plate that masks the line (no
+      // wasted horizontal space dodging aside).
       const anchor = edge.labelPos ?? edgeLabelAnchor(pts);
+      const placed = labelVsLine(anchor.x, anchor.y, pts);
       labels.push({
         kind: "label",
-        x: anchor.x,
-        y: anchor.y,
+        x: coordinate(placed.x),
+        y: coordinate(placed.y),
         text: edge.label,
         align: "center",
-        plate: true,
+        labelStyle: placed.masked ? "edge-masked" : "edge",
       });
     }
     // Per-end labels (class multiplicity) sit just inside each endpoint, offset along the first/last
@@ -772,7 +820,14 @@ const decorationCmd = (d: Decoration): DrawCmd => {
         ],
       };
     case "caption":
-      return { kind: "label", x: d.at.x, y: d.at.y, text: d.text, align: d.align, plate: false };
+      return {
+        kind: "label",
+        x: d.at.x,
+        y: d.at.y,
+        text: d.text,
+        align: d.align,
+        labelStyle: "node",
+      };
   }
 };
 
@@ -804,7 +859,7 @@ const wedgeCmds = (wedge: SceneWedge): DrawCmd[] => {
         y: coordinate(wedge.center.y),
         text: wedge.label,
         align: "left",
-        plate: false,
+        labelStyle: "node",
       },
     ];
   }
@@ -818,7 +873,7 @@ const wedgeCmds = (wedge: SceneWedge): DrawCmd[] => {
       y: coordinate(wedge.center.y + lr * Math.sin(mid)),
       text: `${Math.round(wedge.percent)}%`,
       align: "center",
-      plate: true,
+      labelStyle: "edge-masked",
     },
   ];
 };

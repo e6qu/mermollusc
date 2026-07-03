@@ -103,6 +103,7 @@ import { decodePack, defaultRegistry, findIcon, registerPack } from "@m/icons";
 import {
   GANTT_DAY_WIDTH,
   GANTT_LEFT_GUTTER,
+  decollideEdgeLabels,
   layout,
   layoutDiagram,
   type LayoutStyle,
@@ -1016,6 +1017,14 @@ const shownScene = (base: Scene): Scene => {
       nodes: tidied.nodes.map((n) => ({ ...n, shape: "rect" as const })),
       edges: tidied.edges.map((e) => ({ ...e, curved: false })),
     };
+  }
+
+  // applyOverrides and the trunk/bus/tidy re-routing above both reset every edge's labelPos to its line
+  // midpoint, undoing the layout's label decollision (which lifts labels off their line and off nodes).
+  // Re-run it here on the final routed scene so the display matches — skipped mid-drag, where a label
+  // briefly on a line is fine and the per-frame cost isn't worth it.
+  if (!interacting) {
+    tidied = decollideEdgeLabels(tidied, measureLabel);
   }
 
   // The presentation-only overlay (display only): curved edges + node accents from the document.
@@ -3154,6 +3163,7 @@ window.__edgeWaypoints = (edgeId) => {
   if (edge === undefined) return null;
   return edge.waypoints.map((p) => ({ x: p.x, y: p.y }));
 };
+
 window.__nodeBounds = (nodeId) => {
   if (scene === null) return null;
   const node = shownScene(scene).nodes.find((n) => n.id === nodeId);

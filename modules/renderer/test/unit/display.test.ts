@@ -222,12 +222,13 @@ describe("toDisplayList", () => {
     expect(edgeLabel).toBeGreaterThan(lastNode);
   });
 
-  it("plates edge labels (so the line can't strike through) but not node labels", () => {
+  it("marks edge labels as edge-style (not node) so they get the transparent/masked treatment", () => {
     const byText = (t: string) => cmds.find((c) => c.kind === "label" && c.text === t);
     const edgeLabel = byText("go");
     const nodeLabel = byText("A");
-    expect(edgeLabel?.kind === "label" ? edgeLabel.plate : null).toBe(true);
-    expect(nodeLabel?.kind === "label" ? nodeLabel.plate : null).toBe(false);
+    // The base scene edge is vertical (30,40)->(30,80), so its label is masked (opaque plate in-channel).
+    expect(edgeLabel?.kind === "label" ? edgeLabel.labelStyle : null).toBe("edge-masked");
+    expect(nodeLabel?.kind === "label" ? nodeLabel.labelStyle : null).toBe("node");
   });
 
   it("emits an icon command (with the ref) for a node that carries an icon", () => {
@@ -638,7 +639,7 @@ describe("decorations", () => {
     expect(rule?.kind === "polyline" ? rule.dashed : false).toBe(true);
     expect(rule?.kind === "polyline" ? rule.toMarker.lines : null).toEqual([]);
     const caption = cmds.find((c) => c.kind === "label" && c.text === "2024-01-01");
-    expect(caption?.kind === "label" ? caption.plate : true).toBe(false);
+    expect(caption?.kind === "label" ? caption.labelStyle : "edge").toBe("node");
     // decorations draw first (behind the node box)
     expect(cmds.findIndex((c) => c.kind === "polyline")).toBeLessThan(
       cmds.findIndex((c) => c.kind === "box"),

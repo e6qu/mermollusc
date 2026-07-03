@@ -1,5 +1,9 @@
 # @m/layout — work log
 
+- Edge-label decollision keeps only its NODE/label-overlap avoidance; the perpendicular off-line nudge
+  moved to the renderer (draw time), because the app's per-render trunk/bus/tidy re-routing resets every
+  labelPos to its line midpoint and would otherwise drop a layout-side nudge. The app also re-runs
+  decollision after re-routing so node-avoidance survives.
 ## 2026-07-03 — Clean edge mounting + off-line labels (user-reported)
 
 - Box-family (block/network/cloud/c4) edges attach at the side-CENTRE mount and separate in TWO
