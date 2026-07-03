@@ -730,13 +730,25 @@
         top: calc(50% - 0.75px);
         left: 0;
       }
+      /* Swatch fills mirror the renderer's `accentFill` light-theme palette so the picker previews the
+         actual node colour. The architecture accents (compute…ops) round out the four generic ones. */
       .swatch.muted { background-color: #e2e8f0; }
       .swatch.active { background-color: #bfdbfe; }
       .swatch.danger { background-color: #fecaca; }
+      .swatch.compute { background-color: #dcfce7; }
+      .swatch.data { background-color: #fef3c7; }
+      .swatch.network { background-color: #cffafe; }
+      .swatch.security { background-color: #fee2e2; }
+      .swatch.ops { background-color: #ede9fe; }
 
       [data-theme="dark"] .swatch.muted { background: #94a3b8; border-color: #cbd5e1 !important; }
       [data-theme="dark"] .swatch.active { background: #60a5fa; border-color: #bfdbfe !important; }
       [data-theme="dark"] .swatch.danger { background: #f87171; border-color: #fecaca !important; }
+      [data-theme="dark"] .swatch.compute { background: #14532d; border-color: #86efac !important; }
+      [data-theme="dark"] .swatch.data { background: #713f12; border-color: #fde68a !important; }
+      [data-theme="dark"] .swatch.network { background: #164e63; border-color: #a5f3fc !important; }
+      [data-theme="dark"] .swatch.security { background: #7f1d1d; border-color: #fecaca !important; }
+      [data-theme="dark"] .swatch.ops { background: #4c1d95; border-color: #ddd6fe !important; }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -1282,6 +1294,11 @@
               <button class="swatch muted" role="radio" data-accent="muted" aria-label="Muted slate" title="Muted (slate)"></button>
               <button class="swatch active" role="radio" data-accent="active" aria-label="Active blue" title="Active (blue)"></button>
               <button class="swatch danger" role="radio" data-accent="danger" aria-label="Danger red" title="Danger (red)"></button>
+              <button class="swatch compute" role="radio" data-accent="compute" aria-label="Compute green" title="Compute (green)"></button>
+              <button class="swatch data" role="radio" data-accent="data" aria-label="Data amber" title="Data (amber)"></button>
+              <button class="swatch network" role="radio" data-accent="network" aria-label="Network cyan" title="Network (cyan)"></button>
+              <button class="swatch security" role="radio" data-accent="security" aria-label="Security red" title="Security (red)"></button>
+              <button class="swatch ops" role="radio" data-accent="ops" aria-label="Ops violet" title="Ops (violet)"></button>
             </div>
             <button id="ctx-curve" type="button" title="Curve or straighten this connector (visual only)">Curve</button>
             <button id="ctx-reroute" type="button" title="Cycle through alternative obstacle-avoiding routes (smart routing)">Reroute</button>
