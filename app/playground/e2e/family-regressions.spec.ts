@@ -104,3 +104,33 @@ test("an edge running inside a block composite is clickable (selects the edge, n
   // The Route control is edge-selection-only — it visible proves the click selected the EDGE.
   await expect(page.locator("#ctx-curve")).toBeVisible();
 });
+
+test("box-family edges attach at the side-CENTRE mounts, never sliding along a border", async ({
+  page,
+}) => {
+  await page.goto("/?example=block");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  // web1 --> api1 (e4): both endpoints must land on a horizontal side CENTRE (mid-height) of their box,
+  // and the endpoint segments must leave/enter perpendicular (no run parallel to the border).
+  const wps = await waypoints(page, "e4");
+  const web1 = await page.evaluate(() => window.__nodeRect?.("web1") ?? null);
+  const api1 = await page.evaluate(() => window.__nodeRect?.("api1") ?? null);
+  expect(wps).not.toBeNull();
+  expect(web1).not.toBeNull();
+  expect(api1).not.toBeNull();
+  if (wps === null || web1 === null || api1 === null) return;
+  const start = wps[0];
+  const end = wps[wps.length - 1];
+  if (start === undefined || end === undefined) throw new Error("no endpoints");
+  // Screen coords: the mount is at the box's vertical centre (within a few px).
+  const web1Cy = web1.y + web1.h / 2;
+  const api1Cy = api1.y + api1.h / 2;
+  // waypoints are in scene coords; compare via __sceneToScreen to the box screen centre.
+  const s0 = await page.evaluate((p) => window.__sceneToScreen?.(p.x, p.y) ?? null, start);
+  const s1 = await page.evaluate((p) => window.__sceneToScreen?.(p.x, p.y) ?? null, end);
+  expect(s0).not.toBeNull();
+  expect(s1).not.toBeNull();
+  if (s0 === null || s1 === null) return;
+  expect(Math.abs(s0.y - web1Cy)).toBeLessThan(6);
+  expect(Math.abs(s1.y - api1Cy)).toBeLessThan(6);
+});

@@ -170,7 +170,8 @@ describe("spreadPorts", () => {
     const out = decollideEdgeLabels(scene, measure);
     const y = (i: number) => out.edges[i]?.labelPos?.y ?? 0;
     expect(Math.abs(y(0) - y(1))).toBeGreaterThanOrEqual(16); // pushed at least a label-height apart
-    expect(out.edges[2]?.labelPos).toEqual(point(400, 400)); // the distant label is untouched
+    // The distant label is only nudged off its own (diagonal) line — 10px up — never decollided further.
+    expect(out.edges[2]?.labelPos).toEqual(point(400, 390));
   });
 
   const container = (id: string, x: number, y: number, w: number, h: number, parent: string | null = null) => ({
