@@ -1,5 +1,26 @@
 # @m/layout — work log
 
+## 2026-07-03 — Lift edge segments off node/container borders they run along
+
+- Container TITLE BANDS are obstacles for the pass too (a shift must never land a leg in the band where
+  the group label sits), and the shift always moves AWAY from the hugged box's interior — an earlier
+  variant that chose "the side with more room" once pushed a leg through a node between its endpoints.
+- Scope note: the pass owns HUGGING (tangent-to-border) legs only. Through-node crossings (a connector
+  cutting across a node in its path) are a separate, deeper problem — a local perpendicular shift can't
+  route AROUND a node, and an interior-aware variant just relocated crossings elsewhere. That needs the
+  maze router run on the re-routed trunk edges, or per-edge mount selection (see DO_NEXT).
+
+- New `separateEdgesFromBorders` core pass (wired into `layoutDiagram` after the mount snap, and re-run
+  in the app's `shownScene` after its trunk/bus/tidy re-route, before decollision). A channel leg placed
+  exactly on a box's edge merges into that box's outline — the obstacle routers never catch it because
+  running TANGENT to a border isn't crossing it. The pass shifts only INTERIOR (non-mount-anchored)
+  segments perpendicular into the clear gap, toward the side with more room; in a gap too tight for full
+  clearance it centres the segment rather than hopping onto the next border (which oscillated). Endpoints
+  stay put, so mounts and orthogonality are preserved.
+- Verified on the rendered scenes: cloud dropped from 6 border-hugging legs to 0, c4 clean. Two residuals
+  remain (network `fw→rtr`, block `lb→web1`) — 3-point L-edges whose MOUNT-anchored segment sits on an
+  adjacent box's border because the mount itself is on that line; fixing those needs mount re-selection
+  (the same per-edge-port redesign as block column spans), not a post-routing shift. Documented in DO_NEXT.
 - Edge-label decollision keeps only its NODE/label-overlap avoidance; the perpendicular off-line nudge
   moved to the renderer (draw time), because the app's per-render trunk/bus/tidy re-routing resets every
   labelPos to its line midpoint and would otherwise drop a layout-side nudge. The app also re-runs

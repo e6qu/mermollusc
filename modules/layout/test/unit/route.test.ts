@@ -7,6 +7,7 @@ import {
   respreadPorts,
   retidyRoutes,
   routeWaypoints,
+  separateEdgesFromBorders,
   snapSceneEdgesToMountPoints,
   spreadPorts,
   trunkRoutes,
@@ -506,5 +507,80 @@ describe("snapSceneEdgesToMountPoints", () => {
     expect([point(280, 150), point(200, 150), point(240, 180), point(240, 120)]).toContainEqual(
       last,
     );
+  });
+});
+
+describe("separateEdgesFromBorders", () => {
+  const snid = (id: string) => brand<string, "SceneNodeId">(id);
+  const seid = (id: string) => brand<string, "SceneEdgeId">(id);
+  const box = (id: string, x: number, y: number, w: number, h: number, shape: "rect" | "container" = "rect") => ({
+    id: snid(id), bounds: rect(x, y, w, h), label: id, shape, parent: null, icon: null,
+    rowDivider: null, subtitle: null, accent: "none" as const, role: "normal" as const, rows: null,
+  });
+  const edge = (from: string, to: string, wp: ReturnType<typeof point>[]) => {
+    const [a, b, ...rest] = wp;
+    return {
+      id: seid(`${from}-${to}`), from: snid(from), to: snid(to),
+      waypoints: twoOrMore(a!, b!, ...rest),
+      label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
+      curved: false, fromLabel: null, toLabel: null, labelPos: null,
+    };
+  };
+
+  it("lifts an interior segment off a non-endpoint box's border it runs along", () => {
+    const scene = {
+      nodes: [box("A", 0, 0, 40, 30), box("B", 400, 300, 40, 30), box("O", 100, 100, 120, 40)],
+      edges: [edge("A", "B", [point(20, 30), point(20, 140), point(300, 140), point(300, 300)])],
+      wedges: [], decorations: [], extent: rect(0, 0, 440, 340),
+    };
+    const wp = separateEdgesFromBorders(scene).edges[0]!.waypoints;
+    const interiorYs = wp.slice(1, -1).map((p) => p.y);
+    // no interior leg still on O's bottom border (y=140); pushed clear (below it)
+    expect(interiorYs.every((y) => Math.abs(y - 140) > 6)).toBe(true);
+    expect(Math.max(...interiorYs)).toBeGreaterThan(140);
+    // the mount endpoints are untouched
+    expect([wp[0]!.x, wp[0]!.y]).toEqual([20, 30]);
+    expect([wp.at(-1)!.x, wp.at(-1)!.y]).toEqual([300, 300]);
+  });
+
+  it("centres a segment in a narrow gap instead of hopping onto the next border", () => {
+    // Two boxes 20px apart; a leg on the left box's right border can't clear 12px both ways, so it
+    // settles at the gap centre (x≈150) rather than landing on the right box's left border (x=160).
+    const scene = {
+      nodes: [box("A", 0, 0, 40, 30), box("B", 400, 300, 40, 30),
+        box("L", 60, 100, 80, 80), box("R", 160, 100, 80, 80)],
+      edges: [edge("A", "B", [point(20, 30), point(20, 140), point(140, 140), point(140, 300), point(400, 300)])],
+      wedges: [], decorations: [], extent: rect(0, 0, 440, 340),
+    };
+    const wp = separateEdgesFromBorders(scene).edges[0]!.waypoints;
+    const vertX = wp.slice(1, -1).map((p) => p.x).find((x) => Math.abs(x - 140) < 40);
+    expect(vertX).toBeDefined();
+    // clear of BOTH L's right (140) and R's left (160) — sitting near the 150 gap centre
+    expect(Math.abs(vertX! - 140)).toBeGreaterThan(4);
+    expect(Math.abs(vertX! - 160)).toBeGreaterThan(4);
+  });
+
+  it("shifts a border-hugging segment AWAY from the box, never through its interior", () => {
+    // Regression: a leg on O's bottom border (y=250) must move DOWN into the free gap below, never UP
+    // through O's own body toward its far (top) border — which once routed an edge through a node.
+    const scene = {
+      nodes: [box("A", 0, 0, 40, 30), box("B", 400, 400, 40, 30), box("O", 100, 200, 200, 50)],
+      edges: [edge("A", "B", [point(20, 30), point(20, 250), point(350, 250), point(350, 400)])],
+      wedges: [], decorations: [], extent: rect(0, 0, 460, 440),
+    };
+    const wp = separateEdgesFromBorders(scene).edges[0]!.waypoints;
+    const midYs = wp.slice(1, -1).map((p) => p.y);
+    expect(midYs.some((y) => y > 250)).toBe(true); // moved into the free gap below O
+    expect(midYs.every((y) => !(y > 202 && y < 248))).toBe(true); // none strictly inside O (200..250)
+  });
+
+  it("leaves a clean edge untouched", () => {
+    const scene = {
+      nodes: [box("A", 0, 0, 40, 30), box("B", 400, 300, 40, 30)],
+      edges: [edge("A", "B", [point(20, 30), point(20, 200), point(300, 200), point(300, 300)])],
+      wedges: [], decorations: [], extent: rect(0, 0, 440, 340),
+    };
+    const out = separateEdgesFromBorders(scene);
+    expect(out.edges[0]!.waypoints).toEqual(scene.edges[0]!.waypoints);
   });
 });

@@ -104,6 +104,7 @@ import {
   GANTT_DAY_WIDTH,
   GANTT_LEFT_GUTTER,
   decollideEdgeLabels,
+  separateEdgesFromBorders,
   layout,
   layoutDiagram,
   type LayoutStyle,
@@ -214,6 +215,12 @@ declare global {
     // e2e hook: an edge's shown waypoints (scene coordinates) — regression guard for scene-corruption
     // bugs (an app-side post-pass once collapsed every sequence message onto the header row).
     __edgeWaypoints?: (edgeId: string) => { x: number; y: number }[] | null;
+    // e2e hook: the whole shown scene's node bounds + edge waypoints (scene coords) — for asserting
+    // routing invariants like "no edge segment runs along a non-endpoint node border".
+    __shownGeometry?: () => {
+      nodes: { id: string; shape: string; x: number; y: number; w: number; h: number }[];
+      edges: { from: string; to: string; waypoints: { x: number; y: number }[] }[];
+    } | null;
     // e2e hook: scene → viewport CSS px, so specs can click computed scene geometry (e.g. an edge
     // midpoint) without duplicating the zoom/scroll math.
     __sceneToScreen?: (x: number, y: number) => { x: number; y: number } | null;
@@ -1019,12 +1026,12 @@ const shownScene = (base: Scene): Scene => {
     };
   }
 
-  // applyOverrides and the trunk/bus/tidy re-routing above both reset every edge's labelPos to its line
-  // midpoint, undoing the layout's label decollision (which lifts labels off their line and off nodes).
-  // Re-run it here on the final routed scene so the display matches — skipped mid-drag, where a label
-  // briefly on a line is fine and the per-frame cost isn't worth it.
+  // The trunk/bus/tidy re-routing above re-derives edge geometry, so (like the layout does) run the
+  // corrective cleanups it undoes: for the box families, detour any connector cutting THROUGH a node
+  // (maze) and lift channel legs off borders they landed along; then re-run label decollision. Skipped
+  // mid-drag, where a transient crossing is fine and the per-frame cost isn't worth it.
   if (!interacting) {
-    tidied = decollideEdgeLabels(tidied, measureLabel);
+    tidied = decollideEdgeLabels(separateEdgesFromBorders(tidied), measureLabel);
   }
 
   // The presentation-only overlay (display only): curved edges + node accents from the document.
@@ -3162,6 +3169,25 @@ window.__edgeWaypoints = (edgeId) => {
   const edge = shownScene(scene).edges.find((e) => e.id === edgeId);
   if (edge === undefined) return null;
   return edge.waypoints.map((p) => ({ x: p.x, y: p.y }));
+};
+window.__shownGeometry = () => {
+  if (scene === null) return null;
+  const sh = shownScene(scene);
+  return {
+    nodes: sh.nodes.map((n) => ({
+      id: n.id,
+      shape: n.shape,
+      x: n.bounds.origin.x,
+      y: n.bounds.origin.y,
+      w: n.bounds.size.width,
+      h: n.bounds.size.height,
+    })),
+    edges: sh.edges.map((e) => ({
+      from: e.from,
+      to: e.to,
+      waypoints: e.waypoints.map((p) => ({ x: p.x, y: p.y })),
+    })),
+  };
 };
 
 window.__nodeBounds = (nodeId) => {

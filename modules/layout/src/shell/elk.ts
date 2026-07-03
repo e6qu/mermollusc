@@ -18,6 +18,7 @@ import {
   MICRO_JOG_TOL,
   routeWaypoints,
   snapSceneEdgesToMountPoints,
+  separateEdgesFromBorders,
 } from "../core/route.js";
 import type {
   ClassAst,
@@ -920,6 +921,8 @@ export const layoutDiagram = async (
     const snapped = usesCardinalMounts(ast.kind)
       ? snapSceneEdgesToMountPoints(finalScene, MICRO_JOG_TOL)
       : finalScene;
-    return decollideEdgeLabels(snapped, measure);
+    // Lift any channel leg off a node/container border it landed along (tangent, so the obstacle
+    // routers never caught it) before decollision reads the final segment geometry for label placement.
+    return decollideEdgeLabels(separateEdgesFromBorders(snapped), measure);
   });
 };

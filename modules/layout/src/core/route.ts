@@ -1601,3 +1601,121 @@ export const snapSceneEdgesToMountPoints = (scene: Scene, microJogTol = 0): Scen
   });
   return { ...scene, edges };
 };
+
+const BORDER_TOL = 7; // a segment within this of a parallel border counts as "hugging" it
+const BORDER_CLEAR = 12; // push a hugging segment this far off the border
+
+interface Border {
+  readonly coord: number; // the border's position in the perpendicular axis
+  readonly away: 1 | -1; // the direction pointing AWAY from this box's interior (into free space)
+}
+
+// Parallel borders (in the perpendicular axis) of every non-endpoint box that overlaps the segment's
+// extent, each tagged with the direction AWAY from its box's interior. `horizontal` reads the boxes' y
+// edges (top/bottom) over the segment's x-span; vertical reads x edges over the y-span.
+const overlappingBorders = (
+  a: Point,
+  b: Point,
+  horizontal: boolean,
+  boxes: ReadonlyArray<{ readonly id: string; readonly box: RouteBox }>,
+  from: string,
+  to: string,
+): Border[] => {
+  const borders: Border[] = [];
+  const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+  const hi = horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+  for (const { id, box } of boxes) {
+    if (id === from || id === to) continue;
+    const bLo = horizontal ? box.x : box.y;
+    const bHi = horizontal ? box.x + box.w : box.y + box.h;
+    if (lo >= bHi - 2 || hi <= bLo + 2) continue; // segment doesn't run alongside this box
+    // Near border (top/left) → away is negative (out of the box); far border (bottom/right) → positive.
+    borders.push({ coord: horizontal ? box.y : box.x, away: -1 });
+    borders.push({ coord: horizontal ? box.y + box.h : box.x + box.w, away: 1 });
+  }
+  return borders;
+};
+
+// The perpendicular shift that lifts an axis-aligned segment off any non-endpoint box border it runs
+// ALONG. It always moves AWAY from the hugged box's interior (moving the other way would cross INTO that
+// box — the bug that once pushed an edge through a node between its endpoints). If the gap to the next
+// border on the away side is too tight for full clearance, it centres the segment in that gap rather
+// than hopping onto the next border (which oscillated in narrow channels). 0 if nothing hugs.
+//
+// Deliberately scoped to HUGGING (tangent-to-a-border) only, not through-node crossings: a local
+// perpendicular shift can't route an edge AROUND a node in its way, and trying (an earlier interior-aware
+// variant) just relocated crossings elsewhere — that needs the maze router / mount re-selection instead.
+const borderHugShift = (
+  a: Point,
+  b: Point,
+  horizontal: boolean,
+  boxes: ReadonlyArray<{ readonly id: string; readonly box: RouteBox }>,
+  from: string,
+  to: string,
+): number => {
+  const coord = horizontal ? a.y : a.x;
+  const borders = overlappingBorders(a, b, horizontal, boxes, from, to);
+  let hugged: Border | null = null;
+  let huggedDist = BORDER_TOL;
+  for (const border of borders) {
+    const d = Math.abs(coord - border.coord);
+    if (d < huggedDist) {
+      huggedDist = d;
+      hugged = border;
+    }
+  }
+  if (hugged === null) return 0;
+  // Free room on the away side = distance to the nearest border beyond the hugged one that way.
+  let gap = Number.POSITIVE_INFINITY;
+  for (const border of borders) {
+    const delta = (border.coord - hugged.coord) * hugged.away;
+    if (delta > 1) gap = Math.min(gap, delta);
+  }
+  const offset = gap === Number.POSITIVE_INFINITY ? BORDER_CLEAR : Math.min(BORDER_CLEAR, gap / 2);
+  return hugged.coord + hugged.away * offset - coord;
+};
+
+// Lift edge segments off node/container borders they run ALONG. A channel leg placed exactly on a box's
+// edge merges into that box's outline — the obstacle routers never catch it, because running tangent to
+// a border isn't crossing it. Only INTERIOR segments move (never the mount-anchored first/last), shifted
+// perpendicular into the clear gap; a few passes let a shift that reveals a new hug settle. Endpoints
+// stay put, so orthogonality and the mounts are preserved.
+export const separateEdgesFromBorders = (scene: Scene): Scene => {
+  // Node bodies plus each container's TITLE BAND (a thin box at its top where the group label sits): a
+  // segment must clear the band too, and shifting one must never land in it.
+  const boxes = scene.nodes.flatMap((n) => {
+    const body = { id: n.id, box: routeBoxOf(n) };
+    if (n.shape !== "container") return [body];
+    return [body, { id: `${n.id}:hdr`, box: containerHeaderBox(routeBoxOf(n), n.label) }];
+  });
+  const edges = scene.edges.map((e): SceneEdge => {
+    if (e.waypoints.length < 4 || e.from === e.to) return e;
+    let pts: Point[] = [...e.waypoints];
+    let moved = false;
+    for (let pass = 0; pass < 3; pass++) {
+      let passMoved = false;
+      for (let i = 1; i + 1 <= pts.length - 2; i++) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        if (a === undefined || b === undefined) continue;
+        const horizontal = Math.abs(a.y - b.y) < 0.5;
+        const vertical = Math.abs(a.x - b.x) < 0.5;
+        if (!horizontal && !vertical) continue;
+        const shift = borderHugShift(a, b, horizontal, boxes, e.from, e.to);
+        if (shift === 0) continue;
+        pts[i] = horizontal ? point(a.x, a.y + shift) : point(a.x + shift, a.y);
+        pts[i + 1] = horizontal ? point(b.x, b.y + shift) : point(b.x + shift, b.y);
+        passMoved = true;
+      }
+      if (!passMoved) break;
+      moved = true;
+      pts = compactPoints(pts);
+    }
+    if (!moved) return e;
+    const [w0, w1, ...wr] = pts;
+    if (w0 === undefined || w1 === undefined) return e;
+    const waypoints = twoOrMore(w0, w1, ...wr);
+    return { ...e, waypoints, labelPos: e.labelPos === null ? null : pathMidpoint(waypoints) };
+  });
+  return { ...scene, edges };
+};
