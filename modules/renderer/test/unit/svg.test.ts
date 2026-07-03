@@ -79,6 +79,47 @@ describe("toSvg", () => {
     expect(banded).toMatch(/<rect x="0" y="10" width="80" height="30" fill="#[0-9a-f]{6}"\/>/);
   });
 
+  it("renders a directed multi-bend edge's interior direction chevrons (decorated finish)", () => {
+    // A 3-leg forward route (4 corners): the two interior legs get chevrons (the arrowhead leg is
+    // skipped). Exercises the mid-marker rendering path in the SVG backend.
+    const bent: Scene = {
+      nodes: [
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", role: "normal", rows: null },
+        { id: snid("B"), bounds: rect(300, 200, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", role: "normal", rows: null },
+      ],
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(60, 20), point(200, 20), point(200, 220), point(300, 220)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 360, 240),
+    };
+    const out = toSvg(toDisplayList(bent), {
+      width: 400,
+      height: 280,
+      origin: { x: 0, y: 0 },
+      margin: 20,
+      theme: defaultTheme,
+      icons: new Map(),
+    });
+    // Each chevron is an open "V" of two stroked <line>s; two interior legs → at least four.
+    const lines = out.match(/<line /g) ?? [];
+    expect(lines.length).toBeGreaterThanOrEqual(4);
+  });
+
   it("maps each shape kind to its SVG element", () => {
     expect(svg).toContain("<rect"); // the rect node (+ background)
     expect(svg).toContain("<polygon"); // the diamond node

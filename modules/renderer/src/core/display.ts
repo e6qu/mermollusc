@@ -296,6 +296,28 @@ const directionHint = (mid: Point, flow: Point): EndMarker => {
 // One chevron per segment of a directed, straight (non-curved) edge, pointing the way flow travels:
 // toward the target when the head is at the target end, toward the source when it's reversed. Undirected
 // or curved edges get none.
+// Reduce a polyline to its corner points: drop any interior point whose two adjacent segments run in
+// the same direction (a collinear waypoint the router inserted). Endpoints are always kept.
+const collinearCorners = (points: readonly Point[]): readonly Point[] => {
+  if (points.length <= 2) return points;
+  const out: Point[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (p === undefined) continue;
+    const prev = out[out.length - 1];
+    const next = points[i + 1];
+    if (prev === undefined || next === undefined) {
+      out.push(p);
+      continue;
+    }
+    const cross = (p.x - prev.x) * (next.y - p.y) - (p.y - prev.y) * (next.x - p.x);
+    const sameDir = (p.x - prev.x) * (next.x - p.x) + (p.y - prev.y) * (next.y - p.y) > 0;
+    if (Math.abs(cross) < 0.01 && sameDir) continue; // collinear, same heading → drop this interior point
+    out.push(p);
+  }
+  return out;
+};
+
 const directionHints = (
   points: readonly Point[],
   fromEnd: EdgeEnd,
@@ -305,10 +327,20 @@ const directionHints = (
   const forward = DIRECTIONAL_ENDS.has(toEnd);
   const backward = !forward && DIRECTIONAL_ENDS.has(fromEnd);
   if (curved || (!forward && !backward)) return [];
+  // Collapse to CORNERS: the routers emit several collinear waypoints along one straight run (stub +
+  // lane legs), and a per-waypoint-segment chevron would stamp several onto a visually-straight edge.
+  // Merging collinear points makes a straight run a single leg, so a plain A→B edge is one segment.
+  const corners = collinearCorners(points);
   const hints: EndMarker[] = [];
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
+  for (let i = 1; i < corners.length; i++) {
+    // Skip the leg that already carries the end arrowhead (last for a forward edge, first for a backward
+    // one): a mid-chevron there sits beside the head and reads as a doubled arrowhead — most visibly on
+    // a short single-leg edge, which would otherwise show two heads. Chevrons earn their keep only on
+    // the interior legs of a multi-bend route, where the head isn't visible.
+    if (forward && i === corners.length - 1) continue;
+    if (backward && i === 1) continue;
+    const a = corners[i - 1];
+    const b = corners[i];
     if (a === undefined || b === undefined) continue;
     if (Math.hypot(b.x - a.x, b.y - a.y) < HINT_MIN_SEG) continue;
     const mid = point((a.x + b.x) / 2, (a.y + b.y) / 2);

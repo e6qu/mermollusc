@@ -1,5 +1,11 @@
 # @m/renderer — work log
 
+- Direction chevrons ("decorated" finish) no longer double up with the arrowhead. Two fixes in
+  `directionHints`: (1) collapse collinear waypoints to CORNERS first, so the several collinear legs the
+  routers emit along one straight run count as a single leg (a plain A→B edge became several chevrons);
+  (2) skip the leg that already carries the end arrowhead (last for forward, first for backward), whose
+  chevron sat beside the head and read as a doubled arrowhead — worst on short single-leg edges. Chevrons
+  now appear only on the interior legs of a genuine multi-bend route.
 - Edge-label placement is orientation-aware (user direction). The label DrawCmd's `plate: boolean`
   became `labelStyle: "node" | "edge" | "edge-masked"`. At draw time (immune to any upstream
   re-routing/caching that resets labelPos), toDisplayList picks by the segment the label lies on
