@@ -50,8 +50,18 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
+      # `actions/deploy-pages` occasionally fails with a transient "Deployment failed, try again later"
+      # from the Pages API even though the build artifact is fine. With no retry, that silently strands
+      # the live demo on the previous commit (it happened to #253, leaving the deployed demo a build
+      # behind for hours). A fresh deployment attempt clears it, so try once more on failure — same
+      # pinned action, no new dependency. The job still fails if the second attempt also fails.
       - name: Deploy
         id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Deploy (retry transient Pages failure)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4

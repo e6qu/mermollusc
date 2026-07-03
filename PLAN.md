@@ -100,7 +100,9 @@ per-module coverage thresholds (ratchets in each module's `vitest.config.ts`).
 GitHub Pages publishes a generated static artifact from `.github/workflows/pages.yml`: `site/` owns
 the reserved root presentation page, and `make pages-build` emits the backend-free playground under
 `site-dist/demo/` for `https://e6qu.github.io/mermollusc/demo/`. Future docs and Storybook builds are
-reserved for `/docs/` and `/storybook/`.
+reserved for `/docs/` and `/storybook/`. The deploy step retries once on a transient Pages-API failure
+(`actions/deploy-pages` occasionally reports "try again later" with a good artifact); without the retry
+a hiccup silently strands the live demo on the previous commit.
 
 ## Roadmap — the plan ahead
 
