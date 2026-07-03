@@ -1,5 +1,14 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Miro-style edge control points
+
+- A selected edge now shows draggable BEND HANDLES (filled dots) at each interior control point plus a
+  small hollow ADD-DOT at each segment midpoint. Drag a handle to move a bend; click/drag an add-dot to
+  insert a new control point; double-click a handle to remove it (Miro's white-bullet reset), auto-
+  routing again once all are gone. Manual bends are stored in the overlay (`EdgeStyle.waypoints`), so
+  they persist, share-link, collab-sync, and export like every other overlay edit; the route-style
+  (Square/Straight/Curved) still renders the segments between them. New `edge-control-points` e2e.
+
 ## 2026-07-03 — Box-family edges reroute around nodes they crossed/hugged
 
 - shownScene runs the new `rerouteBoxEdges` (after its trunk/bus re-route, before the border pass) for

@@ -1,5 +1,8 @@
 # @m/contracts — work log
 
+- `EdgeStyle` gained `waypoints: readonly Point[] | null` — the user's manual bend points (Miro-style
+  control points), absolute scene coords, `null` = auto-routed. Endpoints still attach to node mounts.
+
 - `StateAst` now carries a required `direction` so state diagrams can lay out left-to-right, right-to-left,
   bottom-to-top, or top-to-bottom instead of being forced through one direction downstream.
 - `EdgeStyle` now carries `labelT: number | null`, the persisted relative position of a movable edge

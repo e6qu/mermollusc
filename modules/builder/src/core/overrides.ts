@@ -60,6 +60,25 @@ export const applyStyles = (
             const anchor = edgeLabelAnchorAt(points, s.labelT);
             return point(anchor.x, anchor.y);
           };
+          // Manual control points win over auto-routing: keep the endpoints attached to the current
+          // node mounts (first/last laid-out waypoint) and thread the user's interior bends between them.
+          if (s.waypoints !== null && s.waypoints.length > 0) {
+            const start = e.waypoints[0];
+            const end = e.waypoints[e.waypoints.length - 1];
+            if (start !== undefined && end !== undefined) {
+              const pts = [start, ...s.waypoints, end];
+              const [w0, w1, ...wr] = pts;
+              if (w0 !== undefined && w1 !== undefined) {
+                const routed = twoOrMore(w0, w1, ...wr);
+                return {
+                  ...e,
+                  curved: s.route === "curved",
+                  waypoints: routed,
+                  labelPos: labelPos(routed),
+                };
+              }
+            }
+          }
           // `straight` collapses the route to a direct endpoint→endpoint line; `curved` flags the
           // rounded-corner render; `square` keeps the laid-out right-angle route. The label follows.
           if (s.route === "straight") {

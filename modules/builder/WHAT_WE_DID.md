@@ -1,5 +1,8 @@
 # @m/builder — work log
 
+- `applyStyles` threads an edge's manual `waypoints` between its current node-attached endpoints (they
+  win over auto-routing; `curved` smooths them). Overlay serialization round-trips the waypoints.
+
 - `hitTest` priority is leaf nodes → edges → containers (was: all nodes → edges). A container's bounds
   cover everything inside it, so testing containers before edges made every edge routed through a
   group (block composites, cloud groups, subgraphs) unclickable — the click always selected the
