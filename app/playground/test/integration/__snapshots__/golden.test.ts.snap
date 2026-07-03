@@ -2,8 +2,8 @@
 
 exports[`pipeline goldens > lays out block to a stable display list 1`] = `
 [
-  "polyline 48,20 48,10 110,20 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 110,20 79,20 79,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 48,20 48,10 110,20 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 110,20 79,20 79,104 48,104 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "box 0,0 48x40 r0",
   "label "Web" 24,20 center",
   "box 110,0 48x40 r0",
@@ -17,7 +17,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 [
   "box 144,0 264x98 r4",
   "label "Backend" 276,12 center",
-  "polyline 80,28 120,28 120,54 160,54 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 80,28 120,28 120,54 160,54 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "box 0,0 80x56 r8",
   "label "Alice" 40,28 center",
   "box 160,26 80x56 r0",
@@ -30,7 +30,7 @@ exports[`pipeline goldens > lays out c4 to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out class to a stable display list 1`] = `
 [
-  "polyline 82,98 82,158 62,158 dashed=false from=l0p1c0 to=l0p0c0 mid=2",
+  "polyline 82,98 82,158 62,158 dashed=false from=l0p1c0 to=l0p0c0 mid=1",
   "polyline 82,98 82,112 212,112 212,158 dashed=false from=l0p1c0 to=l0p0c0 mid=0",
   "box 22,12 120x86 r0",
   "label "«abstract»" 82,22 center",
@@ -62,8 +62,8 @@ exports[`pipeline goldens > lays out cloud to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out dot to a stable display list 1`] = `
 [
-  "polyline 60,32 100,32 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 172,32 212,32 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 60,32 100,32 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 172,32 212,32 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
   "box 12,12 48x40 r0",
   "label "a" 36,32 center",
   "box 100,12 72x40 r8",
@@ -89,10 +89,10 @@ exports[`pipeline goldens > lays out er to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out flowchart to a stable display list 1`] = `
 [
-  "polyline 149,52 149,92 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 149,132 149,230 130,230 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
-  "polyline 149,132 149,146 184,146 184,284 138,284 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=4",
-  "polyline 130,270 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 149,52 149,92 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 149,132 149,230 130,230 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 149,132 149,146 184,146 184,284 138,284 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
+  "polyline 130,270 138,310 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
   "box 117,12 64x40 r0",
   "label "Start" 149,32 center",
   "diamond 149,112 112x40",
@@ -117,7 +117,7 @@ exports[`pipeline goldens > lays out gantt to a stable display list 1`] = `
   "label "2024-01-08" 208,8 center",
   "label "Work" 8,33 left",
   "polyline 176,33 184,33 184,63 176,63 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 288,63 296,63 296,123 266,123 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
+  "polyline 288,63 296,63 296,123 266,123 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
   "polyline 144,93 274,93 274,123 266,123 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
   "box 96,22 80x22 r0",
   "label "Research" 136,33 center",
@@ -152,10 +152,10 @@ exports[`pipeline goldens > lays out gantt-excludes to a stable display list 1`]
 
 exports[`pipeline goldens > lays out gitGraph to a stable display list 1`] = `
 [
-  "polyline 144,44 176,78 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 145,30 233,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 261,30 291,30 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 203,85 291,37 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 144,44 176,78 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 145,30 233,30 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 261,30 291,30 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 203,85 291,37 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
   "box 16,5 72x50 r0",
   "label "main" 52,30 center",
   "box 16,67 72x50 r0",
@@ -222,7 +222,7 @@ exports[`pipeline goldens > lays out pie to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out requirement to a stable display list 1`] = `
 [
-  "polyline 98,82 98,220 dashed=true from=l0p0c0 to=l2p0c0 mid=1",
+  "polyline 98,82 98,220 dashed=true from=l0p0c0 to=l2p0c0 mid=0",
   "box 34,220 128x90 r0",
   "label "req" 98,235 center",
   "polyline 34,250 162,250 dashed=false from=l0p0c0 to=l0p0c0 mid=0",
@@ -244,8 +244,8 @@ exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
 [
   "polyline 32,40 32,190 dashed=true from=l0p0c0 to=l0p0c0 mid=0",
   "polyline 154,40 154,190 dashed=true from=l0p0c0 to=l0p0c0 mid=0",
-  "polyline 32,120 154,120 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 154,160 32,160 dashed=true from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 32,120 154,120 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 154,160 32,160 dashed=true from=l0p0c0 to=l0p1c0 mid=0",
   "box 0,0 64x40 r0",
   "label "Alice" 32,20 center",
   "box 124,0 60x40 r0",
@@ -257,10 +257,10 @@ exports[`pipeline goldens > lays out sequence to a stable display list 1`] = `
 
 exports[`pipeline goldens > lays out state to a stable display list 1`] = `
 [
-  "polyline 66,60 66,100 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 66,140 66,238 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 66,278 66,376 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 66,416 66,456 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 66,60 66,100 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 66,140 66,238 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 66,278 66,376 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 66,416 66,456 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
   "stateStart 66,36 r24",
   "box 38,100 56x40 r8",
   "label "Idle" 66,120 center",
@@ -278,11 +278,11 @@ exports[`pipeline goldens > lays out state-composite to a stable display list 1`
 [
   "box 12,100 216x218 r4",
   "label "Active" 120,112 center",
-  "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
-  "polyline 192,236 192,266 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
-  "polyline 172,266 172,246 83,246 83,168 dashed=false from=l0p0c0 to=l0p1c0 mid=3",
-  "polyline 83,168 84,256 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
-  "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 120,60 120,100 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
+  "polyline 192,236 192,266 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 172,266 172,246 83,246 83,168 dashed=false from=l0p0c0 to=l0p1c0 mid=2",
+  "polyline 83,168 84,256 172,266 dashed=false from=l0p0c0 to=l0p1c0 mid=1",
+  "polyline 120,318 120,358 dashed=false from=l0p0c0 to=l0p1c0 mid=0",
   "stateStart 120,36 r24",
   "stateEnd 120,382 r24",
   "stateStart 192,212 r24",

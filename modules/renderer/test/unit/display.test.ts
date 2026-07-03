@@ -47,7 +47,7 @@ describe("toDisplayList", () => {
     expect(cmds.filter((c) => c.kind === "diamond")).toHaveLength(1);
   });
 
-  it("puts a direction chevron on each long segment of a directed edge, and none when undirected", () => {
+  it("puts a direction chevron on interior legs of a directed edge (not the arrowhead leg), none when undirected", () => {
     const threeLeg = (toEnd: "none" | "arrow"): Scene => ({
       ...scene,
       edges: [
@@ -68,12 +68,90 @@ describe("toDisplayList", () => {
       ],
     });
     const directed = toDisplayList(threeLeg("arrow")).find((c) => c.kind === "polyline");
-    expect(directed?.kind === "polyline" ? directed.midMarkers.length : -1).toBe(2); // one per leg
+    // Two legs, but the LAST leg carries the arrowhead — a chevron there reads as a doubled head, so
+    // only the interior (first) leg gets one.
+    expect(directed?.kind === "polyline" ? directed.midMarkers.length : -1).toBe(1);
     const undirected = toDisplayList(threeLeg("none")).find((c) => c.kind === "polyline");
     expect(undirected?.kind === "polyline" ? undirected.midMarkers.length : -1).toBe(0);
     // plainEdges (the classic/Mermaid-parity look) suppresses the chevrons even on directed edges.
     const plain = toDisplayList(threeLeg("arrow"), false, "plain").find((c) => c.kind === "polyline");
     expect(plain?.kind === "polyline" ? plain.midMarkers.length : -1).toBe(0);
+  });
+
+  it("a short single-segment directed edge gets NO mid-chevron (only its arrowhead — no double head)", () => {
+    const oneLeg: Scene = {
+      ...scene,
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(200, 0)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+    };
+    const edge = toDisplayList(oneLeg).find((c) => c.kind === "polyline");
+    expect(edge?.kind === "polyline" ? edge.midMarkers.length : -1).toBe(0);
+  });
+
+  it("collapses collinear waypoints, so a straight multi-point directed edge shows no chevron", () => {
+    // Four collinear waypoints (a router's stub+lane legs on one straight run) reduce to a single leg,
+    // which is the arrowhead leg — so no mid-chevron, just the head.
+    const straightMulti: Scene = {
+      ...scene,
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(80, 0), point(160, 0), point(300, 0)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+    };
+    const edge = toDisplayList(straightMulti).find((c) => c.kind === "polyline");
+    expect(edge?.kind === "polyline" ? edge.midMarkers.length : -1).toBe(0);
+  });
+
+  it("a BACKWARD directed multi-bend edge chevrons its interior legs, not the arrowhead (first) leg", () => {
+    // fromEnd arrow → the head is at the START; a 3-leg route (4 corners) chevrons the two interior
+    // legs and skips the first (which carries the head), pointing back toward the source.
+    const backward: Scene = {
+      ...scene,
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 0), point(200, 0), point(200, 200), point(400, 200)],
+          label: null,
+          stroke: "solid",
+          fromEnd: "arrow",
+          toEnd: "none",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: null,
+        },
+      ],
+    };
+    const edge = toDisplayList(backward).find((c) => c.kind === "polyline");
+    expect(edge?.kind === "polyline" ? edge.midMarkers.length : -1).toBe(2);
   });
 
   it("plainEdges drops crossing hops: two crossing edges draw as straight lineTo paths", () => {
