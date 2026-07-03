@@ -15,7 +15,7 @@ class RecordingCtx implements Canvas2D {
   readonly calls: string[] = [];
   readonly fillTextFonts: string[] = [];
   readonly fillTexts: { readonly text: string; readonly alpha: number }[] = [];
-  readonly fillRects: { readonly w: number; readonly h: number; readonly alpha: number }[] = [];
+  readonly fillRects: { readonly w: number; readonly h: number; readonly alpha: number; readonly fill: string }[] = [];
   beginPath(): void {
     this.calls.push("beginPath");
   }
@@ -47,7 +47,7 @@ class RecordingCtx implements Canvas2D {
   }
   fillRect(_x: number, _y: number, w: number, h: number): void {
     this.calls.push(`fillRect:${String(this.fillStyle)}`);
-    this.fillRects.push({ w, h, alpha: this.globalAlpha });
+    this.fillRects.push({ w, h, alpha: this.globalAlpha, fill: String(this.fillStyle) });
   }
   measureText(text: string): { readonly width: number } {
     return { width: text.length * 7 };
@@ -167,7 +167,7 @@ describe("paint", () => {
     );
   });
 
-  it("draws edge labels as bare translucent text (no plate)", () => {
+  it("draws a vertical edge label as translucent text on an opaque masking plate", () => {
     const labelled: Scene = {
       ...scene,
       edges: [
@@ -189,10 +189,10 @@ describe("paint", () => {
     };
     const ctx = new RecordingCtx();
     paint(ctx, toDisplayList(labelled), new Map(), { ...defaultTheme, font: "14px sans-serif" });
-    // Bare 75%-alpha text, NO background plate: decollision keeps labels clear; transparency lets the
-    // diagram read through dense label areas instead of boxes punching holes in it.
-    const plate = ctx.fillRects.find((r) => r.w === 40);
-    expect(plate).toBeUndefined();
+    // Vertical edge → the label sits on a small opaque (background-fill) plate that masks the line, with
+    // 75%-alpha text. (A horizontal edge label would instead lift above the line with no plate.)
+    const plate = ctx.fillRects.find((r) => r.fill === defaultTheme.background && r.w < 60 && r.w > 20);
+    expect(plate).toBeDefined();
     const edgeText = ctx.fillTexts.find((t) => t.text === "edge");
     expect(edgeText?.alpha).toBe(0.75);
   });

@@ -134,18 +134,31 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const lh = labelLineHeight(theme.font);
       const sub = (labelLineHeight(theme.font) / 1.3) * 0.82;
       const top = cmd.y - ((lines.length - 1) * lh) / 2;
+      const isEdge = cmd.labelStyle !== "node";
       const tspans = lines
         .map((line, i) => {
           const size = i === 0 ? "" : ` font-size="${num(sub)}"`;
-          const opacity = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : i === 0 ? "1" : "0.7";
+          const opacity = isEdge ? EDGE_LABEL_TEXT_ALPHA : i === 0 ? "1" : "0.7";
           const style = `${size} fill-opacity="${opacity}"`;
           return `<tspan x="${num(cmd.x)}" y="${num(top + i * lh)}"${style}>${esc(line)}</tspan>`;
         })
         .join("");
       const anchor = cmd.align === "left" ? "start" : "middle";
       const text = `<text text-anchor="${anchor}" dominant-baseline="central" fill="${theme.text}">${tspans}</text>`;
-      // Edge labels draw as bare 75%-alpha text with no background plate (matching the canvas
-      // painter): decollision keeps them clear of nodes/lines, and transparency beats white boxes.
+      // A vertical edge label ("edge-masked") gets a small OPAQUE plate hiding the line behind it (no
+      // font metrics in a pure string backend, so the width is estimated). "edge" and "node" labels
+      // draw as bare text (horizontal edge labels are lifted above the line; node labels sit on a box).
+      if (cmd.labelStyle === "edge-masked") {
+        const fontPx = labelLineHeight(theme.font) / 1.3;
+        const widest = lines.reduce((w, l) => Math.max(w, l.length), 0);
+        const padX = 4;
+        const padY = 2;
+        const boxW = widest * fontPx * 0.6 + padX * 2;
+        const boxH = lines.length * lh + padY * 2;
+        const bx = cmd.align === "left" ? cmd.x - padX : cmd.x - boxW / 2;
+        const rect = `<rect x="${num(bx)}" y="${num(top - lh / 2 - padY)}" width="${num(boxW)}" height="${num(boxH)}" fill="${theme.background}"/>`;
+        return `${rect}${text}`;
+      }
       return text;
     }
     case "wedge": {

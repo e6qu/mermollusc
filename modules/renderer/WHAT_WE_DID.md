@@ -1,5 +1,13 @@
 # @m/renderer — work log
 
+- Edge-label placement is orientation-aware (user direction). The label DrawCmd's `plate: boolean`
+  became `labelStyle: "node" | "edge" | "edge-masked"`. At draw time (immune to any upstream
+  re-routing/caching that resets labelPos), toDisplayList picks by the segment the label lies on
+  (nearest by point-to-SEGMENT distance, so a short stub can't win over the run): a HORIZONTAL run
+  lifts the label above the line ("edge": 75% text, no background, no wasted vertical space); a VERTICAL
+  run keeps it in the channel on a small OPAQUE plate masking the line ("edge-masked": 75% text, no
+  wasted horizontal space dodging aside). Node/title/row/caption labels are "node" (full-opacity, own
+  box). Canvas + SVG.
 - Classic layered edges use rounded-corner ORTHOGONAL paths, not Catmull-Rom splines. ELK routes
   orthogonally and the endpoints are snapped to perpendicular side-centre mounts, so rounding the
   interior corners keeps every edge entering/leaving a node straight and on-centre — the spline

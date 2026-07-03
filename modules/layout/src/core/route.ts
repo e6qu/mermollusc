@@ -472,33 +472,7 @@ const DECOLLIDE_DIRS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
   [-1, 0],
 ];
-const LABEL_LINE_CLEARANCE = 10; // perpendicular offset that lifts a label clear of its own line
 
-// Push `anchor` off the edge line: above a horizontal-ish run, to the right of a vertical-ish one —
-// using the segment nearest the anchor. Diagonal runs fall back to an upward push.
-const nudgeOffLine = (
-  anchor: { readonly x: number; readonly y: number },
-  waypoints: readonly Point[],
-): { readonly x: number; readonly y: number } => {
-  let best: { readonly a: Point; readonly b: Point } | null = null;
-  let bestD = Number.POSITIVE_INFINITY;
-  for (let i = 0; i + 1 < waypoints.length; i++) {
-    const a = waypoints[i];
-    const b = waypoints[i + 1];
-    if (a === undefined || b === undefined) continue;
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const d = (mx - anchor.x) ** 2 + (my - anchor.y) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = { a, b };
-    }
-  }
-  if (best === null) return anchor;
-  return Math.abs(best.b.x - best.a.x) >= Math.abs(best.b.y - best.a.y)
-    ? { x: anchor.x, y: anchor.y - LABEL_LINE_CLEARANCE }
-    : { x: anchor.x + LABEL_LINE_CLEARANCE, y: anchor.y };
-};
 export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene => {
   interface LabelBox {
     readonly cx: number;
@@ -554,12 +528,8 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
       return true;
     });
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
-    // Nudge the anchor perpendicular to the segment nearest it FIRST, so the (plate-less) text sits
-    // beside the line instead of being struck through by it — then decollision runs from there, keeping
-    // the nudged position off nodes/other labels rather than pushing it back onto one.
-    const nudged = nudgeOffLine(anchor, e.waypoints);
-    const ax: number = nudged.x;
-    const ay: number = nudged.y;
+    const ax: number = anchor.x;
+    const ay: number = anchor.y;
 
     const fits = (cx: number, cy: number, hw: number): boolean =>
       placed.every((p) => !overlaps(cx, cy, hw, p)) &&

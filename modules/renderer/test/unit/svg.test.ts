@@ -88,9 +88,12 @@ describe("toSvg", () => {
     expect(svg).toContain("<text"); // labels
   });
 
-  it("renders edge labels as bare translucent text (no plate)", () => {
+  it("renders a vertical edge label as translucent text on a small opaque masking plate", () => {
+    // The scene's "go" edge is vertical (30,40)->(30,80): the label stays in-channel on an opaque
+    // (background-fill) plate that hides the line, rather than dodging sideways.
     expect(svg).toContain(`fill-opacity="0.75">go</tspan>`);
-    expect(svg).not.toContain(`rx="3"`); // no background plate behind edge labels
+    expect(svg).toContain(`fill="${defaultTheme.background}"/>`); // the masking plate (no rx)
+    expect(svg).not.toContain(`rx="3"`);
   });
 
   it("exports state pseudo-node commands as SVG primitives", () => {

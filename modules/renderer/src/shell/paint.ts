@@ -442,19 +442,25 @@ export const paint = (
         const lines = labelLines(cmd.text);
         const lh = labelLineHeight(theme.font);
         const top = cmd.y - ((lines.length - 1) * lh) / 2;
-        // Edge labels (`plate: true`) draw as bare 75%-alpha text with NO background plate — the label
-        // decollision pass keeps them off nodes/lines, and the transparency lets the diagram read
-        // through dense label areas instead of white boxes punching holes in it.
+        const isEdge = cmd.labelStyle !== "node";
+        // A vertical edge label ("edge-masked") sits on a small OPAQUE plate that hides the line behind
+        // it — cheaper on horizontal space than dodging aside. Horizontal edge labels ("edge") are
+        // lifted above the line and draw as bare transparent text. Node labels sit on their own box.
+        if (cmd.labelStyle === "edge-masked") {
+          ctx.font = theme.font;
+          const widest = lines.reduce((w, l) => Math.max(w, ctx.measureText(l).width), 0);
+          const padX = 4;
+          const padY = 2;
+          const boxW = widest + padX * 2;
+          const boxH = lines.length * lh + padY * 2;
+          ctx.fillStyle = theme.background;
+          const bx = cmd.align === "left" ? cmd.x - padX : cmd.x - boxW / 2;
+          ctx.fillRect(bx, top - lh / 2 - padY, boxW, boxH);
+        }
         for (const [i, line] of lines.entries()) {
-          if (i === 0) {
-            ctx.fillStyle = theme.text;
-            ctx.font = theme.font;
-            ctx.globalAlpha = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : 1;
-          } else {
-            ctx.fillStyle = theme.text;
-            ctx.font = scaleFont(theme.font, 0.82);
-            ctx.globalAlpha = cmd.plate ? EDGE_LABEL_TEXT_ALPHA : 0.7;
-          }
+          ctx.fillStyle = theme.text;
+          ctx.font = i === 0 ? theme.font : scaleFont(theme.font, 0.82);
+          ctx.globalAlpha = isEdge ? EDGE_LABEL_TEXT_ALPHA : i === 0 ? 1 : 0.7;
           ctx.fillText(line, cmd.x, top + i * lh);
         }
         ctx.font = theme.font;
