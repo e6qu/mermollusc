@@ -104,6 +104,7 @@ import {
   GANTT_DAY_WIDTH,
   GANTT_LEFT_GUTTER,
   decollideEdgeLabels,
+  rerouteBoxEdges,
   separateEdgesFromBorders,
   layout,
   layoutDiagram,
@@ -1027,11 +1028,14 @@ const shownScene = (base: Scene): Scene => {
   }
 
   // The trunk/bus/tidy re-routing above re-derives edge geometry, so (like the layout does) run the
-  // corrective cleanups it undoes: for the box families, detour any connector cutting THROUGH a node
-  // (maze) and lift channel legs off borders they landed along; then re-run label decollision. Skipped
-  // mid-drag, where a transient crossing is fine and the per-frame cost isn't worth it.
+  // corrective cleanups it undoes: for the box families, reroute any connector that crosses a node or
+  // hugs a border via a cleaner mount pair, lift any residual channel leg off a border, then re-run
+  // label decollision. Skipped mid-drag, where a transient crossing is fine and the cost isn't worth it.
   if (!interacting) {
-    tidied = decollideEdgeLabels(separateEdgesFromBorders(tidied), measureLabel);
+    const spread = family !== null && SPREAD_FAMILIES.has(family);
+    const cleaned = separateEdgesFromBorders(tidied);
+    const rerouted = spread ? rerouteBoxEdges(cleaned) : cleaned;
+    tidied = decollideEdgeLabels(separateEdgesFromBorders(rerouted), measureLabel);
   }
 
   // The presentation-only overlay (display only): curved edges + node accents from the document.

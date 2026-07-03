@@ -30,6 +30,7 @@ export {
   sideMounts,
   mazeAroundObstacles,
   snapSceneEdgesToMountPoints,
+  rerouteBoxEdges,
   separateEdgesFromBorders,
 } from "./core/index.js";
 export type { MazeBox, RouteBox } from "./core/index.js";

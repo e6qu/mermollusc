@@ -379,8 +379,11 @@ export const mazeAroundObstacles = (
   current: readonly Point[],
   obstacles: readonly RouteBox[],
   routeOption: number | null = null,
+  // When true, search for a route even if `current` clears every obstacle — the caller has another
+  // reason to want alternatives (e.g. the current route HUGS a border though it doesn't cross a node).
+  force = false,
 ): readonly Point[] | null => {
-  if (routeOption === null && routeHits(current, obstacles) === 0) return null;
+  if (!force && routeOption === null && routeHits(current, obstacles) === 0) return null;
   const starts = fromBox === null ? [start] : sideMounts(fromBox);
   const ends = toBox === null ? [end] : sideMounts(toBox);
 
@@ -1713,6 +1716,115 @@ export const separateEdgesFromBorders = (scene: Scene): Scene => {
     }
     if (!moved) return e;
     const [w0, w1, ...wr] = pts;
+    if (w0 === undefined || w1 === undefined) return e;
+    const waypoints = twoOrMore(w0, w1, ...wr);
+    return { ...e, waypoints, labelPos: e.labelPos === null ? null : pathMidpoint(waypoints) };
+  });
+  return { ...scene, edges };
+};
+
+interface ScoreBox {
+  readonly id: string;
+  readonly box: RouteBox;
+  readonly container: boolean;
+}
+
+const HUG_TOL = 5; // visual "runs along a border" threshold — matches the e2e clearance guard
+
+// A route's VISUAL badness: axis-aligned segments that cross a non-endpoint LEAF node's interior
+// (heavily weighted — an edge cutting through a node is the worst) plus segments that hug any
+// non-endpoint box border. This is exactly the metric the `edge-border-clearance` guard measures, so
+// the reroute only accepts a maze detour that is strictly cleaner ON SCREEN — not merely by the
+// router's own overlap test (which counts a container-boundary graze the eye doesn't).
+const routeBadness = (
+  pts: readonly Point[],
+  boxes: readonly ScoreBox[],
+  from: string,
+  to: string,
+): number => {
+  let crossings = 0;
+  let hugs = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (a === undefined || b === undefined) continue;
+    const horizontal = Math.abs(a.y - b.y) < 0.5;
+    const vertical = Math.abs(a.x - b.x) < 0.5;
+    if (!horizontal && !vertical) continue;
+    const x0 = Math.min(a.x, b.x);
+    const x1 = Math.max(a.x, b.x);
+    const y0 = Math.min(a.y, b.y);
+    const y1 = Math.max(a.y, b.y);
+    for (const { id, box, container } of boxes) {
+      if (id === from || id === to) continue;
+      if (!container) {
+        if (
+          horizontal &&
+          a.y > box.y + 2 &&
+          a.y < box.y + box.h - 2 &&
+          x0 < box.x + box.w - 2 &&
+          x1 > box.x + 2
+        ) {
+          crossings++;
+        }
+        if (
+          vertical &&
+          a.x > box.x + 2 &&
+          a.x < box.x + box.w - 2 &&
+          y0 < box.y + box.h - 2 &&
+          y1 > box.y + 2
+        ) {
+          crossings++;
+        }
+      }
+      if (horizontal && x0 < box.x + box.w - 3 && x1 > box.x + 3) {
+        if (Math.abs(a.y - box.y) < HUG_TOL || Math.abs(a.y - (box.y + box.h)) < HUG_TOL) hugs++;
+      }
+      if (vertical && y0 < box.y + box.h - 3 && y1 > box.y + 3) {
+        if (Math.abs(a.x - box.x) < HUG_TOL || Math.abs(a.x - (box.x + box.w)) < HUG_TOL) hugs++;
+      }
+    }
+  }
+  return crossings * 10 + hugs;
+};
+
+// Reroute box-family (block/network/cloud/c4) edges that CROSS a node or HUG a border, choosing the
+// mount pair + orthogonal detour (via the maze router, which stands off every obstacle by
+// OBSTACLE_CLEARANCE so its routes neither cross nor hug) that is strictly cleaner than the current
+// path. Clean edges — and any the maze can't improve — are left exactly as the trunk/spread router laid
+// them, so the backbone aesthetic survives everywhere it already reads well.
+export const rerouteBoxEdges = (scene: Scene): Scene => {
+  const boxes: ScoreBox[] = scene.nodes.flatMap((n) => {
+    const body = { id: n.id, box: routeBoxOf(n), container: n.shape === "container" };
+    if (n.shape !== "container") return [body];
+    return [
+      body,
+      { id: `${n.id}:hdr`, box: containerHeaderBox(routeBoxOf(n), n.label), container: true },
+    ];
+  });
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const edges = scene.edges.map((e): SceneEdge => {
+    const start = e.waypoints[0];
+    const end = e.waypoints[e.waypoints.length - 1];
+    if (start === undefined || end === undefined || e.from === e.to) return e;
+    const obstacles = obstacleBoxes.get(e.id) ?? [];
+    const curBad = routeBadness(e.waypoints, boxes, e.from, e.to);
+    if (curBad === 0) return e; // already clean
+    const maze = mazeAroundObstacles(
+      boxById.get(e.from) ?? null,
+      boxById.get(e.to) ?? null,
+      start,
+      end,
+      e.waypoints,
+      obstacles,
+      null,
+      true,
+    );
+    if (maze === null || maze.length < 2) return e;
+    const newBad = routeBadness(maze, boxes, e.from, e.to);
+    if (newBad >= curBad) return e; // not strictly cleaner on screen — keep the original
+    const [w0, w1, ...wr] = maze;
     if (w0 === undefined || w1 === undefined) return e;
     const waypoints = twoOrMore(w0, w1, ...wr);
     return { ...e, waypoints, labelPos: e.labelPos === null ? null : pathMidpoint(waypoints) };

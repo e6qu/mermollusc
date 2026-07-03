@@ -18,6 +18,7 @@ import {
   MICRO_JOG_TOL,
   routeWaypoints,
   snapSceneEdgesToMountPoints,
+  rerouteBoxEdges,
   separateEdgesFromBorders,
 } from "../core/route.js";
 import type {
@@ -921,8 +922,12 @@ export const layoutDiagram = async (
     const snapped = usesCardinalMounts(ast.kind)
       ? snapSceneEdgesToMountPoints(finalScene, MICRO_JOG_TOL)
       : finalScene;
-    // Lift any channel leg off a node/container border it landed along (tangent, so the obstacle
-    // routers never caught it) before decollision reads the final segment geometry for label placement.
-    return decollideEdgeLabels(separateEdgesFromBorders(snapped), measure);
+    // Route quality: FIRST lift channel legs off borders they hug (so the reroute compares against the
+    // cleanest form of each route, not a hug it could simply nudge away), THEN reroute any edge still
+    // crossing a node or hugging via a cleaner mount pair (maze), THEN lift any leg the maze route
+    // landed along, and finally decollide labels. Only the box families reroute.
+    const cleaned = separateEdgesFromBorders(snapped);
+    const rerouted = isSpread ? rerouteBoxEdges(cleaned) : cleaned;
+    return decollideEdgeLabels(separateEdgesFromBorders(rerouted), measure);
   });
 };
