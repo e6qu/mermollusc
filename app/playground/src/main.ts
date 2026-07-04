@@ -122,6 +122,7 @@ import {
   trunkRoutes,
 } from "@m/layout";
 import {
+  looksLikeDiagramHeader,
   parseDiagramWithSource,
   resolveDefaultLinkStyle,
   resolveDefaultNodeStyle,
@@ -6828,8 +6829,12 @@ editor =
     ? createEditor(editorMount, "", onTextChange, {
         extra: [collabSession.sourceBinding()],
         textHistory: false,
+        isDiagramStart: looksLikeDiagramHeader,
       })
-    : createEditor(editorMount, initialSource, onTextChange, { textHistory: false });
+    : createEditor(editorMount, initialSource, onTextChange, {
+        textHistory: false,
+        isDiagramStart: looksLikeDiagramHeader,
+      });
 editorReady = true;
 
 // The keyboard diagram navigator (a focusable listbox over the scene's nodes/edges) lives in

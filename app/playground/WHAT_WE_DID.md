@@ -1,6 +1,13 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Pasting a whole diagram replaces + switches type
+
+- Pasting a WHOLE Mermaid diagram (its first line is a diagram header, via `looksLikeDiagramHeader`)
+  now REPLACES the entire editor document, so the renderer autodetects and switches to the pasted
+  diagram's type instead of appending into the current one. A partial snippet (no header) still inserts
+  at the cursor. Handles fenced ```mermaid blocks too.
+
 ## 2026-07-04 — Render state-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour STATE diagrams (they carry the same Mermaid

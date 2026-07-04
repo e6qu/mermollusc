@@ -66,6 +66,36 @@ export const firstMeaningfulLine = (text: string): string => {
   return "";
 };
 
+// The diagram-header keywords `parseDiagram` dispatches on (plus flowchart's `flowchart`/`graph`). Used
+// to tell whether a chunk of text is a WHOLE diagram — e.g. so pasting one into the editor replaces the
+// current diagram (and re-detects the family) instead of appending into it.
+const DIAGRAM_HEADERS: readonly string[] = [
+  "stateDiagram",
+  "classDiagram",
+  "requirementDiagram",
+  "erDiagram",
+  "sequenceDiagram",
+  "C4",
+  "block",
+  "network",
+  "cloud",
+  "gitGraph",
+  "timeline",
+  "mindmap",
+  "pie",
+  "gantt",
+  "flowchart",
+  "graph",
+  "digraph",
+  "strict",
+];
+
+// True when the text's first meaningful line is a diagram header (i.e. it's a self-contained diagram).
+export const looksLikeDiagramHeader = (text: string): boolean => {
+  const header = firstMeaningfulLine(text);
+  return DIAGRAM_HEADERS.some((h) => header.startsWith(h));
+};
+
 // Sniffs the first meaningful line (skipping blanks and `%%` comments) to pick the family.
 export const parseDiagram = (text: string): Result<DiagramAst, ParseError> => {
   const header = firstMeaningfulLine(text);

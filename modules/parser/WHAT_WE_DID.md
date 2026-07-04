@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — looksLikeDiagramHeader
+
+- New `looksLikeDiagramHeader(text)` — true when the first meaningful line is a diagram header (same
+  keyword set `parseDiagram` dispatches on, plus flowchart's `flowchart`/`graph`). Lets the editor tell
+  a whole-diagram paste from a snippet.
+
 ## 2026-07-04 — State-diagram styling (shared patterns)
 
 - Extracted the 5 Mermaid style/`:::` lexer patterns to a shared `style-patterns.ts` (single source of

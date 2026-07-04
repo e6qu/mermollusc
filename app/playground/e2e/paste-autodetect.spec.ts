@@ -93,3 +93,37 @@ test("pasting Mermaid with style/classDef/linkStyle directives parses (complianc
   );
   expect(nodes).toEqual(["A", "B", "C"]);
 });
+
+test("pasting a WHOLE diagram replaces the current one + switches the renderer type", async ({ page }) => {
+  const pasteInto = async (text: string) => {
+    await page.locator(".cm-content").click();
+    await page.evaluate((t) => {
+      const el = document.querySelector(".cm-content");
+      if (el === null) return;
+      const dt = new DataTransfer();
+      dt.setData("text/plain", t);
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, text);
+    await page.waitForTimeout(300);
+  };
+  const kind = async () => (await page.locator("#kind").textContent())?.trim() ?? null;
+
+  await page.goto("/");
+  await canvasReady(page);
+  await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  A --> B\n"));
+  await page.waitForTimeout(200);
+
+  // a full diagram paste (no select-all) replaces the whole document and re-detects the type
+  await pasteInto("sequenceDiagram\n  Alice->>Bob: Hi\n");
+  expect(await kind()).toBe("sequence");
+  expect(await page.evaluate(() => window.__editor?.value() ?? "")).not.toContain("flowchart");
+  await pasteInto("stateDiagram-v2\n  [*] --> Idle\n");
+  expect(await kind()).toBe("state");
+
+  // a partial snippet (no diagram header) still inserts, not replaces
+  await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  A --> B\n"));
+  await page.waitForTimeout(150);
+  await pasteInto("  C --> D\n");
+  expect(await kind()).toBe("flowchart");
+  expect(await page.evaluate(() => window.__editor?.value() ?? "")).toContain("C --> D");
+});
