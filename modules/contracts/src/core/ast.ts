@@ -37,12 +37,23 @@ export interface FlowSubgraph {
   readonly nodes: readonly NodeId[];
 }
 
+// A Mermaid styling directive carried verbatim so it round-trips losslessly (`style A fill:#f9f`,
+// `classDef hot …`, `class A hot`, `linkStyle 0 stroke:#f00`). `raw` is the exact source line (minus the
+// trailing newline); `kind` classifies it for the renderer/editor without re-lexing. Kept out of
+// `FlowNode`/`FlowEdge` so those stay unchanged and a directive that targets several ids stays one entry.
+export type FlowStyleKind = "style" | "classDef" | "class" | "linkStyle";
+export interface FlowStyle {
+  readonly kind: FlowStyleKind;
+  readonly raw: string;
+}
+
 export interface FlowchartAst {
   readonly kind: "flowchart";
   readonly direction: FlowDirection;
   readonly nodes: readonly FlowNode[];
   readonly edges: readonly FlowEdge[];
   readonly subgraphs: readonly FlowSubgraph[];
+  readonly styles: readonly FlowStyle[];
 }
 
 export type ActorId = Brand<string, "ActorId">;

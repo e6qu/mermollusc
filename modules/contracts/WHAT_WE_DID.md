@@ -1,5 +1,11 @@
 # @m/contracts — work log
 
+
+## 2026-07-04 — FlowchartAst.styles (Mermaid styling directives)
+
+- `FlowchartAst` gains `styles: readonly FlowStyle[]` — Mermaid `style`/`classDef`/`class`/`linkStyle`
+  directives carried verbatim (`kind` + `raw`) so they round-trip losslessly. Kept off `FlowNode`/
+  `FlowEdge` so those stay unchanged and a directive targeting several ids stays one entry.
 ## 2026-07-04 — Edge colour: SceneEdge.accent + EdgeStyle.accent
 
 - `SceneEdge` gains a required `accent: NodeAccent` (the connector counterpart to `SceneNode.accent`),

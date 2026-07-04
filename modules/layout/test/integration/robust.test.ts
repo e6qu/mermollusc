@@ -21,6 +21,7 @@ const selfFlow: FlowchartAst = {
   nodes: [{ id: brand<string, "NodeId">("A"), label: "A", shape: "rect" , icon: null }],
   edges: [{ id: brand<string, "EdgeId">("e0"), from: brand<string, "NodeId">("A"), to: brand<string, "NodeId">("A"), kind: "arrow", label: null }],
   subgraphs: [],
+  styles: [],
 };
 
 describe("layout robustness probe", () => {

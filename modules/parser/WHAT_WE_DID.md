@@ -1,5 +1,15 @@
 # @m/parser — work log
 
+
+## 2026-07-04 — Accept + round-trip Mermaid styling directives
+
+- The lexer/grammar now ACCEPT `style`/`classDef`/`class`/`linkStyle` directives (previously they failed
+  to parse, so pasting real-world Mermaid with colours broke). Each is a whole-line token with a
+  structure-specific pattern, so it can't swallow a node ref that merely starts with the keyword
+  (`style --> B`). The AST builder captures them verbatim on `FlowchartAst.styles`, and the printer
+  re-emits them, so an edit never silently drops a style line (print→parse stays a fixed point).
+- DOT import + the state→flow bridge set `styles: []` (neither dialect has Mermaid style syntax).
+- Rendering the colours + routing the colour swatch to write these directives are the next steps.
 - State diagrams now parse `direction TB|TD|BT|LR|RL` into `StateAst.direction`; invalid values return
   a located parse error instead of being ignored or silently defaulted.
 

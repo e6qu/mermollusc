@@ -8,6 +8,27 @@ const Subgraph = createToken({ name: "Subgraph", pattern: /subgraph/, longer_alt
 const End = createToken({ name: "End", pattern: /end/, longer_alt: Identifier });
 // `icon "<pack>/<name>"` glyph override after a node's shape (e.g. a BPMN event/gateway/task glyph).
 const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier });
+// Mermaid styling directives, each matched as a WHOLE line (the property list `fill:#f9f,stroke:#333`
+// isn't sub-tokenised — the AST builder parses the captured text). Patterns require the directive's
+// real structure (keyword, targets, then a property/name) so they can't swallow a node ref that merely
+// starts with the word (`style --> B`, `classifier`): the required whitespace + shape rules it out.
+// `classDef` is listed before `class` so the longer keyword wins.
+const StyleStmt = createToken({
+  name: "StyleStmt",
+  pattern: /style[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n]*/,
+});
+const ClassDefStmt = createToken({
+  name: "ClassDefStmt",
+  pattern: /classDef[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n]*/,
+});
+const ClassStmt = createToken({
+  name: "ClassStmt",
+  pattern: /class[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z0-9_]+[ \t]*/,
+});
+const LinkStyleStmt = createToken({
+  name: "LinkStyleStmt",
+  pattern: /linkStyle[ \t]+(?:default|\d+(?:[ \t]*,[ \t]*\d+)*)[ \t]+[A-Za-z-]+:[^\n]*/,
+});
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
@@ -57,6 +78,12 @@ export const lexer = new Lexer({
       Subgraph,
       End,
       Icon,
+      // Styling directives before Identifier so a `style …`/`classDef …`/`class …`/`linkStyle …` line
+      // is captured whole; ClassDefStmt before ClassStmt so the longer keyword wins.
+      StyleStmt,
+      ClassDefStmt,
+      ClassStmt,
+      LinkStyleStmt,
       QuotedString,
       DottedArrow,
       ThickArrow,
@@ -88,6 +115,10 @@ export const Tok = {
   Subgraph,
   End,
   Icon,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   QuotedString,
   DottedArrow,
   ThickArrow,
@@ -122,6 +153,10 @@ export const allTokens: TokenType[] = [
   Subgraph,
   End,
   Icon,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   QuotedString,
   DottedArrow,
   ThickArrow,

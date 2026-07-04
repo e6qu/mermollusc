@@ -17,6 +17,7 @@ class FlowchartParser extends CstParser {
       this.OR([
         { ALT: () => this.SUBRULE2(this.sep) },
         { ALT: () => this.SUBRULE(this.subgraphBlock) },
+        { ALT: () => this.SUBRULE(this.styleDirective) },
         { ALT: () => this.SUBRULE(this.statement) },
       ]),
     );
@@ -32,11 +33,23 @@ class FlowchartParser extends CstParser {
       this.OR([
         { ALT: () => this.SUBRULE(this.sep) },
         { ALT: () => this.SUBRULE(this.subgraphBlock) },
+        { ALT: () => this.SUBRULE(this.styleDirective) },
         { ALT: () => this.SUBRULE(this.statement) },
       ]),
     );
     this.CONSUME(Tok.End);
   });
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`). Each is a single
+  // captured token; the AST builder parses its text. Distinct first tokens keep the enclosing OR LL(1).
+  private readonly styleDirective = this.RULE("styleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(Tok.StyleStmt) },
+      { ALT: () => this.CONSUME(Tok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(Tok.ClassStmt) },
+      { ALT: () => this.CONSUME(Tok.LinkStyleStmt) },
+    ]),
+  );
 
   private readonly header = this.RULE("header", () => {
     this.CONSUME(Tok.Graph);
