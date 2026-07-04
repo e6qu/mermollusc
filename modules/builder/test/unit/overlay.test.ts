@@ -35,10 +35,12 @@ describe("overlay codec", () => {
     const edgeStyles = new Map([
       [
         brand<string, "SceneEdgeId">("e0"),
-        { route: "curved" as const, routeOption: null, labelT: 0.7, waypoints: null },
+        { route: "curved" as const, routeOption: null, labelT: 0.7, waypoints: null, accent: "network" as const },
       ],
     ]);
-    const nodeStyles = new Map([[snid("A"), { accent: "active" as const }]]);
+    // An architecture accent (compute…ops) must survive the round-trip — the decoder used to allow only
+    // the four generic ones, which silently dropped a saved architecture colour.
+    const nodeStyles = new Map([[snid("A"), { accent: "compute" as const }]]);
     const decoded = decodeOverlay(
       JSON.parse(serializeOverlay(overrides, groups, edgeStyles, nodeStyles)),
     );

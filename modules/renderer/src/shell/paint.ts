@@ -89,6 +89,35 @@ export const accentFill = (accent: NodeAccent, theme: Theme): string => {
   }
 };
 
+// An edge's semantic STROKE accent → a concrete line colour (the connector counterpart to `accentFill`).
+// `none` is the theme's ordinary edge colour; the rest are saturated hues that read on both the light
+// and dark canvas — the same accent as a node's fill, but a stroke needs more punch than a pale fill.
+// Exhaustive, so a new accent must be handled here too.
+export const accentStroke = (accent: NodeAccent, theme: Theme): string => {
+  switch (accent) {
+    case "none":
+      return theme.stroke;
+    case "muted":
+      return "#64748b";
+    case "active":
+      return "#2563eb";
+    case "danger":
+      return "#dc2626";
+    case "compute":
+      return "#16a34a";
+    case "data":
+      return "#d97706";
+    case "network":
+      return "#0891b2";
+    case "security":
+      return "#e11d48";
+    case "ops":
+      return "#7c3aed";
+    default:
+      return assertNever(accent);
+  }
+};
+
 // A background band's semantic fill → a concrete colour (theme-aware). The two `section` shades are a
 // faint zebra stripe behind successive Gantt sections; `excluded` is a slightly greyer non-working-day
 // column. All are kept subtler than a node's fill so the bars stay dominant. Exhaustive.
@@ -216,8 +245,8 @@ const sketchFillRect = (
 // heads, an optional ring). Geometry is fixed in the core; the painter only strokes/fills primitives.
 // A `solid` polygon fills with the stroke colour; a `hollow` one fills with the background and is
 // outlined, so an inheritance triangle / aggregation diamond reads as open over whatever it overlaps.
-const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme): void => {
-  ctx.strokeStyle = theme.stroke;
+const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme, color: string): void => {
+  ctx.strokeStyle = color;
   ctx.setLineDash([]);
   for (const [a, b] of marker.lines) {
     // In sketch mode the line segments (crow's-foot prongs, cardinality bars, the open-arrow V)
@@ -241,7 +270,7 @@ const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme): void => {
   for (const poly of marker.polygons) {
     const [p0, ...rest] = poly.points;
     if (p0 === undefined) continue;
-    ctx.fillStyle = poly.fill === "solid" ? theme.stroke : theme.background;
+    ctx.fillStyle = poly.fill === "solid" ? color : theme.background;
     ctx.beginPath();
     ctx.moveTo(p0.x, p0.y);
     for (const p of rest) ctx.lineTo(p.x, p.y);
@@ -384,7 +413,8 @@ export const paint = (
       case "polyline": {
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
-        ctx.strokeStyle = theme.stroke;
+        const edgeColor = accentStroke(cmd.accent, theme);
+        ctx.strokeStyle = edgeColor;
 
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).
         if (theme.sketch && !cmd.dashed) {
@@ -394,9 +424,9 @@ export const paint = (
             sketchLine(ctx, prev.x, prev.y, p.x, p.y, seed++);
             prev = p;
           }
-          drawMarker(ctx, cmd.fromMarker, theme);
-          drawMarker(ctx, cmd.toMarker, theme);
-          for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
+          drawMarker(ctx, cmd.fromMarker, theme, edgeColor);
+          drawMarker(ctx, cmd.toMarker, theme, edgeColor);
+          for (const m of cmd.midMarkers) drawMarker(ctx, m, theme, edgeColor);
           break;
         }
 
@@ -422,9 +452,9 @@ export const paint = (
         }
         ctx.stroke();
         ctx.setLineDash([]);
-        drawMarker(ctx, cmd.fromMarker, theme);
-        drawMarker(ctx, cmd.toMarker, theme);
-        for (const m of cmd.midMarkers) drawMarker(ctx, m, theme);
+        drawMarker(ctx, cmd.fromMarker, theme, edgeColor);
+        drawMarker(ctx, cmd.toMarker, theme, edgeColor);
+        for (const m of cmd.midMarkers) drawMarker(ctx, m, theme, edgeColor);
         break;
       }
       case "icon": {

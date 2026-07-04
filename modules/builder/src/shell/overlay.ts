@@ -37,6 +37,19 @@ const GroupZ = z.object({
   members: z.array(MemberZ),
   locked: z.boolean(),
 });
+// The full accent palette, shared by node and edge styles — must list every `NodeAccent`, or a saved
+// architecture accent (compute…ops) would fail to decode and drop the whole overlay.
+const AccentZ = z.enum([
+  "none",
+  "muted",
+  "active",
+  "danger",
+  "compute",
+  "data",
+  "network",
+  "security",
+  "ops",
+]);
 // Accept the new `{route}` and the older `{curved:boolean}` wire shape (share-links from before the
 // three-way route style), normalising the latter to a route so old links keep working.
 const EdgeStyleZ = z
@@ -46,6 +59,7 @@ const EdgeStyleZ = z
     routeOption: z.number().nullable().optional(),
     labelT: z.number().min(0).max(1).nullable().optional(),
     waypoints: z.array(PointZ).nullable().optional(),
+    accent: AccentZ.nullable().optional(),
   })
   .transform(
     (o) =>
@@ -54,9 +68,10 @@ const EdgeStyleZ = z
         routeOption: o.routeOption ?? null,
         labelT: o.labelT ?? null,
         waypoints: o.waypoints ?? null,
+        accent: o.accent ?? null,
       }) as const,
   );
-const NodeStyleZ = z.object({ accent: z.enum(["none", "muted", "active", "danger"]) });
+const NodeStyleZ = z.object({ accent: AccentZ });
 const OverlayZ = z.object({
   overrides: z.array(z.tuple([z.string(), OverrideZ])),
   groups: z.array(z.tuple([z.string(), GroupZ])),
@@ -92,6 +107,7 @@ export const encodeEdgeStyleEntry = (s: EdgeStyle) =>
     routeOption: s.routeOption,
     labelT: s.labelT,
     waypoints: s.waypoints === null ? null : s.waypoints.map((p) => ({ x: p.x, y: p.y })),
+    accent: s.accent,
   }) satisfies Record<keyof EdgeStyle, unknown>;
 export const encodeNodeStyleEntry = (s: NodeStyle) =>
   ({ accent: s.accent }) satisfies Record<keyof NodeStyle, unknown>;
@@ -149,6 +165,7 @@ export const decodeOverlay = (input: unknown): Result<Overlay, DecodeError> =>
           routeOption: s.routeOption,
           labelT: s.labelT,
           waypoints: s.waypoints === null ? null : s.waypoints.map((p) => point(p.x, p.y)),
+          accent: s.accent,
         },
       ]),
     ),

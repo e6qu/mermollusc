@@ -83,6 +83,7 @@ export const layoutSequence = (
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     });
     centerX.set(actor.id, cx);
     cursor += width + ACTOR_GAP;
@@ -179,6 +180,7 @@ export const layoutSequence = (
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     });
     row++;
   }

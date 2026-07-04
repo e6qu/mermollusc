@@ -208,6 +208,7 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
       toLabel: null,
       // Label rides the route's central channel (clear of both boxes), not the whole-route midpoint.
       labelPos: e.label === null ? null : routeChannelMid(route),
+      accent: "none",
       ...EDGE_STYLE[e.kind],
     });
   }

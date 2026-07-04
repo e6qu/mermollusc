@@ -2,7 +2,7 @@ import { brand, coordinate, length, point, rect } from "@m/std";
 import type { Scene } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import { toDisplayList } from "../../src/core/display.js";
-import { accentFill, bandFill, type Canvas2D, darkTheme, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
+import { accentFill, accentStroke, bandFill, type Canvas2D, darkTheme, defaultTheme, paint, type Theme } from "../../src/shell/paint.js";
 
 class RecordingCtx implements Canvas2D {
   fillStyle: string | CanvasGradient | CanvasPattern = "";
@@ -71,9 +71,9 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
   ],
   edges: [
@@ -90,6 +90,7 @@ const scene: Scene = {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none" as const,
     },
   ],
   wedges: [],
@@ -105,7 +106,7 @@ const iconScene: Scene = {
       shape: "rect",
       parent: null,
       icon: { pack: "devicon", name: "docker" },
-      rowDivider: null, subtitle: null, accent: "none",
+      rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null,
     },
   ],
@@ -128,9 +129,9 @@ describe("paint", () => {
   it("draws crow's-foot ER markers: stroked bars/prongs, a filled triangle, and a ringed circle", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [
@@ -147,6 +148,7 @@ describe("paint", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -184,6 +186,7 @@ describe("paint", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
     };
@@ -207,7 +210,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: 1, subtitle: null, accent: "none",
+          rowDivider: 1, subtitle: null, accent: "none" as const,
       role: "normal",
           rows: ["+int age", "+move() void"],
         },
@@ -218,7 +221,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, accent: "none",
+          rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal",
           rows: null,
         },
@@ -237,6 +240,7 @@ describe("paint", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -256,7 +260,7 @@ describe("paint", () => {
   it("draws a multi-line label, scaling the continuation line down", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [],
@@ -283,7 +287,7 @@ describe("paint", () => {
     };
     const nodeOnly: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [],
@@ -307,7 +311,7 @@ describe("paint", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, accent: "none",
+          rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal",
           rows: ["string name PK", "int age"],
         },
@@ -369,6 +373,7 @@ describe("paint", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -546,5 +551,25 @@ describe("accentFill", () => {
     expect(new Set([darkTheme.nodeFill, ...dark]).size).toBe(semantic.length + 1);
     // dark-theme accents differ from light-theme ones (the luminance branch is exercised)
     expect(dark).not.toEqual(light);
+  });
+});
+
+describe("accentStroke", () => {
+  it("maps `none` to the theme stroke and each semantic accent to a distinct line colour", () => {
+    expect(accentStroke("none", defaultTheme)).toBe(defaultTheme.stroke);
+
+    const semantic = [
+      "muted",
+      "active",
+      "danger",
+      "compute",
+      "data",
+      "network",
+      "security",
+      "ops",
+    ] as const;
+    const strokes = semantic.map((a) => accentStroke(a, defaultTheme));
+    // every accent (all nine branches) yields a distinct colour, none of them the plain stroke
+    expect(new Set([defaultTheme.stroke, ...strokes]).size).toBe(semantic.length + 1);
   });
 });

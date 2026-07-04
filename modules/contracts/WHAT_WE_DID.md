@@ -1,5 +1,10 @@
 # @m/contracts — work log
 
+## 2026-07-04 — Edge colour: SceneEdge.accent + EdgeStyle.accent
+
+- `SceneEdge` gains a required `accent: NodeAccent` (the connector counterpart to `SceneNode.accent`),
+  resolved to a stroke colour by the renderer; `none` is the ordinary edge colour.
+- The overlay `EdgeStyle` gains `accent: NodeAccent | null` — the user's edge colour, `null` = default.
 - `EdgeStyle` gained `waypoints: readonly Point[] | null` — the user's manual bend points (Miro-style
   control points), absolute scene coords, `null` = auto-routed. Endpoints still attach to node mounts.
 

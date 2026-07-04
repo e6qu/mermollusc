@@ -1,5 +1,10 @@
 # @m/renderer — work log
 
+## 2026-07-04 — Edge stroke accent (canvas + SVG)
+
+- New `accentStroke(accent, theme)` maps an edge accent to a saturated line colour (the connector
+  counterpart to `accentFill`). The polyline `DrawCmd` carries `accent`; both backends resolve it and
+  apply the colour to the LINE and its end/mid markers. `none` keeps `theme.stroke`.
 - Direction chevrons ("decorated" finish) no longer double up with the arrowhead. Two fixes in
   `directionHints`: (1) collapse collinear waypoints to CORNERS first, so the several collinear legs the
   routers emit along one straight run count as a single leg (a plain A→B edge became several chevrons);

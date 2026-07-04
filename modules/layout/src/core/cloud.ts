@@ -240,6 +240,7 @@ export const layoutCloud = (
           : isSelf
             ? selfLoopLabelPos(from)
             : routeChannelMid(orthogonalRoute(from, to)),
+      accent: "none",
     });
   }
 

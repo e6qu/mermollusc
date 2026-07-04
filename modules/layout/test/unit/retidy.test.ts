@@ -38,7 +38,7 @@ const edge = (
   curved,
   fromLabel: null,
   toLabel: null,
-  labelPos: null,
+  accent: "none" as const, labelPos: null,
 });
 
 const scene = (nodes: readonly SceneNode[], edges: readonly SceneEdge[]): Scene => ({

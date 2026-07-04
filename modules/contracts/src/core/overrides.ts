@@ -27,6 +27,9 @@ export interface EdgeStyle {
   // attach to the current node mounts (so moving a node keeps the connection), and `route` decides how
   // the segments between the points render (straight legs, or `curved` smooths them).
   readonly waypoints: readonly Point[] | null;
+  // The connector's colour, as a semantic accent (resolved to a stroke colour by the renderer); `null`
+  // keeps the default edge colour. Mirrors a node's `accent`.
+  readonly accent: NodeAccent | null;
 }
 export interface NodeStyle {
   readonly accent: NodeAccent;

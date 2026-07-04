@@ -33,6 +33,7 @@ const scene: Scene = {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     },
   ],
   wedges: [],
@@ -121,7 +122,7 @@ describe("overrides", () => {
 
   it("threads manual edge waypoints between the current endpoints (Miro-style bend points)", () => {
     const es = new Map([
-      [seid("e0"), { route: "square" as const, routeOption: null, labelT: null, waypoints: [point(80, 40), point(80, 100)] }],
+      [seid("e0"), { route: "square" as const, routeOption: null, labelT: null, waypoints: [point(80, 40), point(80, 100)], accent: null }],
     ]);
     const shown = applyStyles(scene, es, new Map());
     // endpoints kept from the laid-out route; the two manual bends threaded between them
@@ -131,10 +132,27 @@ describe("overrides", () => {
 
   it("smooths manual waypoints when the route style is curved", () => {
     const es = new Map([
-      [seid("e0"), { route: "curved" as const, routeOption: null, labelT: null, waypoints: [point(80, 70)] }],
+      [seid("e0"), { route: "curved" as const, routeOption: null, labelT: null, waypoints: [point(80, 70)], accent: null }],
     ]);
     const shown = applyStyles(scene, es, new Map());
     expect(shown.edges[0]?.waypoints).toEqual([point(30, 40), point(80, 70), point(30, 100)]);
     expect(shown.edges[0]?.curved).toBe(true);
+  });
+
+  it("colours an edge from its overlay accent without disturbing geometry", () => {
+    const es = new Map([
+      [seid("e0"), { route: "square" as const, routeOption: null, labelT: null, waypoints: null, accent: "danger" as const }],
+    ]);
+    const shown = applyStyles(scene, es, new Map());
+    expect(shown.edges[0]?.accent).toBe("danger");
+    // geometry is untouched — the base route survives the colour pass
+    expect(shown.edges[0]?.waypoints).toEqual(scene.edges[0]?.waypoints);
+  });
+
+  it("leaves an edge's default accent when no style sets a colour", () => {
+    const es = new Map([
+      [seid("e0"), { route: "curved" as const, routeOption: null, labelT: null, waypoints: null, accent: null }],
+    ]);
+    expect(applyStyles(scene, es, new Map()).edges[0]?.accent).toBe("none");
   });
 });

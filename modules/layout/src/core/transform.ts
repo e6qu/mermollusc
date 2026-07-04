@@ -212,6 +212,7 @@ export const toScene = (
       fromLabel: null,
       toLabel: null,
       labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
+      accent: "none",
       ...EDGE_STYLE[astEdge.kind],
     });
   }

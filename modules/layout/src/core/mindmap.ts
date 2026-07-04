@@ -183,6 +183,7 @@ export const layoutMindmap = (
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     });
   }
 

@@ -48,7 +48,7 @@ export const applyStyles = (
     return boxById;
   };
 
-  const edges =
+  const geomEdges =
     edgeStyles.size === 0
       ? scene.edges
       : scene.edges.map((e): SceneEdge => {
@@ -135,6 +135,15 @@ export const applyStyles = (
           return curved !== e.curved || movedLabel !== e.labelPos
             ? { ...e, curved, labelPos: movedLabel }
             : e;
+        });
+  // Colour is geometry-independent, so apply the overlay's edge accent in a light second pass over the
+  // routed edges rather than threading it through every route branch above.
+  const edges =
+    edgeStyles.size === 0
+      ? geomEdges
+      : geomEdges.map((e): SceneEdge => {
+          const accent = edgeStyles.get(e.id)?.accent ?? null;
+          return accent === null ? e : { ...e, accent };
         });
   const nodes =
     nodeStyles.size === 0

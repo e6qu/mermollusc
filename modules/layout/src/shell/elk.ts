@@ -670,6 +670,7 @@ const layoutCompartments = async (
             fromLabel: e.fromLabel,
             toLabel: e.toLabel,
             labelPos: pe.labelPos === null ? null : point(pe.labelPos.x, pe.labelPos.y),
+            accent: "none",
           });
         }
         return ok({
@@ -716,6 +717,7 @@ const layoutEr = (
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     })),
     measure,
     tidy,
@@ -773,6 +775,7 @@ const layoutClass = (
       fromLabel: r.fromMult === "" ? null : r.fromMult,
       toLabel: r.toMult === "" ? null : r.toMult,
       labelPos: null,
+      accent: "none",
     })),
     measure,
     tidy,
@@ -817,6 +820,7 @@ const layoutRequirement = (
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     })),
     measure,
     tidy,

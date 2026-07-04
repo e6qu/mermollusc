@@ -1,5 +1,9 @@
 # @m/layout — work log
 
+## 2026-07-04 — SceneEdge.accent default
+
+- Every family's edge construction now sets the new required `SceneEdge.accent` to `"none"` (colour is
+  an overlay concern applied later by the builder); a pure contract follow, no behaviour change.
 ## 2026-07-03 — Reroute box-family edges that cross nodes or hug borders
 
 - New `rerouteBoxEdges` pass (wired into `layoutDiagram` after the mount snap, and re-run in the app's

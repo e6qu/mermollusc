@@ -266,6 +266,7 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none",
     });
   }
 

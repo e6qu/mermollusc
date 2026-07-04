@@ -101,6 +101,9 @@ export interface SceneEdge {
   // (ELK, for flowchart/state) so the label clears nodes; null lets the renderer derive it from the
   // routed midpoint.
   readonly labelPos: Point | null;
+  // Semantic stroke accent (a user's edge colour, from the overlay); `none` draws the ordinary edge
+  // colour. Mirrors a node's `accent`, but resolves to a stroke colour rather than a fill.
+  readonly accent: NodeAccent;
 }
 
 // A filled circular sector (a pie-chart slice). Angles are in canvas convention — radians from the

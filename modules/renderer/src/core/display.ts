@@ -104,6 +104,9 @@ export type DrawCmd =
       // rather than straight segments. Markers are unused on curved edges (they're arrowless).
       readonly curved: boolean;
       readonly path: readonly PathCmd[];
+      // Semantic stroke accent (the edge's `accent`); `none` draws the ordinary edge colour. The painter
+      // resolves it to a concrete colour via `accentStroke`, applied to the line AND its markers.
+      readonly accent: NodeAccent;
     }
   | {
       readonly kind: "icon";
@@ -502,6 +505,7 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
           { kind: "lineTo", x: origin.x + size.width - fold, y: origin.y + fold },
           { kind: "lineTo", x: origin.x + size.width, y: origin.y + fold },
         ],
+        accent: "none",
       },
       label,
     ];
@@ -584,6 +588,7 @@ const dividerAt = (x: number, y: number, width: number): DrawCmd => ({
     { kind: "moveTo", x, y },
     { kind: "lineTo", x: x + width, y },
   ],
+  accent: "none",
 });
 
 const END_LABEL_INSET = 18; // distance from the endpoint, along the edge, for a per-end label
@@ -785,6 +790,7 @@ export const toDisplayList = (
               edge.curved,
               edgeFinish === "decorated" ? (crossingsMap.get(idx) ?? []) : [],
             ),
+      accent: edge.accent,
     });
     if (edge.label !== null) {
       // The layout decollides the anchor against nodes. Here, at draw time (so no upstream re-routing or
@@ -850,6 +856,7 @@ const decorationCmd = (d: Decoration): DrawCmd => {
           { kind: "moveTo", x: d.from.x, y: d.from.y },
           { kind: "lineTo", x: d.to.x, y: d.to.y },
         ],
+        accent: "none",
       };
     case "caption":
       return {
