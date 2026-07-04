@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Network-diagram styling (shared patterns)
+
+- The network parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens, before
+  `Identifier`), captured on `NetworkAst.styles` and applied by the shared resolver. Fourth "other family".
+
 ## 2026-07-04 — Block-diagram styling (shared patterns)
 
 - The block-beta parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens,

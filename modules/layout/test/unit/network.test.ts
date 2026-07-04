@@ -9,6 +9,7 @@ const eid = (s: string) => brand<string, "EdgeId">(s);
 
 const ast: NetworkAst = {
   kind: "network",
+  styles: [],
   nodes: [
     { id: nid("a"), label: "A", kind: "server", icon: null, parent: null },
     { id: nid("b"), label: "B", kind: "database", icon: null, parent: null },
@@ -27,6 +28,7 @@ describe("layoutNetwork", () => {
   it("fails loudly when a link references an unknown node", () => {
     const bad: NetworkAst = {
       kind: "network",
+      styles: [],
       nodes: [{ id: nid("a"), label: "A", kind: "server", icon: null, parent: null }],
       groups: [],
       links: [{ id: eid("l0"), from: nid("a"), to: nid("ghost"), label: null }],
@@ -69,6 +71,7 @@ describe("layoutNetwork — subnet/zone groups", () => {
   it("nests members inside their group container and caps a cyclic parent", () => {
     const grouped: NetworkAst = {
       kind: "network",
+      styles: [],
       nodes: [
         { id: nid("web"), label: "Web", kind: "server", icon: null, parent: nid("group:0") },
         { id: nid("db"), label: "DB", kind: "database", icon: null, parent: null },

@@ -1107,7 +1107,11 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
   // the flowchart engine); their scene-node ids equal the source ids the directives target.
   if (
     ast === null ||
-    (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er" && ast.kind !== "block")
+    (ast.kind !== "flowchart" &&
+      ast.kind !== "state" &&
+      ast.kind !== "er" &&
+      ast.kind !== "block" &&
+      ast.kind !== "network")
   )
     return new Map();
   const resolved = resolveNodeStyles(ast.styles);
@@ -1132,7 +1136,11 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
 const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
   if (
     ast === null ||
-    (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er" && ast.kind !== "block")
+    (ast.kind !== "flowchart" &&
+      ast.kind !== "state" &&
+      ast.kind !== "er" &&
+      ast.kind !== "block" &&
+      ast.kind !== "network")
   )
     return new Map();
   const resolved = resolveLinkStyles(ast.styles);
@@ -1146,7 +1154,9 @@ const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
       ? ast.edges.map((e) => e.id)
       : ast.kind === "state"
         ? ast.transitions.map((t) => t.id)
-        : ast.relationships.map((r) => r.id);
+        : ast.kind === "er"
+          ? ast.relationships.map((r) => r.id)
+          : ast.links.map((l) => l.id);
   const out = new Map<SceneEdgeId, NodeColors>();
   edgeIds.forEach((id, i) => {
     const c = resolved.get(i) ?? null;

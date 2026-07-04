@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Render network-diagram colours from the source
+
+- `sourceNodeColors`/`sourceEdgeColors` now also colour network diagrams (scene ids equal node ids;
+  `linkStyle` indexes the links).
+
 ## 2026-07-04 — Render block-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour block-beta diagrams (blocks carry the same style
