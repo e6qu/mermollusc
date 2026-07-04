@@ -1,5 +1,16 @@
 # @m/app (playground) — work log
 
+## 2026-07-03 — Paste-any-Mermaid: fenced-block unwrap + autodetect/sync verified
+
+- A pasted fenced code block (```mermaid … ```, the usual copy shape from Markdown/GitHub/chat) now
+  UNWRAPS on paste (new pure `unwrapMermaidFence` + a CodeMirror paste `domEventHandler` in editor.ts),
+  so the real diagram header reaches autodetection instead of reading as an unknown → flowchart. Only a
+  single whole fenced block (bare ``` or ```mermaid) unwraps; ```python etc. paste as-is.
+- Verified (and locked with `paste-autodetect` e2e) that the rest already works end to end: autodetect
+  across all eight families, the example select drops to its placeholder, the previous diagram's overlay
+  overrides are pruned (don't linger on a pasted different diagram), and the style select repopulates for
+  the new family — with no page errors. Same editor drives the demo + main views.
+
 ## 2026-07-03 — Full node colour palette in the swatch picker
 
 - The context-bar swatch picker now surfaces ALL nine node accents (added compute/data/network/

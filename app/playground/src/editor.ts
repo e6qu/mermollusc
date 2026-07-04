@@ -175,6 +175,16 @@ const appTheme = EditorView.theme({
   },
 });
 
+// A Mermaid snippet is very often copied as a fenced code block (```mermaid … ```) from Markdown,
+// GitHub, docs, or chat. Pasted verbatim, the ``` header hides the real diagram header from
+// autodetection (it reads as an unknown → flowchart). Detect a SINGLE fenced block (bare ``` or a
+// ```mermaid — not ```python etc.) and return its inner source so a paste unwraps to real Mermaid;
+// null for anything else (leave it untouched). Pure + exported so it's unit-tested.
+export const unwrapMermaidFence = (text: string): string | null => {
+  const m = /^\s*```[ \t]*(?:mermaid)?[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```[ \t]*\s*$/i.exec(text);
+  return m !== null && m[1] !== undefined ? m[1] : null;
+};
+
 // Marks a transaction as programmatic (a structural edit, an example load, a share-link), so the
 // change listener can tell it apart from the user typing and not re-fire the render-from-text path.
 const programmatic = Annotation.define<boolean>();
@@ -248,6 +258,19 @@ export const createEditor = (
         // Name the editable surface for screen readers — without this the CodeMirror content is an
         // unlabelled textbox.
         EditorView.contentAttributes.of({ "aria-label": "Diagram source" }),
+        // Unwrap a pasted fenced Mermaid block so autodetection sees the real header (see
+        // `unwrapMermaidFence`). Only a whole single fenced block is unwrapped; anything else pastes as-is.
+        EditorView.domEventHandlers({
+          paste(event, v) {
+            const clip = event.clipboardData?.getData("text/plain");
+            if (clip === undefined || clip === "") return false;
+            const unwrapped = unwrapMermaidFence(clip);
+            if (unwrapped === null) return false;
+            event.preventDefault();
+            v.dispatch(v.state.replaceSelection(unwrapped));
+            return true;
+          },
+        }),
         editable.of(EditorView.editable.of(true)),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
