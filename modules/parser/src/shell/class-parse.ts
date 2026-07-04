@@ -3,6 +3,7 @@ import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   ClassArrow,
+  FlowStyle,
   ClassAst,
   ClassEntity,
   ClassEntityId,
@@ -107,6 +108,12 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const entitySpans = new Map<ClassEntityId, TextSpan>();
   const relationships: ClassRel[] = [];
   const relSpans = new Map<ClassRelId, TextSpan>();
+  const styles: FlowStyle[] = [];
+  // `:::name` on a class ref → a synthesised `class <id> <name>` assignment (as everywhere else).
+  const assign = (id: string, shorthand: IToken | undefined): void => {
+    if (shorthand !== undefined)
+      styles.push({ kind: "class", raw: `class ${id} ${shorthand.image.slice(3)}` });
+  };
 
   const see = (id: string, span: TextSpan): void => {
     if (!labels.has(id)) labels.set(id, generics(id));
@@ -121,11 +128,37 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   };
 
   for (const stmt of childNodes(cst.children, "classStatement")) {
+    const styleDir = childNodes(stmt.children, "classStyleDirective")[0];
+    if (styleDir !== undefined) {
+      const st = childTokens(styleDir.children, "ClassStyleStmt")[0];
+      const cd = childTokens(styleDir.children, "ClassClassDefStmt")[0];
+      const ls = childTokens(styleDir.children, "ClassLinkStyleStmt")[0];
+      if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
+      else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+      else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+      continue;
+    }
+
+    const css = childNodes(stmt.children, "classCssClassDecl")[0];
+    if (css !== undefined) {
+      // `cssClass "A,B" name` → a `class` assignment per quoted target.
+      const quoted = childTokens(css.children, "ClassQuotedString")[0];
+      const nameTok = childTokens(css.children, "ClassIdentifier")[0];
+      if (quoted !== undefined && nameTok !== undefined) {
+        for (const target of quoted.image.slice(1, -1).split(",")) {
+          const t = target.trim();
+          if (t !== "") styles.push({ kind: "class", raw: `class ${t} ${nameTok.image}` });
+        }
+      }
+      continue;
+    }
+
     const decl = childNodes(stmt.children, "classDecl")[0];
     if (decl !== undefined) {
       const name = childTokens(decl.children, "ClassIdentifier")[0];
       if (name === undefined) continue;
       see(name.image, tokenSpan(name));
+      assign(name.image, childTokens(decl.children, "ClassShorthand")[0]);
       const stereoTok = childTokens(decl.children, "ClassStereotype")[0];
       if (stereoTok !== undefined) {
         const inner = stereoTok.image.slice(2, -2).trim();
@@ -169,6 +202,15 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
     const label = childTokens(rm.children, "ClassLabelText")[0];
     const labelInfo = label === undefined ? null : relLabel(label);
     const relTok = childTokens(rm.children, "ClassRelationship")[0];
+    // `Foo:::hot` / `Foo:::hot --> Bar:::cold` — a `:::` belongs to the endpoint on its side of the
+    // operator (by source offset), so a right-only `:::` isn't mis-assigned to the left class.
+    const shorthands = childTokens(rm.children, "ClassShorthand");
+    assign(
+      left.image,
+      relTok === undefined
+        ? shorthands[0]
+        : shorthands.find((s) => s.startOffset < relTok.startOffset),
+    );
     if (relTok === undefined) {
       // `Foo : +member` shorthand — the label text is one member of Foo.
       if (label !== undefined) {
@@ -180,6 +222,10 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
     const right = ids[1];
     if (right === undefined) continue;
     see(right.image, tokenSpan(right));
+    assign(
+      right.image,
+      shorthands.find((s) => s.startOffset > relTok.startOffset),
+    );
     const parts = REL.exec(relTok.image);
     if (parts === null) continue;
     const [, leftSym = "", line = "", rightSym = ""] = parts;
@@ -209,7 +255,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
     members: membersById.get(id) ?? [],
   }));
   return ok({
-    ast: { kind: "class", entities, relationships },
+    ast: { kind: "class", entities, relationships, styles },
     source: { entities: entitySpans, relationships: relSpans },
   });
 };

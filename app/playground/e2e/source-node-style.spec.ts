@@ -125,3 +125,12 @@ test("mindmap diagram ::: + classDef colours the tagged node from the source too
   const tagged = await nodeCenterPx(page, "n1");
   expect(tagged[1] ?? 0).toBeGreaterThan(tagged[0] ?? 0);
 });
+
+test("class diagram classDef + ::: colours the class from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "classDiagram\n  class Animal:::hot\n  class Dog\n  Animal <|-- Dog\n  classDef hot fill:#16a34a\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "Animal");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});

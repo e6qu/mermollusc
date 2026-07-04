@@ -1113,7 +1113,8 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
       ast.kind !== "block" &&
       ast.kind !== "network" &&
       ast.kind !== "cloud" &&
-      ast.kind !== "mindmap")
+      ast.kind !== "mindmap" &&
+      ast.kind !== "class")
   )
     return new Map();
   const resolved = resolveNodeStyles(ast.styles);
@@ -1143,7 +1144,8 @@ const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
       ast.kind !== "er" &&
       ast.kind !== "block" &&
       ast.kind !== "network" &&
-      ast.kind !== "cloud")
+      ast.kind !== "cloud" &&
+      ast.kind !== "class")
   )
     return new Map();
   const resolved = resolveLinkStyles(ast.styles);
@@ -1157,7 +1159,7 @@ const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
       ? ast.edges.map((e) => e.id)
       : ast.kind === "state"
         ? ast.transitions.map((t) => t.id)
-        : ast.kind === "er"
+        : ast.kind === "er" || ast.kind === "class"
           ? ast.relationships.map((r) => r.id)
           : ast.links.map((l) => l.id);
   const out = new Map<SceneEdgeId, NodeColors>();
