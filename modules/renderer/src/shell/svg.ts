@@ -63,7 +63,8 @@ const labelLineHeight = (font: string): number => {
 const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>): string => {
   switch (cmd.kind) {
     case "box":
-      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${accentFill(cmd.accent, theme)}" stroke="${theme.nodeStroke}" stroke-width="1.5"/>`;
+      // A raw `fill`/`stroke` from a Mermaid `style`/`classDef` directive wins over the accent/theme.
+      return `<rect x="${num(cmd.x)}" y="${num(cmd.y)}" width="${num(cmd.width)}" height="${num(cmd.height)}" rx="${num(cmd.radius)}" fill="${cmd.fill ?? accentFill(cmd.accent, theme)}" stroke="${cmd.stroke ?? theme.nodeStroke}" stroke-width="1.5"/>`;
     case "stateStart":
       return `<circle cx="${num(cmd.cx)}" cy="${num(cmd.cy)}" r="${num(Math.max(3, cmd.radius - 3))}" fill="${theme.stroke}"/>`;
     case "junction":

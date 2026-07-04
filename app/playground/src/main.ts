@@ -114,11 +114,12 @@ import {
   retidyRoutes,
   trunkRoutes,
 } from "@m/layout";
-import { parseDiagramWithSource } from "@m/parser";
+import { parseDiagramWithSource, resolveNodeStyles } from "@m/parser";
 import {
   type EdgeFinish,
   edgeLabelAnchorAt,
   labelLines,
+  type NodeColors,
   paint,
   pathRatioNearest,
   toDisplayList,
@@ -1071,6 +1072,21 @@ const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => 
     : [id];
 };
 
+// Raw node fill/stroke resolved from the flowchart's Mermaid `style`/`classDef` directives (source-
+// canonical styling), keyed by scene-node id for the renderer. Empty for non-flowchart families (none
+// carry these directives yet) and for a graph with no styling.
+const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> => {
+  if (ast === null || ast.kind !== "flowchart") return new Map();
+  const resolved = resolveNodeStyles(ast.styles);
+  if (resolved.size === 0) return new Map();
+  const out = new Map<SceneNodeId, NodeColors>();
+  for (const n of shown.nodes) {
+    const c = resolved.get(n.id);
+    if (c !== undefined) out.set(n.id, c);
+  }
+  return out;
+};
+
 // True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
 // minimap cache rebuild and to hide the selection context bar mid-gesture.
 const isInteracting = (): boolean =>
@@ -1114,6 +1130,7 @@ const paintScene = (): void => {
     shown,
     (busEnabled || trunkEnabled) && ast !== null && SPREAD_FAMILIES.has(ast.kind),
     edgeFinishActive(),
+    sourceNodeColors(shown),
   );
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
@@ -6249,6 +6266,7 @@ installImageExport({
   shownScene,
   isRenderValid: () => currentRenderValid,
   edgeFinish: edgeFinishActive,
+  nodeColors: sourceNodeColors,
   activeTheme,
   getDirection: () => lastDirection,
   iconImages,

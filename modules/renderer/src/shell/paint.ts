@@ -294,8 +294,9 @@ export const paint = (
   for (const cmd of cmds) {
     switch (cmd.kind) {
       case "box": {
-        ctx.strokeStyle = theme.nodeStroke;
-        const fill = accentFill(cmd.accent, theme);
+        // A raw `fill`/`stroke` from a Mermaid `style`/`classDef` directive wins over the accent/theme.
+        ctx.strokeStyle = cmd.stroke ?? theme.nodeStroke;
+        const fill = cmd.fill ?? accentFill(cmd.accent, theme);
         if (theme.sketch) {
           sketchFillRect(ctx, fill, theme.background, cmd.x, cmd.y, cmd.width, cmd.height);
           sketchRect(ctx, cmd.x, cmd.y, cmd.width, cmd.height, seedOf(cmd.x, cmd.y, cmd.width));

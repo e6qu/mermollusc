@@ -17,5 +17,6 @@ export type {
   LabelAlign,
   MarkerPolygon,
   MarkerFill,
+  NodeColors,
   PathCmd,
 } from "./display.js";

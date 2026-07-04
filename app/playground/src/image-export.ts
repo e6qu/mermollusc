@@ -1,6 +1,14 @@
-import type { FlowDirection, Scene } from "@m/contracts";
+import type { FlowDirection, Scene, SceneNodeId } from "@m/contracts";
 import { findIcon, type IconRegistry } from "@m/icons";
-import { type EdgeFinish, paint, toDisplayList, toDot, toSvg, type Theme } from "@m/renderer";
+import {
+  type EdgeFinish,
+  type NodeColors,
+  paint,
+  toDisplayList,
+  toDot,
+  toSvg,
+  type Theme,
+} from "@m/renderer";
 import { appLog } from "./log.js";
 import { isOk, messageOf } from "@m/std";
 import { buildImagePdf, bytesOf } from "./pdf.js";
@@ -25,6 +33,9 @@ export interface ImageExportDeps {
   // The active edge finish (decorated / plain / spline) — exports must match what the on-screen
   // canvas draws, decorations and spline geometry alike.
   readonly edgeFinish: () => EdgeFinish;
+  // Raw node fill/stroke from Mermaid `style`/`classDef` directives, so an export colours nodes the same
+  // way the on-screen canvas does.
+  readonly nodeColors: (shown: Scene) => ReadonlyMap<SceneNodeId, NodeColors>;
   readonly activeTheme: () => Theme;
   readonly getDirection: () => FlowDirection | null;
   readonly iconImages: ReadonlyMap<string, CanvasImageSource>;
@@ -57,7 +68,12 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     octx.fillStyle = active.background;
     octx.fillRect(0, 0, logicalWidth, logicalHeight);
     octx.translate(margin - shown.extent.origin.x, margin - shown.extent.origin.y);
-    paint(octx, toDisplayList(shown, false, deps.edgeFinish()), deps.iconImages, active);
+    paint(
+      octx,
+      toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown)),
+      deps.iconImages,
+      active,
+    );
     return out;
   };
 
@@ -170,7 +186,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value, deps.activeTheme().text));
       else appLog("error", "icon-resolve-failed", resolved.error.message);
     }
-    const svg = toSvg(toDisplayList(shown, false, deps.edgeFinish()), {
+    const svg = toSvg(toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown)), {
       width: Math.ceil(shown.extent.size.width) + margin * 2,
       height: Math.ceil(shown.extent.size.height) + margin * 2,
       origin: shown.extent.origin,
