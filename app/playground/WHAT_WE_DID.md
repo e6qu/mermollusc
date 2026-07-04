@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Render `:::class` node colours
+
+- A pasted flowchart using the inline `:::class` shorthand now colours its nodes (it flows through the
+  same source-node-colour path as `class`/`classDef`).
+
 ## 2026-07-04 — Honour `classDef default` / `linkStyle default`
 
 - `sourceNodeColors`/`sourceEdgeColors` now apply a `classDef default`/`linkStyle default` as the base

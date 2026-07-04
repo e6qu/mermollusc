@@ -76,6 +76,8 @@ class FlowchartParser extends CstParser {
       this.CONSUME(Tok.Icon);
       this.CONSUME(Tok.QuotedString);
     });
+    // Optional inline class assignment: `id:::className` (Mermaid shorthand for `class id className`).
+    this.OPTION3(() => this.CONSUME(Tok.ClassShorthand));
   });
 
   private readonly shape = this.RULE("shape", () =>

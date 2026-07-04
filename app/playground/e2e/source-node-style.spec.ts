@@ -60,3 +60,12 @@ test("classDef default colours every node (Mermaid compliance)", async ({ page }
     expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0); // green-dominant default fill
   }
 });
+
+test("inline :::class shorthand colours the node from the source", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart LR\n  A[Alpha]:::hot --> B[Beta]\n  classDef hot fill:#16a34a\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const a = await nodeCenterPx(page, "A");
+  expect(a[1] ?? 0).toBeGreaterThan(a[0] ?? 0); // green-dominant
+});
