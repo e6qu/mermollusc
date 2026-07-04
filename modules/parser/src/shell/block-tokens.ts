@@ -1,7 +1,15 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import { CLASS_STMT, CLASSDEF_STMT, LINKSTYLE_STMT, STYLE_STMT } from "./style-patterns.js";
 
 // Shapes/edge-text use per-bracket lexer modes (as in the flowchart lexer) so labels keep spaces.
 const Identifier = createToken({ name: "Identifier", pattern: /[A-Za-z0-9_]+/ });
+
+// Mermaid styling directives (shared patterns), matched as whole lines before `Identifier` so a
+// `classDef …`/`class …`/`style …`/`linkStyle …` line is captured whole rather than as bare blocks.
+const StyleStmt = createToken({ name: "BlockStyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "BlockClassDefStmt", pattern: CLASSDEF_STMT });
+const ClassStmt = createToken({ name: "BlockClassStmt", pattern: CLASS_STMT });
+const LinkStyleStmt = createToken({ name: "BlockLinkStyleStmt", pattern: LINKSTYLE_STMT });
 // `block:` opens a composite block; matched before `BlockHeader` so `block:id` isn't read as the
 // `block` header plus a stray `:id`.
 const BlockGroupOpen = createToken({ name: "BlockGroupOpen", pattern: /block:/ });
@@ -66,6 +74,10 @@ export const blockLexer = new Lexer({
       LParen,
       LCurly,
       Pipe,
+      StyleStmt,
+      ClassDefStmt,
+      ClassStmt,
+      LinkStyleStmt,
       Identifier,
     ],
     square: [RSquare, SquareText],
@@ -78,6 +90,10 @@ export const blockLexer = new Lexer({
 
 export const BlockTok = {
   Identifier,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   BlockGroupOpen,
   BlockHeader,
   End,
@@ -135,5 +151,9 @@ export const blockAllTokens: TokenType[] = [
   Pipe,
   PipeEnd,
   PipeText,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   Identifier,
 ];

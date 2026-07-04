@@ -162,6 +162,9 @@ export interface BlockAst {
   readonly groups: readonly BlockGroup[];
   readonly roots: readonly NodeId[];
   readonly edges: readonly BlockEdge[];
+  // Mermaid `style`/`classDef`/`class`/`linkStyle` directives (same as flowchart), resolved to colours
+  // by the shared style resolver.
+  readonly styles: readonly FlowStyle[];
 }
 
 export type NetworkNodeKind =

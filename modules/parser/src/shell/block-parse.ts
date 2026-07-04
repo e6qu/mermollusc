@@ -4,6 +4,7 @@ import type { Children } from "./cst.js";
 import { brand, err, map, ok, positiveInt, type Result } from "@m/std";
 import type {
   BlockAst,
+  FlowStyle,
   BlockEdge,
   BlockGroup,
   BlockNode,
@@ -161,6 +162,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const edgeSpans = new Map<EdgeId, TextSpan>();
   const arrowSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
+  const styles: FlowStyle[] = [];
   const groups: BlockGroup[] = [];
   const groupSpans = new Map<NodeId, TextSpan>();
   // A first malformed-ref failure; once set, the walk bails and the parse fails loudly.
@@ -188,6 +190,18 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
     const children: NodeId[] = [];
     for (const stmt of statements) {
       if (failure !== null) break;
+      const styleDir = childNodes(stmt.children, "blockStyleDirective")[0];
+      if (styleDir !== undefined) {
+        const st = childTokens(styleDir.children, "BlockStyleStmt")[0];
+        const cd = childTokens(styleDir.children, "BlockClassDefStmt")[0];
+        const cl = childTokens(styleDir.children, "BlockClassStmt")[0];
+        const ls = childTokens(styleDir.children, "BlockLinkStyleStmt")[0];
+        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
+        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
+        else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        continue;
+      }
       const colDecl = childNodes(stmt.children, "columnsDecl")[0];
       if (colDecl !== undefined) {
         const raw = imageOf(colDecl.children, "Number");
@@ -311,7 +325,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
     top.columns !== null && Number.isFinite(top.columns) ? top.columns : top.children.length;
   const resolved = positiveInt(Math.max(1, Math.trunc(requested)));
   return ok({
-    ast: { kind: "block", columns: resolved, blocks, groups, roots: top.children, edges },
+    ast: { kind: "block", columns: resolved, blocks, groups, roots: top.children, edges, styles },
     source: {
       blocks: blockSpans,
       edges: edgeSpans,

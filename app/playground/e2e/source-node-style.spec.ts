@@ -89,3 +89,12 @@ test("er diagram classDef colours entities from the source too", async ({ page }
   const px = await nodeCenterPx(page, "CUSTOMER");
   expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
 });
+
+test("block diagram classDef colours blocks from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "block-beta\n  columns 2\n  A B\n  classDef hot fill:#16a34a\n  class A hot\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "A");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});

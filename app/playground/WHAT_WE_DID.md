@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Render block-diagram colours from the source
+
+- `sourceNodeColors`/`sourceEdgeColors` now also colour block-beta diagrams (blocks carry the same style
+  directives; scene ids equal block ids, `linkStyle` indexes the block edges).
+
 ## 2026-07-04 — Render ER-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour ER diagrams (entities carry the same style

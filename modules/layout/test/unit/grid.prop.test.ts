@@ -46,6 +46,7 @@ describe("layoutBlock — grid invariants (property-based)", () => {
             groups: [],
             roots: ids.map((id) => nid(id)),
             edges: [],
+            styles: [],
           };
           const result = layoutBlock(ast, heuristicMeasure);
           if (!result.ok) throw new Error(result.error.message);

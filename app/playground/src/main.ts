@@ -1105,7 +1105,10 @@ const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => 
 const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> => {
   // Flowchart and state both carry Mermaid `style`/`classDef`/`:::` directives (state lays out through
   // the flowchart engine); their scene-node ids equal the source ids the directives target.
-  if (ast === null || (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er"))
+  if (
+    ast === null ||
+    (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er" && ast.kind !== "block")
+  )
     return new Map();
   const resolved = resolveNodeStyles(ast.styles);
   // `classDef default …` is the base colour for every node; an explicit `style`/`class` overrides it.
@@ -1127,7 +1130,10 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
 // by scene-edge id. `linkStyle` targets edges by declaration index; the Nth AST edge's id is the Nth
 // scene edge's id (flowchart preserves order), so map index → edge id → colour.
 const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
-  if (ast === null || (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er"))
+  if (
+    ast === null ||
+    (ast.kind !== "flowchart" && ast.kind !== "state" && ast.kind !== "er" && ast.kind !== "block")
+  )
     return new Map();
   const resolved = resolveLinkStyles(ast.styles);
   // `linkStyle default …` is the base stroke for every edge; an explicit `linkStyle <index>` overrides.
@@ -1136,7 +1142,7 @@ const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
   // `linkStyle <index>` targets edges by declaration order — flowchart edges, state transitions, or ER
   // relationships.
   const edgeIds =
-    ast.kind === "flowchart"
+    ast.kind === "flowchart" || ast.kind === "block"
       ? ast.edges.map((e) => e.id)
       : ast.kind === "state"
         ? ast.transitions.map((t) => t.id)

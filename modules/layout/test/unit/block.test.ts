@@ -18,6 +18,7 @@ const ast: BlockAst = {
   groups: [],
   roots: [nid("a"), nid("b"), nid("c")],
   edges: [{ id: eid("e0"), from: nid("a"), to: nid("b"), kind: "arrow", label: null }],
+  styles: [],
 };
 
 describe("layoutBlock", () => {
@@ -34,6 +35,7 @@ describe("layoutBlock", () => {
       groups: [],
       roots: [nid("a")],
       edges: [{ id: eid("e0"), from: nid("a"), to: nid("ghost"), kind: "arrow", label: null }],
+      styles: [],
     };
     expect(layoutBlock(bad, heuristicMeasure).ok).toBe(false);
   });
@@ -99,6 +101,7 @@ describe("layoutBlock — spans, nesting, and the cycle guard", () => {
       ],
       roots: [nid("h"), nid("g")],
       edges: [],
+      styles: [],
     };
     const r = layoutBlock(ast, heuristicMeasure);
     if (!r.ok) throw new Error(r.error.message);
@@ -129,6 +132,7 @@ describe("layoutBlock — spans, nesting, and the cycle guard", () => {
       ],
       roots: [nid("g1")],
       edges: [],
+      styles: [],
     };
     expect(layoutBlock(ast, heuristicMeasure).ok).toBe(false);
   });
