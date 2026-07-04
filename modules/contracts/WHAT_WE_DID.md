@@ -1,6 +1,10 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — BlockAst.styles
+
+- `BlockAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart).
+
 ## 2026-07-04 — ErAst.styles
 
 - `ErAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart/state).

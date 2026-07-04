@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Block-diagram styling (shared patterns)
+
+- The block-beta parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens,
+  before `Identifier` so a directive line isn't read as bare blocks), capturing them on `BlockAst.styles`.
+  Previously a `classDef` broke the whole block parse. Third "other family".
+
 ## 2026-07-04 — ER-diagram styling (shared patterns)
 
 - The ER parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared `style-patterns.ts`

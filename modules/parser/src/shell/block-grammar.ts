@@ -31,7 +31,19 @@ class BlockParser extends CstParser {
     this.OR([
       { ALT: () => this.SUBRULE(this.columnsDecl) },
       { ALT: () => this.SUBRULE(this.groupBlock) },
+      { ALT: () => this.SUBRULE(this.styleDirective) },
       { ALT: () => this.SUBRULE(this.chain) },
+    ]),
+  );
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`); distinct first
+  // tokens keep the statement OR LL(1).
+  private readonly styleDirective = this.RULE("blockStyleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(BlockTok.StyleStmt) },
+      { ALT: () => this.CONSUME(BlockTok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(BlockTok.ClassStmt) },
+      { ALT: () => this.CONSUME(BlockTok.LinkStyleStmt) },
     ]),
   );
 
