@@ -1,6 +1,13 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Mindmap styling (line-based, generated ids)
+
+- Mindmap's lexer captures each line whole, so a `classDef`/`style`/`linkStyle` line would have become a
+  node. The parser now recognises those (anchored, colon-bearing patterns — unambiguous vs node text) as
+  directives, and turns an inline `:::name` on a node into a synthesised `class <generatedId> name` (node
+  ids are generated). Captured on `MindmapAst.styles`. Sixth "other family".
+
 ## 2026-07-05 — Cloud-diagram styling (shared patterns)
 
 - The cloud parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens, before

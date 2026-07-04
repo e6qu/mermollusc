@@ -244,6 +244,7 @@ describe("layout", () => {
   it("layoutDiagram lays out a mindmap as an arrowless radial tree", async () => {
     const mm: MindmapAst = {
       kind: "mindmap",
+      styles: [],
       nodes: [
         { id: mmid("n0"), label: "Root", shape: "circle", parent: null, level: 0 },
         { id: mmid("n1"), label: "A", shape: "default", parent: mmid("n0"), level: 1 },

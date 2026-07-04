@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — MindmapAst.styles
+
+- `MindmapAst` gains `styles: readonly FlowStyle[]` (classDef/style/linkStyle + synthesised class from
+  inline `:::name`).
+
 ## 2026-07-05 — CloudAst.styles
 
 - `CloudAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart).

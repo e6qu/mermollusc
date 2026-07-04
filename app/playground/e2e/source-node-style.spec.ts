@@ -116,3 +116,12 @@ test("cloud diagram classDef colours nodes from the source too", async ({ page }
   const px = await nodeCenterPx(page, "web1");
   expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
 });
+
+test("mindmap diagram ::: + classDef colours the tagged node from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "mindmap\n  root((Root))\n    A:::hot\n    B\n  classDef hot fill:#16a34a\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const tagged = await nodeCenterPx(page, "n1");
+  expect(tagged[1] ?? 0).toBeGreaterThan(tagged[0] ?? 0);
+});

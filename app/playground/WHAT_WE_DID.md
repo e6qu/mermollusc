@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Render mindmap colours from the source
+
+- `sourceNodeColors` now also colours mindmap nodes (keyed by generated node id; mindmap has no edge list,
+  so no `linkStyle` edge colouring).
+
 ## 2026-07-05 — Render cloud-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour cloud diagrams (scene ids equal node ids;

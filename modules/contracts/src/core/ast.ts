@@ -517,6 +517,9 @@ export interface MindmapAst {
   readonly kind: "mindmap";
   // Pre-order (source order): a node always follows its parent. Parent links carry the tree.
   readonly nodes: readonly MindmapNode[];
+  // Mermaid `classDef`/`style`/`linkStyle` directives and synthesised `class` assignments from inline
+  // `:::name`; resolved to colours by the shared style resolver (keyed by the generated node id).
+  readonly styles: readonly FlowStyle[];
 }
 
 export type PieSliceId = Brand<string, "PieSliceId">;
