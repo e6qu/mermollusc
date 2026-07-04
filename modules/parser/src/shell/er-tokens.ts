@@ -1,8 +1,16 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import { CLASS_STMT, CLASSDEF_STMT, LINKSTYLE_STMT, STYLE_STMT } from "./style-patterns.js";
 
 // Relationship label text (after `:`) is captured in a dedicated mode, like the sequence parser.
 // Entity names allow hyphens (e.g. LINE-ITEM); the cardinality operator is lexed as one token.
 const Identifier = createToken({ name: "ErIdentifier", pattern: /[A-Za-z_][\w-]*/ });
+
+// Mermaid styling directives (shared patterns) — matched as whole lines BEFORE `Colon` so a `fill:…`
+// colon doesn't push into label mode.
+const StyleStmt = createToken({ name: "ErStyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "ErClassDefStmt", pattern: CLASSDEF_STMT });
+const ClassStmt = createToken({ name: "ErClassStmt", pattern: CLASS_STMT });
+const LinkStyleStmt = createToken({ name: "ErLinkStyleStmt", pattern: LINKSTYLE_STMT });
 const ErDiagram = createToken({ name: "ErDiagram", pattern: /erDiagram/, longer_alt: Identifier });
 // `<leftCard><line><rightCard>` — e.g. `||--o{`, `}o..o|`. Lexed whole so its `|`/`}`/`o` can't be
 // mistaken for anything else; the three parts are split out in the CST→AST step.
@@ -43,6 +51,10 @@ export const erLexer = new Lexer({
       LBrace,
       RBrace,
       QuotedString,
+      StyleStmt,
+      ClassDefStmt,
+      ClassStmt,
+      LinkStyleStmt,
       Colon,
       Identifier,
     ],
@@ -60,6 +72,10 @@ export const ErTok = {
   RBrace,
   NewLine,
   Semicolon,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   Colon,
   LabelEnd,
   LabelText,
@@ -76,6 +92,10 @@ export const erAllTokens: TokenType[] = [
   LBrace,
   RBrace,
   QuotedString,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   Colon,
   LabelEnd,
   LabelText,

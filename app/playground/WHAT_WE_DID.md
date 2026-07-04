@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Render ER-diagram colours from the source
+
+- `sourceNodeColors`/`sourceEdgeColors` now also colour ER diagrams (entities carry the same style
+  directives; scene ids equal entity ids, `linkStyle` indexes the relationships).
+
 ## 2026-07-04 — Pasting a whole diagram replaces + switches type
 
 - Pasting a WHOLE Mermaid diagram (its first line is a diagram header, via `looksLikeDiagramHeader`)
