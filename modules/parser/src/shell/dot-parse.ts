@@ -357,6 +357,7 @@ const buildResultWithSource = (
       styleSpans: new Map(),
       linkStyleSpans: new Map(),
       subgraphSpans: new Map(),
+      edgeEnds: new Map(),
     },
   });
 };

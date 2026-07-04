@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Edge endpoint spans
+
+- The parser records `edgeEnds` (each edge's from/to endpoint declaration spans) for reconnection. A
+  chain (`A --> B --> C`) reuses the middle node's single token, so the two edges share that span — which
+  the editor uses to decline a reconnect that would move both.
+
 ## 2026-07-04 — Subgraph block spans
 
 - The parser records `subgraphSpans` (the `subgraph … end` block span per subgraph id) from the block

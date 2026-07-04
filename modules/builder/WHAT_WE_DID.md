@@ -1,6 +1,11 @@
 # @m/builder — work log
 
 
+## 2026-07-04 — Reconnect edge endpoint
+
+- `reconnectEdgeEnd(text, endSpan, newNodeId)` rewrites an edge's endpoint declaration span to a target
+  node id (`A --> B` → `A --> C`).
+
 ## 2026-07-04 — Flowchart subgraph patches
 
 - `wrapFlowchartSubgraph(text, memberIds, id, label)` inserts a `subgraph <id>[label] … end` block after

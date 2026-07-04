@@ -56,6 +56,15 @@ export interface SourceMap {
   // The whole-block span (`subgraph … end`) of each subgraph, keyed by its id — so the editor can remove
   // a subgraph (ungroup) by deleting its block.
   readonly subgraphSpans: ReadonlyMap<NodeId, TextSpan>;
+  // Each edge's two endpoint DECLARATION spans (the `A` / `A[label]` at each end of `A --> B`), so the
+  // editor can reconnect an end by rewriting that span to a different node id. Keyed by edge id.
+  readonly edgeEnds: ReadonlyMap<EdgeId, EdgeEndSpans>;
+}
+
+// The source spans of an edge's two endpoints — the node reference at each end, for reconnection.
+export interface EdgeEndSpans {
+  readonly from: TextSpan;
+  readonly to: TextSpan;
 }
 
 // Editable text spans for a sequence diagram: each actor's label, each message's text, and its arrow.

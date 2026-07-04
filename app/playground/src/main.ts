@@ -52,6 +52,7 @@ import {
   removeLinkStyleDirective,
   wrapFlowchartSubgraph,
   removeSubgraphBlock,
+  reconnectEdgeEnd,
   patchSpan,
   shiftGanttStart,
   setGanttStartFromDay,
@@ -559,6 +560,15 @@ let waypointDrag: {
   readonly points: Array<{ x: number; y: number }>;
 } | null = null;
 let waypointDragRecorded = false;
+// Dragging an edge's endpoint handle to reconnect it to a different node (flowchart, source-canonical).
+// `anchor` is the fixed other end (for the rubber-band); `cursor` tracks the pointer.
+let endpointDrag: {
+  readonly id: SceneEdgeId;
+  readonly end: "from" | "to";
+  readonly anchor: Point;
+  cursor: { x: number; y: number };
+} | null = null;
+const ENDPOINT_HIT = 9;
 const RESIZE_MIN_W = 30;
 const RESIZE_MIN_H = 24;
 const HANDLE_HIT = 7;
@@ -1118,6 +1128,7 @@ const isInteracting = (): boolean =>
   resize !== null ||
   labelDrag !== null ||
   waypointDrag !== null ||
+  endpointDrag !== null ||
   marquee !== null ||
   connectDrag !== null ||
   pan !== null;
@@ -1218,6 +1229,21 @@ const paintScene = (): void => {
         ctx.strokeStyle = ring;
         ctx.stroke();
       }
+      // Endpoint handles (flowchart): a hollow square at each end — drag to reconnect that end to a node.
+      if (ast !== null && ast.kind === "flowchart") {
+        const eR = Math.max(4, 5 / viewScale);
+        const first = edge.waypoints[0];
+        const last = edge.waypoints[edge.waypoints.length - 1];
+        for (const end of [first, last]) {
+          if (end === undefined) continue;
+          ctx.beginPath();
+          ctx.rect(end.x - eR, end.y - eR, eR * 2, eR * 2);
+          ctx.fillStyle = ring;
+          ctx.fill();
+          ctx.strokeStyle = selectedFill;
+          ctx.stroke();
+        }
+      }
     }
     const anchor = displayedEdgeLabelAnchor(edge);
     ctx.fillStyle = selectedFill;
@@ -1278,6 +1304,21 @@ const paintScene = (): void => {
     ctx.setLineDash([]);
     ctx.beginPath();
     ctx.arc(connectDrag.x, connectDrag.y, handleSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (endpointDrag !== null) {
+    // Reconnecting an edge end: a dashed rubber-band from the fixed other end to the cursor.
+    ctx.strokeStyle = selectedFill;
+    ctx.fillStyle = selectedFill;
+    ctx.lineWidth = overlayLine;
+    ctx.setLineDash([overlayDash, overlayDash]);
+    ctx.beginPath();
+    ctx.moveTo(endpointDrag.anchor.x, endpointDrag.anchor.y);
+    ctx.lineTo(endpointDrag.cursor.x, endpointDrag.cursor.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(endpointDrag.cursor.x, endpointDrag.cursor.y, handleSize, 0, Math.PI * 2);
     ctx.fill();
   }
   if (snapGuides.vx !== null || snapGuides.hy !== null) {
@@ -1759,6 +1800,48 @@ const waypointHitAt = (
     if (p !== undefined && Math.hypot(p.x - at.x, p.y - at.y) <= r) return { kind: "add", seg: i };
   }
   return null;
+};
+
+// Which endpoint of a selected edge is under the pointer — `from` (first waypoint) or `to` (last), or
+// null. Endpoints sit on the node borders; dragging one reconnects that end to another node.
+const endpointHitAt = (edge: SceneEdge, at: Point): "from" | "to" | null => {
+  const r = ENDPOINT_HIT / viewScale;
+  const first = edge.waypoints[0];
+  const last = edge.waypoints[edge.waypoints.length - 1];
+  if (last !== undefined && Math.hypot(last.x - at.x, last.y - at.y) <= r) return "to";
+  if (first !== undefined && Math.hypot(first.x - at.x, first.y - at.y) <= r) return "from";
+  return null;
+};
+
+// Reconnect one end of a flowchart edge to `targetId` by rewriting its endpoint span in the source.
+// Declines (loudly) when that endpoint's span is SHARED with another edge (a chain like `A --> B --> C`
+// reuses the `B` token), since rewriting it would silently move the other edge too.
+const reconnectFlowchartEdge = (
+  edgeId: SceneEdgeId,
+  end: "from" | "to",
+  targetId: SceneNodeId,
+): void => {
+  if (ast === null || ast.kind !== "flowchart" || source === null) return;
+  const eid = brand<string, "EdgeId">(edgeId);
+  const ends = source.edgeEnds.get(eid);
+  if (ends === undefined) return;
+  const span = end === "from" ? ends.from : ends.to;
+  const shared = [...source.edgeEnds].some(
+    ([id, e]) =>
+      `${id}` !== `${eid}` &&
+      ((e.from.start === span.start && e.from.end === span.end) ||
+        (e.to.start === span.start && e.to.end === span.end)),
+  );
+  if (shared) {
+    flashStatus("can't reconnect a chained endpoint — split the chain first", "warning");
+    return;
+  }
+  const next = reconnectEdgeEnd(editor.value(), span, brand<string, "NodeId">(targetId));
+  if (next === editor.value()) return;
+  recordHistory();
+  setSourceValue(next);
+  void renderFromText(next);
+  announce(`reconnected edge ${end === "from" ? "start" : "end"} to ${targetId}`);
 };
 
 // Commit an edge's interior control points to the overlay as manual waypoints — empty clears them (and
@@ -3701,6 +3784,20 @@ canvas.addEventListener("pointerdown", (ev) => {
   // deferred to the first move, so a plain click (or a double-click-to-relabel) changes nothing.
   const selEdge = viewerMode ? null : singleSelectedEdge(shown);
   if (selEdge !== null) {
+    // An endpoint handle (at the very ends) wins first — dragging it reconnects the edge to another node.
+    if (ast !== null && ast.kind === "flowchart") {
+      const end = endpointHitAt(selEdge, at);
+      if (end !== null) {
+        ev.preventDefault();
+        const other =
+          end === "from" ? selEdge.waypoints[selEdge.waypoints.length - 1] : selEdge.waypoints[0];
+        if (other !== undefined) {
+          endpointDrag = { id: selEdge.id, end, anchor: other, cursor: { x: at.x, y: at.y } };
+          canvas.setPointerCapture(ev.pointerId);
+          return;
+        }
+      }
+    }
     const wh = waypointHitAt(selEdge, at);
     if (wh !== null && wh.kind === "bend") {
       ev.preventDefault();
@@ -3914,6 +4011,12 @@ canvas.addEventListener("pointermove", (ev) => {
   if (connectDrag !== null) {
     const at = scenePoint(ev);
     connectDrag = { ...connectDrag, x: at.x, y: at.y };
+    requestPaint();
+    return;
+  }
+  if (endpointDrag !== null) {
+    const at = scenePoint(ev);
+    endpointDrag.cursor = { x: at.x, y: at.y };
     requestPaint();
     return;
   }
@@ -4149,6 +4252,18 @@ canvas.addEventListener("pointerup", (ev) => {
       }
     } else {
       paintScene(); // released on empty space / the same node — clear the rubber-band
+    }
+    return;
+  }
+  if (endpointDrag !== null) {
+    canvas.releasePointerCapture(ev.pointerId);
+    const ep = endpointDrag;
+    endpointDrag = null;
+    const target = scene === null ? null : hitScene(shownScene(scene), scenePoint(ev));
+    if (target !== null && target.kind === "node") {
+      reconnectFlowchartEdge(ep.id, ep.end, target.id);
+    } else {
+      paintScene(); // released off a node — cancel, snap back
     }
     return;
   }

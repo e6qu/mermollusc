@@ -129,6 +129,7 @@ export type {
   TextSpan,
   NodeSpans,
   SourceMap,
+  EdgeEndSpans,
   SequenceSource,
   C4Source,
   BlockSource,

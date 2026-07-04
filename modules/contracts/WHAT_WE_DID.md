@@ -1,6 +1,12 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — SourceMap.edgeEnds (edge endpoint spans)
+
+- The flowchart `SourceMap` gains `edgeEnds: ReadonlyMap<EdgeId, EdgeEndSpans>` — each edge's two
+  endpoint declaration spans (the `A` / `A[label]` at each end), so the editor can reconnect an end by
+  rewriting that span to a different node id.
+
 ## 2026-07-04 — SourceMap.subgraphSpans
 
 - The flowchart `SourceMap` gains `subgraphSpans: ReadonlyMap<NodeId, TextSpan>` — the whole-block span

@@ -31,6 +31,7 @@ export {
   removeLinkStyleDirective,
   wrapFlowchartSubgraph,
   removeSubgraphBlock,
+  reconnectEdgeEnd,
   restyleSequenceMessage,
   shiftGanttStart,
   setGanttStartFromDay,
