@@ -1,6 +1,15 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Node colour swatch writes to the source (flowchart)
+
+- The context-bar colour swatch now writes a flowchart node's colour into the SOURCE as a `style <id>
+  fill:<hex>` directive (add/update in place/remove), instead of the overlay — source-canonical styling.
+  Multi-node edits apply in-place patches by descending offset (so spans stay valid), then append. The
+  swatch REFLECTS the source colour by reverse-mapping the fill hex to an accent. Non-flowchart families
+  keep the overlay accent (their dialects have no `style` syntax we parse — the overlay is additive, not
+  a fallback).
+
 ## 2026-07-04 — Render node colours from the Mermaid source
 
 - A flowchart's `style`/`classDef` directives now COLOUR the nodes (canvas + every export): `main.ts`

@@ -125,6 +125,40 @@ export const addEdgeLabel = (
 export const restyleEdge = (text: string, arrowSpan: TextSpan, kind: EdgeKind): string =>
   patchSpan(text, arrowSpan, ARROW[kind]);
 
+const styleDirective = (id: NodeId, fill: string, stroke: string | null): string =>
+  stroke === null ? `style ${id} fill:${fill}` : `style ${id} fill:${fill},stroke:${stroke}`;
+
+// Set a node's colour by writing a Mermaid `style <id> fill:…[,stroke:…]` directive into the source
+// (source-canonical styling). `span` is the node's existing single-target `style` directive-token span
+// (from `SourceMap.styleSpans`) to rewrite in place, or null to append a fresh line at the end.
+export const setNodeStyleDirective = (
+  text: string,
+  span: TextSpan | null,
+  id: NodeId,
+  fill: string,
+  stroke: string | null,
+): string => {
+  const directive = styleDirective(id, fill, stroke);
+  if (span !== null) return patchSpan(text, span, directive);
+  const body = text.replace(/[\r\n]+$/, "");
+  return `${body}\n  ${directive}\n`;
+};
+
+// Remove a node's inline `style` line entirely — the directive plus its leading indentation and one
+// trailing newline — so clearing a colour leaves no blank line behind.
+export const removeNodeStyleDirective = (text: string, span: TextSpan): string => {
+  let start = span.start;
+  while (start > 0) {
+    const ch = text[start - 1];
+    if (ch !== " " && ch !== "\t") break;
+    start--;
+  }
+  let end = span.end;
+  if (text[end] === "\r") end++;
+  if (text[end] === "\n") end++;
+  return text.slice(0, start) + text.slice(end);
+};
+
 export const restyleSequenceMessage = (
   text: string,
   arrowSpan: TextSpan,

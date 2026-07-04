@@ -1,5 +1,11 @@
 # @m/builder — work log
 
+
+## 2026-07-04 — Node style-directive patches
+
+- `setNodeStyleDirective(text, span, id, fill, stroke)` writes a Mermaid `style <id> fill:…[,stroke:…]`
+  line — rewriting an existing single-target line in place (via its span) or appending a fresh one.
+  `removeNodeStyleDirective(text, span)` deletes the line (indent + trailing newline, no blank line).
 ## 2026-07-04 — Edge colour through applyStyles + overlay round-trip
 
 - `applyStyles` now colours edges from `EdgeStyle.accent` in a light geometry-independent second pass
