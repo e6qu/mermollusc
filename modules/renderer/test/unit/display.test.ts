@@ -14,9 +14,9 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
   ],
   edges: [
@@ -33,6 +33,7 @@ const scene: Scene = {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none" as const,
     },
   ],
   wedges: [],
@@ -64,6 +65,7 @@ describe("toDisplayList", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
     });
@@ -95,6 +97,7 @@ describe("toDisplayList", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
     };
@@ -121,6 +124,7 @@ describe("toDisplayList", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
     };
@@ -147,6 +151,7 @@ describe("toDisplayList", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
     };
@@ -174,6 +179,7 @@ describe("toDisplayList", () => {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none" as const,
     });
     const crossing: Scene = {
       ...scene,
@@ -212,6 +218,7 @@ describe("toDisplayList", () => {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none" as const,
     });
     // Both run right along y=100; the first turns down at x=150 where the second keeps going → a junction.
     const busScene: Scene = {
@@ -242,7 +249,7 @@ describe("toDisplayList", () => {
           icon: null,
           rowDivider: null,
           subtitle: null,
-          accent: "none",
+          accent: "none" as const,
           role: "normal",
           rows: null,
         },
@@ -266,13 +273,13 @@ describe("toDisplayList", () => {
   it("renders state pseudo-node roles as semantic display commands", () => {
     const stateScene: Scene = {
       nodes: [
-        { id: snid("start"), bounds: rect(0, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("start"), bounds: rect(0, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "stateStart", rows: null },
-        { id: snid("end"), bounds: rect(40, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("end"), bounds: rect(40, 0, 20, 20), label: "", shape: "circle", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "stateEnd", rows: null },
-        { id: snid("fork"), bounds: rect(80, 4, 48, 12), label: "", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("fork"), bounds: rect(80, 4, 48, 12), label: "", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "stateFork", rows: null },
-        { id: snid("note"), bounds: rect(0, 40, 120, 44), label: "retry", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("note"), bounds: rect(0, 40, 120, 44), label: "retry", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "stateNote", rows: null },
       ],
       edges: [],
@@ -319,7 +326,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "arch", name: "server" },
-      rowDivider: null, subtitle: null, accent: "none",
+      rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null,
         },
       ],
@@ -344,7 +351,7 @@ describe("toDisplayList", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, accent: "none",
+          rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: ["string name PK", "int age"],
         },
       ],
@@ -380,7 +387,7 @@ describe("toDisplayList", () => {
           icon: null,
           rowDivider: null,
           subtitle: "«interface»",
-          accent: "none",
+          accent: "none" as const,
       role: "normal",
           rows: ["+draw() void"],
         },
@@ -415,9 +422,9 @@ describe("toDisplayList", () => {
     const markerOf = (end: (typeof ends)[number]) => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
         ],
         edges: [
@@ -434,6 +441,7 @@ describe("toDisplayList", () => {
             fromLabel: null,
             toLabel: null,
             labelPos: null,
+            accent: "none" as const,
           },
         ],
         wedges: [],
@@ -457,9 +465,9 @@ describe("toDisplayList", () => {
     const markerOf = (end: "triangle" | "diamondFilled" | "diamondHollow" | "arrowOpen") => {
       const s: Scene = {
         nodes: [
-          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+          { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
-          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+          { id: snid("B"), bounds: rect(0, 80, 40, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
         ],
         edges: [
@@ -476,6 +484,7 @@ describe("toDisplayList", () => {
             fromLabel: null,
             toLabel: null,
             labelPos: null,
+            accent: "none" as const,
           },
         ],
         wedges: [],
@@ -496,7 +505,7 @@ describe("toDisplayList", () => {
   it("falls back to a stable marker direction for a degenerate (zero-length) edge", () => {
     const s: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("A"), bounds: rect(0, 0, 40, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [
@@ -513,6 +522,7 @@ describe("toDisplayList", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -560,6 +570,7 @@ describe("toDisplayList", () => {
           fromLabel: "1",
           toLabel: "*",
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -665,7 +676,7 @@ describe("toDisplayList", () => {
             icon: null,
             rowDivider: null,
             subtitle: null,
-            accent: "none",
+            accent: "none" as const,
       role: "normal",
             rows: null,
           },
@@ -699,7 +710,7 @@ describe("decorations", () => {
           rows: null,
           rowDivider: null,
           subtitle: null,
-          accent: "none",
+          accent: "none" as const,
       role: "normal",
         },
       ],
@@ -737,7 +748,7 @@ describe("decorations", () => {
           rows: null,
           rowDivider: null,
           subtitle: null,
-          accent: "none",
+          accent: "none" as const,
       role: "normal",
         },
       ],
@@ -831,6 +842,7 @@ describe("roundedCorners", () => {
           toLabel: null,
           label: null,
           labelPos: null,
+          accent: "none" as const,
           curved: false,
         },
         {
@@ -845,6 +857,7 @@ describe("roundedCorners", () => {
           toLabel: null,
           label: null,
           labelPos: null,
+          accent: "none" as const,
           curved: false,
         },
       ],
@@ -891,6 +904,7 @@ describe("spline edge finish", () => {
         fromLabel: null,
         toLabel: null,
         labelPos: null,
+        accent: "none" as const,
       },
     ],
   };

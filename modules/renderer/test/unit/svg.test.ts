@@ -10,9 +10,9 @@ const seid = (s: string) => brand<string, "SceneEdgeId">(s);
 
 const scene: Scene = {
   nodes: [
-    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A < B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
-    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+    { id: snid("B"), bounds: rect(0, 80, 60, 40), label: "B", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
   ],
   edges: [
@@ -29,6 +29,7 @@ const scene: Scene = {
       fromLabel: null,
       toLabel: null,
       labelPos: null,
+      accent: "none" as const,
     },
   ],
   wedges: [],
@@ -84,8 +85,8 @@ describe("toSvg", () => {
     // skipped). Exercises the mid-marker rendering path in the SVG backend.
     const bent: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", role: "normal", rows: null },
-        { id: snid("B"), bounds: rect(300, 200, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none", role: "normal", rows: null },
+        { id: snid("A"), bounds: rect(0, 0, 60, 40), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const, role: "normal", rows: null },
+        { id: snid("B"), bounds: rect(300, 200, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const, role: "normal", rows: null },
       ],
       edges: [
         {
@@ -101,6 +102,7 @@ describe("toSvg", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -160,9 +162,9 @@ describe("toSvg", () => {
   it("emits ER crow's-foot markers and left-aligned attribute rows", () => {
     const er: Scene = {
       nodes: [
-        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("A"), bounds: rect(0, 0, 120, 50), label: "A", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: ["int id PK"] },
-        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("B"), bounds: rect(0, 100, 60, 40), label: "B", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [
@@ -179,6 +181,7 @@ describe("toSvg", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -205,7 +208,7 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: 1, subtitle: null, accent: "none",
+          rowDivider: 1, subtitle: null, accent: "none" as const,
       role: "normal",
           rows: ["+int age", "+move() void"],
         },
@@ -216,7 +219,7 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: null,
-          rowDivider: null, subtitle: null, accent: "none",
+          rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal",
           rows: null,
         },
@@ -235,6 +238,7 @@ describe("toSvg", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -260,7 +264,7 @@ describe("toSvg", () => {
   it("renders a multi-line label as stacked <tspan>s", () => {
     const ml: Scene = {
       nodes: [
-        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none",
+        { id: snid("C"), bounds: rect(0, 0, 90, 56), label: "API\nHandles", shape: "rect", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null },
       ],
       edges: [],
@@ -286,7 +290,7 @@ describe("toSvg", () => {
           shape: "rect",
           parent: null,
           icon: { pack: "p", name: "n" },
-          rowDivider: null, subtitle: null, accent: "none",
+          rowDivider: null, subtitle: null, accent: "none" as const,
       role: "normal", rows: null,
         },
       ],
@@ -420,6 +424,7 @@ describe("toSvg", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -448,7 +453,7 @@ describe("toSvg", () => {
           icon: { pack: "p", name: "absent" },
           rowDivider: null,
           subtitle: null,
-          accent: "none",
+          accent: "none" as const,
       role: "normal",
           rows: null,
         },

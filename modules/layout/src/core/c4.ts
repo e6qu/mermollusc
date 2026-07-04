@@ -158,6 +158,7 @@ export const layoutC4 = (ast: C4Ast, measure: MeasureText): Result<Scene, Layout
                 (from.x + from.w / 2 + to.x + to.w / 2) / 2,
                 (from.y + from.h / 2 + to.y + to.h / 2) / 2,
               ),
+      accent: "none",
     });
   }
 

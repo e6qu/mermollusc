@@ -69,7 +69,7 @@ describe("spreadPorts", () => {
     curved: false,
     fromLabel: null,
     toLabel: null,
-    labelPos: null,
+    accent: "none" as const, labelPos: null,
   });
 
   it("gives edges sharing a node side distinct external lanes while using one mount point", () => {
@@ -473,6 +473,7 @@ describe("snapSceneEdgesToMountPoints", () => {
     fromLabel: null,
     toLabel: null,
     labelPos: point(140, 80),
+    accent: "none" as const,
   };
 
   it("moves corner-ish endpoints to the side-center mount points", () => {
@@ -524,7 +525,7 @@ describe("separateEdgesFromBorders", () => {
       id: seid(`${from}-${to}`), from: snid(from), to: snid(to),
       waypoints: twoOrMore(a!, b!, ...rest),
       label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
-      curved: false, fromLabel: null, toLabel: null, labelPos: null,
+      curved: false, fromLabel: null, toLabel: null, accent: "none" as const, labelPos: null,
     };
   };
 
@@ -602,7 +603,7 @@ describe("rerouteBoxEdges", () => {
         id: seid("ac"), from: snid("A"), to: snid("C"),
         waypoints: twoOrMore(point(60, 120), point(320, 120)), // straight through B's row
         label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
-        curved: false, fromLabel: null, toLabel: null, labelPos: null,
+        curved: false, fromLabel: null, toLabel: null, accent: "none" as const, labelPos: null,
       }],
       wedges: [], decorations: [], extent: rect(0, 0, 400, 240),
     };
@@ -627,7 +628,7 @@ describe("rerouteBoxEdges", () => {
         id: seid("ac"), from: snid("A"), to: snid("C"),
         waypoints: twoOrMore(point(30, 40), point(30, 320), point(320, 320)),
         label: null, stroke: "solid" as const, fromEnd: "none" as const, toEnd: "arrow" as const,
-        curved: false, fromLabel: null, toLabel: null, labelPos: null,
+        curved: false, fromLabel: null, toLabel: null, accent: "none" as const, labelPos: null,
       }],
       wedges: [], decorations: [], extent: rect(0, 0, 400, 360),
     };

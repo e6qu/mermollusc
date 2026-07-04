@@ -112,6 +112,7 @@ export const layoutTimeline = (
         fromLabel: null,
         toLabel: null,
         labelPos: null,
+        accent: "none",
       });
       grow(cursor + w, ey + eH);
       ey += eH + ROW_GAP;
@@ -168,6 +169,7 @@ export const layoutTimeline = (
         fromLabel: null,
         toLabel: null,
         labelPos: null,
+        accent: "none",
       });
     }
   }

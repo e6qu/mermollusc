@@ -228,6 +228,7 @@ declare global {
     __sceneToScreen?: (x: number, y: number) => { x: number; y: number } | null;
     // e2e hook: a node's currently-shown accent (the visual-only colour preference).
     __nodeAccent?: (nodeId: string) => string | null;
+    __edgeAccent?: (edgeId: string) => string | null;
     // API + e2e hook: clear all manual positions, returning the diagram to its from-text default layout.
     __resetPositions?: () => void;
     // e2e hook: how many manual position/resize overrides are currently in the overlay.
@@ -1700,10 +1701,17 @@ const commitWaypoints = (
   const routeOption = existing?.routeOption ?? null;
   const labelT = existing?.labelT ?? null;
   const wp = points.length === 0 ? null : points.map((p) => point(p.x, p.y));
-  if (wp === null && route === "square" && routeOption === null && labelT === null) {
+  const accent = existing?.accent ?? null;
+  if (
+    wp === null &&
+    route === "square" &&
+    routeOption === null &&
+    labelT === null &&
+    accent === null
+  ) {
     doc.setEdgeStyle(id, null);
   } else {
-    doc.setEdgeStyle(id, { route, routeOption, labelT, waypoints: wp });
+    doc.setEdgeStyle(id, { route, routeOption, labelT, waypoints: wp, accent });
   }
 };
 
@@ -1784,11 +1792,17 @@ const renderContextBar = (caps: CapabilityState): void => {
   // The Shape button doubles as the edge "Style" control (it cycles a node's shape or an edge's arrow).
   ctxShapeBtn.hidden = !(caps.canShape || caps.canStyleEdge);
   ctxShapeBtn.textContent = caps.canStyleEdge ? "Style" : "Shape";
-  // Colour is a visual-only node preference; show it whenever nodes — and only nodes — are selected.
-  ctxColourSwatches.hidden = viewerMode || selectionOrder.length === 0 || selection.edges.size > 0;
+  // Colour is a visual-only preference for BOTH nodes (fill accent) and edges (stroke accent); show the
+  // picker whenever a homogeneous selection (nodes-only or edges-only) is active, never for a mix.
+  const nodesOnly = selectionOrder.length > 0 && selection.edges.size === 0;
+  const edgesOnly = selection.edges.size > 0 && selectionOrder.length === 0;
+  ctxColourSwatches.hidden = viewerMode || !(nodesOnly || edgesOnly);
   if (!ctxColourSwatches.hidden) {
-    const accents = new Set(selectionOrder.map((id) => doc.nodeStyles().get(id)?.accent ?? "none"));
+    const accents = nodesOnly
+      ? new Set(selectionOrder.map((id) => doc.nodeStyles().get(id)?.accent ?? "none"))
+      : new Set([...selection.edges].map((id) => doc.edgeStyles().get(id)?.accent ?? "none"));
     const activeAccent = accents.size === 1 ? [...accents][0] : undefined;
+    ctxColourSwatches.setAttribute("aria-label", edgesOnly ? "Edge color" : "Node fill color");
     const swatches = Array.from(ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch"));
     const first = swatches[0] ?? null;
     for (const swatch of swatches) {
@@ -3246,6 +3260,7 @@ window.__setEdgeLabelT = (edgeId, t) => {
     routeOption: existing?.routeOption ?? null,
     labelT: Math.max(0.04, Math.min(0.96, t)),
     waypoints: existing?.waypoints ?? null,
+    accent: existing?.accent ?? null,
   });
   doc.persist();
   requestPaint();
@@ -3253,6 +3268,10 @@ window.__setEdgeLabelT = (edgeId, t) => {
 window.__nodeAccent = (nodeId) => {
   if (scene === null) return null;
   return shownScene(scene).nodes.find((n) => n.id === nodeId)?.accent ?? null;
+};
+window.__edgeAccent = (edgeId) => {
+  if (scene === null) return null;
+  return shownScene(scene).edges.find((e) => e.id === edgeId)?.accent ?? null;
 };
 window.__nodeRect = (nodeId) => {
   if (scene === null) return null;
@@ -3817,6 +3836,7 @@ canvas.addEventListener("pointermove", (ev) => {
       routeOption: existing?.routeOption ?? null,
       labelT: t,
       waypoints: existing?.waypoints ?? null,
+      accent: existing?.accent ?? null,
     });
     requestPaint();
     return;
@@ -5430,10 +5450,11 @@ const cycleEdgeRoute = (): void => {
     const opt = existing?.routeOption ?? null;
     const labelT = existing?.labelT ?? null;
     const wp = existing?.waypoints ?? null;
-    if (next === "square" && opt === null && labelT === null && wp === null) {
+    const accent = existing?.accent ?? null;
+    if (next === "square" && opt === null && labelT === null && wp === null && accent === null) {
       doc.setEdgeStyle(id, null);
     } else {
-      doc.setEdgeStyle(id, { route: next, routeOption: opt, labelT, waypoints: wp });
+      doc.setEdgeStyle(id, { route: next, routeOption: opt, labelT, waypoints: wp, accent });
     }
   }
   doc.persist();
@@ -5454,6 +5475,7 @@ const cycleEdgeOption = (): void => {
       routeOption: nextOpt,
       labelT: existing?.labelT ?? null,
       waypoints: existing?.waypoints ?? null,
+      accent: existing?.accent ?? null,
     });
   }
   doc.persist();
@@ -5489,6 +5511,37 @@ const setNodeColour = (adv: NodeAccent): void => {
   paintScene();
   updateGroupButtons();
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
+// The edge counterpart of setNodeColour: an accent colours the connector's stroke (via the overlay
+// EdgeStyle.accent). Preserves the edge's route/waypoints; drops the whole style when it returns to a
+// clean default so the overlay stays minimal.
+const setEdgeColour = (adv: NodeAccent): void => {
+  if (viewerMode || selection.edges.size === 0 || selectionOrder.length > 0) return;
+  recordHistory();
+  const accent = adv === "none" ? null : adv;
+  for (const id of selection.edges) {
+    const e = doc.edgeStyles().get(id);
+    const route = e?.route ?? "square";
+    const routeOption = e?.routeOption ?? null;
+    const labelT = e?.labelT ?? null;
+    const waypoints = e?.waypoints ?? null;
+    if (
+      accent === null &&
+      route === "square" &&
+      routeOption === null &&
+      labelT === null &&
+      waypoints === null
+    ) {
+      doc.setEdgeStyle(id, null);
+    } else {
+      doc.setEdgeStyle(id, { route, routeOption, labelT, waypoints, accent });
+    }
+  }
+  doc.persist();
+  paintScene();
+  updateGroupButtons();
+  flashStatus(accent === null ? "edge colour cleared" : `edge colour: ${adv}`);
 };
 
 const cycleEdgeStyle = async (): Promise<void> => {
@@ -5625,7 +5678,8 @@ ctxColourSwatches.addEventListener("click", (ev) => {
     appLog("error", "swatch-accent-unknown", btn.getAttribute("data-accent"));
     return;
   }
-  setNodeColour(adv);
+  if (selection.edges.size > 0 && selectionOrder.length === 0) setEdgeColour(adv);
+  else setNodeColour(adv);
 });
 ctxColourSwatches.addEventListener("keydown", (ev) => {
   const items = Array.from(ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch"));

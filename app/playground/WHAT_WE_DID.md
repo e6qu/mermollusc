@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+## 2026-07-04 — Miro-style edge colour UI
+
+- The context-bar swatch picker now serves edges too: selecting an edge (only edges) shows the same nine
+  swatches, relabelled "Edge color", reflecting/among setting the edge's stroke accent via a new
+  `setEdgeColour` (preserves route/waypoints; drops the style when it returns to a clean default). A new
+  `__edgeAccent` e2e hook mirrors `__nodeAccent`.
+
 ## 2026-07-03 — Paste-any-Mermaid: fenced-block unwrap + autodetect/sync verified
 
 - A pasted fenced code block (```mermaid … ```, the usual copy shape from Markdown/GitHub/chat) now

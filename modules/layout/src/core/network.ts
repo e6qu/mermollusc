@@ -238,6 +238,7 @@ export const layoutNetwork = (
                 (fromBox.x + fromBox.w / 2 + toBox.x + toBox.w / 2) / 2,
                 (fromBox.y + fromBox.h / 2 + toBox.y + toBox.h / 2) / 2,
               ),
+      accent: "none",
     });
   }
 

@@ -1,5 +1,12 @@
 # @m/builder — work log
 
+## 2026-07-04 — Edge colour through applyStyles + overlay round-trip
+
+- `applyStyles` now colours edges from `EdgeStyle.accent` in a light geometry-independent second pass
+  over the routed edges (leaving every route branch untouched).
+- The overlay serializer round-trips `EdgeStyle.accent`. Boy-scout: the shared accent enum now lists ALL
+  nine accents for BOTH node and edge styles — the node decoder previously allowed only the four generic
+  ones, so a saved architecture accent (compute…ops) silently failed to decode and dropped the overlay.
 - `applyStyles` threads an edge's manual `waypoints` between its current node-attached endpoints (they
   win over auto-routing; `curved` smooths them). Overlay serialization round-trips the waypoints.
 

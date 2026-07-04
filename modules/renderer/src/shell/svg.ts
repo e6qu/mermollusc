@@ -1,7 +1,7 @@
 import { assertNever } from "@m/std";
 import { labelLines, wedgeColor } from "../core/index.js";
 import type { DrawCmd, EndMarker } from "../core/index.js";
-import { accentFill, bandFill, defaultTheme, type Theme } from "./paint.js";
+import { accentFill, accentStroke, bandFill, defaultTheme, type Theme } from "./paint.js";
 
 // A vector SVG backend that consumes the same `DrawCmd[]` display list as the canvas painter, so an
 // export stays in sync with what's on screen. It renders the *crisp* shapes (no sketch jitter — the
@@ -22,16 +22,16 @@ export interface SvgOptions {
 }
 
 // Render a pre-computed edge-end marker as SVG primitives, matching the canvas painter exactly.
-const markerToSvg = (marker: EndMarker, theme: Theme): string => {
+const markerToSvg = (marker: EndMarker, theme: Theme, color: string): string => {
   const parts: string[] = [];
   for (const [a, b] of marker.lines) {
     parts.push(
-      `<line x1="${num(a.x)}" y1="${num(a.y)}" x2="${num(b.x)}" y2="${num(b.y)}" stroke="${theme.stroke}" stroke-width="1.5"/>`,
+      `<line x1="${num(a.x)}" y1="${num(a.y)}" x2="${num(b.x)}" y2="${num(b.y)}" stroke="${color}" stroke-width="1.5"/>`,
     );
   }
   if (marker.circle !== null) {
     parts.push(
-      `<circle cx="${num(marker.circle.center.x)}" cy="${num(marker.circle.center.y)}" r="${num(marker.circle.radius)}" fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"/>`,
+      `<circle cx="${num(marker.circle.center.x)}" cy="${num(marker.circle.center.y)}" r="${num(marker.circle.radius)}" fill="${theme.background}" stroke="${color}" stroke-width="1.5"/>`,
     );
   }
   for (const poly of marker.polygons) {
@@ -39,8 +39,8 @@ const markerToSvg = (marker: EndMarker, theme: Theme): string => {
     // `solid` fills with stroke; `hollow` fills with background + a stroked outline (UML open heads).
     const style =
       poly.fill === "solid"
-        ? `fill="${theme.stroke}"`
-        : `fill="${theme.background}" stroke="${theme.stroke}" stroke-width="1.5"`;
+        ? `fill="${color}"`
+        : `fill="${theme.background}" stroke="${color}" stroke-width="1.5"`;
     parts.push(`<polygon points="${pts}" ${style}/>`);
   }
   return parts.join("");
@@ -118,9 +118,10 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
           }
         })
         .join(" ");
-      const path = `<path d="${d}" fill="none" stroke="${theme.stroke}" stroke-width="1.5"${dash}/>`;
-      const mids = cmd.midMarkers.map((m) => markerToSvg(m, theme)).join("");
-      return `${path}${markerToSvg(cmd.fromMarker, theme)}${markerToSvg(cmd.toMarker, theme)}${mids}`;
+      const edgeColor = accentStroke(cmd.accent, theme);
+      const path = `<path d="${d}" fill="none" stroke="${edgeColor}" stroke-width="1.5"${dash}/>`;
+      const mids = cmd.midMarkers.map((m) => markerToSvg(m, theme, edgeColor)).join("");
+      return `${path}${markerToSvg(cmd.fromMarker, theme, edgeColor)}${markerToSvg(cmd.toMarker, theme, edgeColor)}${mids}`;
     }
     case "icon": {
       const href = icons.get(`${cmd.ref.pack}/${cmd.ref.name}`);

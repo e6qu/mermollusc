@@ -259,6 +259,7 @@ export const layoutGitGraph = (
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none",
         });
       }
     }

@@ -20,7 +20,7 @@ const node = (
   rows: null,
   rowDivider: null,
   subtitle: null,
-  accent: "none",
+  accent: "none" as const,
       role: "normal",
 });
 
@@ -42,6 +42,7 @@ describe("toDot", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -73,6 +74,7 @@ describe("toDot", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],
@@ -100,6 +102,7 @@ describe("toDot", () => {
           fromLabel: null,
           toLabel: null,
           labelPos: null,
+          accent: "none" as const,
         },
       ],
       wedges: [],

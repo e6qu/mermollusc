@@ -37,7 +37,7 @@ const edge = (id: string, from: string, to: string, ...pts: [number, number][]):
   curved: false,
   fromLabel: null,
   toLabel: null,
-  labelPos: null,
+  accent: "none" as const, labelPos: null,
   };
 };
 const scene = (nodes: SceneNode[], edges: SceneEdge[]): Scene => ({
