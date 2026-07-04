@@ -1,5 +1,10 @@
 # @m/renderer — work log
 
+
+## 2026-07-04 — Box raw fill/stroke (source-canonical node colour)
+
+- The `box` DrawCmd gains `fill`/`stroke` (raw colours) that win over the accent/theme. `toDisplayList`
+  takes a `nodeColors` map (keyed by scene-node id); both backends honour it. `NodeColors` is exported.
 ## 2026-07-04 — Edge stroke accent (canvas + SVG)
 
 - New `accentStroke(accent, theme)` maps an edge accent to a saturated line colour (the connector

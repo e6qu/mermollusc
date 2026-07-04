@@ -1,5 +1,12 @@
 # @m/app (playground) — work log
 
+
+## 2026-07-04 — Render node colours from the Mermaid source
+
+- A flowchart's `style`/`classDef` directives now COLOUR the nodes (canvas + every export): `main.ts`
+  resolves them via `@m/parser`'s `resolveNodeStyles` into a scene-node-id→colour map passed to
+  `toDisplayList` and the exporters. Faithful raw colours (no accent snap). The overlay colour swatch is
+  untouched for now — routing it to WRITE `style` directives is the next step.
 ## 2026-07-04 — Miro-style edge colour UI
 
 - The context-bar swatch picker now serves edges too: selecting an edge (only edges) shows the same nine

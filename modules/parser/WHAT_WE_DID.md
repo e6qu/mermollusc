@@ -1,6 +1,13 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Resolve Mermaid node styles to colours
+
+- New pure `resolveNodeStyles(styles)` turns the verbatim `FlowchartAst.styles` directives into a
+  per-node `{fill, stroke}` map (keyed by raw id string): `classDef`+`class` applied first, inline
+  `style` overriding, `linkStyle` ignored (edges). Raw colours pass through unchanged (a hand-written
+  `fill:#123456` is faithful — no lossy accent snap).
+
 ## 2026-07-04 — Accept + round-trip Mermaid styling directives
 
 - The lexer/grammar now ACCEPT `style`/`classDef`/`class`/`linkStyle` directives (previously they failed

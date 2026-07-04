@@ -9,6 +9,7 @@ import type {
   NodeShape,
   Scene,
   SceneNode,
+  SceneNodeId,
   SceneWedge,
 } from "@m/contracts";
 import { buildEdgePath, edgeCrossings, edgeLabelAnchorAt } from "./path.js";
@@ -55,6 +56,12 @@ export type DrawCmd =
       readonly radius: Length;
       // Semantic fill accent (a node's `accent`); `none` draws the ordinary node fill.
       readonly accent: NodeAccent;
+      // Raw colour overrides from a Mermaid `style`/`classDef` directive (source-canonical styling): a
+      // concrete CSS colour that wins over `accent`/theme, or null to fall back to the accent. `fill` is
+      // the box interior, `stroke` its border. Kept as raw strings so a hand-written `fill:#123456`
+      // renders faithfully (no lossy snap to an accent).
+      readonly fill: string | null;
+      readonly stroke: string | null;
     }
   | {
       readonly kind: "stateStart";
@@ -390,7 +397,15 @@ const NOTE_FOLD = 14;
 // CLASS_SUBTITLE_H so the divider and rows still land on the boundaries the box was sized for.
 const SUBTITLE_H = 16;
 
-const nodeCmds = (node: SceneNode): DrawCmd[] => {
+// Raw fill/stroke overrides for a node, resolved from Mermaid `style`/`classDef` directives; both null
+// when the node has no source styling (the accent/theme decides its colour).
+export interface NodeColors {
+  readonly fill: string | null;
+  readonly stroke: string | null;
+}
+const NO_COLORS: NodeColors = { fill: null, stroke: null };
+
+const nodeCmds = (node: SceneNode, colors: NodeColors): DrawCmd[] => {
   // A marker node is an invisible hit/selection region (its visual — e.g. a pie wedge — is drawn
   // elsewhere); emit nothing for it.
   if (node.role === "marker") return [];
@@ -464,6 +479,8 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
         height: size.height,
         radius: length(4),
         accent: node.accent,
+        fill: colors.fill,
+        stroke: colors.stroke,
       },
       {
         kind: "label",
@@ -483,6 +500,8 @@ const nodeCmds = (node: SceneNode): DrawCmd[] => {
     height: size.height,
     radius: length(cornerRadius(node.shape, size.width, size.height)),
     accent: node.accent,
+    fill: colors.fill,
+    stroke: colors.stroke,
   } satisfies DrawCmd;
   if (node.role === "stateNote") {
     const fold = Math.min(NOTE_FOLD, size.width / 5, size.height / 4);
@@ -748,6 +767,9 @@ export const toDisplayList = (
   scene: Scene,
   drawJunctions = false,
   edgeFinish: EdgeFinish = "decorated",
+  // Raw per-node fill/stroke from Mermaid `style`/`classDef` directives (keyed by scene-node id); empty
+  // when the diagram has no source styling. A node not in the map keeps its accent/theme colour.
+  nodeColors: ReadonlyMap<SceneNodeId, NodeColors> = new Map(),
 ): DrawCmd[] => {
   const crossingsMap = edgeCrossings(scene.edges);
 
@@ -821,8 +843,13 @@ export const toDisplayList = (
   // Container nodes (subgraph / boundary backgrounds) draw *behind* the edges, so an edge between two
   // members inside a subgraph isn't hidden by the container's fill; leaf nodes draw in front of the
   // edges so a link is cleanly occluded by any box it crosses.
-  const containers = scene.nodes.filter((n) => n.shape === "container").flatMap(nodeCmds);
-  const leaves = scene.nodes.filter((n) => n.shape !== "container").flatMap(nodeCmds);
+  const colorsFor = (n: SceneNode): NodeColors => nodeColors.get(n.id) ?? NO_COLORS;
+  const containers = scene.nodes
+    .filter((n) => n.shape === "container")
+    .flatMap((n) => nodeCmds(n, colorsFor(n)));
+  const leaves = scene.nodes
+    .filter((n) => n.shape !== "container")
+    .flatMap((n) => nodeCmds(n, colorsFor(n)));
   const wedges = scene.wedges.flatMap(wedgeCmds);
   const decorations = scene.decorations.map(decorationCmd);
   // Decorations (axis chrome) draw first, behind everything else.
