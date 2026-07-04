@@ -190,6 +190,12 @@ export const wrapFlowchartSubgraph = (
 export const removeSubgraphBlock = (text: string, span: TextSpan): string =>
   removeDirectiveLine(text, span);
 
+// Reconnect one end of an edge to a different node by rewriting that endpoint's declaration span (from
+// `SourceMap.edgeEnds`) to the target node's id. Replacing the whole declaration (`A` or `A[label]`) with
+// a bare id re-points the edge; the target keeps whatever declaration it has elsewhere.
+export const reconnectEdgeEnd = (text: string, endSpan: TextSpan, newNodeId: NodeId): string =>
+  patchSpan(text, endSpan, newNodeId);
+
 // Delete the whole line a directive-token span sits on: the directive, its leading indentation, and one
 // trailing newline.
 const removeDirectiveLine = (text: string, span: TextSpan): string => {

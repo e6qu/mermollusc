@@ -1,6 +1,13 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Drag-to-reconnect edge endpoints (flowchart)
+
+- A selected flowchart edge shows draggable ENDPOINT handles (hollow squares at each end); dragging one
+  onto another node rewrites that endpoint in the SOURCE (`reconnectEdgeEnd`), source-canonical. A chained
+  endpoint (shared token in `A --> B --> C`) is declined loudly rather than silently moving both edges.
+  Gesture mirrors the connect/bend-drag (rubber-band from the fixed end; reconnect on release over a node).
+
 ## 2026-07-04 — Grouping writes a subgraph to the source (flowchart)
 
 - The Group button now wraps selected flowchart nodes in a Mermaid `subgraph … end` block in the SOURCE

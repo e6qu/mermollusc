@@ -1,6 +1,7 @@
 import type { CstNode, IToken } from "chevrotain";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
+  EdgeEndSpans,
   EdgeId,
   EdgeKind,
   FlowDirection,
@@ -234,6 +235,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const styleSpans = new Map<NodeId, TextSpan>();
   const linkStyleSpans = new Map<number, TextSpan>();
   const subgraphSpans = new Map<NodeId, TextSpan>();
+  const edgeEnds = new Map<EdgeId, EdgeEndSpans>();
   const claimed = new Set<string>();
   let malformed = false;
   // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
@@ -303,6 +305,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       if (pipe !== undefined) edgeSpans.set(edgeId, trimmedSpan(pipe));
       const arrowSpan = arrowSpanOf(link.children);
       if (arrowSpan !== null) arrowSpans.set(edgeId, arrowSpan);
+      edgeEnds.set(edgeId, { from: from.declSpan, to: to.declSpan });
     }
     return refs.map((r) => r.id);
   };
@@ -447,6 +450,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       styleSpans,
       linkStyleSpans,
       subgraphSpans,
+      edgeEnds,
     },
   });
 };
