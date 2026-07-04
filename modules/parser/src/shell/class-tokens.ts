@@ -1,4 +1,5 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import { CLASS_SHORTHAND, CLASSDEF_STMT, LINKSTYLE_STMT, STYLE_STMT } from "./style-patterns.js";
 
 // Class names are identifiers with an optional generic suffix (`List~T~`, `Map~K,V~`) — Mermaid's
 // `~…~` generics. Members inside a `{ … }` body are captured as whole lines in a dedicated mode (like
@@ -15,6 +16,19 @@ const ClassDiagram = createToken({
   longer_alt: Identifier,
 });
 const ClassKw = createToken({ name: "ClassKw", pattern: /class/, longer_alt: Identifier });
+// Class-diagram styling. `classDef`/`style`/`linkStyle` are whole-line directives (shared patterns),
+// tried before `ClassKw` so `classDef …` isn't read as a `class` declaration. Class ASSIGNMENT here is
+// Mermaid's `cssClass "A,B" name` statement or the inline `:::name` — never a bare `class A name`, which
+// would collide with a declaration. `cssClass` is a distinct keyword (`css…`, not `class…`).
+const StyleStmt = createToken({ name: "ClassStyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "ClassClassDefStmt", pattern: CLASSDEF_STMT });
+const LinkStyleStmt = createToken({ name: "ClassLinkStyleStmt", pattern: LINKSTYLE_STMT });
+const CssClass = createToken({
+  name: "ClassCssClass",
+  pattern: /cssClass/,
+  longer_alt: Identifier,
+});
+const ClassShorthand = createToken({ name: "ClassShorthand", pattern: CLASS_SHORTHAND });
 // `[<leftHead>](--|..)[<rightHead>]` — e.g. `<|--`, `--|>`, `*--`, `o--`, `-->`, `..>`, `..|>`, `--`.
 // Lexed whole and split in the CST→AST step. Heads: `<|`/`|>` triangle, `*` filled diamond, `o`
 // hollow diamond, `<`/`>` open arrow.
@@ -61,9 +75,14 @@ export const classLexer = new Lexer({
       NewLine,
       Semicolon,
       ClassDiagram,
+      StyleStmt,
+      ClassDefStmt,
+      LinkStyleStmt,
+      CssClass,
       ClassKw,
       Relationship,
       LBrace,
+      ClassShorthand,
       Colon,
       QuotedString,
       Stereotype,
@@ -78,6 +97,11 @@ export const classLexer = new Lexer({
 export const ClassTok = {
   Identifier,
   ClassDiagram,
+  StyleStmt,
+  ClassDefStmt,
+  LinkStyleStmt,
+  CssClass,
+  ClassShorthand,
   ClassKw,
   Relationship,
   QuotedString,
@@ -99,6 +123,11 @@ export const classAllTokens: TokenType[] = [
   NewLine,
   Semicolon,
   ClassDiagram,
+  StyleStmt,
+  ClassDefStmt,
+  LinkStyleStmt,
+  CssClass,
+  ClassShorthand,
   ClassKw,
   Relationship,
   LBrace,

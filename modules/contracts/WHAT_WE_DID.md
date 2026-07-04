@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — ClassAst.styles
+
+- `ClassAst` gains `styles: readonly FlowStyle[]` (classDef/style/linkStyle + class assignments
+  synthesised from `cssClass`/`:::`).
+
 ## 2026-07-05 — MindmapAst.styles
 
 - `MindmapAst` gains `styles: readonly FlowStyle[]` (classDef/style/linkStyle + synthesised class from

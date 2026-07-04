@@ -383,6 +383,9 @@ export interface ClassAst {
   readonly kind: "class";
   readonly entities: readonly ClassEntity[];
   readonly relationships: readonly ClassRel[];
+  // Mermaid `classDef`/`style`/`linkStyle` directives, plus `class` assignments synthesised from
+  // `cssClass "A,B" name` and inline `:::name`; resolved to colours by the shared style resolver.
+  readonly styles: readonly FlowStyle[];
 }
 
 export type ReqEntityId = Brand<string, "ReqEntityId">;

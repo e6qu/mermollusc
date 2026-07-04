@@ -303,6 +303,7 @@ describe("layout", () => {
   it("layoutDiagram lays out a class diagram with field/method compartments + UML arrowheads", async () => {
     const classAst: ClassAst = {
       kind: "class",
+      styles: [],
       entities: [
         {
           id: cid("Animal"),

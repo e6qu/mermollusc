@@ -1,6 +1,16 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Class-diagram styling (keyword-collision family)
+
+- Class diagrams support styling now, without touching the `class Foo` DECLARATION keyword. Added the
+  whole-line `classDef`/`style`/`linkStyle` directives (before `ClassKw` so `classDef` isn't a decl), the
+  `cssClass "A,B" name` statement, and inline `:::name` on class refs (token before `Colon` so the `:::`
+  isn't split into label mode). Assignment is synthesised into `class <id> <name>` from `cssClass`/`:::` —
+  never a bare `class A name`, which would collide with a declaration. A right-only `:::` on a relationship
+  is attached to the right endpoint by source offset (not by token index). Captured on `ClassAst.styles`.
+  Seventh "other family" — the hard one.
+
 ## 2026-07-05 — Mindmap styling (line-based, generated ids)
 
 - Mindmap's lexer captures each line whole, so a `classDef`/`style`/`linkStyle` line would have become a
