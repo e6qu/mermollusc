@@ -328,6 +328,9 @@ export interface ErAst {
   readonly kind: "er";
   readonly entities: readonly ErEntity[];
   readonly relationships: readonly ErRelationship[];
+  // Mermaid `style`/`classDef`/`class`/`linkStyle` directives (same as flowchart), resolved to colours
+  // by the shared style resolver.
+  readonly styles: readonly FlowStyle[];
 }
 
 export type ClassEntityId = Brand<string, "ClassEntityId">;

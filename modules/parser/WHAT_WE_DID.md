@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — ER-diagram styling (shared patterns)
+
+- The ER parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared `style-patterns.ts`
+  tokens, before `Colon` so a `fill:…` colon doesn't push label mode), capturing them on `ErAst.styles`.
+  Previously a `classDef` broke the whole ER parse. Second "other family" after state.
+
 ## 2026-07-04 — looksLikeDiagramHeader
 
 - New `looksLikeDiagramHeader(text)` — true when the first meaningful line is a diagram header (same

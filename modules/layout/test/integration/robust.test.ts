@@ -5,7 +5,7 @@ import { heuristicMeasure } from "../../src/core/graph.js";
 import { layoutDiagram } from "../../src/shell/elk.js";
 
 const emptyClass: ClassAst = { kind: "class", entities: [], relationships: [] };
-const emptyEr: ErAst = { kind: "er", entities: [], relationships: [] };
+const emptyEr: ErAst = { kind: "er", entities: [], relationships: [], styles: [] };
 const selfClass: ClassAst = {
   kind: "class",
   entities: [{ id: brand<string, "ClassEntityId">("A"), label: "A", stereotype: null, members: [] }],

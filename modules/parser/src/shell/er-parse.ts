@@ -3,6 +3,7 @@ import { childNodes, childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   ErAst,
+  FlowStyle,
   ErAttribute,
   ErCardinality,
   ErEntity,
@@ -150,13 +151,25 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
     if (labelInfo !== null) relSpans.set(id, labelInfo.span);
   }
 
+  const styles: FlowStyle[] = [];
+  for (const dir of childNodes(cst.children, "erStyleDirective")) {
+    const st = childTokens(dir.children, "ErStyleStmt")[0];
+    const cd = childTokens(dir.children, "ErClassDefStmt")[0];
+    const cl = childTokens(dir.children, "ErClassStmt")[0];
+    const ls = childTokens(dir.children, "ErLinkStyleStmt")[0];
+    if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
+    else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+    else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
+    else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+  }
+
   const entities: ErEntity[] = [...labels].map(([id, label]) => ({
     id: brand<string, "ErEntityId">(id),
     label,
     attributes: attrsById.get(id) ?? [],
   }));
   return ok({
-    ast: { kind: "er", entities, relationships },
+    ast: { kind: "er", entities, relationships, styles },
     source: { entities: entitySpans, relationships: relSpans },
   });
 };

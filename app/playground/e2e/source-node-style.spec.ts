@@ -80,3 +80,12 @@ test("state diagram classDef/::: colours nodes from the source too", async ({ pa
     expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
   }
 });
+
+test("er diagram classDef colours entities from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  classDef hot fill:#16a34a\n  class CUSTOMER hot\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "CUSTOMER");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});

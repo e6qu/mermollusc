@@ -283,6 +283,7 @@ describe("layout", () => {
           label: "places",
         },
       ],
+      styles: [],
     };
     const laid = await layoutDiagram(erAst, heuristicMeasure);
     expect(isOk(laid)).toBe(true);

@@ -15,10 +15,22 @@ class ErParser extends CstParser {
     this.MANY2(() =>
       this.OR([
         { ALT: () => this.SUBRULE2(this.sep) },
+        { ALT: () => this.SUBRULE(this.styleDirective) },
         { ALT: () => this.SUBRULE(this.statement) },
       ]),
     );
   });
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`); distinct first
+  // tokens keep the enclosing OR LL(1).
+  private readonly styleDirective = this.RULE("erStyleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(ErTok.StyleStmt) },
+      { ALT: () => this.CONSUME(ErTok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(ErTok.ClassStmt) },
+      { ALT: () => this.CONSUME(ErTok.LinkStyleStmt) },
+    ]),
+  );
 
   private readonly sep = this.RULE("erSep", () =>
     this.OR([
