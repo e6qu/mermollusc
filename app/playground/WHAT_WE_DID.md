@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Honour `classDef default` / `linkStyle default`
+
+- `sourceNodeColors`/`sourceEdgeColors` now apply a `classDef default`/`linkStyle default` as the base
+  colour for every flowchart node/edge, with an explicit `style`/`class`/`linkStyle <index>` overriding
+  per property. Previously these directives parsed but rendered nothing (a Mermaid-compliance gap).
+
 ## 2026-07-04 — Editor review fixes (boyscout)
 
 - Edge reconnection: declines loudly (no source rewrite) when the endpoint is released back onto its OWN

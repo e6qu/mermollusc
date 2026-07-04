@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — classDef/linkStyle default resolvers
+
+- New `resolveDefaultNodeStyle`/`resolveDefaultLinkStyle` expose a `classDef default …` / `linkStyle
+  default …` colour (Mermaid applies these to EVERY node/edge that has no more specific style). Returned
+  separately so the caller (which has the node/edge list) fans them out.
+
 ## 2026-07-04 — Style-directive compliance fixes (review)
 
 - `parseProps` splits property lists only on TOP-LEVEL commas, so a value with internal commas

@@ -121,7 +121,13 @@ import {
   retidyRoutes,
   trunkRoutes,
 } from "@m/layout";
-import { parseDiagramWithSource, resolveLinkStyles, resolveNodeStyles } from "@m/parser";
+import {
+  parseDiagramWithSource,
+  resolveDefaultLinkStyle,
+  resolveDefaultNodeStyle,
+  resolveLinkStyles,
+  resolveNodeStyles,
+} from "@m/parser";
 import {
   accentFill,
   accentStroke,
@@ -1098,11 +1104,17 @@ const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => 
 const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> => {
   if (ast === null || ast.kind !== "flowchart") return new Map();
   const resolved = resolveNodeStyles(ast.styles);
-  if (resolved.size === 0) return new Map();
+  // `classDef default …` is the base colour for every node; an explicit `style`/`class` overrides it.
+  const dflt = resolveDefaultNodeStyle(ast.styles);
+  if (resolved.size === 0 && dflt === null) return new Map();
   const out = new Map<SceneNodeId, NodeColors>();
   for (const n of shown.nodes) {
-    const c = resolved.get(n.id);
-    if (c !== undefined) out.set(n.id, c);
+    const c = resolved.get(n.id) ?? null;
+    if (c === null && dflt === null) continue;
+    out.set(n.id, {
+      fill: c?.fill ?? dflt?.fill ?? null,
+      stroke: c?.stroke ?? dflt?.stroke ?? null,
+    });
   }
   return out;
 };
@@ -1113,11 +1125,17 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
 const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
   if (ast === null || ast.kind !== "flowchart") return new Map();
   const resolved = resolveLinkStyles(ast.styles);
-  if (resolved.size === 0) return new Map();
+  // `linkStyle default …` is the base stroke for every edge; an explicit `linkStyle <index>` overrides.
+  const dflt = resolveDefaultLinkStyle(ast.styles);
+  if (resolved.size === 0 && dflt === null) return new Map();
   const out = new Map<SceneEdgeId, NodeColors>();
   ast.edges.forEach((e, i) => {
-    const c = resolved.get(i);
-    if (c !== undefined) out.set(brand<string, "SceneEdgeId">(e.id), c);
+    const c = resolved.get(i) ?? null;
+    if (c === null && dflt === null) return;
+    out.set(brand<string, "SceneEdgeId">(e.id), {
+      fill: null,
+      stroke: c?.stroke ?? dflt?.stroke ?? null,
+    });
   });
   return out;
 };
