@@ -11,6 +11,21 @@ const System = createToken({ name: "System", pattern: /System/, longer_alt: Iden
 const Container = createToken({ name: "Container", pattern: /Container/, longer_alt: Identifier });
 const Boundary = createToken({ name: "Boundary", pattern: /Boundary/, longer_alt: Identifier });
 const Rel = createToken({ name: "Rel", pattern: /Rel/, longer_alt: Identifier });
+// Mermaid C4 styling: `UpdateElementStyle(id, $bgColor="…", $borderColor="…")` and
+// `UpdateRelStyle(from, to, $lineColor="…")`. `$name` args and `=` are their own tokens; values are
+// quoted strings. Keywords carry `longer_alt: Identifier` so `UpdateElementStyleX` stays an id.
+const UpdateElementStyle = createToken({
+  name: "UpdateElementStyle",
+  pattern: /UpdateElementStyle/,
+  longer_alt: Identifier,
+});
+const UpdateRelStyle = createToken({
+  name: "UpdateRelStyle",
+  pattern: /UpdateRelStyle/,
+  longer_alt: Identifier,
+});
+const StyleArg = createToken({ name: "C4StyleArg", pattern: /\$[A-Za-z][A-Za-z0-9]*/ });
+const Equals = createToken({ name: "C4Equals", pattern: /=/ });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"]*"/ });
 const LParen = createToken({ name: "C4LParen", pattern: /\(/ });
 const RParen = createToken({ name: "C4RParen", pattern: /\)/ });
@@ -30,6 +45,8 @@ export const c4Lexer = new Lexer([
   System,
   Container,
   Boundary,
+  UpdateElementStyle,
+  UpdateRelStyle,
   Rel,
   QuotedString,
   LParen,
@@ -37,6 +54,8 @@ export const c4Lexer = new Lexer([
   LBrace,
   RBrace,
   Comma,
+  StyleArg,
+  Equals,
   Identifier,
 ]);
 
@@ -47,6 +66,8 @@ export const C4Tok = {
   System,
   Container,
   Boundary,
+  UpdateElementStyle,
+  UpdateRelStyle,
   Rel,
   QuotedString,
   LParen,
@@ -54,6 +75,8 @@ export const C4Tok = {
   LBrace,
   RBrace,
   Comma,
+  StyleArg,
+  Equals,
   NewLine,
 };
 
@@ -66,6 +89,8 @@ export const c4AllTokens: TokenType[] = [
   System,
   Container,
   Boundary,
+  UpdateElementStyle,
+  UpdateRelStyle,
   Rel,
   QuotedString,
   LParen,
@@ -73,5 +98,7 @@ export const c4AllTokens: TokenType[] = [
   LBrace,
   RBrace,
   Comma,
+  StyleArg,
+  Equals,
   Identifier,
 ];

@@ -1114,7 +1114,8 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
       ast.kind !== "network" &&
       ast.kind !== "cloud" &&
       ast.kind !== "mindmap" &&
-      ast.kind !== "class")
+      ast.kind !== "class" &&
+      ast.kind !== "c4")
   )
     return new Map();
   const resolved = resolveNodeStyles(ast.styles);

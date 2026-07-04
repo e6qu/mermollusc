@@ -9,6 +9,7 @@ const rid = (s: string) => brand<string, "C4RelId">(s);
 
 const ast: C4Ast = {
   kind: "c4",
+  styles: [],
   elements: [
     { id: cid("alice"), label: "Alice", description: "A customer", kind: "person", parent: null },
     { id: cid("backend"), label: "Backend", description: null, kind: "boundary", parent: null },
@@ -27,6 +28,7 @@ describe("layoutC4", () => {
   it("fails loudly when an element's parent is dangling", () => {
     const bad: C4Ast = {
       kind: "c4",
+      styles: [],
       elements: [
         { id: cid("api"), label: "API", description: null, kind: "container", parent: cid("missing") },
       ],
@@ -38,6 +40,7 @@ describe("layoutC4", () => {
   it("fails loudly when a relation references an unknown element", () => {
     const bad: C4Ast = {
       kind: "c4",
+      styles: [],
       elements: [{ id: cid("alice"), label: "Alice", description: null, kind: "person", parent: null }],
       rels: [{ id: rid("r0"), from: cid("alice"), to: cid("ghost"), label: "uses" }],
     };
@@ -49,6 +52,7 @@ describe("layoutC4", () => {
     // re-enter the same children bucket forever without the duplicate-id reject.
     const dup: C4Ast = {
       kind: "c4",
+      styles: [],
       elements: [
         { id: cid("shop"), label: "Shop", description: null, kind: "boundary", parent: null },
         { id: cid("shop"), label: "Shop", description: null, kind: "boundary", parent: cid("shop") },

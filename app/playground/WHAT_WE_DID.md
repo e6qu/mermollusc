@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Render C4 element colours from the source
+
+- `sourceNodeColors` now also colours C4 elements (scene ids equal element ids). C4 relationship colours
+  (`UpdateRelStyle`) aren't in the shared edge model, so no edge colouring.
+
 ## 2026-07-05 — Render class-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour class diagrams (scene ids equal class ids;

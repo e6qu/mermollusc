@@ -23,9 +23,39 @@ class C4Parser extends CstParser {
     this.OR([
       { ALT: () => this.SUBRULE(this.element) },
       { ALT: () => this.SUBRULE(this.boundary) },
+      { ALT: () => this.SUBRULE(this.updateElementStyle) },
+      { ALT: () => this.SUBRULE(this.updateRelStyle) },
       { ALT: () => this.SUBRULE(this.rel) },
     ]),
   );
+
+  // A `$name="value"` styling argument, e.g. `$bgColor="#1168bd"`.
+  private readonly styleArg = this.RULE("c4StyleArg", () => {
+    this.CONSUME(C4Tok.Comma);
+    this.CONSUME(C4Tok.StyleArg);
+    this.CONSUME(C4Tok.Equals);
+    this.CONSUME(C4Tok.QuotedString);
+  });
+
+  // `UpdateElementStyle(id, $bgColor="…", $borderColor="…", …)`.
+  private readonly updateElementStyle = this.RULE("updateElementStyle", () => {
+    this.CONSUME(C4Tok.UpdateElementStyle);
+    this.CONSUME(C4Tok.LParen);
+    this.CONSUME(C4Tok.Identifier);
+    this.MANY(() => this.SUBRULE(this.styleArg));
+    this.CONSUME(C4Tok.RParen);
+  });
+
+  // `UpdateRelStyle(from, to, $lineColor="…", …)`.
+  private readonly updateRelStyle = this.RULE("updateRelStyle", () => {
+    this.CONSUME(C4Tok.UpdateRelStyle);
+    this.CONSUME(C4Tok.LParen);
+    this.CONSUME(C4Tok.Identifier);
+    this.CONSUME(C4Tok.Comma);
+    this.CONSUME2(C4Tok.Identifier);
+    this.MANY(() => this.SUBRULE(this.styleArg));
+    this.CONSUME(C4Tok.RParen);
+  });
 
   private readonly element = this.RULE("element", () => {
     this.OR([
