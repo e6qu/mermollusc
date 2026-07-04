@@ -53,6 +53,9 @@ export interface SourceMap {
   // The directive-token span of each SINGLE-index `linkStyle <n> …` line, keyed by that edge index — so
   // the editor can update/remove an edge's colour in place. Multi-index / `default` lines aren't here.
   readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
+  // The whole-block span (`subgraph … end`) of each subgraph, keyed by its id — so the editor can remove
+  // a subgraph (ungroup) by deleting its block.
+  readonly subgraphSpans: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a sequence diagram: each actor's label, each message's text, and its arrow.

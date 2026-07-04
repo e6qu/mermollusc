@@ -50,6 +50,8 @@ import {
   removeNodeStyleDirective,
   setLinkStyleDirective,
   removeLinkStyleDirective,
+  wrapFlowchartSubgraph,
+  removeSubgraphBlock,
   patchSpan,
   shiftGanttStart,
   setGanttStartFromDay,
@@ -1498,6 +1500,35 @@ const selectedTopGroup = (): GroupId | null => {
   return null;
 };
 
+// A selected flowchart subgraph, or null — a source `subgraph … end` block the user can ungroup by
+// deleting the block. Matches either the subgraph's own container OR a selected member node (its scene
+// parent), so ungroup works whether the user picks the group or a node inside it. Distinct from overlay
+// groups (`selectedTopGroup`).
+const selectedFlowchartSubgraph = (): SceneNodeId | null => {
+  if (ast === null || ast.kind !== "flowchart" || source === null || scene === null) return null;
+  const shown = shownScene(scene);
+  const parentOf = new Map(shown.nodes.map((n) => [n.id, n.parent]));
+  const spans = source.subgraphSpans;
+  for (const id of selection.nodes) {
+    if (spans.has(brand<string, "NodeId">(id))) return id;
+    const parent = parentOf.get(id) ?? null;
+    if (parent !== null && spans.has(brand<string, "NodeId">(parent))) return parent;
+  }
+  return null;
+};
+
+// A subgraph id not already used by a node or subgraph in the current flowchart (`group1`, `group2`, …).
+const freshSubgraphId = (): string => {
+  const taken = new Set<string>();
+  if (ast !== null && ast.kind === "flowchart") {
+    for (const n of ast.nodes) taken.add(n.id);
+    for (const s of ast.subgraphs) taken.add(s.id);
+  }
+  let i = 1;
+  while (taken.has(`group${i}`)) i++;
+  return `group${i}`;
+};
+
 // Distinct *movable* top-level units in the selection — a loose node or a whole top group, minus
 // anything under a locked group. Alignment/distribution act on these (a group moves as a unit).
 const movableUnitCount = (): number => {
@@ -1986,7 +2017,7 @@ const computeCapabilities = (): CapabilityState => {
       ? "Insert an icon override on a node"
       : `icons aren't available for ${kindLabel}`,
     canGroup: units.size >= 2,
-    hasGroup: top !== null,
+    hasGroup: top !== null || selectedFlowchartSubgraph() !== null,
     isLocked: top !== null && doc.groups().get(top)?.locked === true,
     canArrange: movable >= 2,
     canDistribute: movable >= 3,
@@ -2326,6 +2357,29 @@ const groupSelection = (): void => {
     announce(`grouped ${lineIdxs.length} services — double-click the group title to rename`);
     return;
   }
+  // Flowchart has native `subgraph … end` grouping: wrap the selected TOP-LEVEL leaves in a subgraph
+  // block in the source (Mermaid-canonical), not a sidecar overlay group. Skip containers and already-
+  // nested nodes — the block lists bare ids and must sit before the edges that use them.
+  if (ast !== null && ast.kind === "flowchart" && scene !== null) {
+    const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+    const members = selectionOrder
+      .filter((id) => {
+        const n = byId.get(id);
+        return n !== undefined && n.shape !== "container" && n.parent === null;
+      })
+      .map((id) => brand<string, "NodeId">(id));
+    if (members.length < 2) {
+      flashStatus("select two or more top-level nodes to group", "warning");
+      return;
+    }
+    const next = wrapFlowchartSubgraph(editor.value(), members, freshSubgraphId(), "Group");
+    if (next === editor.value()) return;
+    recordHistory();
+    setSourceValue(next);
+    void renderFromText(next);
+    announce(`grouped ${members.length} nodes into a subgraph — double-click the title to rename`);
+    return;
+  }
   const units: GroupMember[] = [];
   const seen = new Set<string>();
   for (const id of selectionOrder) {
@@ -2348,6 +2402,20 @@ const groupSelection = (): void => {
 
 const ungroupSelection = (): void => {
   if (viewerMode) return;
+  // A selected flowchart subgraph ungroups by deleting its source `subgraph … end` block; the members
+  // survive via their edges.
+  const sgId = selectedFlowchartSubgraph();
+  if (sgId !== null && source !== null) {
+    const span = source.subgraphSpans.get(brand<string, "NodeId">(sgId));
+    if (span !== undefined) {
+      const next = removeSubgraphBlock(editor.value(), span);
+      recordHistory();
+      setSourceValue(next);
+      void renderFromText(next);
+      announce("ungrouped subgraph");
+      return;
+    }
+  }
   const top = selectedTopGroup();
   if (top === null) return;
   recordHistory();

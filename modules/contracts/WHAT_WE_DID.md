@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — SourceMap.subgraphSpans
+
+- The flowchart `SourceMap` gains `subgraphSpans: ReadonlyMap<NodeId, TextSpan>` — the whole-block span
+  (`subgraph … end`) of each subgraph, keyed by id, so the editor can ungroup by deleting the block.
+
 ## 2026-07-04 — SourceMap.linkStyleSpans
 
 - The flowchart `SourceMap` gains `linkStyleSpans: ReadonlyMap<number, TextSpan>` — the span of each
