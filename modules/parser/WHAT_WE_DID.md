@@ -1,6 +1,15 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — State-diagram styling (shared patterns)
+
+- Extracted the 5 Mermaid style/`:::` lexer patterns to a shared `style-patterns.ts` (single source of
+  truth for the compliance rules), used by both the flowchart and state lexers. The STATE parser now
+  accepts `style`/`classDef`/`class`/`linkStyle` directives and the inline `:::class` on transition
+  endpoints, capturing them on `StateAst.styles` (resolved by the shared style resolver). Previously a
+  `classDef`/`class`/`:::` broke the whole state parse. Style tokens sit before `Colon` in the state
+  lexer so a `fill:…`/`:::` colon doesn't trigger label mode.
+
 ## 2026-07-04 — Inline `:::class` shorthand
 
 - The lexer/grammar now accept Mermaid's inline `id:::className` (and `id[label]:::className`) class

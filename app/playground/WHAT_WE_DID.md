@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Render state-diagram colours from the source
+
+- `sourceNodeColors`/`sourceEdgeColors` now also colour STATE diagrams (they carry the same Mermaid
+  style directives, and their scene ids equal the source ids). First "other family" for source-canonical
+  colour; the write side (spans/editor) stays flowchart-only for now.
+
 ## 2026-07-04 — Render `:::class` node colours
 
 - A pasted flowchart using the inline `:::class` shorthand now colours its nodes (it flows through the

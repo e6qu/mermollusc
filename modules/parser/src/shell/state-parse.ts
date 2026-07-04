@@ -2,6 +2,7 @@ import type { CstNode, IToken } from "chevrotain";
 import { childNodes, childTokens } from "./cst.js";
 import { brand, err, isOk, map, ok, type Result } from "@m/std";
 import type {
+  FlowStyle,
   StateAst,
   StateComposite,
   FlowDirection,
@@ -71,12 +72,19 @@ const innerSpan = (t: IToken): TextSpan => ({
 interface Endpoint {
   readonly star: boolean;
   readonly image: string;
+  // The class name from an inline `id:::className` shorthand on this endpoint, or null.
+  readonly className: string | null;
 }
 
 const endpointOf = (ep: CstNode): Endpoint => {
   const star = childTokens(ep.children, "StateStar")[0];
-  if (star !== undefined) return { star: true, image: star.image };
-  return { star: false, image: childTokens(ep.children, "StateIdentifier")[0]?.image ?? "" };
+  if (star !== undefined) return { star: true, image: star.image, className: null };
+  const cls = childTokens(ep.children, "StateClassShorthand")[0];
+  return {
+    star: false,
+    image: childTokens(ep.children, "StateIdentifier")[0]?.image ?? "",
+    className: cls === undefined ? null : cls.image.slice(3),
+  };
 };
 
 // Per-composite `[*]` pseudo-state ids — each scope (the root, or a `state X { … }` block) has its
@@ -95,6 +103,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const transitions: StateTransition[] = [];
   const transitionSpans = new Map<StateTransitionId, TextSpan>();
   const notes: StateNote[] = [];
+  const styles: FlowStyle[] = [];
   let direction: FlowDirection = "TB";
 
   const addMember = (composite: string | null, id: string): void => {
@@ -114,6 +123,10 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const resolve = (ep: Endpoint, role: "start" | "end", scope: string | null): string => {
     if (!ep.star) {
       seeReal(ep.image, null, scope);
+      // `Idle:::hot` — synthesise a `class Idle hot` directive, handled by the shared colour resolver.
+      if (ep.className !== null) {
+        styles.push({ kind: "class", raw: `class ${ep.image} ${ep.className}` });
+      }
       return ep.image;
     }
     const id = pseudoId(scope, role);
@@ -153,6 +166,19 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
 
   const walk = (statements: readonly CstNode[], scope: string | null): Result<null, ParseError> => {
     for (const stmt of statements) {
+      const styleDir = childNodes(stmt.children, "stateStyleDirective")[0];
+      if (styleDir !== undefined) {
+        const sd = styleDir.children;
+        const st = childTokens(sd, "StateStyleStmt")[0];
+        const cd = childTokens(sd, "StateClassDefStmt")[0];
+        const cl = childTokens(sd, "StateClassStmt")[0];
+        const ls = childTokens(sd, "StateLinkStyleStmt")[0];
+        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
+        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
+        else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        continue;
+      }
       const dirStmt = childNodes(stmt.children, "stateDirectionStmt")[0];
       if (dirStmt !== undefined) {
         const dirToken = childTokens(dirStmt.children, "StateIdentifier")[0];
@@ -240,7 +266,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
     states: [...(memberOf.get(id) ?? new Set<string>())].map((m) => brand<string, "StateId">(m)),
   }));
   return ok({
-    ast: { kind: "state", direction, states, transitions, composites, notes },
+    ast: { kind: "state", direction, states, transitions, composites, notes, styles },
     source: { states: stateSpans, transitions: transitionSpans },
   });
 };

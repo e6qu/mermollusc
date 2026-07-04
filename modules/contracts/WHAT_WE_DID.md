@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — StateAst.styles
+
+- `StateAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart; state lays out
+  through the flowchart engine, so the shared resolver colours it).
+
 ## 2026-07-04 — SourceMap.edgeEnds (edge endpoint spans)
 
 - The flowchart `SourceMap` gains `edgeEnds: ReadonlyMap<EdgeId, EdgeEndSpans>` — each edge's two

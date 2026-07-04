@@ -1102,7 +1102,9 @@ const withContents = (shown: Scene, id: SceneNodeId): readonly SceneNodeId[] => 
 // canonical styling), keyed by scene-node id for the renderer. Empty for non-flowchart families (none
 // carry these directives yet) and for a graph with no styling.
 const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> => {
-  if (ast === null || ast.kind !== "flowchart") return new Map();
+  // Flowchart and state both carry Mermaid `style`/`classDef`/`:::` directives (state lays out through
+  // the flowchart engine); their scene-node ids equal the source ids the directives target.
+  if (ast === null || (ast.kind !== "flowchart" && ast.kind !== "state")) return new Map();
   const resolved = resolveNodeStyles(ast.styles);
   // `classDef default …` is the base colour for every node; an explicit `style`/`class` overrides it.
   const dflt = resolveDefaultNodeStyle(ast.styles);
@@ -1123,16 +1125,19 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
 // by scene-edge id. `linkStyle` targets edges by declaration index; the Nth AST edge's id is the Nth
 // scene edge's id (flowchart preserves order), so map index → edge id → colour.
 const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
-  if (ast === null || ast.kind !== "flowchart") return new Map();
+  if (ast === null || (ast.kind !== "flowchart" && ast.kind !== "state")) return new Map();
   const resolved = resolveLinkStyles(ast.styles);
   // `linkStyle default …` is the base stroke for every edge; an explicit `linkStyle <index>` overrides.
   const dflt = resolveDefaultLinkStyle(ast.styles);
   if (resolved.size === 0 && dflt === null) return new Map();
+  // `linkStyle <index>` targets edges by declaration order — flowchart edges or state transitions.
+  const edgeIds =
+    ast.kind === "flowchart" ? ast.edges.map((e) => e.id) : ast.transitions.map((t) => t.id);
   const out = new Map<SceneEdgeId, NodeColors>();
-  ast.edges.forEach((e, i) => {
+  edgeIds.forEach((id, i) => {
     const c = resolved.get(i) ?? null;
     if (c === null && dflt === null) return;
-    out.set(brand<string, "SceneEdgeId">(e.id), {
+    out.set(brand<string, "SceneEdgeId">(id), {
       fill: null,
       stroke: c?.stroke ?? dflt?.stroke ?? null,
     });

@@ -1,4 +1,11 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import {
+  CLASS_SHORTHAND,
+  CLASS_STMT,
+  CLASSDEF_STMT,
+  LINKSTYLE_STMT,
+  STYLE_STMT,
+} from "./style-patterns.js";
 
 // Label/edge-text is captured by per-bracket lexer modes so it may contain spaces.
 const Identifier = createToken({ name: "Identifier", pattern: /[A-Za-z0-9_]+/ });
@@ -15,25 +22,13 @@ const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier
 // a node ref that merely starts with the word (`style --> B`, `classifier`): the required whitespace +
 // shape rules it out. Class names allow `-` (Mermaid permits hyphenated class names). `classDef` is
 // listed before `class` so the longer keyword wins.
-const StyleStmt = createToken({
-  name: "StyleStmt",
-  pattern: /style[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n;]*/,
-});
-const ClassDefStmt = createToken({
-  name: "ClassDefStmt",
-  pattern: /classDef[ \t]+[A-Za-z0-9_,-]+[ \t]+[A-Za-z-]+:[^\n;]*/,
-});
-const ClassStmt = createToken({
-  name: "ClassStmt",
-  pattern: /class[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z0-9_-]+[ \t]*/,
-});
-const LinkStyleStmt = createToken({
-  name: "LinkStyleStmt",
-  pattern: /linkStyle[ \t]+(?:default|\d+(?:[ \t]*,[ \t]*\d+)*)[ \t]+[A-Za-z-]+:[^\n;]*/,
-});
+const StyleStmt = createToken({ name: "StyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "ClassDefStmt", pattern: CLASSDEF_STMT });
+const ClassStmt = createToken({ name: "ClassStmt", pattern: CLASS_STMT });
+const LinkStyleStmt = createToken({ name: "LinkStyleStmt", pattern: LINKSTYLE_STMT });
 // Mermaid's inline class shorthand `A:::className` — assigns node A to a `classDef` class, equivalent to
 // a `class A className` statement. Captured whole (the `:::` is unambiguous — no other token uses `:`).
-const ClassShorthand = createToken({ name: "ClassShorthand", pattern: /:::[A-Za-z0-9_-]+/ });
+const ClassShorthand = createToken({ name: "ClassShorthand", pattern: CLASS_SHORTHAND });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
