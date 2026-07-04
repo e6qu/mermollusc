@@ -1,6 +1,14 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Style-directive compliance fixes (review)
+
+- `parseProps` splits property lists only on TOP-LEVEL commas, so a value with internal commas
+  (`fill:rgb(1,2,3)`) survives. A new `splitProps` finds the property list by its first `key:`, so a
+  target list may contain whitespace (`linkStyle 0, 1 stroke:…` now resolves every index + keeps the
+  colour). Lexer: class/classDef names allow `-` (hyphenated names no longer fail the whole parse); the
+  directive tokens stop at `;` so a `;`-separated statement after a style line isn't swallowed.
+
 ## 2026-07-04 — Edge endpoint spans
 
 - The parser records `edgeEnds` (each edge's from/to endpoint declaration spans) for reconnection. A

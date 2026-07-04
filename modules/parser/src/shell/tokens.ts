@@ -8,26 +8,28 @@ const Subgraph = createToken({ name: "Subgraph", pattern: /subgraph/, longer_alt
 const End = createToken({ name: "End", pattern: /end/, longer_alt: Identifier });
 // `icon "<pack>/<name>"` glyph override after a node's shape (e.g. a BPMN event/gateway/task glyph).
 const Icon = createToken({ name: "Icon", pattern: /icon/, longer_alt: Identifier });
-// Mermaid styling directives, each matched as a WHOLE line (the property list `fill:#f9f,stroke:#333`
-// isn't sub-tokenised — the AST builder parses the captured text). Patterns require the directive's
-// real structure (keyword, targets, then a property/name) so they can't swallow a node ref that merely
-// starts with the word (`style --> B`, `classifier`): the required whitespace + shape rules it out.
-// `classDef` is listed before `class` so the longer keyword wins.
+// Mermaid styling directives, each matched as a WHOLE line up to a `;` statement separator (Mermaid
+// treats `;` like a newline, so the value list stops there — `[^\n;]*`). The property list
+// (`fill:#f9f,stroke:#333`) isn't sub-tokenised — the AST builder parses the captured text. Patterns
+// require the directive's real structure (keyword, targets, then a property/name) so they can't swallow
+// a node ref that merely starts with the word (`style --> B`, `classifier`): the required whitespace +
+// shape rules it out. Class names allow `-` (Mermaid permits hyphenated class names). `classDef` is
+// listed before `class` so the longer keyword wins.
 const StyleStmt = createToken({
   name: "StyleStmt",
-  pattern: /style[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n]*/,
+  pattern: /style[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n;]*/,
 });
 const ClassDefStmt = createToken({
   name: "ClassDefStmt",
-  pattern: /classDef[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z-]+:[^\n]*/,
+  pattern: /classDef[ \t]+[A-Za-z0-9_,-]+[ \t]+[A-Za-z-]+:[^\n;]*/,
 });
 const ClassStmt = createToken({
   name: "ClassStmt",
-  pattern: /class[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z0-9_]+[ \t]*/,
+  pattern: /class[ \t]+[A-Za-z0-9_,]+[ \t]+[A-Za-z0-9_-]+[ \t]*/,
 });
 const LinkStyleStmt = createToken({
   name: "LinkStyleStmt",
-  pattern: /linkStyle[ \t]+(?:default|\d+(?:[ \t]*,[ \t]*\d+)*)[ \t]+[A-Za-z-]+:[^\n]*/,
+  pattern: /linkStyle[ \t]+(?:default|\d+(?:[ \t]*,[ \t]*\d+)*)[ \t]+[A-Za-z-]+:[^\n;]*/,
 });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });

@@ -74,3 +74,16 @@ test("reconnecting a chained endpoint is declined (no silent corruption)", async
   await dragToEndpointOnto(page, "D"); // edge0 is A-->B, whose B end is shared with B-->C
   expect(await sourceText(page)).toBe(before); // unchanged — declined
 });
+
+// Regression: releasing the endpoint back onto its OWN node (a change-of-mind drag, or a click since the
+// handle sits on the node border) must NOT rewrite the endpoint — which would strip an inline label.
+test("releasing an endpoint back onto its own node preserves the inline label", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "flowchart LR\n  A[A] --> B[Important]\n  A --> C[C]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const before = await sourceText(page);
+  await dragToEndpointOnto(page, "B"); // drop the B-end back on B
+  expect(await sourceText(page)).toBe(before); // B[Important] intact, no silent label loss
+});
