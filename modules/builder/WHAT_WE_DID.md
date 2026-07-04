@@ -1,6 +1,12 @@
 # @m/builder — work log
 
 
+## 2026-07-04 — Flowchart subgraph patches
+
+- `wrapFlowchartSubgraph(text, memberIds, id, label)` inserts a `subgraph <id>[label] … end` block after
+  the header, listing the members (before the edges that use them, so the parser groups them).
+  `removeSubgraphBlock(text, span)` deletes the block (ungroup); members survive via their edges.
+
 ## 2026-07-04 — Edge linkStyle directive patches
 
 - `setLinkStyleDirective(text, span, index, stroke)` / `removeLinkStyleDirective(text, span)` write/remove

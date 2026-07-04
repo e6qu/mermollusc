@@ -356,6 +356,7 @@ const buildResultWithSource = (
       arrows: arrowSpans,
       styleSpans: new Map(),
       linkStyleSpans: new Map(),
+      subgraphSpans: new Map(),
     },
   });
 };

@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Subgraph block spans
+
+- The parser records `subgraphSpans` (the `subgraph … end` block span per subgraph id) from the block
+  CST node's location, for source-based ungrouping.
+
 ## 2026-07-04 — Resolve + locate linkStyle (edge colour)
 
 - New `resolveLinkStyles(styles)` → per-edge-index `{stroke}` from `linkStyle <n> stroke:…` directives

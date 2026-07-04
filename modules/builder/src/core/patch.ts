@@ -167,6 +167,29 @@ export const setLinkStyleDirective = (
 export const removeLinkStyleDirective = (text: string, span: TextSpan): string =>
   removeDirectiveLine(text, span);
 
+// Group flowchart nodes into a new `subgraph <id>[label] … end` block, inserted right AFTER the header
+// line. Listing the members as bare ids there assigns them to the subgraph; the block must precede the
+// edges that use them, since a node joins the first container it appears in (source order). The members
+// stay declared/used in their edges below — this only adds the membership block.
+export const wrapFlowchartSubgraph = (
+  text: string,
+  memberIds: readonly NodeId[],
+  subgraphId: string,
+  label: string,
+): string => {
+  if (memberIds.length < 2) return text;
+  const nl = text.indexOf("\n");
+  const headerEnd = nl < 0 ? text.length : nl;
+  const members = memberIds.map((m) => `    ${m}`).join("\n");
+  const block = `\n  subgraph ${subgraphId}[${label}]\n${members}\n  end`;
+  return text.slice(0, headerEnd) + block + text.slice(headerEnd);
+};
+
+// Ungroup: delete a whole `subgraph … end` block (from `SourceMap.subgraphSpans`), incl. its indentation
+// and one trailing newline. The members survive via their edges; only the membership block is removed.
+export const removeSubgraphBlock = (text: string, span: TextSpan): string =>
+  removeDirectiveLine(text, span);
+
 // Delete the whole line a directive-token span sits on: the directive, its leading indentation, and one
 // trailing newline.
 const removeDirectiveLine = (text: string, span: TextSpan): string => {

@@ -233,6 +233,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const styles: FlowStyle[] = [];
   const styleSpans = new Map<NodeId, TextSpan>();
   const linkStyleSpans = new Map<number, TextSpan>();
+  const subgraphSpans = new Map<NodeId, TextSpan>();
   const claimed = new Set<string>();
   let malformed = false;
   // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
@@ -388,6 +389,13 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
           parent: parentId,
           nodes: inner,
         });
+        const loc = item.node.location;
+        if (loc !== undefined) {
+          const end = loc.endOffset;
+          if (loc.startOffset >= 0 && end !== undefined && end >= 0) {
+            subgraphSpans.set(sgId, { start: loc.startOffset, end: end + 1 });
+          }
+        }
       }
     }
     return members;
@@ -432,7 +440,14 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs, styles };
   return ok({
     ast,
-    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans, styleSpans, linkStyleSpans },
+    source: {
+      nodes: nodeSpans,
+      edges: edgeSpans,
+      arrows: arrowSpans,
+      styleSpans,
+      linkStyleSpans,
+      subgraphSpans,
+    },
   });
 };
 

@@ -32,6 +32,8 @@ test("Group bundles the selection and toggles the controls; Ungroup reverses it"
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await expect(page.locator("#group")).toBeDisabled(); // nothing selected
   await selectPair(page);
@@ -56,6 +58,8 @@ test("a locked group can't be dragged; unlocking restores the move", async ({ pa
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await selectPair(page);
   await page.locator("#group").click();
@@ -78,6 +82,8 @@ test("clicking a group outline selects the whole group", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
   const box = await page.locator("#stage").boundingBox();
   expect(box).not.toBeNull();
@@ -103,6 +109,8 @@ test("double-clicking a group outline edits its label", async ({ page }) => {
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await selectPair(page);
   await page.locator("#group").click();
@@ -127,6 +135,8 @@ test("a group is pruned when its nodes leave the source (no stale resurrection)"
 
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await selectPair(page);
   await page.locator("#group").click();
@@ -149,6 +159,8 @@ test("keyboard: Shift+Arrow multi-selects in the navigator and `g`/`u` group/ung
   page,
 }) => {
   await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const groupCount = () =>
@@ -175,6 +187,8 @@ test("keyboard: a created group is listed in the navigator and Enter relabels it
   page,
 }) => {
   await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  await setSource(page, "stateDiagram-v2\n  A --> B\n  B --> C\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const groupItem = () =>

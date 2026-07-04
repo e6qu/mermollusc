@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Grouping writes a subgraph to the source (flowchart)
+
+- The Group button now wraps selected flowchart nodes in a Mermaid `subgraph … end` block in the SOURCE
+  (source-canonical), like cloud's `group{}`. Ungroup deletes the block, detecting a selected subgraph
+  container OR a selected member node. Non-flowchart families keep the overlay group.
+
 ## 2026-07-04 — Edge colour swatch writes to the source (flowchart)
 
 - The colour swatch now writes a flowchart edge's colour into the SOURCE as a `linkStyle <index>

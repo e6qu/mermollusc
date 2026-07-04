@@ -115,10 +115,12 @@ test("the context Group button yields the same source as the workbench Group but
   await page.mouse.click(box.x + box.width / 2, box.y + 134);
   await page.keyboard.up("Shift");
 
-  // The context Group only groups the overlay (no source change); assert it runs without error and the
-  // group buttons reflect the new group (Ungroup enabled) — same as clicking the workbench Group.
+  // Flowchart grouping is source-canonical (writes a `subgraph` block), so the context Group button —
+  // like the workbench Group — changes the source and enables Ungroup.
   const before = await sourceValue(page);
   await page.locator("#ctx-group").click();
-  expect(await sourceValue(page)).toBe(before); // grouping is overlay-only
+  const after = await sourceValue(page);
+  expect(after).not.toBe(before);
+  expect(after).toContain("subgraph");
   await expect(page.locator("#ungroup")).toBeEnabled();
 });

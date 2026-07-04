@@ -298,11 +298,10 @@ test("canvas actions announce their outcomes in the diagram live region", async 
   await page.locator("#align-left").click();
   await expect(live).toHaveText(/arranged /);
 
+  // Flowchart grouping writes a `subgraph` to the source (announced); locking is an overlay-group concept
+  // (a subgraph isn't lockable), so it's exercised in groups.spec against an overlay-group family.
   await page.locator("#group").click();
   await expect(live).toHaveText(/grouped /);
-
-  await page.locator("#lock").click();
-  await expect(live).toHaveText("locked group");
 
   await openExportMenu(page);
   await page.locator("#share-link").click();
