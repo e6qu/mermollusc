@@ -1,4 +1,5 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import { CLASS_STMT, CLASSDEF_STMT, LINKSTYLE_STMT, STYLE_STMT } from "./style-patterns.js";
 
 // Single-mode lexer (labels always quoted). `group` opens a nested box; the kind keywords introduce
 // service leaves; `--` is the undirected link.
@@ -33,6 +34,13 @@ const WhiteSpace = createToken({
 });
 const Comment = createToken({ name: "CloudComment", pattern: /%%[^\n]*/, group: Lexer.SKIPPED });
 
+// Mermaid styling directives (shared patterns), matched as whole lines before `Identifier` so a
+// `classDef …`/`class …`/`style …`/`linkStyle …` line is captured whole rather than as bare tokens.
+const StyleStmt = createToken({ name: "CloudStyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "CloudClassDefStmt", pattern: CLASSDEF_STMT });
+const ClassStmt = createToken({ name: "CloudClassStmt", pattern: CLASS_STMT });
+const LinkStyleStmt = createToken({ name: "CloudLinkStyleStmt", pattern: LINKSTYLE_STMT });
+
 const order: TokenType[] = [
   WhiteSpace,
   Comment,
@@ -52,6 +60,10 @@ const order: TokenType[] = [
   LBrace,
   RBrace,
   QuotedString,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   Identifier,
 ];
 
@@ -59,6 +71,10 @@ export const cloudLexer = new Lexer(order);
 
 export const CloudTok = {
   Identifier,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
   CloudHeader,
   Group,
   Compute,

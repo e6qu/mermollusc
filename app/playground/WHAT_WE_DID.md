@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Render cloud-diagram colours from the source
+
+- `sourceNodeColors`/`sourceEdgeColors` now also colour cloud diagrams (scene ids equal node ids;
+  `linkStyle` indexes the links).
+
 ## 2026-07-05 — Render network-diagram colours from the source
 
 - `sourceNodeColors`/`sourceEdgeColors` now also colour network diagrams (scene ids equal node ids;

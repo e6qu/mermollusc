@@ -107,3 +107,12 @@ test("network diagram classDef colours nodes from the source too", async ({ page
   const px = await nodeCenterPx(page, "web1");
   expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
 });
+
+test("cloud diagram classDef colours nodes from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, 'cloud\n  compute web1 "Web"\n  storage s1 "S3"\n  web1 --> s1\n  classDef hot fill:#16a34a\n  class web1 hot\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "web1");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});
