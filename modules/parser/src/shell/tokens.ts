@@ -31,6 +31,9 @@ const LinkStyleStmt = createToken({
   name: "LinkStyleStmt",
   pattern: /linkStyle[ \t]+(?:default|\d+(?:[ \t]*,[ \t]*\d+)*)[ \t]+[A-Za-z-]+:[^\n;]*/,
 });
+// Mermaid's inline class shorthand `A:::className` — assigns node A to a `classDef` class, equivalent to
+// a `class A className` statement. Captured whole (the `:::` is unambiguous — no other token uses `:`).
+const ClassShorthand = createToken({ name: "ClassShorthand", pattern: /:::[A-Za-z0-9_-]+/ });
 const QuotedString = createToken({ name: "QuotedString", pattern: /"[^"\n]*"/ });
 const NewLine = createToken({ name: "NewLine", pattern: /\r?\n/, line_breaks: true });
 const Semicolon = createToken({ name: "Semicolon", pattern: /;/ });
@@ -86,6 +89,7 @@ export const lexer = new Lexer({
       ClassDefStmt,
       ClassStmt,
       LinkStyleStmt,
+      ClassShorthand,
       QuotedString,
       DottedArrow,
       ThickArrow,
@@ -121,6 +125,7 @@ export const Tok = {
   ClassDefStmt,
   ClassStmt,
   LinkStyleStmt,
+  ClassShorthand,
   QuotedString,
   DottedArrow,
   ThickArrow,
@@ -159,6 +164,7 @@ export const allTokens: TokenType[] = [
   ClassDefStmt,
   ClassStmt,
   LinkStyleStmt,
+  ClassShorthand,
   QuotedString,
   DottedArrow,
   ThickArrow,

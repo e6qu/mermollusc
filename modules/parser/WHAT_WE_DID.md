@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Inline `:::class` shorthand
+
+- The lexer/grammar now accept Mermaid's inline `id:::className` (and `id[label]:::className`) class
+  shorthand; the AST builder synthesises an equivalent `class id className` directive so the colour
+  resolver + printer treat it uniformly. Previously a `:::` broke the whole parse.
+
 ## 2026-07-04 — classDef/linkStyle default resolvers
 
 - New `resolveDefaultNodeStyle`/`resolveDefaultLinkStyle` expose a `classDef default …` / `linkStyle

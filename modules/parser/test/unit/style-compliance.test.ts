@@ -46,3 +46,19 @@ describe("classDef/linkStyle default", () => {
     expect(resolveDefaultLinkStyle(v.styles)).toEqual({ fill: null, stroke: "#f00" });
   });
 });
+
+import { print } from "../../src/core/print.js";
+describe("inline :::class shorthand", () => {
+  it("parses `A:::hot`, applies the class, and round-trips through print", () => {
+    const v = stylesOf("flowchart TD\n  A:::hot --> B\n  classDef hot fill:#f96\n");
+    expect(v.nodes.map((n) => n.id).sort()).toEqual(["A", "B"]);
+    expect(resolveNodeStyles(v.styles).get("A")).toEqual({ fill: "#f96", stroke: null });
+    const p = print(v);
+    const v2 = stylesOf(p);
+    expect(print(v2)).toBe(p);
+  });
+  it("handles `A[Label]:::hot` (shorthand after a shape)", () => {
+    const v = stylesOf("flowchart TD\n  A[Alpha]:::hot --> B\n  classDef hot fill:#f96\n");
+    expect(resolveNodeStyles(v.styles).get("A")?.fill).toBe("#f96");
+  });
+});

@@ -73,15 +73,20 @@ interface Ref extends ShapeRef {
   // The raw `"<pack>/<name>"` from an `icon` clause (validated by the caller), or null when absent.
   readonly iconImage: string | null;
   readonly iconSpan: TextSpan | null;
+  // The class name from an inline `:::className` shorthand, or null. Applied like a `class id name`.
+  readonly className: string | null;
 }
 
 const readNodeRef = (node: CstNode): Ref => {
   const base = readNodeShape(node);
   const iconToken = childTokens(node.children, "QuotedString")[0];
+  const classTok = childTokens(node.children, "ClassShorthand")[0];
   return {
     ...base,
     iconImage: iconToken?.image ?? null,
     iconSpan: iconToken === undefined ? null : spanOf(iconToken),
+    // Strip the leading `:::` to get the class name.
+    className: classTok === undefined ? null : classTok.image.slice(3),
   };
 };
 
@@ -247,6 +252,11 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
     const refs = childNodes(stmt.children, "nodeRef").map(readNodeRef);
     const links = childNodes(stmt.children, "link");
     for (const ref of refs) {
+      // An inline `id:::className` is Mermaid shorthand for a `class id className` statement — synthesise
+      // one so the colour resolver + printer treat it uniformly. (Emitting `class …` canonicalises it.)
+      if (ref.className !== null) {
+        styles.push({ kind: "class", raw: `class ${ref.id} ${ref.className}` });
+      }
       let icon: IconRef | null = null;
       if (ref.iconImage !== null && ref.iconSpan !== null) {
         const r = iconRefOf(ref.iconImage);
