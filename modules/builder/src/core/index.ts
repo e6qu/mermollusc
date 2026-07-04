@@ -25,6 +25,8 @@ export {
   patchSpan,
   addEdgeLabel,
   restyleEdge,
+  setNodeStyleDirective,
+  removeNodeStyleDirective,
   restyleSequenceMessage,
   shiftGanttStart,
   setGanttStartFromDay,

@@ -349,7 +349,8 @@ const buildResultWithSource = (
   return ok({
     // DOT has no Mermaid `style`/`classDef` syntax, so an imported graph carries no styling directives.
     ast: { kind: "flowchart", direction, nodes: flowNodes, edges, subgraphs, styles: [] },
-    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans },
+    // DOT has no Mermaid `style` directives, so there are no editable style-line spans.
+    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans, styleSpans: new Map() },
   });
 };
 

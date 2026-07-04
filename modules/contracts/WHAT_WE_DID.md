@@ -1,6 +1,12 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — SourceMap.styleSpans
+
+- The flowchart `SourceMap` gains `styleSpans: ReadonlyMap<NodeId, TextSpan>` — the directive-token span
+  of each SINGLE-target inline `style <id> …` line, so the editor can update/remove a node's colour in
+  place. Multi-target and class-based colours aren't here (the editor appends an overriding line).
+
 ## 2026-07-04 — FlowchartAst.styles (Mermaid styling directives)
 
 - `FlowchartAst` gains `styles: readonly FlowStyle[]` — Mermaid `style`/`classDef`/`class`/`linkStyle`

@@ -231,6 +231,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const edges: FlowEdge[] = [];
   const subgraphs: FlowSubgraph[] = [];
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<NodeId, TextSpan>();
   const claimed = new Set<string>();
   let malformed = false;
   // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
@@ -318,8 +319,19 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       const classDef = childTokens(dc, "ClassDefStmt")[0];
       const cls = childTokens(dc, "ClassStmt")[0];
       const linkStyle = childTokens(dc, "LinkStyleStmt")[0];
-      if (style !== undefined) styles.push({ kind: "style", raw: style.image.trim() });
-      else if (classDef !== undefined)
+      if (style !== undefined) {
+        styles.push({ kind: "style", raw: style.image.trim() });
+        // Record the directive-token span for a SINGLE-target `style <id> …` line, so the editor can
+        // update/remove that node's colour in place. A comma (multi-target) means it isn't editable here.
+        const target = style.image.trim().slice("style".length).trim().split(/[ \t]/)[0] ?? "";
+        if (target !== "" && !target.includes(",")) {
+          const lead = style.image.length - style.image.trimStart().length;
+          styleSpans.set(brand<string, "NodeId">(target), {
+            start: style.startOffset + lead,
+            end: style.startOffset + style.image.trimEnd().length,
+          });
+        }
+      } else if (classDef !== undefined)
         styles.push({ kind: "classDef", raw: classDef.image.trim() });
       else if (cls !== undefined) styles.push({ kind: "class", raw: cls.image.trim() });
       else if (linkStyle !== undefined)
@@ -404,7 +416,10 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
     .filter((n): n is FlowNode => n !== undefined);
 
   const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs, styles };
-  return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans } });
+  return ok({
+    ast,
+    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans, styleSpans },
+  });
 };
 
 export const parseWithSource = (text: string): Result<ParsedSource, ParseError> => {

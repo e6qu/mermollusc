@@ -46,6 +46,10 @@ export interface SourceMap {
   // The arrow-token span (`-->`/`---`/`-.->`/`==>`) of every edge — for restyling the arrow and for
   // inserting a `|label|` on a bare edge (after the token).
   readonly arrows: ReadonlyMap<EdgeId, TextSpan>;
+  // The directive-token span of each SINGLE-target inline `style <id> …` line, keyed by that node id —
+  // so the editor can update or remove a node's colour directive in place. Multi-target `style A,B …`
+  // lines and class-based colours aren't here (the editor appends an overriding single-node line).
+  readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a sequence diagram: each actor's label, each message's text, and its arrow.

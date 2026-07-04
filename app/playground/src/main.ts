@@ -46,6 +46,8 @@ import {
   addEdgeLabel,
   restyleEdge,
   restyleSequenceMessage,
+  setNodeStyleDirective,
+  removeNodeStyleDirective,
   patchSpan,
   shiftGanttStart,
   setGanttStartFromDay,
@@ -116,6 +118,8 @@ import {
 } from "@m/layout";
 import { parseDiagramWithSource, resolveNodeStyles } from "@m/parser";
 import {
+  accentFill,
+  defaultTheme,
   type EdgeFinish,
   edgeLabelAnchorAt,
   labelLines,
@@ -1816,7 +1820,7 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxColourSwatches.hidden = viewerMode || !(nodesOnly || edgesOnly);
   if (!ctxColourSwatches.hidden) {
     const accents = nodesOnly
-      ? new Set(selectionOrder.map((id) => doc.nodeStyles().get(id)?.accent ?? "none"))
+      ? new Set(selectionOrder.map((id) => nodeSwatchAccent(id)))
       : new Set([...selection.edges].map((id) => doc.edgeStyles().get(id)?.accent ?? "none"));
     const activeAccent = accents.size === 1 ? [...accents][0] : undefined;
     ctxColourSwatches.setAttribute("aria-label", edgesOnly ? "Edge color" : "Node fill color");
@@ -5520,13 +5524,77 @@ const nodeAccentOf = (raw: string | null): NodeAccent | null => {
   return found ?? null;
 };
 
+// Reverse map from an accent's canonical (light-theme) fill hex back to the accent, so the swatch picker
+// can reflect a node coloured from the source. An arbitrary hand-written fill matches nothing → "none"
+// highlighted (the node still renders its colour; it's just not one of the nine named swatches).
+const NODE_ACCENT_BY_FILL: ReadonlyMap<string, NodeAccent> = new Map(
+  NODE_ACCENTS.filter((a) => a !== "none").map((a) => [
+    accentFill(a, defaultTheme).toLowerCase(),
+    a,
+  ]),
+);
+
+// Which swatch is active for a node: for flowchart, read the colour from the SOURCE `style` directive;
+// every other family reads the overlay accent.
+const nodeSwatchAccent = (id: SceneNodeId): NodeAccent => {
+  if (ast !== null && ast.kind === "flowchart") {
+    const fill = resolveNodeStyles(ast.styles).get(id)?.fill ?? null;
+    return fill === null ? "none" : (NODE_ACCENT_BY_FILL.get(fill.toLowerCase()) ?? "none");
+  }
+  return doc.nodeStyles().get(id)?.accent ?? "none";
+};
+
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
+  // Flowchart node colour is Mermaid-expressible, so it lives in the SOURCE (a `style <id> fill:…` line),
+  // not the overlay. Every other family keeps the overlay accent (the overlay is additive, not a stash
+  // for Mermaid-expressible styling — but these families' dialects have no `style` syntax we parse).
+  if (ast !== null && ast.kind === "flowchart" && source !== null) {
+    setFlowchartNodeColourInSource(adv);
+    return;
+  }
   recordHistory();
   for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
   doc.persist();
   paintScene();
   updateGroupButtons();
+  flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
+// Write the selected flowchart nodes' colour into the source as `style <id> fill:<hex>` directives:
+// update an existing single-target line in place, append one where absent, or remove it for `none`.
+// In-place edits are applied by DESCENDING offset so earlier patches don't invalidate later spans; the
+// appends (nodes with no existing line) go last, at the end of the text.
+const setFlowchartNodeColourInSource = (adv: NodeAccent): void => {
+  const map = source;
+  if (map === null) return;
+  const fill = adv === "none" ? "" : accentFill(adv, defaultTheme);
+  const inPlace: { span: TextSpan; text: string }[] = [];
+  const appends: NodeId[] = [];
+  for (const id of selectionOrder) {
+    const nid = brand<string, "NodeId">(id);
+    const span = map.styleSpans.get(nid) ?? null;
+    if (adv === "none") {
+      if (span !== null) inPlace.push({ span, text: "" });
+    } else if (span !== null) {
+      inPlace.push({ span, text: `style ${nid} fill:${fill}` });
+    } else {
+      appends.push(nid);
+    }
+  }
+  let text = editor.value();
+  for (const op of inPlace.sort((a, b) => b.span.start - a.span.start)) {
+    text =
+      op.text === "" ? removeNodeStyleDirective(text, op.span) : patchSpan(text, op.span, op.text);
+  }
+  for (const nid of appends) text = setNodeStyleDirective(text, null, nid, fill, null);
+  if (text === editor.value()) {
+    flashStatus("colour made no change");
+    return;
+  }
+  recordHistory();
+  setSourceValue(text);
+  void renderFromText(text);
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 

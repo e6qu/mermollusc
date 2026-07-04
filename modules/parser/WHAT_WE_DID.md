@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Expose single-target style-line spans
+
+- The flowchart parser now records `styleSpans` (per-node directive-token span for single-target inline
+  `style` lines) in the source map, for in-place editing. DOT import supplies an empty map.
+
 ## 2026-07-04 — Resolve Mermaid node styles to colours
 
 - New pure `resolveNodeStyles(styles)` turns the verbatim `FlowchartAst.styles` directives into a
