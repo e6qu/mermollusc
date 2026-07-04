@@ -1,4 +1,4 @@
-import type { FlowDirection, Scene, SceneNodeId } from "@m/contracts";
+import type { FlowDirection, Scene, SceneEdgeId, SceneNodeId } from "@m/contracts";
 import { findIcon, type IconRegistry } from "@m/icons";
 import {
   type EdgeFinish,
@@ -36,6 +36,8 @@ export interface ImageExportDeps {
   // Raw node fill/stroke from Mermaid `style`/`classDef` directives, so an export colours nodes the same
   // way the on-screen canvas does.
   readonly nodeColors: (shown: Scene) => ReadonlyMap<SceneNodeId, NodeColors>;
+  // Raw edge stroke from Mermaid `linkStyle` directives, keyed by scene-edge id (same reason).
+  readonly edgeColors: () => ReadonlyMap<SceneEdgeId, NodeColors>;
   readonly activeTheme: () => Theme;
   readonly getDirection: () => FlowDirection | null;
   readonly iconImages: ReadonlyMap<string, CanvasImageSource>;
@@ -70,7 +72,7 @@ export const installImageExport = (deps: ImageExportDeps): void => {
     octx.translate(margin - shown.extent.origin.x, margin - shown.extent.origin.y);
     paint(
       octx,
-      toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown)),
+      toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown), deps.edgeColors()),
       deps.iconImages,
       active,
     );
@@ -186,14 +188,17 @@ export const installImageExport = (deps: ImageExportDeps): void => {
       if (isOk(resolved)) icons.set(key, svgDataUrl(resolved.value, deps.activeTheme().text));
       else appLog("error", "icon-resolve-failed", resolved.error.message);
     }
-    const svg = toSvg(toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown)), {
-      width: Math.ceil(shown.extent.size.width) + margin * 2,
-      height: Math.ceil(shown.extent.size.height) + margin * 2,
-      origin: shown.extent.origin,
-      margin,
-      theme: deps.activeTheme(),
-      icons,
-    });
+    const svg = toSvg(
+      toDisplayList(shown, false, deps.edgeFinish(), deps.nodeColors(shown), deps.edgeColors()),
+      {
+        width: Math.ceil(shown.extent.size.width) + margin * 2,
+        height: Math.ceil(shown.extent.size.height) + margin * 2,
+        origin: shown.extent.origin,
+        margin,
+        theme: deps.activeTheme(),
+        icons,
+      },
+    );
     downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "mermollusc.svg");
     setStatus("ok", "exported mermollusc.svg");
   });

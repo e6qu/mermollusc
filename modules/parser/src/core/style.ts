@@ -94,3 +94,24 @@ export const resolveNodeStyles = (
   }
   return result;
 };
+
+// `linkStyle <indices> stroke:…` colours edges BY INDEX (declaration order). Resolves to a per-index
+// stroke colour (fill is meaningless on a connector). `linkStyle default …` and non-numeric targets are
+// ignored here (they'd need every-edge fan-out; the editor writes explicit single-index lines).
+export const resolveLinkStyles = (
+  styles: readonly FlowStyle[],
+): ReadonlyMap<number, FlowNodeColors> => {
+  const result = new Map<number, FlowNodeColors>();
+  for (const s of styles) {
+    if (s.kind !== "linkStyle") continue;
+    const split = splitTargets(s.raw, "linkStyle");
+    if (split === null) continue;
+    const props = parseProps(split.rest);
+    for (const t of split.targets) {
+      const idx = Number.parseInt(t, 10);
+      if (!Number.isInteger(idx) || String(idx) !== t) continue;
+      result.set(idx, merge(result.get(idx) ?? EMPTY, props));
+    }
+  }
+  return result;
+};

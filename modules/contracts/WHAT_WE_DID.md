@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-04 — SourceMap.linkStyleSpans
+
+- The flowchart `SourceMap` gains `linkStyleSpans: ReadonlyMap<number, TextSpan>` — the span of each
+  single-index `linkStyle <n> …` line, keyed by edge index, for in-place edge-colour editing.
+
 ## 2026-07-04 — SourceMap.styleSpans
 
 - The flowchart `SourceMap` gains `styleSpans: ReadonlyMap<NodeId, TextSpan>` — the directive-token span

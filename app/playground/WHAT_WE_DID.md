@@ -1,6 +1,13 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Edge colour swatch writes to the source (flowchart)
+
+- The colour swatch now writes a flowchart edge's colour into the SOURCE as a `linkStyle <index>
+  stroke:<hex>` directive (edges targeted by declaration index), add/update-in-place/remove, and reflects
+  it by reverse-mapping the stroke hex to an accent. Rendering threads a source-derived edge-colour map to
+  `toDisplayList` (canvas + exports). Non-flowchart families keep the overlay `EdgeStyle.accent`.
+
 ## 2026-07-04 — Node colour swatch writes to the source (flowchart)
 
 - The context-bar colour swatch now writes a flowchart node's colour into the SOURCE as a `style <id>

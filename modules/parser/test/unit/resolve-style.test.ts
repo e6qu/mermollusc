@@ -24,3 +24,19 @@ describe("resolveNodeStyles", () => {
     expect(m.get("A")?.fill).toBe("#222");
   });
 });
+
+import { resolveLinkStyles } from "../../src/core/style.js";
+describe("resolveLinkStyles", () => {
+  it("resolves a single-index linkStyle stroke", () => {
+    const r = parse("flowchart TD\n  A-->B\n  A-->C\n  linkStyle 1 stroke:#f00\n");
+    if (!isOk(r)) throw new Error("parse failed");
+    const m = resolveLinkStyles(r.value.styles);
+    expect(m.get(1)).toEqual({ fill: null, stroke: "#f00" });
+    expect(m.get(0)).toBeUndefined();
+  });
+  it("ignores linkStyle default / non-numeric targets", () => {
+    const r = parse("flowchart TD\n  A-->B\n  linkStyle default stroke:#f00\n");
+    if (!isOk(r)) throw new Error("parse failed");
+    expect(resolveLinkStyles(r.value.styles).size).toBe(0);
+  });
+});

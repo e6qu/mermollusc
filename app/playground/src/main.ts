@@ -48,6 +48,8 @@ import {
   restyleSequenceMessage,
   setNodeStyleDirective,
   removeNodeStyleDirective,
+  setLinkStyleDirective,
+  removeLinkStyleDirective,
   patchSpan,
   shiftGanttStart,
   setGanttStartFromDay,
@@ -116,9 +118,10 @@ import {
   retidyRoutes,
   trunkRoutes,
 } from "@m/layout";
-import { parseDiagramWithSource, resolveNodeStyles } from "@m/parser";
+import { parseDiagramWithSource, resolveLinkStyles, resolveNodeStyles } from "@m/parser";
 import {
   accentFill,
+  accentStroke,
   defaultTheme,
   type EdgeFinish,
   edgeLabelAnchorAt,
@@ -1091,6 +1094,21 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
   return out;
 };
 
+// Raw edge stroke resolved from the flowchart's Mermaid `linkStyle <index> stroke:…` directives, keyed
+// by scene-edge id. `linkStyle` targets edges by declaration index; the Nth AST edge's id is the Nth
+// scene edge's id (flowchart preserves order), so map index → edge id → colour.
+const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
+  if (ast === null || ast.kind !== "flowchart") return new Map();
+  const resolved = resolveLinkStyles(ast.styles);
+  if (resolved.size === 0) return new Map();
+  const out = new Map<SceneEdgeId, NodeColors>();
+  ast.edges.forEach((e, i) => {
+    const c = resolved.get(i);
+    if (c !== undefined) out.set(brand<string, "SceneEdgeId">(e.id), c);
+  });
+  return out;
+};
+
 // True while a pointer gesture (drag/resize/marquee/connect/pan) is in flight — used to defer the
 // minimap cache rebuild and to hide the selection context bar mid-gesture.
 const isInteracting = (): boolean =>
@@ -1135,6 +1153,7 @@ const paintScene = (): void => {
     (busEnabled || trunkEnabled) && ast !== null && SPREAD_FAMILIES.has(ast.kind),
     edgeFinishActive(),
     sourceNodeColors(shown),
+    sourceEdgeColors(),
   );
   ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, 0, 0);
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
@@ -1821,7 +1840,7 @@ const renderContextBar = (caps: CapabilityState): void => {
   if (!ctxColourSwatches.hidden) {
     const accents = nodesOnly
       ? new Set(selectionOrder.map((id) => nodeSwatchAccent(id)))
-      : new Set([...selection.edges].map((id) => doc.edgeStyles().get(id)?.accent ?? "none"));
+      : new Set([...selection.edges].map((id) => edgeSwatchAccent(id)));
     const activeAccent = accents.size === 1 ? [...accents][0] : undefined;
     ctxColourSwatches.setAttribute("aria-label", edgesOnly ? "Edge color" : "Node fill color");
     const swatches = Array.from(ctxColourSwatches.querySelectorAll<HTMLButtonElement>(".swatch"));
@@ -5544,6 +5563,25 @@ const nodeSwatchAccent = (id: SceneNodeId): NodeAccent => {
   return doc.nodeStyles().get(id)?.accent ?? "none";
 };
 
+// Reverse map from an accent's stroke colour back to the accent, for reflecting a source-coloured edge.
+const NODE_ACCENT_BY_STROKE: ReadonlyMap<string, NodeAccent> = new Map(
+  NODE_ACCENTS.filter((a) => a !== "none").map((a) => [
+    accentStroke(a, defaultTheme).toLowerCase(),
+    a,
+  ]),
+);
+
+// Which swatch is active for an edge: for flowchart, read the colour from the SOURCE `linkStyle`
+// directive (by the edge's declaration index); every other family reads the overlay accent.
+const edgeSwatchAccent = (id: SceneEdgeId): NodeAccent => {
+  if (ast !== null && ast.kind === "flowchart") {
+    const index = ast.edges.findIndex((e) => `${e.id}` === `${id}`);
+    const stroke = index < 0 ? null : (resolveLinkStyles(ast.styles).get(index)?.stroke ?? null);
+    return stroke === null ? "none" : (NODE_ACCENT_BY_STROKE.get(stroke.toLowerCase()) ?? "none");
+  }
+  return doc.edgeStyles().get(id)?.accent ?? "none";
+};
+
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
   // Flowchart node colour is Mermaid-expressible, so it lives in the SOURCE (a `style <id> fill:…` line),
@@ -5598,11 +5636,54 @@ const setFlowchartNodeColourInSource = (adv: NodeAccent): void => {
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
+// Write the selected flowchart edges' colour into the source as `linkStyle <index> stroke:<hex>` lines
+// (edges are targeted by declaration index). Same in-place-then-append strategy as node colour, applying
+// in-place edits by descending offset so spans stay valid.
+const setFlowchartEdgeColourInSource = (adv: NodeAccent): void => {
+  const map = source;
+  if (map === null || ast === null || ast.kind !== "flowchart") return;
+  const stroke = adv === "none" ? "" : accentStroke(adv, defaultTheme);
+  const inPlace: { span: TextSpan; text: string }[] = [];
+  const appends: number[] = [];
+  for (const id of selection.edges) {
+    const index = ast.edges.findIndex((e) => `${e.id}` === `${id}`);
+    if (index < 0) continue;
+    const span = map.linkStyleSpans.get(index) ?? null;
+    if (adv === "none") {
+      if (span !== null) inPlace.push({ span, text: "" });
+    } else if (span !== null) {
+      inPlace.push({ span, text: `linkStyle ${index} stroke:${stroke}` });
+    } else {
+      appends.push(index);
+    }
+  }
+  let text = editor.value();
+  for (const op of inPlace.sort((a, b) => b.span.start - a.span.start)) {
+    text =
+      op.text === "" ? removeLinkStyleDirective(text, op.span) : patchSpan(text, op.span, op.text);
+  }
+  for (const index of appends) text = setLinkStyleDirective(text, null, index, stroke);
+  if (text === editor.value()) {
+    flashStatus("edge colour made no change");
+    return;
+  }
+  recordHistory();
+  setSourceValue(text);
+  void renderFromText(text);
+  flashStatus(adv === "none" ? "edge colour cleared" : `edge colour: ${adv}`);
+};
+
 // The edge counterpart of setNodeColour: an accent colours the connector's stroke (via the overlay
 // EdgeStyle.accent). Preserves the edge's route/waypoints; drops the whole style when it returns to a
 // clean default so the overlay stays minimal.
 const setEdgeColour = (adv: NodeAccent): void => {
   if (viewerMode || selection.edges.size === 0 || selectionOrder.length > 0) return;
+  // Flowchart edge colour is Mermaid-expressible (`linkStyle <index> stroke:…`), so it lives in the
+  // SOURCE. Other families keep the overlay `EdgeStyle.accent`.
+  if (ast !== null && ast.kind === "flowchart" && source !== null) {
+    setFlowchartEdgeColourInSource(adv);
+    return;
+  }
   recordHistory();
   const accent = adv === "none" ? null : adv;
   for (const id of selection.edges) {
@@ -6335,6 +6416,7 @@ installImageExport({
   isRenderValid: () => currentRenderValid,
   edgeFinish: edgeFinishActive,
   nodeColors: sourceNodeColors,
+  edgeColors: sourceEdgeColors,
   activeTheme,
   getDirection: () => lastDirection,
   iconImages,

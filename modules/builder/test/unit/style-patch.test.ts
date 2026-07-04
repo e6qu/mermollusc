@@ -2,7 +2,9 @@ import { brand } from "@m/std";
 import type { TextSpan } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  removeLinkStyleDirective,
   removeNodeStyleDirective,
+  setLinkStyleDirective,
   setNodeStyleDirective,
 } from "../../src/core/patch.js";
 
@@ -34,5 +36,28 @@ describe("node style directive patches", () => {
     const start = text.indexOf("style A");
     const span: TextSpan = { start, end: text.indexOf("\n", start) };
     expect(removeNodeStyleDirective(text, span)).toBe("flowchart TD\n  A --> B\n");
+  });
+});
+
+describe("edge linkStyle directive patches", () => {
+  const base = "flowchart TD\n  A --> B\n";
+  it("appends a `linkStyle <index>` line when the edge has none", () => {
+    expect(setLinkStyleDirective(base, null, 0, "#dc2626")).toBe(
+      "flowchart TD\n  A --> B\n  linkStyle 0 stroke:#dc2626\n",
+    );
+  });
+  it("rewrites an existing linkStyle line in place via its span", () => {
+    const text = "flowchart TD\n  A --> B\n  linkStyle 0 stroke:#f00\n";
+    const start = text.indexOf("linkStyle");
+    const span = { start, end: text.indexOf("\n", start) };
+    expect(setLinkStyleDirective(text, span, 0, "#16a34a")).toBe(
+      "flowchart TD\n  A --> B\n  linkStyle 0 stroke:#16a34a\n",
+    );
+  });
+  it("removes a linkStyle line entirely", () => {
+    const text = "flowchart TD\n  A --> B\n  linkStyle 0 stroke:#f00\n";
+    const start = text.indexOf("linkStyle");
+    const span = { start, end: text.indexOf("\n", start) };
+    expect(removeLinkStyleDirective(text, span)).toBe("flowchart TD\n  A --> B\n");
   });
 });

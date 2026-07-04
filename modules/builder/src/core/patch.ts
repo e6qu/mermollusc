@@ -146,7 +146,30 @@ export const setNodeStyleDirective = (
 
 // Remove a node's inline `style` line entirely — the directive plus its leading indentation and one
 // trailing newline — so clearing a colour leaves no blank line behind.
-export const removeNodeStyleDirective = (text: string, span: TextSpan): string => {
+export const removeNodeStyleDirective = (text: string, span: TextSpan): string =>
+  removeDirectiveLine(text, span);
+
+// Set an edge's colour by writing a Mermaid `linkStyle <index> stroke:<hex>` directive — rewriting an
+// existing single-index line in place (via `SourceMap.linkStyleSpans`) or appending a fresh one.
+export const setLinkStyleDirective = (
+  text: string,
+  span: TextSpan | null,
+  index: number,
+  stroke: string,
+): string => {
+  const directive = `linkStyle ${index} stroke:${stroke}`;
+  if (span !== null) return patchSpan(text, span, directive);
+  const body = text.replace(/[\r\n]+$/, "");
+  return `${body}\n  ${directive}\n`;
+};
+
+// Remove an edge's `linkStyle` line entirely (indent + trailing newline, no blank line left).
+export const removeLinkStyleDirective = (text: string, span: TextSpan): string =>
+  removeDirectiveLine(text, span);
+
+// Delete the whole line a directive-token span sits on: the directive, its leading indentation, and one
+// trailing newline.
+const removeDirectiveLine = (text: string, span: TextSpan): string => {
   let start = span.start;
   while (start > 0) {
     const ch = text[start - 1];

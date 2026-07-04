@@ -50,6 +50,9 @@ export interface SourceMap {
   // so the editor can update or remove a node's colour directive in place. Multi-target `style A,B …`
   // lines and class-based colours aren't here (the editor appends an overriding single-node line).
   readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
+  // The directive-token span of each SINGLE-index `linkStyle <n> …` line, keyed by that edge index — so
+  // the editor can update/remove an edge's colour in place. Multi-index / `default` lines aren't here.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for a sequence diagram: each actor's label, each message's text, and its arrow.
