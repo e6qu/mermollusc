@@ -289,6 +289,9 @@ export interface StateAst {
   readonly transitions: readonly StateTransition[];
   readonly composites: readonly StateComposite[];
   readonly notes: readonly StateNote[];
+  // Mermaid `style`/`classDef`/`class`/`linkStyle`/`:::` directives, carried verbatim like FlowchartAst
+  // (state supports the same styling); resolved to colours by the shared style resolver.
+  readonly styles: readonly FlowStyle[];
 }
 
 export type ErEntityId = Brand<string, "ErEntityId">;

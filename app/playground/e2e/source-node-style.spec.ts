@@ -69,3 +69,14 @@ test("inline :::class shorthand colours the node from the source", async ({ page
   const a = await nodeCenterPx(page, "A");
   expect(a[1] ?? 0).toBeGreaterThan(a[0] ?? 0); // green-dominant
 });
+
+test("state diagram classDef/::: colours nodes from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Run:::hot\n  classDef hot fill:#16a34a\n  class Idle hot\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  for (const id of ["Idle", "Run"]) {
+    const px = await nodeCenterPx(page, id);
+    expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+  }
+});

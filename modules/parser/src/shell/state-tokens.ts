@@ -1,8 +1,24 @@
 import { createToken, Lexer, type TokenType } from "chevrotain";
+import {
+  CLASS_SHORTHAND,
+  CLASS_STMT,
+  CLASSDEF_STMT,
+  LINKSTYLE_STMT,
+  STYLE_STMT,
+} from "./style-patterns.js";
 
 // Transition / description label text (everything after `:` to end of line) is captured in a
 // dedicated lexer mode, like the sequence parser's message text.
 const Identifier = createToken({ name: "StateIdentifier", pattern: /[A-Za-z0-9_]+/ });
+
+// Mermaid styling directives (shared patterns) — state supports `classDef`/`class`/`style`/`:::` like
+// flowchart. These are matched as WHOLE lines, so they must be tried BEFORE `Colon` (which pushes into
+// label mode on the `:` inside `fill:…` / `:::`).
+const StyleStmt = createToken({ name: "StateStyleStmt", pattern: STYLE_STMT });
+const ClassDefStmt = createToken({ name: "StateClassDefStmt", pattern: CLASSDEF_STMT });
+const ClassStmt = createToken({ name: "StateClassStmt", pattern: CLASS_STMT });
+const LinkStyleStmt = createToken({ name: "StateLinkStyleStmt", pattern: LINKSTYLE_STMT });
+const ClassShorthand = createToken({ name: "StateClassShorthand", pattern: CLASS_SHORTHAND });
 const StateDiagram = createToken({
   name: "StateDiagram",
   pattern: /stateDiagram-v2|stateDiagram/,
@@ -68,6 +84,11 @@ export const stateLexer = new Lexer({
       LBrace,
       RBrace,
       QuotedString,
+      StyleStmt,
+      ClassDefStmt,
+      ClassStmt,
+      LinkStyleStmt,
+      ClassShorthand,
       Colon,
       Identifier,
     ],
@@ -92,6 +113,11 @@ export const StateTok = {
   LBrace,
   RBrace,
   QuotedString,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
+  ClassShorthand,
   NewLine,
   Semicolon,
   Colon,
@@ -118,6 +144,11 @@ export const stateAllTokens: TokenType[] = [
   LBrace,
   RBrace,
   QuotedString,
+  StyleStmt,
+  ClassDefStmt,
+  ClassStmt,
+  LinkStyleStmt,
+  ClassShorthand,
   Colon,
   LabelEnd,
   LabelText,

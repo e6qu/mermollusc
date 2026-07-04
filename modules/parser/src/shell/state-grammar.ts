@@ -33,7 +33,19 @@ class StateParser extends CstParser {
       { ALT: () => this.SUBRULE(this.stateDecl) },
       { ALT: () => this.SUBRULE(this.directionStmt) },
       { ALT: () => this.SUBRULE(this.noteStmt) },
+      { ALT: () => this.SUBRULE(this.styleDirective) },
       { ALT: () => this.SUBRULE(this.line) },
+    ]),
+  );
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`), captured as one
+  // token; the AST builder parses its text. Distinct first tokens keep the statement OR LL(1).
+  private readonly styleDirective = this.RULE("stateStyleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(StateTok.StyleStmt) },
+      { ALT: () => this.CONSUME(StateTok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(StateTok.ClassStmt) },
+      { ALT: () => this.CONSUME(StateTok.LinkStyleStmt) },
     ]),
   );
 
@@ -105,7 +117,13 @@ class StateParser extends CstParser {
 
   private readonly endpoint = this.RULE("stateEndpoint", () =>
     this.OR([
-      { ALT: () => this.CONSUME(StateTok.Identifier) },
+      {
+        ALT: () => {
+          this.CONSUME(StateTok.Identifier);
+          // Inline `Idle:::hot` class shorthand on a transition endpoint.
+          this.OPTION(() => this.CONSUME(StateTok.ClassShorthand));
+        },
+      },
       { ALT: () => this.CONSUME(StateTok.Star) },
     ]),
   );

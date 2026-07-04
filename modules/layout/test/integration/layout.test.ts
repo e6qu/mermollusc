@@ -198,6 +198,7 @@ describe("layout", () => {
       transitions: [{ id: tid("t0"), from: sid("__state_start"), to: sid("Idle"), label: null }],
       composites: [],
       notes: [],
+      styles: [],
     };
     const laid = await layoutDiagram(stateAst, heuristicMeasure);
     expect(isOk(laid)).toBe(true);
@@ -223,6 +224,7 @@ describe("layout", () => {
         { id: sid("__note_1"), target: sid("Idle"), side: "left", text: "left note" },
         { id: sid("__note_2"), target: sid("Idle"), side: "over", text: "over note" },
       ],
+      styles: [],
     };
     const laid = await layoutDiagram(stateAst, heuristicMeasure);
     expect(isOk(laid)).toBe(true);
