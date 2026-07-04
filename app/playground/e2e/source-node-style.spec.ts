@@ -98,3 +98,12 @@ test("block diagram classDef colours blocks from the source too", async ({ page 
   const px = await nodeCenterPx(page, "A");
   expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
 });
+
+test("network diagram classDef colours nodes from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, 'network\n  server web1 "Web"\n  database db1 "DB"\n  web1 -- db1\n  classDef hot fill:#16a34a\n  class web1 hot\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "web1");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});

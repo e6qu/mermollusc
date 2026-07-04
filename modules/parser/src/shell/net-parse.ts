@@ -5,6 +5,7 @@ import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   EdgeId,
   IconRef,
+  FlowStyle,
   NetworkAst,
   NetworkGroup,
   NetworkLink,
@@ -61,12 +62,25 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const links: NetworkLink[] = [];
   const groups: NetworkGroup[] = [];
   const groupSpans = new Map<NodeId, TextSpan>();
+  const styles: FlowStyle[] = [];
   let failure: ParseError | null = null;
 
   // Walk a statement list under `parent` (null at the top). Groups recurse; a malformed icon bails.
   const walk = (statements: readonly CstNode[], parent: NodeId | null): void => {
     for (const stmt of statements) {
       if (failure !== null) return;
+      const styleDir = childNodes(stmt.children, "netStyleDirective")[0];
+      if (styleDir !== undefined) {
+        const st = childTokens(styleDir.children, "NetStyleStmt")[0];
+        const cd = childTokens(styleDir.children, "NetClassDefStmt")[0];
+        const cl = childTokens(styleDir.children, "NetClassStmt")[0];
+        const ls = childTokens(styleDir.children, "NetLinkStyleStmt")[0];
+        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
+        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
+        else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        continue;
+      }
       const grp = childNodes(stmt.children, "group")[0];
       if (grp !== undefined) {
         // Group ids are synthetic (named only by a quoted label); the `:` keeps them out of the
@@ -138,7 +152,7 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   if (failure !== null) return err(failure);
 
   return ok({
-    ast: { kind: "network", nodes: [...nodeMap.values()], groups, links },
+    ast: { kind: "network", styles, nodes: [...nodeMap.values()], groups, links },
     source: { nodes: nodeSpans, links: linkSpans, bareNodes: bareSpans, groups: groupSpans },
   });
 };

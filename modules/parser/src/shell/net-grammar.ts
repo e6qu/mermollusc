@@ -30,8 +30,20 @@ class NetworkParser extends CstParser {
   private readonly statement = this.RULE("statement", () =>
     this.OR([
       { ALT: () => this.SUBRULE(this.group) },
+      { ALT: () => this.SUBRULE(this.styleDirective) },
       { ALT: () => this.SUBRULE(this.nodeDecl) },
       { ALT: () => this.SUBRULE(this.link) },
+    ]),
+  );
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`); distinct first
+  // tokens keep the statement OR LL(1).
+  private readonly styleDirective = this.RULE("netStyleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(NetTok.StyleStmt) },
+      { ALT: () => this.CONSUME(NetTok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(NetTok.ClassStmt) },
+      { ALT: () => this.CONSUME(NetTok.LinkStyleStmt) },
     ]),
   );
 

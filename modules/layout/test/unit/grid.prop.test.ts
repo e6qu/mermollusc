@@ -68,6 +68,7 @@ describe("layoutNetwork — grid invariants (property-based)", () => {
         (ids, kinds) => {
           const ast: NetworkAst = {
             kind: "network",
+            styles: [],
             nodes: ids.map((id, i) => ({
               id: nid(id),
               label: id,

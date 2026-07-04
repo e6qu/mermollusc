@@ -205,6 +205,7 @@ export interface NetworkLink {
 // `group "…" { … }` containers (membership via each node/group's `parent`).
 export interface NetworkAst {
   readonly kind: "network";
+  readonly styles: readonly FlowStyle[];
   readonly nodes: readonly NetworkNode[];
   readonly groups: readonly NetworkGroup[];
   readonly links: readonly NetworkLink[];
