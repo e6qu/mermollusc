@@ -233,7 +233,14 @@ export const createEditor = (
   // `extra` are appended extensions (the `@m/collab` source binding, in collab mode). When that binding
   // is present it owns text undo/redo (per-user, via Yjs), so `textHistory` is set false to drop
   // CodeMirror's own history — otherwise the two undo stacks fight over ⌘Z.
-  opts: { extra?: readonly Extension[]; textHistory?: boolean } = {},
+  // `isDiagramStart` recognises a pasted WHOLE diagram (its first line is a diagram header): pasting one
+  // replaces the entire document so the renderer switches to the pasted diagram's type, instead of
+  // appending into the current one.
+  opts: {
+    extra?: readonly Extension[];
+    textHistory?: boolean;
+    isDiagramStart?: (text: string) => boolean;
+  } = {},
 ): Editor => {
   const textHistory = opts.textHistory ?? true;
   // A compartment so editability can be toggled later (a collaborative viewer is read-only).
@@ -258,13 +265,21 @@ export const createEditor = (
         // Name the editable surface for screen readers — without this the CodeMirror content is an
         // unlabelled textbox.
         EditorView.contentAttributes.of({ "aria-label": "Diagram source" }),
-        // Unwrap a pasted fenced Mermaid block so autodetection sees the real header (see
-        // `unwrapMermaidFence`). Only a whole single fenced block is unwrapped; anything else pastes as-is.
+        // Handle a Mermaid paste: unwrap a fenced ```mermaid block, and — if the pasted text is a WHOLE
+        // diagram (its first line is a diagram header) — REPLACE the entire document so the renderer
+        // switches to the pasted diagram's type, rather than appending into the current one. A partial
+        // snippet (no header) pastes normally (unwrapped if it was fenced).
         EditorView.domEventHandlers({
           paste(event, v) {
             const clip = event.clipboardData?.getData("text/plain");
             if (clip === undefined || clip === "") return false;
             const unwrapped = unwrapMermaidFence(clip);
+            const text = unwrapped ?? clip;
+            if (opts.isDiagramStart?.(text) === true) {
+              event.preventDefault();
+              v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: text } });
+              return true;
+            }
             if (unwrapped === null) return false;
             event.preventDefault();
             v.dispatch(v.state.replaceSelection(unwrapped));

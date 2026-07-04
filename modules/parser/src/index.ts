@@ -22,7 +22,7 @@ export { parseMindmap, parseMindmapWithSource } from "./shell/index.js";
 export { parsePie, parsePieWithSource } from "./shell/index.js";
 export { parseGantt, parseGanttWithSource } from "./shell/index.js";
 export { parseDot, parseDotWithSource } from "./shell/index.js";
-export { parseDiagram, parseDiagramWithSource } from "./shell/index.js";
+export { parseDiagram, parseDiagramWithSource, looksLikeDiagramHeader } from "./shell/index.js";
 export type {
   ParsedWithSource,
   ParseError,
