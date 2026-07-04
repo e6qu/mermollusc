@@ -15,6 +15,10 @@ describe("resolveNodeStyles", () => {
     expect(m.get("A")).toEqual({ fill: "#f9f", stroke: "#333" });
     expect(m.get("B")).toBeUndefined();
   });
+  it("keeps a value with internal commas intact (rgb/hsl)", () => {
+    const m = resolveNodeStyles(stylesOf("flowchart TD\n  A-->B\n  style A fill:rgb(1,2,3),stroke:#333\n"));
+    expect(m.get("A")).toEqual({ fill: "rgb(1,2,3)", stroke: "#333" });
+  });
   it("resolves classDef + class", () => {
     const m = resolveNodeStyles(stylesOf("flowchart TD\n  A-->B\n  classDef hot fill:#16a34a\n  class B hot\n"));
     expect(m.get("B")).toEqual({ fill: "#16a34a", stroke: null });

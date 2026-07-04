@@ -1,6 +1,16 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-04 — Editor review fixes (boyscout)
+
+- Edge reconnection: declines loudly (no source rewrite) when the endpoint is released back onto its OWN
+  node — which for a bracketed `B[Label]` would have silently dropped the label — and when the target is
+  a subgraph container; a no-op now flashes a status.
+- Clearing a node/edge colour that comes from a `classDef`/`class` or a shared multi-target `style`/
+  `linkStyle` line (no editable single-target span) now warns loudly ("edit the source") instead of a
+  silent "made no change" while the element stays coloured.
+- Removed an `any` leak: the overlay-save identity stamp parses to `unknown` and builds a typed object.
+
 ## 2026-07-04 — Drag-to-reconnect edge endpoints (flowchart)
 
 - A selected flowchart edge shows draggable ENDPOINT handles (hollow squares at each end); dragging one

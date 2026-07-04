@@ -690,11 +690,12 @@ if (useCollab) {
     initialNodeStyles: new Map(),
     save: (serialized: string) => {
       try {
-        const payload = JSON.parse(serialized);
-        if (scene !== null && ast !== null) {
-          payload.identity = getDiagramFeatures(scene.nodes, scene.edges, ast.kind);
-        }
-        saveOverlay(JSON.stringify(payload));
+        const payload: unknown = JSON.parse(serialized);
+        const stamped =
+          scene !== null && ast !== null && typeof payload === "object" && payload !== null
+            ? { ...payload, identity: getDiagramFeatures(scene.nodes, scene.edges, ast.kind) }
+            : payload;
+        saveOverlay(JSON.stringify(stamped));
       } catch (e) {
         // `serialized` is the document model's own JSON — a parse failure here is a programming error.
         // Still save (losing the identity stamp beats losing the overlay), but never silently: an
@@ -1821,7 +1822,22 @@ const reconnectFlowchartEdge = (
   end: "from" | "to",
   targetId: SceneNodeId,
 ): void => {
-  if (ast === null || ast.kind !== "flowchart" || source === null) return;
+  if (ast === null || ast.kind !== "flowchart" || source === null || scene === null) return;
+  const shown = shownScene(scene);
+  const edge = shown.edges.find((e) => e.id === edgeId);
+  if (edge === undefined) return;
+  // Releasing back onto the end's CURRENT node is a no-op — decline loudly rather than rewriting the
+  // endpoint's declaration span (which, for a bracketed `B[Label]`, would silently drop the label).
+  const currentEnd = end === "from" ? edge.from : edge.to;
+  if (`${targetId}` === `${currentEnd}`) {
+    flashStatus("edge already connects there", "warning");
+    return;
+  }
+  // A subgraph container isn't a sensible reconnection target (the user was aiming for a node inside it).
+  if (shown.nodes.find((n) => n.id === targetId)?.shape === "container") {
+    flashStatus("can't reconnect an edge to a subgraph — drop it on a node", "warning");
+    return;
+  }
   const eid = brand<string, "EdgeId">(edgeId);
   const ends = source.edgeEnds.get(eid);
   if (ends === undefined) return;
@@ -1837,7 +1853,10 @@ const reconnectFlowchartEdge = (
     return;
   }
   const next = reconnectEdgeEnd(editor.value(), span, brand<string, "NodeId">(targetId));
-  if (next === editor.value()) return;
+  if (next === editor.value()) {
+    flashStatus("reconnect made no change");
+    return;
+  }
   recordHistory();
   setSourceValue(next);
   void renderFromText(next);
@@ -5810,7 +5829,16 @@ const setFlowchartNodeColourInSource = (adv: NodeAccent): void => {
   }
   for (const nid of appends) text = setNodeStyleDirective(text, null, nid, fill, null);
   if (text === editor.value()) {
-    flashStatus("colour made no change");
+    // A colour that comes from a `classDef`/`class` or a multi-target `style A,B …` line has no editable
+    // single-node span, so "none" can't clear it here — say so loudly rather than a silent "no change".
+    const fromClass =
+      adv === "none" && selectionOrder.some((id) => nodeSwatchAccent(id) !== "none");
+    flashStatus(
+      fromClass
+        ? "this colour comes from a classDef/shared style — edit the source to change it"
+        : "colour made no change",
+      fromClass ? "warning" : "ok",
+    );
     return;
   }
   recordHistory();
@@ -5847,7 +5875,16 @@ const setFlowchartEdgeColourInSource = (adv: NodeAccent): void => {
   }
   for (const index of appends) text = setLinkStyleDirective(text, null, index, stroke);
   if (text === editor.value()) {
-    flashStatus("edge colour made no change");
+    // A colour from a multi-index `linkStyle 0,1 …` line has no editable single-index span, so "none"
+    // can't clear it here — say so loudly rather than silently.
+    const fromShared =
+      adv === "none" && [...selection.edges].some((id) => edgeSwatchAccent(id) !== "none");
+    flashStatus(
+      fromShared
+        ? "this edge colour comes from a shared linkStyle — edit the source to change it"
+        : "edge colour made no change",
+      fromShared ? "warning" : "ok",
+    );
     return;
   }
   recordHistory();
