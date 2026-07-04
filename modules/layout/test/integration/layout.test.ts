@@ -35,6 +35,7 @@ const A_THEN_B: FlowchartAst = {
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
   subgraphs: [],
+  styles: [],
 };
 
 const yOf = (scene: { nodes: ReadonlyArray<{ id: string; bounds: { origin: { y: number } } }> }, id: string) =>
@@ -51,6 +52,7 @@ describe("layout", () => {
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
       subgraphs: [],
+      styles: [],
     };
 
     const r = await layout(ast, new Map(), heuristicMeasure);
@@ -83,6 +85,7 @@ describe("layout", () => {
       subgraphs: [
         { id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api"), nid("db")] },
       ],
+      styles: [],
     };
     const r = await layout(ast, new Map(), heuristicMeasure);
     expect(isOk(r)).toBe(true);
@@ -126,6 +129,7 @@ describe("layout", () => {
       subgraphs: [
         { id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api"), nid("db")] },
       ],
+      styles: [],
     };
     const r = await layout(ast, new Map(), heuristicMeasure);
     expect(isOk(r)).toBe(true);

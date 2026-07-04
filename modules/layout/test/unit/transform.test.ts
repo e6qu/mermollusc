@@ -16,6 +16,7 @@ const ast: FlowchartAst = {
   ],
   edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: null }],
   subgraphs: [],
+  styles: [],
 };
 
 describe("toElkGraph", () => {
@@ -38,6 +39,7 @@ describe("toElkGraph", () => {
       ],
       edges: [],
       subgraphs: [],
+      styles: [],
     }, new Map(), heuristicMeasure);
     const circle = g.children.find((c) => c.id === "C");
     const rectNode = g.children.find((c) => c.id === "R");

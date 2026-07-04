@@ -69,5 +69,8 @@ export const print = (ast: FlowchartAst): string => {
     const label = edge.label === null ? "" : `|${edge.label}|`;
     lines.push(`  ${edge.from} ${arrowOf(edge.kind)}${label} ${edge.to}`);
   }
+  // Styling directives last, verbatim — they carry no geometry, so their position is irrelevant to
+  // Mermaid; emitting them after the graph keeps print→parse a fixed point.
+  for (const style of ast.styles) lines.push(`  ${style.raw}`);
   return `${lines.join("\n")}\n`;
 };

@@ -75,3 +75,21 @@ test("pasting a fenced ```mermaid block unwraps it and autodetects", async ({ pa
   expect(await kind(page)).toBe("class");
   expect((await page.evaluate(() => window.__editor?.value() ?? "")).includes("```")).toBe(false);
 });
+
+test("pasting Mermaid with style/classDef/linkStyle directives parses (compliance)", async ({ page }) => {
+  await page.goto("/");
+  await canvasReady(page);
+  // land on a distinct graph first, so a failure to parse the styled source would be visible as staleness
+  await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  Z --> W\n"));
+  await page.waitForTimeout(200);
+  await page.evaluate(() =>
+    window.__editor?.setValue(
+      "flowchart TD\n  A[Start] --> B{Choice}\n  B --> C[Done]\n  style A fill:#f9f,stroke:#333\n  classDef hot fill:#f96\n  class C hot\n  linkStyle 0 stroke:#f00\n",
+    ),
+  );
+  await page.waitForTimeout(300);
+  const nodes = await page.evaluate(() =>
+    (window.__shownGeometry?.()?.nodes ?? []).map((n) => n.id).sort(),
+  );
+  expect(nodes).toEqual(["A", "B", "C"]);
+});

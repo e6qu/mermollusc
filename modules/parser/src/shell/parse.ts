@@ -6,6 +6,7 @@ import type {
   FlowDirection,
   FlowEdge,
   FlowNode,
+  FlowStyle,
   FlowSubgraph,
   FlowchartAst,
   IconRef,
@@ -229,6 +230,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const arrowSpans = new Map<EdgeId, TextSpan>();
   const edges: FlowEdge[] = [];
   const subgraphs: FlowSubgraph[] = [];
+  const styles: FlowStyle[] = [];
   const claimed = new Set<string>();
   let malformed = false;
   // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
@@ -307,7 +309,26 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   // Processes a container's statements and nested subgraphs **in source order** (so a node declared
   // inside a subgraph is claimed by it even if a later top-level edge mentions it). Returns the node
   // ids first claimed directly in this container.
+  // A styling directive is one captured token under a `styleDirective` node; classify it by which token
+  // matched and keep the trimmed line verbatim (round-trips losslessly; the renderer/editor re-parse it).
+  const collectStyles = (children: Children): void => {
+    for (const dir of childNodes(children, "styleDirective")) {
+      const dc = dir.children;
+      const style = childTokens(dc, "StyleStmt")[0];
+      const classDef = childTokens(dc, "ClassDefStmt")[0];
+      const cls = childTokens(dc, "ClassStmt")[0];
+      const linkStyle = childTokens(dc, "LinkStyleStmt")[0];
+      if (style !== undefined) styles.push({ kind: "style", raw: style.image.trim() });
+      else if (classDef !== undefined)
+        styles.push({ kind: "classDef", raw: classDef.image.trim() });
+      else if (cls !== undefined) styles.push({ kind: "class", raw: cls.image.trim() });
+      else if (linkStyle !== undefined)
+        styles.push({ kind: "linkStyle", raw: linkStyle.image.trim() });
+    }
+  };
+
   const processContainer = (children: Children, parentId: NodeId | null): readonly NodeId[] => {
+    collectStyles(children);
     const members: NodeId[] = [];
     const ordered = [
       ...childNodes(children, "statement").map((n) => ({
@@ -382,7 +403,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
     .map((id) => nodeMap.get(id))
     .filter((n): n is FlowNode => n !== undefined);
 
-  const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs };
+  const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs, styles };
   return ok({ ast, source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans } });
 };
 

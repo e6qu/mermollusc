@@ -53,6 +53,7 @@ const astArb: fc.Arbitrary<FlowchartAst> = fc.integer({ min: 1, max: 5 }).chain(
         })),
         subgraphs:
           members.length > 0 ? [{ id: nid("SG"), label: "SG", parent: null, nodes: members }] : [],
+        styles: [],
       };
     }),
 );

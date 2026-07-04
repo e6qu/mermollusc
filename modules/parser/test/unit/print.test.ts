@@ -17,6 +17,7 @@ describe("print", () => {
       ],
       edges: [{ id: eid("e0"), from: nid("A"), to: nid("B"), kind: "arrow", label: "go" }],
       subgraphs: [],
+      styles: [],
     };
     expect(print(ast)).toBe("flowchart LR\n  A(Start)\n  B{Decision}\n  A -->|go| B\n");
   });
@@ -31,6 +32,7 @@ describe("print", () => {
       ],
       edges: [{ id: eid("e0"), from: nid("user"), to: nid("api"), kind: "arrow", label: null }],
       subgraphs: [{ id: nid("Backend"), label: "Backend", parent: null, nodes: [nid("api")] }],
+      styles: [],
     };
     expect(print(ast)).toBe(
       "flowchart TB\n  user[User]\n  subgraph Backend\n    api[API]\n  end\n  user --> api\n",

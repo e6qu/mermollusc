@@ -412,6 +412,8 @@ const stateToFlow = (ast: StateAst): FlowchartAst => ({
     parent: c.parent === null ? null : brand<string, "NodeId">(c.parent),
     nodes: c.states.map((s) => brand<string, "NodeId">(s)),
   })),
+  // A state diagram carries no Mermaid `style`/`classDef` directives through this bridge.
+  styles: [],
 });
 
 const stateRole = (kind: StateKind): SceneNodeRole => {
