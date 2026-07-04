@@ -134,9 +134,36 @@ export const resolveNodeStyles = (
   return result;
 };
 
+// The `classDef default …` style, if present — Mermaid applies it to EVERY node that has no more
+// specific colour. Returned separately (not fanned out here) because the resolver has no node list; the
+// caller applies it to unstyled nodes. Null when there's no `default` classDef.
+export const resolveDefaultNodeStyle = (styles: readonly FlowStyle[]): FlowNodeColors | null => {
+  let result: FlowNodeColors | null = null;
+  for (const s of styles) {
+    if (s.kind !== "classDef") continue;
+    const split = splitProps(s.raw, "classDef");
+    if (split === null || !split.targets.includes("default")) continue;
+    result = merge(result ?? EMPTY, parseProps(split.rest));
+  }
+  return result;
+};
+
+// The `linkStyle default …` stroke, if present — Mermaid applies it to EVERY edge with no explicit
+// `linkStyle <index>`. Null when absent. Same rationale as `resolveDefaultNodeStyle`.
+export const resolveDefaultLinkStyle = (styles: readonly FlowStyle[]): FlowNodeColors | null => {
+  let result: FlowNodeColors | null = null;
+  for (const s of styles) {
+    if (s.kind !== "linkStyle") continue;
+    const split = splitProps(s.raw, "linkStyle");
+    if (split === null || !split.targets.includes("default")) continue;
+    result = merge(result ?? EMPTY, parseProps(split.rest));
+  }
+  return result;
+};
+
 // `linkStyle <indices> stroke:…` colours edges BY INDEX (declaration order). Resolves to a per-index
-// stroke colour (fill is meaningless on a connector). `linkStyle default …` and non-numeric targets are
-// ignored here (they'd need every-edge fan-out; the editor writes explicit single-index lines).
+// stroke colour (fill is meaningless on a connector). `linkStyle default …` is handled by
+// `resolveDefaultLinkStyle` (it fans out to every edge, which needs the caller's edge list).
 export const resolveLinkStyles = (
   styles: readonly FlowStyle[],
 ): ReadonlyMap<number, FlowNodeColors> => {

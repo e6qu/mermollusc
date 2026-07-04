@@ -30,3 +30,19 @@ describe("style directive Mermaid-compliance fixes", () => {
     expect(resolveNodeStyles(v.styles).get("A")).toEqual({ fill: "red", stroke: null });
   });
 });
+
+import { resolveDefaultLinkStyle, resolveDefaultNodeStyle } from "../../src/core/style.js";
+describe("classDef/linkStyle default", () => {
+  it("resolveDefaultNodeStyle picks up `classDef default`", () => {
+    const v = stylesOf("flowchart TD\n  A-->B\n  classDef default fill:#eee,stroke:#333\n");
+    expect(resolveDefaultNodeStyle(v.styles)).toEqual({ fill: "#eee", stroke: "#333" });
+  });
+  it("returns null when there is no default classDef", () => {
+    const v = stylesOf("flowchart TD\n  A-->B\n  classDef hot fill:#f96\n");
+    expect(resolveDefaultNodeStyle(v.styles)).toBeNull();
+  });
+  it("resolveDefaultLinkStyle picks up `linkStyle default`", () => {
+    const v = stylesOf("flowchart TD\n  A-->B\n  linkStyle default stroke:#f00\n");
+    expect(resolveDefaultLinkStyle(v.styles)).toEqual({ fill: null, stroke: "#f00" });
+  });
+});
