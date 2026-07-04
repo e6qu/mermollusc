@@ -2,6 +2,7 @@ import type { CstNode } from "chevrotain";
 import { childTokens } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
+  FlowStyle,
   MindmapAst,
   MindmapNode,
   MindmapNodeId,
@@ -13,6 +14,25 @@ import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { mindmapParser } from "./mindmap-grammar.js";
 import { mindmapLexer } from "./mindmap-tokens.js";
+import { CLASSDEF_STMT, LINKSTYLE_STMT, STYLE_STMT } from "./style-patterns.js";
+
+// The mindmap lexer captures each line whole, so a styling directive would otherwise become a node.
+// These match only the colon-bearing directives (`classDef`/`style`/`linkStyle`) anchored at the line
+// start — each requires a `prop:` so it can't be confused with node text. Class ASSIGNMENT in a mindmap
+// is the inline `:::name` suffix (below), not a bare `class id name`, so that form isn't matched here.
+const LINE_CLASSDEF = new RegExp(`^(?:${CLASSDEF_STMT.source})`);
+const LINE_STYLE = new RegExp(`^(?:${STYLE_STMT.source})`);
+const LINE_LINKSTYLE = new RegExp(`^(?:${LINKSTYLE_STMT.source})`);
+
+const styleLineOf = (line: string): FlowStyle | null => {
+  if (LINE_CLASSDEF.test(line)) return { kind: "classDef", raw: line };
+  if (LINE_STYLE.test(line)) return { kind: "style", raw: line };
+  if (LINE_LINKSTYLE.test(line)) return { kind: "linkStyle", raw: line };
+  return null;
+};
+
+// The inline `:::className` on a node, e.g. `Root:::urgent`.
+const INLINE_CLASS = /:::([A-Za-z0-9_-]+)/;
 
 export interface ParsedMindmap {
   readonly ast: MindmapAst;
@@ -54,13 +74,24 @@ interface Frame {
 const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
   const lines = childTokens(cst.children, "LineText");
   const nodes: MindmapNode[] = [];
+  const styles: FlowStyle[] = [];
   const spans = new Map<MindmapNodeId, TextSpan>();
   const stack: Frame[] = [];
 
   for (const tok of lines) {
+    // A styling directive is not a node (and doesn't affect the indentation tree).
+    const styleLine = styleLineOf(tok.image.trim());
+    if (styleLine !== null) {
+      styles.push(styleLine);
+      continue;
+    }
     const col = tok.startColumn ?? 1;
     const { label, shape } = nodeTextOf(tok.image);
     const id = brand<string, "MindmapNodeId">(`n${nodes.length}`);
+    // An inline `:::className` assigns this node to a class; the node id is generated, so synthesise the
+    // assignment against that id (the class colour is resolved by node id, as everywhere else).
+    const inline = tok.image.match(INLINE_CLASS);
+    if (inline !== null) styles.push({ kind: "class", raw: `class ${id} ${inline[1]}` });
     // Pop ancestors at the same or deeper indentation: the nearest strictly-shallower node is parent.
     while (stack.length > 0 && (stack[stack.length - 1]?.col ?? 0) >= col) stack.pop();
     const top = stack[stack.length - 1];
@@ -79,7 +110,7 @@ const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
     stack.push({ col, id });
   }
 
-  return ok({ ast: { kind: "mindmap", nodes }, source: { nodes: spans } });
+  return ok({ ast: { kind: "mindmap", nodes, styles }, source: { nodes: spans } });
 };
 
 export const parseMindmapWithSource = (text: string): Result<ParsedMindmap, ParseError> => {

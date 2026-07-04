@@ -16,6 +16,7 @@ const mk = (
 // root → { a → {a1, a2}, b }
 const ast: MindmapAst = {
   kind: "mindmap",
+  styles: [],
   nodes: [
     mk("root", null, 0, "circle"),
     mk("a", "root", 1),
@@ -60,6 +61,7 @@ describe("layoutMindmap", () => {
   it("rings the roots around a virtual hub for a multi-root forest", () => {
     const forest: MindmapAst = {
       kind: "mindmap",
+      styles: [],
       nodes: [mk("r1", null, 0), mk("r2", null, 0), mk("c", "r1", 1)],
     };
     const laid = layoutMindmap(forest, heuristicMeasure);
@@ -73,7 +75,7 @@ describe("layoutMindmap", () => {
   });
 
   it("returns a valid empty scene for a node-less mindmap", () => {
-    const empty = layoutMindmap({ kind: "mindmap", nodes: [] }, heuristicMeasure);
+    const empty = layoutMindmap({ kind: "mindmap", nodes: [], styles: [] }, heuristicMeasure);
     if (!empty.ok) throw new Error(empty.error.message);
     expect(empty.value.nodes).toHaveLength(0);
     expect(empty.value.extent.size.width).toBeGreaterThan(0);
@@ -84,6 +86,7 @@ describe("layoutMindmap", () => {
     // extent at ±Infinity and `length()` threw a RangeError; now it returns a clean layout error.
     const rootless: MindmapAst = {
       kind: "mindmap",
+      styles: [],
       nodes: [mk("a", "b", 1), mk("b", "a", 1)],
     };
     const out = layoutMindmap(rootless, heuristicMeasure);
@@ -94,6 +97,7 @@ describe("layoutMindmap", () => {
     // root → x → y → x …  The depth cap breaks the recursion and the extent stays finite.
     const cyclic: MindmapAst = {
       kind: "mindmap",
+      styles: [],
       nodes: [mk("root", null, 0), mk("x", "root", 1), mk("y", "x", 2), mk("x", "y", 1)],
     };
     const out = layoutMindmap(cyclic, heuristicMeasure);
