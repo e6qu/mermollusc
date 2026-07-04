@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Cloud-diagram styling (shared patterns)
+
+- The cloud parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens, before
+  `Identifier`), captured on `CloudAst.styles`. Fifth "other family" (network's sibling).
+
 ## 2026-07-05 — Network-diagram styling (shared patterns)
 
 - The network parser now accepts `style`/`classDef`/`class`/`linkStyle` directives (shared tokens, before

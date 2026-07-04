@@ -9,6 +9,7 @@ const eid = (s: string) => brand<string, "EdgeId">(s);
 
 const ast: CloudAst = {
   kind: "cloud",
+  styles: [],
   groups: [{ id: nid("g0"), label: "AWS", parent: null }],
   nodes: [
     { id: nid("web"), label: "Web", kind: "compute", parent: nid("g0"), icon: null },
@@ -26,6 +27,7 @@ describe("layoutCloud", () => {
   it("fails loudly when a node's parent group is missing", () => {
     const bad: CloudAst = {
       kind: "cloud",
+      styles: [],
       groups: [],
       nodes: [{ id: nid("web"), label: "Web", kind: "compute", parent: nid("ghost"), icon: null }],
       links: [],
@@ -44,6 +46,7 @@ describe("layoutCloud", () => {
     }));
     const bad: CloudAst = {
       kind: "cloud",
+      styles: [],
       groups,
       nodes: [
         { id: nid("leaf"), label: "Leaf", kind: "compute", parent: nid(`g${deep - 1}`), icon: null },
@@ -56,6 +59,7 @@ describe("layoutCloud", () => {
   it("fails loudly when a link references an unknown node", () => {
     const bad: CloudAst = {
       kind: "cloud",
+      styles: [],
       groups: [],
       nodes: [{ id: nid("web"), label: "Web", kind: "compute", parent: null, icon: null }],
       links: [{ id: eid("l0"), from: nid("web"), to: nid("ghost"), label: null, directed: false }],
@@ -96,6 +100,7 @@ describe("layoutCloud", () => {
   it("draws a directed traffic edge with an arrowhead at the target", () => {
     const directed: CloudAst = {
       kind: "cloud",
+      styles: [],
       groups: [],
       nodes: [
         { id: nid("web"), label: "Web", kind: "compute", parent: null, icon: null },
@@ -126,6 +131,7 @@ describe("layoutCloud — collapse", () => {
   it("drops a link whose both ends collapse into the same group", () => {
     const twoInOne: CloudAst = {
       kind: "cloud",
+      styles: [],
       groups: [{ id: nid("g0"), label: "AWS", parent: null }],
       nodes: [
         { id: nid("a"), label: "A", kind: "compute", parent: nid("g0"), icon: null },

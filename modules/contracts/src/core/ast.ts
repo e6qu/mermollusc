@@ -243,6 +243,7 @@ export interface CloudLink {
 // the syntax names only labels.
 export interface CloudAst {
   readonly kind: "cloud";
+  readonly styles: readonly FlowStyle[];
   readonly groups: readonly CloudGroup[];
   readonly nodes: readonly CloudNode[];
   readonly links: readonly CloudLink[];

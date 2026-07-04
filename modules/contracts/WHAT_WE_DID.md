@@ -1,6 +1,10 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — CloudAst.styles
+
+- `CloudAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart).
+
 ## 2026-07-05 — NetworkAst.styles
 
 - `NetworkAst` gains `styles: readonly FlowStyle[]` (same styling directives as flowchart).

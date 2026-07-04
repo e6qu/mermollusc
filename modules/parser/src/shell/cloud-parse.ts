@@ -4,6 +4,7 @@ import type { Children } from "./cst.js";
 import { brand, err, map, ok, type Result } from "@m/std";
 import type {
   CloudAst,
+  FlowStyle,
   CloudGroup,
   CloudLink,
   CloudNode,
@@ -51,6 +52,7 @@ interface Acc {
   readonly groups: CloudGroup[];
   readonly nodes: CloudNode[];
   readonly links: CloudLink[];
+  readonly styles: FlowStyle[];
   readonly groupSpans: Map<NodeId, TextSpan>;
   readonly nodeSpans: Map<NodeId, TextSpan>;
   // Id-token spans for label-less leaves, so the editor can relabel one by appending a `"label"`.
@@ -63,6 +65,18 @@ interface Acc {
 const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): void => {
   for (const item of items) {
     if (acc.error !== null) return; // a malformed icon already failed the parse — stop walking
+    const styleDir = childNodes(item.children, "cloudStyleDirective")[0];
+    if (styleDir !== undefined) {
+      const st = childTokens(styleDir.children, "CloudStyleStmt")[0];
+      const cd = childTokens(styleDir.children, "CloudClassDefStmt")[0];
+      const cl = childTokens(styleDir.children, "CloudClassStmt")[0];
+      const ls = childTokens(styleDir.children, "CloudLinkStyleStmt")[0];
+      if (st !== undefined) acc.styles.push({ kind: "style", raw: st.image.trim() });
+      else if (cd !== undefined) acc.styles.push({ kind: "classDef", raw: cd.image.trim() });
+      else if (cl !== undefined) acc.styles.push({ kind: "class", raw: cl.image.trim() });
+      else if (ls !== undefined) acc.styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+      continue;
+    }
     const group = childNodes(item.children, "group")[0];
     if (group !== undefined) {
       // Groups are named only by a quoted label, so their id is synthetic. The `:` keeps it out of
@@ -141,6 +155,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
     groups: [],
     nodes: [],
     links: [],
+    styles: [],
     groupSpans: new Map(),
     nodeSpans: new Map(),
     bareSpans: new Map(),
@@ -150,7 +165,13 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
   walkItems(childNodes(cst.children, "item"), null, acc);
   if (acc.error !== null) return err(acc.error);
   return ok({
-    ast: { kind: "cloud", groups: acc.groups, nodes: acc.nodes, links: acc.links },
+    ast: {
+      kind: "cloud",
+      styles: acc.styles,
+      groups: acc.groups,
+      nodes: acc.nodes,
+      links: acc.links,
+    },
     source: {
       groups: acc.groupSpans,
       nodes: acc.nodeSpans,

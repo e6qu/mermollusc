@@ -1111,7 +1111,8 @@ const sourceNodeColors = (shown: Scene): ReadonlyMap<SceneNodeId, NodeColors> =>
       ast.kind !== "state" &&
       ast.kind !== "er" &&
       ast.kind !== "block" &&
-      ast.kind !== "network")
+      ast.kind !== "network" &&
+      ast.kind !== "cloud")
   )
     return new Map();
   const resolved = resolveNodeStyles(ast.styles);
@@ -1140,7 +1141,8 @@ const sourceEdgeColors = (): ReadonlyMap<SceneEdgeId, NodeColors> => {
       ast.kind !== "state" &&
       ast.kind !== "er" &&
       ast.kind !== "block" &&
-      ast.kind !== "network")
+      ast.kind !== "network" &&
+      ast.kind !== "cloud")
   )
     return new Map();
   const resolved = resolveLinkStyles(ast.styles);

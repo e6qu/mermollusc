@@ -28,8 +28,20 @@ class CloudParser extends CstParser {
   private readonly item = this.RULE("item", () =>
     this.OR([
       { ALT: () => this.SUBRULE(this.group) },
+      { ALT: () => this.SUBRULE(this.styleDirective) },
       { ALT: () => this.SUBRULE(this.leaf) },
       { ALT: () => this.SUBRULE(this.link) },
+    ]),
+  );
+
+  // A whole-line Mermaid styling directive (`style`/`classDef`/`class`/`linkStyle`); distinct first
+  // tokens keep the item OR LL(1).
+  private readonly styleDirective = this.RULE("cloudStyleDirective", () =>
+    this.OR([
+      { ALT: () => this.CONSUME(CloudTok.StyleStmt) },
+      { ALT: () => this.CONSUME(CloudTok.ClassDefStmt) },
+      { ALT: () => this.CONSUME(CloudTok.ClassStmt) },
+      { ALT: () => this.CONSUME(CloudTok.LinkStyleStmt) },
     ]),
   );
 
