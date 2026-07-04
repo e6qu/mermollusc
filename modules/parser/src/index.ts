@@ -1,5 +1,5 @@
 export { print } from "./core/index.js";
-export { resolveNodeStyles } from "./core/style.js";
+export { resolveNodeStyles, resolveLinkStyles } from "./core/style.js";
 export type { FlowNodeColors } from "./core/style.js";
 export { parse, parseWithSource } from "./shell/index.js";
 export { parseSequence, parseSequenceWithSource } from "./shell/index.js";

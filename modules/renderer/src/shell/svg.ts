@@ -119,7 +119,8 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
           }
         })
         .join(" ");
-      const edgeColor = accentStroke(cmd.accent, theme);
+      // A raw `strokeColor` from a Mermaid `linkStyle` directive wins over the accent/theme.
+      const edgeColor = cmd.strokeColor ?? accentStroke(cmd.accent, theme);
       const path = `<path d="${d}" fill="none" stroke="${edgeColor}" stroke-width="1.5"${dash}/>`;
       const mids = cmd.midMarkers.map((m) => markerToSvg(m, theme, edgeColor)).join("");
       return `${path}${markerToSvg(cmd.fromMarker, theme, edgeColor)}${markerToSvg(cmd.toMarker, theme, edgeColor)}${mids}`;

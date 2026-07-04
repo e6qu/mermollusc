@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-04 — Resolve + locate linkStyle (edge colour)
+
+- New `resolveLinkStyles(styles)` → per-edge-index `{stroke}` from `linkStyle <n> stroke:…` directives
+  (`default`/non-numeric ignored). The parser also records `linkStyleSpans` for single-index lines.
+
 ## 2026-07-04 — Expose single-target style-line spans
 
 - The flowchart parser now records `styleSpans` (per-node directive-token span for single-target inline

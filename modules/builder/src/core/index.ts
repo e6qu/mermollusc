@@ -27,6 +27,8 @@ export {
   restyleEdge,
   setNodeStyleDirective,
   removeNodeStyleDirective,
+  setLinkStyleDirective,
+  removeLinkStyleDirective,
   restyleSequenceMessage,
   shiftGanttStart,
   setGanttStartFromDay,

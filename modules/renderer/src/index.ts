@@ -11,6 +11,7 @@ export {
   paint,
   toSvg,
   accentFill,
+  accentStroke,
   defaultTheme,
   darkTheme,
   htmlInCanvasSupported,

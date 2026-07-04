@@ -414,7 +414,8 @@ export const paint = (
       case "polyline": {
         const [first, ...rest] = cmd.points;
         if (first === undefined) break;
-        const edgeColor = accentStroke(cmd.accent, theme);
+        // A raw `strokeColor` from a Mermaid `linkStyle` directive wins over the accent/theme.
+        const edgeColor = cmd.strokeColor ?? accentStroke(cmd.accent, theme);
         ctx.strokeStyle = edgeColor;
 
         // Sketch mode wobbles solid edges; dashed edges stay crisp (the dash carries the meaning).

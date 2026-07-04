@@ -1,6 +1,11 @@
 # @m/builder — work log
 
 
+## 2026-07-04 — Edge linkStyle directive patches
+
+- `setLinkStyleDirective(text, span, index, stroke)` / `removeLinkStyleDirective(text, span)` write/remove
+  a `linkStyle <index> stroke:<hex>` line (in place via span, or append). Shared line-removal helper.
+
 ## 2026-07-04 — Node style-directive patches
 
 - `setNodeStyleDirective(text, span, id, fill, stroke)` writes a Mermaid `style <id> fill:…[,stroke:…]`

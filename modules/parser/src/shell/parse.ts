@@ -232,6 +232,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const subgraphs: FlowSubgraph[] = [];
   const styles: FlowStyle[] = [];
   const styleSpans = new Map<NodeId, TextSpan>();
+  const linkStyleSpans = new Map<number, TextSpan>();
   const claimed = new Set<string>();
   let malformed = false;
   // A malformed `icon "<pack>/<name>"` ref fails the parse loudly (located at the icon string), rather
@@ -334,8 +335,21 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       } else if (classDef !== undefined)
         styles.push({ kind: "classDef", raw: classDef.image.trim() });
       else if (cls !== undefined) styles.push({ kind: "class", raw: cls.image.trim() });
-      else if (linkStyle !== undefined)
+      else if (linkStyle !== undefined) {
         styles.push({ kind: "linkStyle", raw: linkStyle.image.trim() });
+        // Record the span of a SINGLE-index `linkStyle <n> …` line, so the editor can update/remove that
+        // edge's colour in place. A comma (multi-index) or `default` means it isn't editable here.
+        const target =
+          linkStyle.image.trim().slice("linkStyle".length).trim().split(/[ \t]/)[0] ?? "";
+        const idx = Number.parseInt(target, 10);
+        if (Number.isInteger(idx) && String(idx) === target) {
+          const lead = linkStyle.image.length - linkStyle.image.trimStart().length;
+          linkStyleSpans.set(idx, {
+            start: linkStyle.startOffset + lead,
+            end: linkStyle.startOffset + linkStyle.image.trimEnd().length,
+          });
+        }
+      }
     }
   };
 
@@ -418,7 +432,7 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
   const ast: FlowchartAst = { kind: "flowchart", direction, nodes, edges, subgraphs, styles };
   return ok({
     ast,
-    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans, styleSpans },
+    source: { nodes: nodeSpans, edges: edgeSpans, arrows: arrowSpans, styleSpans, linkStyleSpans },
   });
 };
 

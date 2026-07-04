@@ -1,6 +1,11 @@
 # @m/renderer — work log
 
 
+## 2026-07-04 — Edge raw stroke colour (source-canonical)
+
+- The polyline DrawCmd gains `strokeColor` (raw) winning over the accent; `toDisplayList` takes an
+  `edgeColors` map (keyed by scene-edge id). Both backends honour it on the line + markers.
+
 ## 2026-07-04 — Box raw fill/stroke (source-canonical node colour)
 
 - The `box` DrawCmd gains `fill`/`stroke` (raw colours) that win over the accent/theme. `toDisplayList`

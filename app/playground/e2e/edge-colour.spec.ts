@@ -5,6 +5,7 @@ const canvasWidth = (page: Page) =>
   page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
 const edgeAccent = (page: Page, id: string) =>
   page.evaluate((e) => window.__edgeAccent?.(e) ?? null, id);
+const sourceText = (page: Page) => page.evaluate(() => window.__editor?.value() ?? "");
 
 // Select the first shown edge by clicking its geometric midpoint (clear of the endpoints/nodes) and
 // return its id + the on-screen midpoint (for a later pixel probe).
@@ -26,27 +27,28 @@ const selectFirstEdge = async (
   return { id: e0.id, screen };
 };
 
-test("an edge's colour is set from the swatch picker, paints, and persists", async ({
+// Source-canonical edge colour: for a flowchart, colouring an edge writes a Mermaid `linkStyle <index>
+// stroke:…` directive into the SOURCE (edges are targeted by declaration index). It paints, the swatch
+// reflects it, it survives a reload via the source, and clearing removes the directive.
+test("a flowchart edge's colour is written to the source as a linkStyle directive", async ({
   page,
-  context,
 }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
   await setSource(page, "flowchart LR\n  A[Alpha] --> B[Beta]\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const { id, screen } = await selectFirstEdge(page);
-  // the picker appears for an edge selection, labelled for edges, with the full palette
   const picker = page.locator("#ctx-colour-swatches");
   await expect(picker).toBeVisible();
   await expect(picker).toHaveAttribute("aria-label", "Edge color");
-  await expect(picker.locator(".swatch")).toHaveCount(9);
-
   await picker.locator('.swatch[data-accent="danger"]').click();
-  await expect.poll(() => edgeAccent(page, id)).toBe("danger");
 
-  // it actually paints — sample the reddest pixel near the edge midpoint (danger ≈ #dc2626)
+  // the colour is a Mermaid linkStyle directive in the source — no overlay accent
+  await expect.poll(() => sourceText(page)).toContain("linkStyle 0 stroke:");
+  expect(await edgeAccent(page, id)).toBe("none");
+
+  // it paints — the reddest pixel near the edge midpoint is danger (#dc2626)
   await page.keyboard.press("Escape");
   const px = await page.evaluate((p) => {
     const c = document.querySelector("#stage");
@@ -69,8 +71,35 @@ test("an edge's colour is set from the swatch picker, paints, and persists", asy
   expect(px[0] ?? 0).toBeGreaterThan(150);
   expect(px[1] ?? 255).toBeLessThan(120);
 
-  // the colour survives a reload (persisted in the overlay)
+  // reselect: the swatch reflects the source colour
+  await selectFirstEdge(page);
+  await expect(picker.locator('.swatch[data-accent="danger"]')).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+
+  // survives a reload (persisted in the source)
   await page.reload();
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
-  await expect.poll(() => edgeAccent(page, id)).toBe("danger");
+  await expect.poll(() => sourceText(page)).toContain("linkStyle 0 stroke:");
+
+  // clearing removes the directive
+  await selectFirstEdge(page);
+  await picker.locator('.swatch[data-accent="none"]').click();
+  await expect.poll(() => sourceText(page)).not.toContain("linkStyle");
+});
+
+// A family whose dialect we don't parse `linkStyle` for keeps the overlay edge accent (additive, not a
+// fallback for Mermaid we can express).
+test("a non-flowchart family still colours an edge via the overlay accent", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Run\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const { id } = await selectFirstEdge(page);
+  await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="active"]').click();
+  await expect.poll(() => edgeAccent(page, id)).toBe("active");
+  expect(await sourceText(page)).not.toContain("linkStyle");
 });

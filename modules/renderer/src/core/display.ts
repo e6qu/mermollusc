@@ -8,6 +8,7 @@ import type {
   NodeAccent,
   NodeShape,
   Scene,
+  SceneEdgeId,
   SceneNode,
   SceneNodeId,
   SceneWedge,
@@ -114,6 +115,9 @@ export type DrawCmd =
       // Semantic stroke accent (the edge's `accent`); `none` draws the ordinary edge colour. The painter
       // resolves it to a concrete colour via `accentStroke`, applied to the line AND its markers.
       readonly accent: NodeAccent;
+      // Raw stroke colour from a Mermaid `linkStyle` directive (source-canonical), winning over `accent`;
+      // null falls back to the accent. Kept raw so a hand-written `stroke:#123456` is faithful.
+      readonly strokeColor: string | null;
     }
   | {
       readonly kind: "icon";
@@ -525,6 +529,7 @@ const nodeCmds = (node: SceneNode, colors: NodeColors): DrawCmd[] => {
           { kind: "lineTo", x: origin.x + size.width, y: origin.y + fold },
         ],
         accent: "none",
+        strokeColor: null,
       },
       label,
     ];
@@ -608,6 +613,7 @@ const dividerAt = (x: number, y: number, width: number): DrawCmd => ({
     { kind: "lineTo", x: x + width, y },
   ],
   accent: "none",
+  strokeColor: null,
 });
 
 const END_LABEL_INSET = 18; // distance from the endpoint, along the edge, for a per-end label
@@ -770,6 +776,9 @@ export const toDisplayList = (
   // Raw per-node fill/stroke from Mermaid `style`/`classDef` directives (keyed by scene-node id); empty
   // when the diagram has no source styling. A node not in the map keeps its accent/theme colour.
   nodeColors: ReadonlyMap<SceneNodeId, NodeColors> = new Map(),
+  // Raw per-edge stroke colour from Mermaid `linkStyle` directives (keyed by scene-edge id); empty when
+  // the diagram has no edge styling. An edge not in the map keeps its accent/theme stroke.
+  edgeColors: ReadonlyMap<SceneEdgeId, NodeColors> = new Map(),
 ): DrawCmd[] => {
   const crossingsMap = edgeCrossings(scene.edges);
 
@@ -813,6 +822,7 @@ export const toDisplayList = (
               edgeFinish === "decorated" ? (crossingsMap.get(idx) ?? []) : [],
             ),
       accent: edge.accent,
+      strokeColor: edgeColors.get(edge.id)?.stroke ?? null,
     });
     if (edge.label !== null) {
       // The layout decollides the anchor against nodes. Here, at draw time (so no upstream re-routing or
@@ -884,6 +894,7 @@ const decorationCmd = (d: Decoration): DrawCmd => {
           { kind: "lineTo", x: d.to.x, y: d.to.y },
         ],
         accent: "none",
+        strokeColor: null,
       };
     case "caption":
       return {
