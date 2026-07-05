@@ -79,6 +79,8 @@ export interface SequenceSource {
 export interface C4Source {
   readonly elements: ReadonlyMap<C4ElementId, TextSpan>;
   readonly rels: ReadonlyMap<C4RelId, TextSpan>;
+  // Span of each element's `UpdateElementStyle(…)` call, for in-place colour edits.
+  readonly styleSpans: ReadonlyMap<C4ElementId, TextSpan>;
 }
 
 // Editable text spans for a block diagram: the label of each explicitly-labelled block and of

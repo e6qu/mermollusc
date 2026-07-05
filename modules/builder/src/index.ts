@@ -25,6 +25,7 @@ export {
   patchSpan,
   addEdgeLabel,
   restyleEdge,
+  setC4ElementStyleDirective,
   setNodeStyleDirective,
   removeNodeStyleDirective,
   setLinkStyleDirective,

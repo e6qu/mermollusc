@@ -46,6 +46,7 @@ import {
   addEdgeLabel,
   restyleEdge,
   restyleSequenceMessage,
+  setC4ElementStyleDirective,
   setNodeStyleDirective,
   removeNodeStyleDirective,
   setLinkStyleDirective,
@@ -5834,9 +5835,13 @@ const NODE_ACCENT_BY_FILL: ReadonlyMap<string, NodeAccent> = new Map(
 // Which swatch is active for a node: for flowchart, read the colour from the SOURCE `style` directive;
 // every other family reads the overlay accent.
 const nodeSwatchAccent = (id: SceneNodeId): NodeAccent => {
-  if (ast !== null && ast.kind === "flowchart") {
+  // Every family that carries `styles` renders node colour from the SOURCE (flowchart/state/er/block/
+  // network/cloud/class/c4; mindmap too, when a classDef/`:::` is present). Read the resolved fill so the
+  // swatch reflects the source colour; fall to the overlay accent only when the source has none (e.g. a
+  // mindmap coloured via the overlay).
+  if (ast !== null && "styles" in ast) {
     const fill = resolveNodeStyles(ast.styles).get(id)?.fill ?? null;
-    return fill === null ? "none" : (NODE_ACCENT_BY_FILL.get(fill.toLowerCase()) ?? "none");
+    if (fill !== null) return NODE_ACCENT_BY_FILL.get(fill.toLowerCase()) ?? "none";
   }
   return doc.nodeStyles().get(id)?.accent ?? "none";
 };
@@ -5852,10 +5857,13 @@ const NODE_ACCENT_BY_STROKE: ReadonlyMap<string, NodeAccent> = new Map(
 // Which swatch is active for an edge: for flowchart, read the colour from the SOURCE `linkStyle`
 // directive (by the edge's declaration index); every other family reads the overlay accent.
 const edgeSwatchAccent = (id: SceneEdgeId): NodeAccent => {
-  if (ast !== null && ast.kind === "flowchart") {
-    const index = ast.edges.findIndex((e) => `${e.id}` === `${id}`);
+  // Every family with `linkStyle` edge colouring writes it to the SOURCE (flowchart/state/er/block/
+  // network/cloud/class); read the resolved stroke by the edge's declaration index so the swatch reflects
+  // it. c4 (no shared edge model) / mindmap (no edges) have no source edge colour → overlay accent.
+  if (ast !== null && "styles" in ast) {
+    const index = edgeDeclList().findIndex((e) => `${e.id}` === `${id}`);
     const stroke = index < 0 ? null : (resolveLinkStyles(ast.styles).get(index)?.stroke ?? null);
-    return stroke === null ? "none" : (NODE_ACCENT_BY_STROKE.get(stroke.toLowerCase()) ?? "none");
+    if (stroke !== null) return NODE_ACCENT_BY_STROKE.get(stroke.toLowerCase()) ?? "none";
   }
   return doc.edgeStyles().get(id)?.accent ?? "none";
 };
@@ -5907,11 +5915,53 @@ const setNodeColour = (adv: NodeAccent): void => {
     setNodeColourInSource(adv);
     return;
   }
+  // C4 expresses element colour with its own `UpdateElementStyle(id, $bgColor="…")` call, not a `style`
+  // line, so it has a dedicated source writer.
+  if (ast !== null && ast.kind === "c4" && c4Source !== null) {
+    setC4NodeColourInSource(adv);
+    return;
+  }
   recordHistory();
   for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
   doc.persist();
   paintScene();
   updateGroupButtons();
+  flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
+// C4 node colour → the source, as `UpdateElementStyle(<id>, $bgColor="<hex>")` calls: rewrite an existing
+// call in place (via `C4Source.styleSpans`), append one where absent, or remove it for `none`. In-place
+// edits by descending offset so spans stay valid; appends go last.
+const setC4NodeColourInSource = (adv: NodeAccent): void => {
+  const map = c4Source;
+  if (map === null) return;
+  const fill = adv === "none" ? "" : accentFill(adv, defaultTheme);
+  const inPlace: { span: TextSpan; text: string }[] = [];
+  const appends: NodeId[] = [];
+  for (const id of selectionOrder) {
+    const nid = brand<string, "NodeId">(id);
+    const span = map.styleSpans.get(brand<string, "C4ElementId">(id)) ?? null;
+    if (adv === "none") {
+      if (span !== null) inPlace.push({ span, text: "" });
+    } else if (span !== null) {
+      inPlace.push({ span, text: `UpdateElementStyle(${nid}, $bgColor="${fill}")` });
+    } else {
+      appends.push(nid);
+    }
+  }
+  let text = editor.value();
+  for (const op of inPlace.sort((a, b) => b.span.start - a.span.start)) {
+    text =
+      op.text === "" ? removeNodeStyleDirective(text, op.span) : patchSpan(text, op.span, op.text);
+  }
+  for (const nid of appends) text = setC4ElementStyleDirective(text, null, nid, fill);
+  if (text === editor.value()) {
+    flashStatus("colour made no change", "ok");
+    return;
+  }
+  recordHistory();
+  setSourceValue(text);
+  void renderFromText(text);
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 

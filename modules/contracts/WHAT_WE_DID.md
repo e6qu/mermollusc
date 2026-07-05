@@ -1,6 +1,10 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — C4Source.styleSpans
+
+- `C4Source` gains `styleSpans: ReadonlyMap<C4ElementId, TextSpan>` (span of each `UpdateElementStyle(…)`).
+
 ## 2026-07-05 — linkStyleSpans on State/Er/Block/Network/Cloud/Class Source
 
 - Each gains `linkStyleSpans: ReadonlyMap<number, TextSpan>` (single-index `linkStyle <n>` spans, keyed

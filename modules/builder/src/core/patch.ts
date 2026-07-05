@@ -145,9 +145,25 @@ export const setNodeStyleDirective = (
 };
 
 // Remove a node's inline `style` line entirely — the directive plus its leading indentation and one
-// trailing newline — so clearing a colour leaves no blank line behind.
+// trailing newline — so clearing a colour leaves no blank line behind. Also used to remove a C4
+// `UpdateElementStyle(…)` line (same whole-line removal).
 export const removeNodeStyleDirective = (text: string, span: TextSpan): string =>
   removeDirectiveLine(text, span);
+
+// C4's node-colour directive: `UpdateElementStyle(<id>, $bgColor="<hex>")`. C4 styles elements by this
+// call rather than a `style` line, so it has its own writer — rewriting an existing call in place (via
+// `C4Source.styleSpans`) or appending a fresh one. `bgColor` maps our accent fill onto C4's `$bgColor`.
+export const setC4ElementStyleDirective = (
+  text: string,
+  span: TextSpan | null,
+  id: NodeId,
+  bgColor: string,
+): string => {
+  const directive = `UpdateElementStyle(${id}, $bgColor="${bgColor}")`;
+  if (span !== null) return patchSpan(text, span, directive);
+  const body = text.replace(/[\r\n]+$/, "");
+  return `${body}\n  ${directive}\n`;
+};
 
 // Set an edge's colour by writing a Mermaid `linkStyle <index> stroke:<hex>` directive — rewriting an
 // existing single-index line in place (via `SourceMap.linkStyleSpans`) or appending a fresh one.
