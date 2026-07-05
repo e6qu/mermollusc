@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — StateSource.styleSpans
+
+- `StateSource` gains `styleSpans: ReadonlyMap<StateId, TextSpan>` (spans of single-target `style <id>`
+  lines, for in-place colour edits — mirrors `SourceMap.styleSpans`).
+
 ## 2026-07-05 — C4Ast.styles
 
 - `C4Ast` gains `styles: readonly FlowStyle[]` (mapped from `UpdateElementStyle` colour args).

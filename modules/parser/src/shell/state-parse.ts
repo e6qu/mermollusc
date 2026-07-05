@@ -20,6 +20,7 @@ import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { stateParser } from "./state-grammar.js";
 import { stateLexer } from "./state-tokens.js";
+import { singleStyleTarget } from "./style-spans.js";
 
 const ANNOTATION_KIND: Record<string, StateKind> = {
   fork: "fork",
@@ -104,6 +105,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const transitionSpans = new Map<StateTransitionId, TextSpan>();
   const notes: StateNote[] = [];
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<StateId, TextSpan>();
   let direction: FlowDirection = "TB";
 
   const addMember = (composite: string | null, id: string): void => {
@@ -173,8 +175,11 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
         const cd = childTokens(sd, "StateClassDefStmt")[0];
         const cl = childTokens(sd, "StateClassStmt")[0];
         const ls = childTokens(sd, "StateLinkStyleStmt")[0];
-        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
-        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        if (st !== undefined) {
+          styles.push({ kind: "style", raw: st.image.trim() });
+          const single = singleStyleTarget(st, "style");
+          if (single !== null) styleSpans.set(brand<string, "StateId">(single.target), single.span);
+        } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
         else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
         else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
         continue;
@@ -267,7 +272,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   }));
   return ok({
     ast: { kind: "state", direction, states, transitions, composites, notes, styles },
-    source: { states: stateSpans, transitions: transitionSpans },
+    source: { states: stateSpans, transitions: transitionSpans, styleSpans },
   });
 };
 

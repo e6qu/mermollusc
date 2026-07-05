@@ -111,6 +111,9 @@ export interface NetworkSource {
 export interface StateSource {
   readonly states: ReadonlyMap<StateId, TextSpan>;
   readonly transitions: ReadonlyMap<StateTransitionId, TextSpan>;
+  // Span of each single-target `style <id> …` directive line, keyed by the state it colours — lets the
+  // editor rewrite/remove that state's colour in place (as `SourceMap.styleSpans` does for flowchart).
+  readonly styleSpans: ReadonlyMap<StateId, TextSpan>;
 }
 
 // Editable text spans for an ER diagram: each entity's name and each relationship's `: label`.

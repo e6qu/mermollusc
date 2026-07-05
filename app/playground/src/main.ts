@@ -5837,13 +5837,26 @@ const edgeSwatchAccent = (id: SceneEdgeId): NodeAccent => {
   return doc.edgeStyles().get(id)?.accent ?? "none";
 };
 
+// The span of a node's existing single-target `style <id> …` line for the current family, or null. Node
+// colour is Mermaid-expressible (`style <id> fill:…`), so it lives in the SOURCE for every family whose
+// parser captures those spans — flowchart and state so far; the rest are added as their spans land.
+const nodeStyleSpanFor = (id: string): TextSpan | null => {
+  if (ast === null) return null;
+  if (ast.kind === "flowchart") return source?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
+  if (ast.kind === "state")
+    return stateSource?.styleSpans.get(brand<string, "StateId">(id)) ?? null;
+  return null;
+};
+const familyWritesNodeColour = (): boolean =>
+  ast !== null && (ast.kind === "flowchart" || ast.kind === "state");
+
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;
-  // Flowchart node colour is Mermaid-expressible, so it lives in the SOURCE (a `style <id> fill:…` line),
-  // not the overlay. Every other family keeps the overlay accent (the overlay is additive, not a stash
-  // for Mermaid-expressible styling — but these families' dialects have no `style` syntax we parse).
-  if (ast !== null && ast.kind === "flowchart" && source !== null) {
-    setFlowchartNodeColourInSource(adv);
+  // Node colour is Mermaid-expressible, so it lives in the SOURCE (a `style <id> fill:…` line), not the
+  // overlay, for every family whose parser captures style spans. Families without that yet keep the
+  // overlay accent (the overlay is additive, not a stash for Mermaid-expressible styling).
+  if (familyWritesNodeColour()) {
+    setNodeColourInSource(adv);
     return;
   }
   recordHistory();
@@ -5854,19 +5867,17 @@ const setNodeColour = (adv: NodeAccent): void => {
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
-// Write the selected flowchart nodes' colour into the source as `style <id> fill:<hex>` directives:
-// update an existing single-target line in place, append one where absent, or remove it for `none`.
-// In-place edits are applied by DESCENDING offset so earlier patches don't invalidate later spans; the
-// appends (nodes with no existing line) go last, at the end of the text.
-const setFlowchartNodeColourInSource = (adv: NodeAccent): void => {
-  const map = source;
-  if (map === null) return;
+// Write the selected nodes' colour into the source as `style <id> fill:<hex>` directives: update an
+// existing single-target line in place, append one where absent, or remove it for `none`. In-place edits
+// are applied by DESCENDING offset so earlier patches don't invalidate later spans; the appends (nodes
+// with no existing line) go last, at the end of the text.
+const setNodeColourInSource = (adv: NodeAccent): void => {
   const fill = adv === "none" ? "" : accentFill(adv, defaultTheme);
   const inPlace: { span: TextSpan; text: string }[] = [];
   const appends: NodeId[] = [];
   for (const id of selectionOrder) {
     const nid = brand<string, "NodeId">(id);
-    const span = map.styleSpans.get(nid) ?? null;
+    const span = nodeStyleSpanFor(id);
     if (adv === "none") {
       if (span !== null) inPlace.push({ span, text: "" });
     } else if (span !== null) {
