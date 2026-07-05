@@ -21,6 +21,33 @@ import {
   snapSceneEdgesToMountPoints,
 } from "@m/layout";
 
+// Grow a scene's `extent` so it encloses every node box AND every edge waypoint — the host anchors the
+// canvas at the extent origin and sizes it by the extent, so anything outside would be clipped / not
+// scrollable. Only ever grows (starts from the existing extent), so a diagram with nothing dragged out is
+// unchanged. Applied after BOTH node moves (`applyOverrides`) and edge-geometry changes (`applyStyles`) —
+// a dragged edge control point that leaves the sheet expands the viewport just like a dragged node does.
+export const growExtentToContent = (scene: Scene): Scene => {
+  let minX: number = scene.extent.origin.x;
+  let minY: number = scene.extent.origin.y;
+  let maxX: number = scene.extent.origin.x + scene.extent.size.width;
+  let maxY: number = scene.extent.origin.y + scene.extent.size.height;
+  for (const node of scene.nodes) {
+    minX = Math.min(minX, node.bounds.origin.x);
+    minY = Math.min(minY, node.bounds.origin.y);
+    maxX = Math.max(maxX, node.bounds.origin.x + node.bounds.size.width);
+    maxY = Math.max(maxY, node.bounds.origin.y + node.bounds.size.height);
+  }
+  for (const edge of scene.edges) {
+    for (const p of edge.waypoints) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  return { ...scene, extent: rect(minX, minY, maxX - minX, maxY - minY) };
+};
+
 export const applyStyles = (
   scene: Scene,
   edgeStyles: EdgeStyles,
@@ -154,14 +181,16 @@ export const applyStyles = (
         });
   const styled = { ...scene, nodes, edges };
   const snapped = snapToMountPoints ? snapSceneEdgesToMountPoints(styled) : styled;
-  if (!snapToMountPoints || edgeStyles.size === 0) return snapped;
+  // Grow the extent for manually-routed edges: a dragged control point (a `style.waypoints` bend) can
+  // sit outside the laid-out sheet, and unlike a node move it isn't reflected in `applyOverrides`' extent.
+  if (!snapToMountPoints || edgeStyles.size === 0) return growExtentToContent(snapped);
   const relabelled = snapped.edges.map((e): SceneEdge => {
     const s = edgeStyles.get(e.id);
     if (s === undefined || s.labelT === null || e.label === null) return e;
     const anchor = edgeLabelAnchorAt(e.waypoints, s.labelT);
     return { ...e, labelPos: point(anchor.x, anchor.y) };
   });
-  return { ...snapped, edges: relabelled };
+  return growExtentToContent({ ...snapped, edges: relabelled });
 };
 
 export const moveNode = (
@@ -253,31 +282,10 @@ export const applyOverrides = (
     };
   });
 
-  // Grow the extent to the true bounds of the overridden scene. A node dragged left/up past the
-  // layout's origin has negative coordinates, so the extent origin must move too (not just width/
-  // height) — otherwise the host, which anchors the canvas at the extent origin, clips it off the
-  // top-left. Edge waypoints are included so a translated (group-dragged) connector isn't clipped
-  // either. The host offsets paint + pointer-mapping by this origin, so a zero origin (the common
-  // case, no negative drag) is unchanged.
-  let minX: number = scene.extent.origin.x;
-  let minY: number = scene.extent.origin.y;
-  let maxX: number = scene.extent.origin.x + scene.extent.size.width;
-  let maxY: number = scene.extent.origin.y + scene.extent.size.height;
-  for (const node of nodes) {
-    minX = Math.min(minX, node.bounds.origin.x);
-    minY = Math.min(minY, node.bounds.origin.y);
-    maxX = Math.max(maxX, node.bounds.origin.x + node.bounds.size.width);
-    maxY = Math.max(maxY, node.bounds.origin.y + node.bounds.size.height);
-  }
-  for (const edge of edges) {
-    for (const p of edge.waypoints) {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-  }
-  const extent = rect(minX, minY, maxX - minX, maxY - minY);
-  const moved = { ...scene, nodes, edges, extent };
+  // Grow the extent to the true bounds of the overridden scene (node boxes + edge waypoints), so a node
+  // dragged left/up past the layout origin — or a connector that translated with it — isn't clipped off
+  // the sheet the host anchors at the extent origin. Only ever grows, so the common no-drag case is a
+  // no-op. Same helper the edge-styling path uses, so a dragged control point expands the viewport too.
+  const moved = growExtentToContent({ ...scene, nodes, edges });
   return snapToMountPoints ? snapSceneEdgesToMountPoints(moved) : moved;
 };

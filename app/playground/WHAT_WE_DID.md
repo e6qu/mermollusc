@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Edge control points expand the viewport
+
+- Dragging an edge bend point past the sheet edge now expands the canvas/viewport (via the builder's
+  `growExtentToContent` in `applyStyles`), matching node-drag behaviour. e2e added.
+
 ## 2026-07-05 — Relax for all graph families + pinning
 
 - "Relax" now force-directed-rearranges EVERY node-graph family (flowchart/state/er/class/block/network/

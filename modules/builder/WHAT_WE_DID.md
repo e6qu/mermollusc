@@ -1,6 +1,14 @@
 # @m/builder — work log
 
 
+## 2026-07-05 — Edge waypoints expand the viewport (growExtentToContent)
+
+- Extracted `growExtentToContent(scene)` — grows the extent to enclose every node box AND every edge
+  waypoint (only ever grows). `applyOverrides` now uses it (was node-only-ish inline), and `applyStyles`
+  applies it too, so a dragged edge control point that leaves the sheet expands the viewport just like a
+  dragged node — previously manual edge waypoints (a `style.waypoints` bend) weren't reflected in the
+  extent, so the canvas didn't grow and the point could be clipped/unscrollable.
+
 ## 2026-07-05 — setC4ElementStyleDirective
 
 - New `setC4ElementStyleDirective` writes/rewrites/appends a C4 `UpdateElementStyle(<id>, $bgColor="…")`

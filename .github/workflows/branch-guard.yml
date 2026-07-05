@@ -1,0 +1,21 @@
+name: Branch guard
+
+# Enforces AGENTS.md §0.11 on the server: at most ONE non-`main` branch on the remote at a time (i.e. at
+# most one open PR's branch). Runs on every PR and on pushes to main, so a second concurrent branch/PR
+# turns the checks red until it's merged or closed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  one-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: At most one non-main branch on origin
+        run: bash tools/branch-guard.sh --remote

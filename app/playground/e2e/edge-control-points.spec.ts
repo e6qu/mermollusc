@@ -71,3 +71,32 @@ test("drag a bend point to reshape an edge; double-click removes it", async ({ p
     await page.waitForTimeout(200);
   }
 });
+
+// Dragging an edge control point past the sheet edge expands the viewport, exactly as dragging a node
+// does — the extent (which sizes the canvas) must include edge waypoints, not just node boxes.
+test("dragging a bend point outside the sheet expands the viewport", async ({ page }) => {
+  const canvasWidth = () =>
+    page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width);
+  await page.goto("/?example=block");
+  await expect.poll(canvasWidth).toBeGreaterThan(0);
+  const before = await canvasWidth();
+
+  const pick = await pickEdge(page);
+  expect(pick).not.toBeNull();
+  if (pick === null) return;
+  const sp = await scr(page, pick.sel.x, pick.sel.y);
+  if (sp === null) throw new Error("no screen");
+  await page.mouse.click(sp.x, sp.y);
+  await expect(page.locator("#ctx-curve")).toBeVisible();
+
+  // drag the bend far to the right — well past the current sheet edge
+  const bp = await scr(page, pick.bend.x, pick.bend.y);
+  if (bp === null) throw new Error("no bend screen");
+  await page.mouse.move(bp.x, bp.y);
+  await page.mouse.down();
+  await page.mouse.move(bp.x + 700, bp.y, { steps: 12 });
+  await page.mouse.up();
+
+  // the canvas grew to keep the dragged-out control point on the (scrollable) sheet
+  await expect.poll(canvasWidth).toBeGreaterThan(before);
+});
