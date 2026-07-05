@@ -19,6 +19,7 @@ import { cloudParser } from "./cloud-grammar.js";
 import { cloudLexer } from "./cloud-tokens.js";
 import { iconRefOf } from "./icon-ref.js";
 import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
+import { singleStyleTarget } from "./style-spans.js";
 import type { ParseError } from "./parse-error.js";
 
 export interface ParsedCloud {
@@ -53,6 +54,7 @@ interface Acc {
   readonly nodes: CloudNode[];
   readonly links: CloudLink[];
   readonly styles: FlowStyle[];
+  readonly styleSpans: Map<NodeId, TextSpan>;
   readonly groupSpans: Map<NodeId, TextSpan>;
   readonly nodeSpans: Map<NodeId, TextSpan>;
   // Id-token spans for label-less leaves, so the editor can relabel one by appending a `"label"`.
@@ -71,8 +73,12 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
       const cd = childTokens(styleDir.children, "CloudClassDefStmt")[0];
       const cl = childTokens(styleDir.children, "CloudClassStmt")[0];
       const ls = childTokens(styleDir.children, "CloudLinkStyleStmt")[0];
-      if (st !== undefined) acc.styles.push({ kind: "style", raw: st.image.trim() });
-      else if (cd !== undefined) acc.styles.push({ kind: "classDef", raw: cd.image.trim() });
+      if (st !== undefined) {
+        acc.styles.push({ kind: "style", raw: st.image.trim() });
+        const single = singleStyleTarget(st, "style");
+        if (single !== null)
+          acc.styleSpans.set(brand<string, "NodeId">(single.target), single.span);
+      } else if (cd !== undefined) acc.styles.push({ kind: "classDef", raw: cd.image.trim() });
       else if (cl !== undefined) acc.styles.push({ kind: "class", raw: cl.image.trim() });
       else if (ls !== undefined) acc.styles.push({ kind: "linkStyle", raw: ls.image.trim() });
       continue;
@@ -156,6 +162,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
     nodes: [],
     links: [],
     styles: [],
+    styleSpans: new Map(),
     groupSpans: new Map(),
     nodeSpans: new Map(),
     bareSpans: new Map(),
@@ -177,6 +184,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
       nodes: acc.nodeSpans,
       links: acc.linkSpans,
       bareNodes: acc.bareSpans,
+      styleSpans: acc.styleSpans,
     },
   });
 };

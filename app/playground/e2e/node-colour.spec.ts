@@ -83,13 +83,13 @@ test("a family without source-colour write yet still colours via the overlay acc
 }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await setSource(page, "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n");
+  await setSource(page, "mindmap\n  root((Root))\n    A\n    B\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  await selectNode(page, "CUSTOMER");
+  await selectNode(page, "n1");
   await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
   await page.locator('#ctx-colour-swatches .swatch[data-accent="active"]').click();
-  await expect.poll(() => accent(page, "CUSTOMER")).toBe("active");
+  await expect.poll(() => accent(page, "n1")).toBe("active");
   // no `style` text is written for a family whose source-write isn't wired yet
   expect(await sourceText(page)).not.toContain("style");
 });
@@ -121,3 +121,40 @@ test("a state node's colour is written to the source as a style directive", asyn
   await page.locator('#ctx-colour-swatches .swatch[data-accent="none"]').click();
   await expect.poll(() => sourceText(page)).not.toContain("style Idle fill:");
 });
+
+// The write-side sweep: colouring a node writes a `style <id> fill:…` directive into the SOURCE for
+// every family that uses plain `style` targeting (ER/block/network/cloud/class), just like flowchart/
+// state — updating in place on re-colour and clearing cleanly.
+for (const fam of [
+  { name: "er", source: "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n", node: "CUSTOMER" },
+  { name: "block", source: "block-beta\n  columns 2\n  A B\n", node: "A" },
+  { name: "network", source: 'network\n  server web1 "Web"\n  database db1 "DB"\n  web1 -- db1\n', node: "web1" },
+  { name: "cloud", source: 'cloud\n  compute web1 "Web"\n  storage s1 "S3"\n  web1 --> s1\n', node: "web1" },
+  { name: "class", source: "classDiagram\n  class Animal\n  class Dog\n  Animal <|-- Dog\n", node: "Animal" },
+]) {
+  test(`a ${fam.name} node's colour is written to the source as a style directive`, async ({ page }) => {
+    await page.goto("/");
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+    await setSource(page, fam.source);
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+    await selectNode(page, fam.node);
+    await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
+    await page.locator('#ctx-colour-swatches .swatch[data-accent="danger"]').click();
+    // the colour is a Mermaid `style` directive in the source; kind-typed families (network/cloud) keep
+    // their intrinsic kind accent, so `__nodeAccent` isn't asserted — the source line proves the write
+    await expect.poll(() => sourceText(page)).toContain(`style ${fam.node} fill:`);
+
+    // re-colour updates in place — exactly one style line
+    await selectNode(page, fam.node);
+    await page.locator('#ctx-colour-swatches .swatch[data-accent="compute"]').click();
+    await expect
+      .poll(() => sourceText(page).then((t) => (t.match(new RegExp(`style ${fam.node} fill:`, "g")) ?? []).length))
+      .toBe(1);
+
+    // clearing removes the directive
+    await selectNode(page, fam.node);
+    await page.locator('#ctx-colour-swatches .swatch[data-accent="none"]').click();
+    await expect.poll(() => sourceText(page)).not.toContain(`style ${fam.node} fill:`);
+  });
+}

@@ -21,6 +21,7 @@ import type { ParseError } from "./parse-error.js";
 import { iconRefOf } from "./icon-ref.js";
 import { blockParser } from "./block-grammar.js";
 import { blockLexer } from "./block-tokens.js";
+import { singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedBlock {
   readonly ast: BlockAst;
@@ -163,6 +164,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
   const arrowSpans = new Map<EdgeId, TextSpan>();
   const edges: BlockEdge[] = [];
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<NodeId, TextSpan>();
   const groups: BlockGroup[] = [];
   const groupSpans = new Map<NodeId, TextSpan>();
   // A first malformed-ref failure; once set, the walk bails and the parse fails loudly.
@@ -196,8 +198,11 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
         const cd = childTokens(styleDir.children, "BlockClassDefStmt")[0];
         const cl = childTokens(styleDir.children, "BlockClassStmt")[0];
         const ls = childTokens(styleDir.children, "BlockLinkStyleStmt")[0];
-        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
-        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        if (st !== undefined) {
+          styles.push({ kind: "style", raw: st.image.trim() });
+          const single = singleStyleTarget(st, "style");
+          if (single !== null) styleSpans.set(brand<string, "NodeId">(single.target), single.span);
+        } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
         else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
         else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
         continue;
@@ -332,6 +337,7 @@ const buildResult = (cst: CstNode): Result<ParsedBlock, ParseError> => {
       arrows: arrowSpans,
       bareNodes: bareSpans,
       groups: groupSpans,
+      styleSpans,
     },
   });
 };

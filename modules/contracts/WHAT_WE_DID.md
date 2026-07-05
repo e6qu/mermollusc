@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — styleSpans on ER/Block/Network/Cloud/Class Source
+
+- `ErSource`/`BlockSource`/`NetworkSource`/`CloudSource`/`ClassSource` each gain
+  `styleSpans: ReadonlyMap<…, TextSpan>` (single-target `style <id>` spans for in-place colour edits).
+
 ## 2026-07-05 — StateSource.styleSpans
 
 - `StateSource` gains `styleSpans: ReadonlyMap<StateId, TextSpan>` (spans of single-target `style <id>`

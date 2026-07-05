@@ -1,6 +1,11 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Write node colour to source for ER/block/network/cloud/class
+
+- `setNodeColour` now writes `style <id> fill:…` into the SOURCE for ER/block/network/cloud/class too
+  (via `nodeStyleSpanFor` + `SOURCE_COLOUR_FAMILIES`). Only c4 and mindmap remain on the overlay accent.
+
 ## 2026-07-05 — Write state node colour to the source
 
 - `setNodeColour` now writes a `style <id> fill:…` directive into the SOURCE for state diagrams too (not
