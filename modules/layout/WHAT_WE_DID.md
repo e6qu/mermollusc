@@ -1,6 +1,13 @@
 # @m/layout — work log
 
 
+## 2026-07-05 — relaxScene: box-overlap resolution (groups no longer overlap)
+
+- `relaxScene` now runs a box-overlap resolution pass after the Fruchterman-Reingold force loop:
+  Fruchterman-Reingold repels by CENTRE distance, which didn't stop two boxes — notably big group /
+  subgraph containers — from settling on top of each other. The pass pushes any overlapping pair apart
+  along their minimum-translation axis (holding pinned units), so relaxed group boxes don't overlap.
+
 ## 2026-07-05 — relaxScene: generic force-directed relax
 
 - New pure `relaxScene(scene, pinned)` — deterministic Fruchterman-Reingold (seeds from current centres,
