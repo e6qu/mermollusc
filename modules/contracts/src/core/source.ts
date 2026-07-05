@@ -92,6 +92,8 @@ export interface BlockSource {
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
   // Label span of each `block:id … end` composite — its `["label"]` if present, else the id token.
   readonly groups: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-target `style <id>` lines, for in-place colour edits.
+  readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a network diagram: the inner label of each node that has a quoted label
@@ -103,6 +105,8 @@ export interface NetworkSource {
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
   // Inner-label span of each subnet/zone `group "…"`, for relabel.
   readonly groups: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-target `style <id>` lines, for in-place colour edits.
+  readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
 }
 
 // Editable text spans for a state diagram: each state's label (from `id : label` or
@@ -120,12 +124,16 @@ export interface StateSource {
 export interface ErSource {
   readonly entities: ReadonlyMap<ErEntityId, TextSpan>;
   readonly relationships: ReadonlyMap<ErRelId, TextSpan>;
+  // Spans of single-target `style <id>` lines, for in-place colour edits (mirrors SourceMap.styleSpans).
+  readonly styleSpans: ReadonlyMap<ErEntityId, TextSpan>;
 }
 
 // Editable text spans for a class diagram: each class's name and each relationship's `: label`.
 export interface ClassSource {
   readonly entities: ReadonlyMap<ClassEntityId, TextSpan>;
   readonly relationships: ReadonlyMap<ClassRelId, TextSpan>;
+  // Spans of single-target `style <id>` lines, for in-place colour edits.
+  readonly styleSpans: ReadonlyMap<ClassEntityId, TextSpan>;
 }
 
 // Editable text spans for a requirement diagram: each entity's name. Relationship verbs are closed
@@ -180,4 +188,6 @@ export interface CloudSource {
   readonly nodes: ReadonlyMap<NodeId, TextSpan>;
   readonly links: ReadonlyMap<EdgeId, TextSpan>;
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-target `style <id>` lines, for in-place colour edits.
+  readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
 }

@@ -20,6 +20,7 @@ import type { ParseError } from "./parse-error.js";
 import { iconRefOf } from "./icon-ref.js";
 import { networkParser } from "./net-grammar.js";
 import { netLexer } from "./net-tokens.js";
+import { singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedNetwork {
   readonly ast: NetworkAst;
@@ -63,6 +64,7 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const groups: NetworkGroup[] = [];
   const groupSpans = new Map<NodeId, TextSpan>();
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<NodeId, TextSpan>();
   let failure: ParseError | null = null;
 
   // Walk a statement list under `parent` (null at the top). Groups recurse; a malformed icon bails.
@@ -75,8 +77,11 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
         const cd = childTokens(styleDir.children, "NetClassDefStmt")[0];
         const cl = childTokens(styleDir.children, "NetClassStmt")[0];
         const ls = childTokens(styleDir.children, "NetLinkStyleStmt")[0];
-        if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
-        else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+        if (st !== undefined) {
+          styles.push({ kind: "style", raw: st.image.trim() });
+          const single = singleStyleTarget(st, "style");
+          if (single !== null) styleSpans.set(brand<string, "NodeId">(single.target), single.span);
+        } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
         else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
         else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
         continue;
@@ -153,7 +158,13 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
 
   return ok({
     ast: { kind: "network", styles, nodes: [...nodeMap.values()], groups, links },
-    source: { nodes: nodeSpans, links: linkSpans, bareNodes: bareSpans, groups: groupSpans },
+    source: {
+      nodes: nodeSpans,
+      links: linkSpans,
+      bareNodes: bareSpans,
+      groups: groupSpans,
+      styleSpans,
+    },
   });
 };
 

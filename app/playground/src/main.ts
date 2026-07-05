@@ -5842,13 +5842,38 @@ const edgeSwatchAccent = (id: SceneEdgeId): NodeAccent => {
 // parser captures those spans — flowchart and state so far; the rest are added as their spans land.
 const nodeStyleSpanFor = (id: string): TextSpan | null => {
   if (ast === null) return null;
-  if (ast.kind === "flowchart") return source?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
-  if (ast.kind === "state")
-    return stateSource?.styleSpans.get(brand<string, "StateId">(id)) ?? null;
-  return null;
+  switch (ast.kind) {
+    case "flowchart":
+      return source?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
+    case "state":
+      return stateSource?.styleSpans.get(brand<string, "StateId">(id)) ?? null;
+    case "er":
+      return erSource?.styleSpans.get(brand<string, "ErEntityId">(id)) ?? null;
+    case "block":
+      return blockSource?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
+    case "network":
+      return netSource?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
+    case "cloud":
+      return cloudSource?.styleSpans.get(brand<string, "NodeId">(id)) ?? null;
+    case "class":
+      return classSource?.styleSpans.get(brand<string, "ClassEntityId">(id)) ?? null;
+    default:
+      return null;
+  }
 };
-const familyWritesNodeColour = (): boolean =>
-  ast !== null && (ast.kind === "flowchart" || ast.kind === "state");
+// Families whose colour picker writes a `style <id> …` directive into the SOURCE (single-target spans
+// captured). c4 (`UpdateElementStyle` syntax) and mindmap (generated node ids) aren't source-writable
+// this way, so they keep the overlay accent.
+const SOURCE_COLOUR_FAMILIES: ReadonlySet<string> = new Set([
+  "flowchart",
+  "state",
+  "er",
+  "block",
+  "network",
+  "cloud",
+  "class",
+]);
+const familyWritesNodeColour = (): boolean => ast !== null && SOURCE_COLOUR_FAMILIES.has(ast.kind);
 
 const setNodeColour = (adv: NodeAccent): void => {
   if (viewerMode || selectionOrder.length === 0 || selection.edges.size > 0) return;

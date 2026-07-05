@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Write-side styleSpans for ER/block/network/cloud/class
+
+- Each of these families now captures `styleSpans` (single-target `style <id>` line spans) via the shared
+  `singleStyleTarget` helper, so the editor can rewrite/remove a node's colour in place. c4
+  (`UpdateElementStyle`) and mindmap (generated ids) are excluded — they need a different write format.
+
 ## 2026-07-05 — Write-side begins: shared style-span helper + state styleSpans
 
 - Extracted `singleStyleTarget` (in `style-spans.ts`): the single-target `style <id>`/`linkStyle <n>`

@@ -18,6 +18,7 @@ import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { erParser } from "./er-grammar.js";
 import { erLexer } from "./er-tokens.js";
+import { singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedEr {
   readonly ast: ErAst;
@@ -152,13 +153,17 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
   }
 
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<ErEntityId, TextSpan>();
   for (const dir of childNodes(cst.children, "erStyleDirective")) {
     const st = childTokens(dir.children, "ErStyleStmt")[0];
     const cd = childTokens(dir.children, "ErClassDefStmt")[0];
     const cl = childTokens(dir.children, "ErClassStmt")[0];
     const ls = childTokens(dir.children, "ErLinkStyleStmt")[0];
-    if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
-    else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+    if (st !== undefined) {
+      styles.push({ kind: "style", raw: st.image.trim() });
+      const single = singleStyleTarget(st, "style");
+      if (single !== null) styleSpans.set(brand<string, "ErEntityId">(single.target), single.span);
+    } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
     else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
     else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
   }
@@ -170,7 +175,7 @@ const buildResult = (cst: CstNode): Result<ParsedEr, ParseError> => {
   }));
   return ok({
     ast: { kind: "er", entities, relationships, styles },
-    source: { entities: entitySpans, relationships: relSpans },
+    source: { entities: entitySpans, relationships: relSpans, styleSpans },
   });
 };
 

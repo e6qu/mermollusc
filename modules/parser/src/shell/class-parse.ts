@@ -18,6 +18,7 @@ import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { classParser } from "./class-grammar.js";
 import { classLexer } from "./class-tokens.js";
+import { singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedClass {
   readonly ast: ClassAst;
@@ -109,6 +110,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const relationships: ClassRel[] = [];
   const relSpans = new Map<ClassRelId, TextSpan>();
   const styles: FlowStyle[] = [];
+  const styleSpans = new Map<ClassEntityId, TextSpan>();
   // `:::name` on a class ref → a synthesised `class <id> <name>` assignment (as everywhere else).
   const assign = (id: string, shorthand: IToken | undefined): void => {
     if (shorthand !== undefined)
@@ -133,8 +135,13 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
       const st = childTokens(styleDir.children, "ClassStyleStmt")[0];
       const cd = childTokens(styleDir.children, "ClassClassDefStmt")[0];
       const ls = childTokens(styleDir.children, "ClassLinkStyleStmt")[0];
-      if (st !== undefined) styles.push({ kind: "style", raw: st.image.trim() });
-      else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
+      if (st !== undefined) {
+        styles.push({ kind: "style", raw: st.image.trim() });
+        const single = singleStyleTarget(st, "style");
+        if (single !== null) {
+          styleSpans.set(brand<string, "ClassEntityId">(single.target), single.span);
+        }
+      } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
       else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
       continue;
     }
@@ -256,7 +263,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   }));
   return ok({
     ast: { kind: "class", entities, relationships, styles },
-    source: { entities: entitySpans, relationships: relSpans },
+    source: { entities: entitySpans, relationships: relSpans, styleSpans },
   });
 };
 
