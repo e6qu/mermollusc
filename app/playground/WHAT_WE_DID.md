@@ -1,6 +1,15 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — C4 node colour to source + swatch reads source for all families
+
+- C4 element colour now writes `UpdateElementStyle(id, $bgColor="…")` into the SOURCE (dedicated
+  `setC4NodeColourInSource`), so the last mainstream family is source-canonical for node colour.
+- Fixed a latent UI-sync bug: `nodeSwatchAccent`/`edgeSwatchAccent` only read the SOURCE colour for
+  flowchart, so state/er/block/network/cloud/class (migrated in #278–#280) showed the swatch as "none"
+  on reselect. Both now read the source-resolved colour for any family with `styles`, falling to the
+  overlay only when the source has none (e.g. an overlay-coloured mindmap).
+
 ## 2026-07-05 — Flag non-Mermaid diagrams in the UI
 
 - A `non-Mermaid` badge (amber, in the source header next to the kind badge) now marks diagrams whose

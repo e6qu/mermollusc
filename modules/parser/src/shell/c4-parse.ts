@@ -44,6 +44,7 @@ interface C4Acc {
   readonly rels: C4Rel[];
   readonly styles: FlowStyle[];
   readonly elementSpans: Map<C4ElementId, TextSpan>;
+  readonly styleSpans: Map<C4ElementId, TextSpan>;
   readonly relSpans: Map<C4RelId, TextSpan>;
 }
 
@@ -110,6 +111,16 @@ const walkItems = (items: readonly CstNode[], parent: C4ElementId | null, acc: C
       const id = imageOf(ues.children, "C4Identifier") ?? "";
       const style = styleFromArgs(id, childNodes(ues.children, "c4StyleArg"));
       if (style !== null) acc.styles.push(style);
+      // Span of the whole `UpdateElementStyle(…)` call (keyword → closing `)`), keyed by element id, so
+      // the editor can rewrite/remove that element's colour in place.
+      const kw = childTokens(ues.children, "UpdateElementStyle")[0];
+      const rp = childTokens(ues.children, "C4RParen")[0];
+      if (kw !== undefined && rp !== undefined && id !== "") {
+        acc.styleSpans.set(brand<string, "C4ElementId">(id), {
+          start: kw.startOffset,
+          end: rp.startOffset + 1,
+        });
+      }
       continue;
     }
     // `UpdateRelStyle(from, to, $lineColor=…)` is accepted so it doesn't break the parse; C4 relationship
@@ -136,12 +147,13 @@ const buildResult = (cst: CstNode): Result<ParsedC4, ParseError> => {
     rels: [],
     styles: [],
     elementSpans: new Map(),
+    styleSpans: new Map(),
     relSpans: new Map(),
   };
   walkItems(childNodes(cst.children, "item"), null, acc);
   return ok({
     ast: { kind: "c4", elements: acc.elements, rels: acc.rels, styles: acc.styles },
-    source: { elements: acc.elementSpans, rels: acc.relSpans },
+    source: { elements: acc.elementSpans, rels: acc.relSpans, styleSpans: acc.styleSpans },
   });
 };
 

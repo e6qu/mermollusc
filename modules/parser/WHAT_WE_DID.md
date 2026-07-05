@@ -1,6 +1,11 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — C4 styleSpans (write-side)
+
+- `C4Source` gains `styleSpans` — the span of each element's whole `UpdateElementStyle(…)` call, so the
+  editor can rewrite/remove that element's colour in place. Completes c4 for the source-colour write side.
+
 ## 2026-07-05 — Write-side linkStyleSpans for state/er/block/network/cloud/class
 
 - New shared `singleLinkStyleIndex` helper (extends `style-spans.ts`) captures a single-index

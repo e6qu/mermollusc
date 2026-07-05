@@ -158,3 +158,29 @@ for (const fam of [
     await expect.poll(() => sourceText(page)).not.toContain(`style ${fam.node} fill:`);
   });
 }
+
+// C4 expresses element colour with `UpdateElementStyle(id, $bgColor="…")`, so colouring a C4 element
+// writes that call into the SOURCE (not the overlay), updates it in place on re-colour, and clears it.
+test("a c4 element's colour is written to the source as an UpdateElementStyle call", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, 'C4Context\n  Person(alice, "Alice")\n  System(sys, "System")\n  Rel(alice, sys, "uses")\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  await selectNode(page, "alice");
+  await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="danger"]').click();
+  await expect.poll(() => sourceText(page)).toContain("UpdateElementStyle(alice, $bgColor=");
+
+  // re-colour updates in place — exactly one UpdateElementStyle for alice
+  await selectNode(page, "alice");
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="compute"]').click();
+  await expect
+    .poll(() => sourceText(page).then((t) => (t.match(/UpdateElementStyle\(alice,/g) ?? []).length))
+    .toBe(1);
+
+  // clearing removes the call
+  await selectNode(page, "alice");
+  await page.locator('#ctx-colour-swatches .swatch[data-accent="none"]').click();
+  await expect.poll(() => sourceText(page)).not.toContain("UpdateElementStyle(alice,");
+});

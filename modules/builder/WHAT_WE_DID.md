@@ -1,6 +1,11 @@
 # @m/builder — work log
 
 
+## 2026-07-05 — setC4ElementStyleDirective
+
+- New `setC4ElementStyleDirective` writes/rewrites/appends a C4 `UpdateElementStyle(<id>, $bgColor="…")`
+  call (C4's node-colour syntax); removal reuses `removeNodeStyleDirective` (whole-line).
+
 ## 2026-07-04 — Reconnect edge endpoint
 
 - `reconnectEdgeEnd(text, endSpan, newNodeId)` rewrites an edge's endpoint declaration span to a target
