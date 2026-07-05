@@ -5921,6 +5921,12 @@ const setNodeColour = (adv: NodeAccent): void => {
     setC4NodeColourInSource(adv);
     return;
   }
+  // Mindmap node ids are generated, so its colour lives on the node's inline `:::<accent>` class plus a
+  // `classDef <accent> fill:…` — again in the source, via a dedicated writer.
+  if (ast !== null && ast.kind === "mindmap" && mindmapSource !== null) {
+    setMindmapNodeColourInSource(adv);
+    return;
+  }
   recordHistory();
   for (const id of selectionOrder) doc.setNodeStyle(id, adv === "none" ? null : { accent: adv });
   doc.persist();
@@ -5955,6 +5961,51 @@ const setC4NodeColourInSource = (adv: NodeAccent): void => {
       op.text === "" ? removeNodeStyleDirective(text, op.span) : patchSpan(text, op.span, op.text);
   }
   for (const nid of appends) text = setC4ElementStyleDirective(text, null, nid, fill);
+  if (text === editor.value()) {
+    flashStatus("colour made no change", "ok");
+    return;
+  }
+  recordHistory();
+  setSourceValue(text);
+  void renderFromText(text);
+  flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
+};
+
+// True when the current mindmap source already defines a `classDef <name> …`, so we don't add a duplicate.
+const mindmapClassDefined = (name: string): boolean =>
+  ast !== null &&
+  "styles" in ast &&
+  ast.styles.some(
+    (s) => s.kind === "classDef" && new RegExp(`^classDef[ \\t]+${name}\\b`).test(s.raw),
+  );
+
+// Mindmap node colour → the source. The node id is generated, so the colour rides on the node's own line
+// as an inline `:::<accent>` class, backed by a `classDef <accent> fill:<hex>` (added once). Re-colour
+// rewrites the `:::` in place; `none` removes it. The accent name doubles as the class name; the swatch
+// reads back via the resolved fill, so the class name itself is immaterial.
+const setMindmapNodeColourInSource = (adv: NodeAccent): void => {
+  const map = mindmapSource;
+  if (map === null) return;
+  const fill = adv === "none" ? "" : accentFill(adv, defaultTheme);
+  const inPlace: { span: TextSpan; text: string }[] = [];
+  for (const id of selectionOrder) {
+    const span = map.classSpans.get(brand<string, "MindmapNodeId">(id)) ?? null;
+    if (span === null) continue;
+    if (adv === "none") {
+      // Only an existing `:::…` (a non-empty span) can be removed; a bare node has nothing to clear.
+      if (span.start < span.end) inPlace.push({ span, text: "" });
+    } else {
+      inPlace.push({ span, text: `:::${adv}` });
+    }
+  }
+  let text = editor.value();
+  for (const op of inPlace.sort((a, b) => b.span.start - a.span.start)) {
+    text = patchSpan(text, op.span, op.text);
+  }
+  // Ensure the accent's `classDef` exists so `:::<accent>` resolves to a colour.
+  if (adv !== "none" && !mindmapClassDefined(adv)) {
+    text = `${text.replace(/[\r\n]+$/, "")}\n  classDef ${adv} fill:${fill}\n`;
+  }
   if (text === editor.value()) {
     flashStatus("colour made no change", "ok");
     return;

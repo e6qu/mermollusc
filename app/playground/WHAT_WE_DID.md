@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Mindmap node colour to source (write-side 9/9 complete)
+
+- Mindmap node colour now writes to the SOURCE: an inline `:::<accent>` on the node's line plus a
+  `classDef <accent> fill:…` (added once), via `setMindmapNodeColourInSource`. Every diagram family now
+  colours nodes source-canonically. (Mindmap has no edges, so no edge-colour work.)
+
 ## 2026-07-05 — C4 node colour to source + swatch reads source for all families
 
 - C4 element colour now writes `UpdateElementStyle(id, $bgColor="…")` into the SOURCE (dedicated
