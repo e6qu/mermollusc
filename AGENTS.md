@@ -43,6 +43,15 @@ Read it before touching any module. These rules **override** convenience.
     examples, or demo behavior, apply the fix to every applicable graph family and to the demo
     website. Push back only when that is impossible; in that case, ask for direction and halt
     instead of shipping a narrow partial fix.
+11. **EXACTLY ONE open PR / working branch at a time. NO EXCEPTIONS.** There is *never* more than
+    one pull request open, and *never* more than one feature branch in flight, at any single moment.
+    You MUST get the current PR **merged** (or close it) before you create the next branch or open the
+    next PR — full stop. Do **not** stack PRs, do **not** parallelize branches, do **not** "get ahead"
+    on the next task while a PR is open, **even if the next piece looks independent**. When the user
+    asks for new work while a PR is still open, you have exactly two moves: (a) fold it into the open
+    branch if it belongs there, or (b) say plainly that you are **blocked until the current PR merges**
+    and wait. Opening a second PR "to save time" is a hard-rule violation, not a shortcut — it fragments
+    review, tangles history, and makes rebases painful. One branch. One PR. Merge, then next.
 
 ---
 
@@ -169,13 +178,19 @@ closed union per module — never a free-form string.
 
 `.pre-commit-config.yaml` drives the `pre-commit` framework; `make hooks` installs it. Two stages:
 
-- **pre-commit** (fast, every commit): whitespace/EOF/yaml/json/large-file hygiene, **gitleaks**
-  secret scan, `make fmt-check`, `make lint` (biome + type guard), `make typecheck`, `make test`
-  (unit + integration).
+- **pre-commit** (fast, every commit): `make branch-guard` (enforces §0.11 — one working branch, `main`
+  in sync with origin; runs first so it fails fast), whitespace/EOF/yaml/json/large-file hygiene,
+  **gitleaks** secret scan, `make fmt-check`, `make lint` (biome + type guard), `make typecheck`,
+  `make test` (unit + integration).
 - **pre-push** (heavier): `make sast` (**semgrep**, strict, run via `uvx`), `make e2e-ui`
   (**Playwright**, one spec per UI flow), `make e2e-pages` (built GitHub Pages demo e2e),
   `make e2e-api` (HTTP API e2e — a placeholder until an API module exists; never fabricate tests
   against a non-existent API).
+
+The `Branch guard` GitHub Actions workflow (`.github/workflows/branch-guard.yml`) runs `make
+branch-guard-remote` on every PR and push to main: it fails if origin has more than one non-`main`
+branch, so a second concurrent PR/branch turns the checks red until it's merged or closed. Both the
+local hook and the CI job call `tools/branch-guard.sh`.
 
 Hook repo revs are pinned in the config; semgrep is pinned in the `Makefile`, Playwright in the
 catalog. All were chosen with the ≥24h supply-chain rule (§0.3).

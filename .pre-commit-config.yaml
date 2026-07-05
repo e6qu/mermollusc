@@ -28,6 +28,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: branch-guard
+        name: one working branch + main in sync (AGENTS.md §0.11)
+        entry: make branch-guard
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: fmt-check
         name: autoformat check (biome)
         entry: make fmt-check

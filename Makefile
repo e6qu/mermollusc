@@ -8,7 +8,7 @@ MODULES := modules/std modules/contracts modules/parser modules/layout \
 FANOUT  := install build typecheck lint lint-fix fmt fmt-check \
            test test-unit test-int test-e2e cov clean doc-check check
 
-.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-pages e2e-api collab-server pages-build
+.PHONY: $(FANOUT) graph doctor new-module deps-check hooks sast e2e-ui e2e-pages e2e-api collab-server pages-build branch-guard branch-guard-remote
 
 SEMGREP_VERSION := 1.166.0
 
@@ -27,6 +27,15 @@ deps-check:
 
 hooks:
 	@pre-commit install --install-hooks
+
+# AGENTS.md §0.11 enforcement: exactly one working branch besides `main`, and a `main` in sync with
+# origin. `branch-guard` is the local pre-commit check; `branch-guard-remote` is the CI check (counts
+# non-main branches on origin — i.e. open-PR branches).
+branch-guard:
+	@bash tools/branch-guard.sh
+
+branch-guard-remote:
+	@bash tools/branch-guard.sh --remote
 
 # Runs semgrep directly (not via pre-commit) so the pre-commit `sast` hook can call this. Semgrep's
 # OCaml TLS stack needs an explicit trust-anchor file on macOS (it fails loudly hunting a nix path
