@@ -174,6 +174,8 @@ export interface TimelineSource {
 // text of a plain one). Nodes with an empty label have no entry.
 export interface MindmapSource {
   readonly nodes: ReadonlyMap<MindmapNodeId, TextSpan>;
+  // Per node: the span of its inline `:::className` (or a zero-width insertion point), for colour edits.
+  readonly classSpans: ReadonlyMap<MindmapNodeId, TextSpan>;
 }
 
 // Editable text spans for a pie chart: each slice's label (the inner text of its `"…"`).

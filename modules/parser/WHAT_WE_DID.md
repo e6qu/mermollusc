@@ -1,6 +1,12 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Mindmap classSpans (write-side, completes the sweep)
+
+- `MindmapSource` gains `classSpans`: per node, the span of its inline `:::className` (or a zero-width
+  insertion point at end-of-node-text when absent), so the editor can colour a mindmap node in the source
+  despite its generated id. Last family for the colour write-side.
+
 ## 2026-07-05 — C4 styleSpans (write-side)
 
 - `C4Source` gains `styleSpans` — the span of each element's whole `UpdateElementStyle(…)` call, so the

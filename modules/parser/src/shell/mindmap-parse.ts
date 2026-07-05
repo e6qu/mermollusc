@@ -76,6 +76,10 @@ const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
   const nodes: MindmapNode[] = [];
   const styles: FlowStyle[] = [];
   const spans = new Map<MindmapNodeId, TextSpan>();
+  // Per node: the span of its inline `:::className` (to rewrite/remove its colour class), or a zero-width
+  // span at the end of the node text (the insertion point when it has none). Lets the editor colour a
+  // mindmap node in the source despite its id being generated.
+  const classSpans = new Map<MindmapNodeId, TextSpan>();
   const stack: Frame[] = [];
 
   for (const tok of lines) {
@@ -92,6 +96,13 @@ const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
     // assignment against that id (the class colour is resolved by node id, as everywhere else).
     const inline = tok.image.match(INLINE_CLASS);
     if (inline !== null) styles.push({ kind: "class", raw: `class ${id} ${inline[1]}` });
+    if (inline !== null && inline.index !== undefined) {
+      const start = tok.startOffset + inline.index;
+      classSpans.set(id, { start, end: start + inline[0].length });
+    } else {
+      const end = tok.startOffset + tok.image.trimEnd().length;
+      classSpans.set(id, { start: end, end });
+    }
     // Pop ancestors at the same or deeper indentation: the nearest strictly-shallower node is parent.
     while (stack.length > 0 && (stack[stack.length - 1]?.col ?? 0) >= col) stack.pop();
     const top = stack[stack.length - 1];
@@ -110,7 +121,7 @@ const buildResult = (cst: CstNode): Result<ParsedMindmap, ParseError> => {
     stack.push({ col, id });
   }
 
-  return ok({ ast: { kind: "mindmap", nodes, styles }, source: { nodes: spans } });
+  return ok({ ast: { kind: "mindmap", nodes, styles }, source: { nodes: spans, classSpans } });
 };
 
 export const parseMindmapWithSource = (text: string): Result<ParsedMindmap, ParseError> => {

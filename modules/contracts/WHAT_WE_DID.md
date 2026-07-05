@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — MindmapSource.classSpans
+
+- `MindmapSource` gains `classSpans: ReadonlyMap<MindmapNodeId, TextSpan>` (inline `:::` span or insertion
+  point per node).
+
 ## 2026-07-05 — C4Source.styleSpans
 
 - `C4Source` gains `styleSpans: ReadonlyMap<C4ElementId, TextSpan>` (span of each `UpdateElementStyle(…)`).
