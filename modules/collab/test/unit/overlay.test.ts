@@ -138,8 +138,11 @@ describe("collab session — undo/redo (UndoManager)", () => {
     const s = newSession({});
     s.overlay.record();
     s.overlay.moveNode(n("a"), point(5, 6));
+    expect(s.overlay.canUndo()).toBe(true);
+    expect(s.overlay.canRedo()).toBe(false);
     expect(s.overlay.undo()).toBe(true);
     expect(s.overlay.overrides().has(n("a"))).toBe(false);
+    expect(s.overlay.canRedo()).toBe(true);
     expect(s.overlay.redo()).toBe(true);
     expect(s.overlay.overrides().get(n("a"))?.position).toEqual(point(5, 6));
     s.destroy();
@@ -147,6 +150,8 @@ describe("collab session — undo/redo (UndoManager)", () => {
 
   it("returns false when there is nothing to undo or redo", () => {
     const s = newSession({});
+    expect(s.overlay.canUndo()).toBe(false);
+    expect(s.overlay.canRedo()).toBe(false);
     expect(s.overlay.undo()).toBe(false);
     expect(s.overlay.redo()).toBe(false);
     s.destroy();

@@ -1,6 +1,14 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Undo/Redo toolbar buttons + relax tuning
+
+- Added visible **Undo / Redo** toolbar buttons (were keyboard-only). They mirror the real history:
+  disabled when there's nothing to undo/redo (driven from `paintScene` via new `OverlayDoc.canUndo()/
+  canRedo()`, so they never drift), enabled after an edit, and disabled for a collab viewer. e2e added.
+- **Relax feel**: it now auto-fits the view after a relax (was leaving you scrolled to an empty corner).
+  See `@m/layout` for the force-sim tuning (gravity + repulsion cutoff) that stops the canvas ballooning.
+
 ## 2026-07-05 — Edge control points expand the viewport
 
 - Dragging an edge bend point past the sheet edge now expands the canvas/viewport (via the builder's

@@ -1,5 +1,10 @@
 # @m/collab — work log
 
+
+## 2026-07-05 — OverlayDoc.canUndo()/canRedo() in the collab session
+
+- Implemented the new `canUndo()/canRedo()` port methods over the Yjs `UndoManager` (`undoManager.canUndo()
+  /canRedo()`), matching the local document, so the toolbar Undo/Redo buttons reflect collab history too.
 - Seed race fixed via relay-owned coordination: `TransportHooks.onControl` now also carries the
   reserved "seed" grant message (documented in `transport.ts`); the app seeds an empty room only when
   granted. No wire-format change beyond one new well-known CONTROL string — old role handling is

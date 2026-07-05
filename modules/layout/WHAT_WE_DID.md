@@ -1,6 +1,14 @@
 # @m/layout — work log
 
 
+## 2026-07-05 — relaxScene: gravity + repulsion cutoff (no more blow-up)
+
+- Fruchterman-Reingold has no force holding a DISCONNECTED node (no incident edge), so pure repulsion
+  flung it to infinity and the canvas ballooned to thousands of px. Added GRAVITY (a gentle per-step pull
+  toward the layout centroid, which bounds the overall radius and keeps disconnected pieces compact) and a
+  REPULSION_CUTOFF (units past 5×DESIRED apart don't repel, so far clusters stop shoving each other out).
+- Regression test: disconnected nodes stay within a bounded distance of the centroid after a relax.
+
 ## 2026-07-05 — relaxScene: box-overlap resolution (groups no longer overlap)
 
 - `relaxScene` now runs a box-overlap resolution pass after the Fruchterman-Reingold force loop:
