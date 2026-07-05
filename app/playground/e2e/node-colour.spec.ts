@@ -83,14 +83,16 @@ test("a family without source-colour write yet still colours via the overlay acc
 }) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await setSource(page, "mindmap\n  root((Root))\n    A\n    B\n");
+  // Sequence has no Mermaid node-styling syntax we parse (no `styles` on its AST), so a coloured actor
+  // keeps the overlay accent rather than writing to the source.
+  await setSource(page, "sequenceDiagram\n  Alice->>Bob: hi\n  Bob->>Alice: ok\n");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
-  await selectNode(page, "n1");
+  await selectNode(page, "Alice");
   await expect(page.locator("#ctx-colour-swatches")).toBeVisible();
   await page.locator('#ctx-colour-swatches .swatch[data-accent="active"]').click();
-  await expect.poll(() => accent(page, "n1")).toBe("active");
-  // no `style` text is written for a family whose source-write isn't wired yet
+  await expect.poll(() => accent(page, "Alice")).toBe("active");
+  // no `style` text is written for a family whose source has no styling syntax
   expect(await sourceText(page)).not.toContain("style");
 });
 

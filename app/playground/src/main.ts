@@ -115,7 +115,7 @@ import {
   decollideEdgeLabels,
   rerouteBoxEdges,
   separateEdgesFromBorders,
-  layout,
+  relaxScene,
   layoutDiagram,
   type LayoutStyle,
   respreadPorts,
@@ -350,6 +350,7 @@ const ctxCurveBtn = document.querySelector<HTMLButtonElement>("#ctx-curve");
 const ctxRerouteBtn = document.querySelector<HTMLButtonElement>("#ctx-reroute");
 const ctxConnectBtn = document.querySelector<HTMLButtonElement>("#ctx-connect");
 const ctxDuplicateBtn = document.querySelector<HTMLButtonElement>("#ctx-duplicate");
+const ctxPinBtn = document.querySelector<HTMLButtonElement>("#ctx-pin");
 const ctxGroupBtn = document.querySelector<HTMLButtonElement>("#ctx-group");
 const ctxUngroupBtn = document.querySelector<HTMLButtonElement>("#ctx-ungroup");
 const ctxLockBtn = document.querySelector<HTMLButtonElement>("#ctx-lock");
@@ -370,6 +371,7 @@ if (
   ctxRerouteBtn === null ||
   ctxConnectBtn === null ||
   ctxDuplicateBtn === null ||
+  ctxPinBtn === null ||
   ctxGroupBtn === null ||
   ctxUngroupBtn === null ||
   ctxLockBtn === null ||
@@ -1233,6 +1235,33 @@ const paintScene = (): void => {
   ctx.translate(MARGIN - shown.extent.origin.x, MARGIN - shown.extent.origin.y);
   drawGroupOutlines(shown);
   paint(ctx, cmds, iconImages, active);
+  // A small pin badge on the top-right corner of every pinned node, so it's clear which nodes Relax /
+  // Regenerate will leave in place. Drawn over the node fill but under the selection overlay.
+  {
+    const pins = doc.overrides();
+    if ([...pins.values()].some((o) => o.pinned)) {
+      const r = Math.max(3, 4 / viewScale);
+      ctx.save();
+      for (const n of shown.nodes) {
+        if (pins.get(n.id)?.pinned !== true) continue;
+        const cx = n.bounds.origin.x + n.bounds.size.width - r;
+        const cy = n.bounds.origin.y + r;
+        // Pin head (filled amber disc) + a short needle, in a fixed accent so it reads on any node fill.
+        ctx.strokeStyle = "#c47d0a";
+        ctx.lineWidth = Math.max(1, 1.5 / viewScale);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r);
+        ctx.lineTo(cx + r * 0.9, cy + r * 2.1);
+        ctx.stroke();
+        ctx.fillStyle = "#f5a623";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
   const overlayLine = Math.max(1, 2 / viewScale);
   const overlayHalo = Math.max(3, 8 / viewScale);
   const overlayDash = Math.max(2, 5 / viewScale);
@@ -2078,6 +2107,12 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxDuplicateBtn.disabled = !caps.canDuplicate;
   ctxDuplicateBtn.title = caps.duplicateTitle;
   ctxDuplicateBtn.hidden = !caps.valid || !duplicatable || !hasNodes;
+
+  // Pin toggle: available whenever nodes are selected (pinning holds a node against Relax/Regenerate).
+  const allSelPinned = selectionOrder.length > 0 && selectionOrder.every((id) => nodeIsPinned(id));
+  ctxPinBtn.hidden = !caps.valid || !hasNodes;
+  ctxPinBtn.textContent = allSelPinned ? "Unpin" : "Pin";
+  ctxPinBtn.setAttribute("aria-pressed", String(allSelPinned));
 
   ctxGroupBtn.disabled = !caps.canGroup;
   ctxGroupBtn.hidden = !caps.valid || !hasNodes;
@@ -2954,9 +2989,13 @@ const applyKind = (kind: DiagramAst["kind"]): void => {
   }
   // A collaborative viewer is read-only: these mutate the diagram, so they must be truly `disabled`
   // (not just CSS-dimmed) or a keyboard / screen-reader user can still reach and "press" them.
-  const isFlowchart = currentRenderValid && kind === "flowchart";
-  relaxBtn.disabled = !isFlowchart || viewerMode;
-  relaxBtn.title = isFlowchart ? "" : currentRenderValid ? "flowchart only" : "fix source first";
+  const canRelax = currentRenderValid && RELAX_FAMILIES.has(kind);
+  relaxBtn.disabled = !canRelax || viewerMode;
+  relaxBtn.title = canRelax
+    ? "Spring/force-directed rearrange (pinned nodes stay put)"
+    : currentRenderValid
+      ? "not available for this diagram type"
+      : "fix source first";
   // Regenerate re-lays-out any family (clearing unpinned overrides), so it's enabled whenever the
   // source is valid — but disabled on a broken parse, matching Relax/Add (was the lone exception).
   regenBtn.disabled = !currentRenderValid || viewerMode;
@@ -3443,26 +3482,77 @@ const renderFromText = async (text: string): Promise<void> => {
 };
 
 // Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
-const relax = async (): Promise<void> => {
-  if (ast === null || ast.kind !== "flowchart" || scene === null) return;
+// Force-directed "Relax" applies to the node-graph families (boxes joined by connectors); it's
+// meaningless for the structural/temporal families (sequence rows, a pie, a gantt/timeline axis, a
+// gitGraph rail), which are excluded.
+const RELAX_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
+  "flowchart",
+  "state",
+  "er",
+  "class",
+  "block",
+  "network",
+  "cloud",
+  "c4",
+  "mindmap",
+]);
+
+// Relax: spring/force-directed rearrangement of the current layout (via the pure `relaxScene`). PINNED
+// nodes are held and the forces flow around them; the moved nodes are written as UNPINNED position
+// overrides, so Relax can be re-run and Regenerate/Reset still treat them as free. "Reset positions"
+// reverts to the original layout.
+const relax = (): void => {
+  if (viewerMode || ast === null || scene === null || !RELAX_FAMILIES.has(ast.kind)) return;
   const shown = shownScene(scene);
-  const seed = new Map<NodeId, Point>(
-    shown.nodes.map((n) => [brand<string, "NodeId">(n.id), n.bounds.origin]),
-  );
-  const activeStyle = ast !== null ? getActiveStyle(familyOfKind(ast.kind)) : "classic";
-  const laid = await layout(ast, seed, measureLabel, activeStyle);
-  if (!isOk(laid)) {
-    appLog("error", "relax-failed", laid.error.message);
-    flashStatus(`relax failed — ${laid.error.message}`, "error");
+  const pinnedIds = new Set([...doc.overrides()].filter(([, o]) => o.pinned).map(([id]) => id));
+  const moved = relaxScene(shown, pinnedIds);
+  if (moved.size === 0) {
+    flashStatus(
+      pinnedIds.size > 0 ? "nothing to relax — all nodes pinned" : "nothing to relax",
+      "ok",
+    );
     return;
   }
-  scene = laid.value;
-  const hadPins = doc.overrides().size > 0;
-  doc.clearOverrides();
+  recordHistory();
+  // Keep the pinned overrides; write each relaxed node as an UNPINNED override at its new position.
+  const next = new Map([...doc.overrides()].filter(([, o]) => o.pinned));
+  for (const [id, position] of moved) {
+    next.set(id, { position, size: doc.overrides().get(id)?.size ?? null, pinned: false });
+  }
+  doc.replaceOverrides(next);
   doc.persist();
   paintScene();
-  // Relax discards manual positions — say so, since the user can't otherwise tell a re-layout cleared them.
-  flashStatus(hadPins ? "relaxed layout — manual positions cleared" : "relaxed layout");
+  flashStatus(pinnedIds.size > 0 ? `relaxed around ${pinnedIds.size} pinned` : "relaxed layout");
+};
+
+const nodeIsPinned = (id: string): boolean =>
+  doc.overrides().get(brand<string, "SceneNodeId">(id))?.pinned === true;
+
+// Pin/unpin the selected nodes. A pinned node keeps a fixed position that Relax leaves in place (the
+// force sim flows around it) and Regenerate keeps too. Toggles: if every selected node is already pinned,
+// this unpins them (keeping their spot as a free override so nothing jumps).
+const togglePin = (): void => {
+  if (viewerMode || selectionOrder.length === 0 || scene === null) return;
+  const shown = shownScene(scene);
+  const allPinned = selectionOrder.every((id) => nodeIsPinned(id));
+  recordHistory();
+  const next = new Map(doc.overrides());
+  for (const id of selectionOrder) {
+    const nid = brand<string, "SceneNodeId">(id);
+    const existing = next.get(nid);
+    if (allPinned) {
+      if (existing !== undefined) next.set(nid, { ...existing, pinned: false });
+    } else {
+      const pos =
+        existing?.position ?? shown.nodes.find((n) => n.id === nid)?.bounds.origin ?? null;
+      if (pos !== null)
+        next.set(nid, { position: pos, size: existing?.size ?? null, pinned: true });
+    }
+  }
+  doc.replaceOverrides(next);
+  doc.persist();
+  paintScene();
+  flashStatus(allPinned ? "unpinned" : `pinned ${selectionOrder.length}`);
 };
 
 // The displayed extent origin (the offset `paintScene` translates by) — (0,0) until the first render.
@@ -5971,13 +6061,17 @@ const setC4NodeColourInSource = (adv: NodeAccent): void => {
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
-// True when the current mindmap source already defines a `classDef <name> …`, so we don't add a duplicate.
+// True when the current mindmap source already defines a `classDef <name> …`, so we don't add a
+// duplicate. Parsed by hand (no dynamic `RegExp` from `name` — that's a ReDoS smell semgrep flags):
+// take the whitespace-delimited target list right after `classDef` and check `name` is one of it.
 const mindmapClassDefined = (name: string): boolean =>
   ast !== null &&
   "styles" in ast &&
-  ast.styles.some(
-    (s) => s.kind === "classDef" && new RegExp(`^classDef[ \\t]+${name}\\b`).test(s.raw),
-  );
+  ast.styles.some((s) => {
+    if (s.kind !== "classDef") return false;
+    const targets = s.raw.slice("classDef".length).trim().split(/[ \t]/)[0] ?? "";
+    return targets.split(",").includes(name);
+  });
 
 // Mindmap node colour → the source. The node id is generated, so the colour rides on the node's own line
 // as an inline `:::<accent>` class, backed by a `classDef <accent> fill:<hex>` (added once). Re-colour
@@ -6341,6 +6435,7 @@ ctxColourSwatches.addEventListener("keydown", (ev) => {
 ctxCurveBtn.addEventListener("click", () => cycleEdgeRoute());
 ctxRerouteBtn.addEventListener("click", () => cycleEdgeOption());
 ctxDuplicateBtn.addEventListener("click", () => void duplicateSelection());
+ctxPinBtn.addEventListener("click", () => togglePin());
 ctxConnectBtn.addEventListener("click", () => connectBtn.click());
 ctxGroupBtn.addEventListener("click", () => groupBtn.click());
 ctxUngroupBtn.addEventListener("click", () => ungroupBtn.click());
@@ -6515,7 +6610,7 @@ window.addEventListener("blur", () => {
 
 relaxBtn.addEventListener("click", () => {
   if (viewerMode) return;
-  void relax();
+  relax();
 });
 // Regenerate: preserve pinned manual positions and lay out everything else cleanly from the text.
 // Undoable — so the previous overlay can be restored (the groups are kept either way).

@@ -1,6 +1,15 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Relax for all graph families + pinning
+
+- "Relax" now force-directed-rearranges EVERY node-graph family (flowchart/state/er/class/block/network/
+  cloud/c4/mindmap), via the pure `relaxScene` — was flowchart-only. Moves are written as UNPINNED
+  position overrides (so Relax is re-runnable; Reset positions reverts).
+- New PIN control (context-bar "Pin"/"Unpin" toggle + an amber pin badge on pinned nodes): a pinned node
+  is held fixed by Relax (the force sim works around it) and kept by Regenerate. Reuses the override
+  `pinned` flag.
+
 ## 2026-07-05 — Mindmap node colour to source (write-side 9/9 complete)
 
 - Mindmap node colour now writes to the SOURCE: an inline `:::<accent>` on the node's line plus a

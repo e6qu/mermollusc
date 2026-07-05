@@ -32,6 +32,7 @@ export {
   snapSceneEdgesToMountPoints,
   rerouteBoxEdges,
   separateEdgesFromBorders,
+  relaxScene,
 } from "./core/index.js";
 export type { MazeBox, RouteBox } from "./core/index.js";
 export type {
