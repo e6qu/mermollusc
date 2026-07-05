@@ -138,6 +138,45 @@ export const relaxScene = (
     }
   }
 
+  // Box-overlap resolution. Fruchterman-Reingold repels by CENTRE distance, which does NOT guarantee two
+  // boxes don't overlap — a big group/subgraph container can settle on top of a neighbour. Do a few
+  // settling passes that push any overlapping pair apart along their axis of least penetration (the
+  // minimum-translation vector), splitting the push unless one side is pinned. This is what keeps group
+  // containers from overlapping after a relax.
+  const separate = (a: Unit, b: Unit, dx: number, dy: number): void => {
+    if (a.pinned && b.pinned) return;
+    if (a.pinned) {
+      b.x -= dx;
+      b.y -= dy;
+    } else if (b.pinned) {
+      a.x += dx;
+      a.y += dy;
+    } else {
+      a.x += dx / 2;
+      a.y += dy / 2;
+      b.x -= dx / 2;
+      b.y -= dy / 2;
+    }
+  };
+  for (let pass = 0; pass < 100; pass++) {
+    let overlapped = false;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if (a === undefined) continue;
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        if (b === undefined) continue;
+        const ox = a.halfW + b.halfW + PADDING - Math.abs(a.x - b.x);
+        const oy = a.halfH + b.halfH + PADDING - Math.abs(a.y - b.y);
+        if (ox <= 0 || oy <= 0) continue; // boxes (plus padding) don't overlap
+        overlapped = true;
+        if (ox < oy) separate(a, b, a.x >= b.x ? ox : -ox, 0);
+        else separate(a, b, 0, a.y >= b.y ? oy : -oy);
+      }
+    }
+    if (!overlapped) break;
+  }
+
   // Translate each moved unit — and, for a container, its descendants — by the unit's centre delta.
   const moved = new Map<SceneNodeId, Point>();
   const byId = new Map(scene.nodes.map((n) => [n.id, n]));
