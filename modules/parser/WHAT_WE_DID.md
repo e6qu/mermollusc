@@ -1,6 +1,14 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — C4 styling (UpdateElementStyle → style)
+
+- C4 diagrams accept `UpdateElementStyle(id, $bgColor="…", $borderColor="…")` and `UpdateRelStyle(…)`.
+  New `$name`/`=` tokens and grammar rules; the parser maps `$bgColor`→fill and `$borderColor`→stroke
+  into a synthesised `style <id> …` directive on `C4Ast.styles` (`$fontColor` accepted but dropped — no
+  text-colour in the shared model). `UpdateRelStyle` is accepted (no crash) but not colour-rendered.
+  Eighth "other family" — the last with genuine Mermaid styling syntax.
+
 ## 2026-07-05 — Class-diagram styling (keyword-collision family)
 
 - Class diagrams support styling now, without touching the `class Foo` DECLARATION keyword. Added the

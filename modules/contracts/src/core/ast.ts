@@ -119,6 +119,8 @@ export interface C4Ast {
   readonly kind: "c4";
   readonly elements: readonly C4Element[];
   readonly rels: readonly C4Rel[];
+  // `UpdateElementStyle` colour overrides, mapped to `style` directives (fill/stroke) by the parser.
+  readonly styles: readonly FlowStyle[];
 }
 
 export interface BlockNode {

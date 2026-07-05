@@ -1,6 +1,10 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — C4Ast.styles
+
+- `C4Ast` gains `styles: readonly FlowStyle[]` (mapped from `UpdateElementStyle` colour args).
+
 ## 2026-07-05 — ClassAst.styles
 
 - `ClassAst` gains `styles: readonly FlowStyle[]` (classDef/style/linkStyle + class assignments

@@ -134,3 +134,12 @@ test("class diagram classDef + ::: colours the class from the source too", async
   const px = await nodeCenterPx(page, "Animal");
   expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
 });
+
+test("c4 diagram UpdateElementStyle colours the element from the source too", async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+  await setSource(page, 'C4Context\n  Person(alice, "Alice")\n  System(sys, "System")\n  Rel(alice, sys, "uses")\n  UpdateElementStyle(alice, $bgColor="#16a34a")\n');
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+  const px = await nodeCenterPx(page, "alice");
+  expect(px[1] ?? 0).toBeGreaterThan(px[0] ?? 0);
+});
