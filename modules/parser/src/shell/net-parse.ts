@@ -20,7 +20,7 @@ import type { ParseError } from "./parse-error.js";
 import { iconRefOf } from "./icon-ref.js";
 import { networkParser } from "./net-grammar.js";
 import { netLexer } from "./net-tokens.js";
-import { singleStyleTarget } from "./style-spans.js";
+import { singleLinkStyleIndex, singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedNetwork {
   readonly ast: NetworkAst;
@@ -65,6 +65,7 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
   const groupSpans = new Map<NodeId, TextSpan>();
   const styles: FlowStyle[] = [];
   const styleSpans = new Map<NodeId, TextSpan>();
+  const linkStyleSpans = new Map<number, TextSpan>();
   let failure: ParseError | null = null;
 
   // Walk a statement list under `parent` (null at the top). Groups recurse; a malformed icon bails.
@@ -83,7 +84,11 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
           if (single !== null) styleSpans.set(brand<string, "NodeId">(single.target), single.span);
         } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
         else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
-        else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        else if (ls !== undefined) {
+          styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+          const singleLs = singleLinkStyleIndex(ls);
+          if (singleLs !== null) linkStyleSpans.set(singleLs.index, singleLs.span);
+        }
         continue;
       }
       const grp = childNodes(stmt.children, "group")[0];
@@ -164,6 +169,7 @@ const buildResult = (cst: CstNode): Result<ParsedNetwork, ParseError> => {
       bareNodes: bareSpans,
       groups: groupSpans,
       styleSpans,
+      linkStyleSpans,
     },
   });
 };

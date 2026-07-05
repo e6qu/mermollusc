@@ -19,7 +19,7 @@ import { cloudParser } from "./cloud-grammar.js";
 import { cloudLexer } from "./cloud-tokens.js";
 import { iconRefOf } from "./icon-ref.js";
 import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
-import { singleStyleTarget } from "./style-spans.js";
+import { singleLinkStyleIndex, singleStyleTarget } from "./style-spans.js";
 import type { ParseError } from "./parse-error.js";
 
 export interface ParsedCloud {
@@ -55,6 +55,7 @@ interface Acc {
   readonly links: CloudLink[];
   readonly styles: FlowStyle[];
   readonly styleSpans: Map<NodeId, TextSpan>;
+  readonly linkStyleSpans: Map<number, TextSpan>;
   readonly groupSpans: Map<NodeId, TextSpan>;
   readonly nodeSpans: Map<NodeId, TextSpan>;
   // Id-token spans for label-less leaves, so the editor can relabel one by appending a `"label"`.
@@ -80,7 +81,11 @@ const walkItems = (items: readonly CstNode[], parent: NodeId | null, acc: Acc): 
           acc.styleSpans.set(brand<string, "NodeId">(single.target), single.span);
       } else if (cd !== undefined) acc.styles.push({ kind: "classDef", raw: cd.image.trim() });
       else if (cl !== undefined) acc.styles.push({ kind: "class", raw: cl.image.trim() });
-      else if (ls !== undefined) acc.styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+      else if (ls !== undefined) {
+        acc.styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        const singleLs = singleLinkStyleIndex(ls);
+        if (singleLs !== null) acc.linkStyleSpans.set(singleLs.index, singleLs.span);
+      }
       continue;
     }
     const group = childNodes(item.children, "group")[0];
@@ -163,6 +168,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
     links: [],
     styles: [],
     styleSpans: new Map(),
+    linkStyleSpans: new Map(),
     groupSpans: new Map(),
     nodeSpans: new Map(),
     bareSpans: new Map(),
@@ -185,6 +191,7 @@ export const parseCloudWithSource = (text: string): Result<ParsedCloud, ParseErr
       links: acc.linkSpans,
       bareNodes: acc.bareSpans,
       styleSpans: acc.styleSpans,
+      linkStyleSpans: acc.linkStyleSpans,
     },
   });
 };

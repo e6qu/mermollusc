@@ -5936,19 +5936,60 @@ const setNodeColourInSource = (adv: NodeAccent): void => {
   flashStatus(adv === "none" ? "colour cleared" : `colour: ${adv}`);
 };
 
-// Write the selected flowchart edges' colour into the source as `linkStyle <index> stroke:<hex>` lines
-// (edges are targeted by declaration index). Same in-place-then-append strategy as node colour, applying
-// in-place edits by descending offset so spans stay valid.
-const setFlowchartEdgeColourInSource = (adv: NodeAccent): void => {
-  const map = source;
-  if (map === null || ast === null || ast.kind !== "flowchart") return;
+// The current family's ordered edge list, so an edge can be targeted by its `linkStyle <index>`.
+const edgeDeclList = (): readonly { readonly id: string }[] => {
+  if (ast === null) return [];
+  switch (ast.kind) {
+    case "flowchart":
+    case "block":
+      return ast.edges;
+    case "state":
+      return ast.transitions;
+    case "er":
+    case "class":
+      return ast.relationships;
+    case "network":
+    case "cloud":
+      return ast.links;
+    default:
+      return [];
+  }
+};
+// The span of an edge's existing single-index `linkStyle <n> …` line for the current family, or null.
+const edgeLinkStyleSpanFor = (index: number): TextSpan | null => {
+  if (ast === null) return null;
+  switch (ast.kind) {
+    case "flowchart":
+      return source?.linkStyleSpans.get(index) ?? null;
+    case "state":
+      return stateSource?.linkStyleSpans.get(index) ?? null;
+    case "er":
+      return erSource?.linkStyleSpans.get(index) ?? null;
+    case "block":
+      return blockSource?.linkStyleSpans.get(index) ?? null;
+    case "network":
+      return netSource?.linkStyleSpans.get(index) ?? null;
+    case "cloud":
+      return cloudSource?.linkStyleSpans.get(index) ?? null;
+    case "class":
+      return classSource?.linkStyleSpans.get(index) ?? null;
+    default:
+      return null;
+  }
+};
+
+// Write the selected edges' colour into the source as `linkStyle <index> stroke:<hex>` lines (edges are
+// targeted by declaration index). Same in-place-then-append strategy as node colour, applying in-place
+// edits by descending offset so spans stay valid.
+const setEdgeColourInSource = (adv: NodeAccent): void => {
   const stroke = adv === "none" ? "" : accentStroke(adv, defaultTheme);
+  const declList = edgeDeclList();
   const inPlace: { span: TextSpan; text: string }[] = [];
   const appends: number[] = [];
   for (const id of selection.edges) {
-    const index = ast.edges.findIndex((e) => `${e.id}` === `${id}`);
+    const index = declList.findIndex((e) => `${e.id}` === `${id}`);
     if (index < 0) continue;
-    const span = map.linkStyleSpans.get(index) ?? null;
+    const span = edgeLinkStyleSpanFor(index);
     if (adv === "none") {
       if (span !== null) inPlace.push({ span, text: "" });
     } else if (span !== null) {
@@ -5987,10 +6028,11 @@ const setFlowchartEdgeColourInSource = (adv: NodeAccent): void => {
 // clean default so the overlay stays minimal.
 const setEdgeColour = (adv: NodeAccent): void => {
   if (viewerMode || selection.edges.size === 0 || selectionOrder.length > 0) return;
-  // Flowchart edge colour is Mermaid-expressible (`linkStyle <index> stroke:…`), so it lives in the
-  // SOURCE. Other families keep the overlay `EdgeStyle.accent`.
-  if (ast !== null && ast.kind === "flowchart" && source !== null) {
-    setFlowchartEdgeColourInSource(adv);
+  // Edge colour is Mermaid-expressible (`linkStyle <index> stroke:…`), so it lives in the SOURCE for
+  // every family whose parser captures link-style spans (the same set as node colour). c4/mindmap keep
+  // the overlay `EdgeStyle.accent`.
+  if (familyWritesNodeColour()) {
+    setEdgeColourInSource(adv);
     return;
   }
   recordHistory();

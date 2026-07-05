@@ -94,6 +94,8 @@ export interface BlockSource {
   readonly groups: ReadonlyMap<NodeId, TextSpan>;
   // Spans of single-target `style <id>` lines, for in-place colour edits.
   readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-index `linkStyle <n>` lines, keyed by the edge/link declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for a network diagram: the inner label of each node that has a quoted label
@@ -107,6 +109,8 @@ export interface NetworkSource {
   readonly groups: ReadonlyMap<NodeId, TextSpan>;
   // Spans of single-target `style <id>` lines, for in-place colour edits.
   readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-index `linkStyle <n>` lines, keyed by the edge/link declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for a state diagram: each state's label (from `id : label` or
@@ -118,6 +122,8 @@ export interface StateSource {
   // Span of each single-target `style <id> …` directive line, keyed by the state it colours — lets the
   // editor rewrite/remove that state's colour in place (as `SourceMap.styleSpans` does for flowchart).
   readonly styleSpans: ReadonlyMap<StateId, TextSpan>;
+  // Span of each single-index `linkStyle <n> …` line, keyed by the transition's declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for an ER diagram: each entity's name and each relationship's `: label`.
@@ -126,6 +132,8 @@ export interface ErSource {
   readonly relationships: ReadonlyMap<ErRelId, TextSpan>;
   // Spans of single-target `style <id>` lines, for in-place colour edits (mirrors SourceMap.styleSpans).
   readonly styleSpans: ReadonlyMap<ErEntityId, TextSpan>;
+  // Spans of single-index `linkStyle <n>` lines, keyed by the relationship's declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for a class diagram: each class's name and each relationship's `: label`.
@@ -134,6 +142,8 @@ export interface ClassSource {
   readonly relationships: ReadonlyMap<ClassRelId, TextSpan>;
   // Spans of single-target `style <id>` lines, for in-place colour edits.
   readonly styleSpans: ReadonlyMap<ClassEntityId, TextSpan>;
+  // Spans of single-index `linkStyle <n>` lines, keyed by the relationship's declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
 
 // Editable text spans for a requirement diagram: each entity's name. Relationship verbs are closed
@@ -190,4 +200,6 @@ export interface CloudSource {
   readonly bareNodes: ReadonlyMap<NodeId, TextSpan>;
   // Spans of single-target `style <id>` lines, for in-place colour edits.
   readonly styleSpans: ReadonlyMap<NodeId, TextSpan>;
+  // Spans of single-index `linkStyle <n>` lines, keyed by the edge/link declaration index.
+  readonly linkStyleSpans: ReadonlyMap<number, TextSpan>;
 }
