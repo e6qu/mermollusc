@@ -441,6 +441,8 @@ export const createCollabSession = (opts: {
       undoManager.redo();
       return true;
     },
+    canUndo: () => undoManager.canUndo(),
+    canRedo: () => undoManager.canRedo(),
     clearHistory: () => undoManager.clear(),
     persist: () =>
       opts.save(serializeOverlay(cache.overrides, cache.groups, cacheEdgeStyles, cacheNodeStyles)),

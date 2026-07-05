@@ -144,6 +144,8 @@ export const createLocalDocument = (opts: {
       nodeStyles = new Map(next.nodeStyles);
       return true;
     },
+    canUndo: () => undoStack.length > 0,
+    canRedo: () => redoStack.length > 0,
     clearHistory: () => {
       undoStack = [];
       redoStack = [];

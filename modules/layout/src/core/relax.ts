@@ -18,6 +18,14 @@ const ITERATIONS = 320;
 const DESIRED = 140;
 // Extra breathing room kept between two boxes on top of the spring length, so relaxed nodes don't touch.
 const PADDING = 24;
+// Gravity toward the layout centroid, applied per unit each step. Plain Fruchterman-Reingold has NO force
+// holding a disconnected node (no incident edge) in place, so pure repulsion flings it to infinity and the
+// canvas balloons. A gentle centre pull bounds the whole layout and keeps disconnected pieces compact.
+const GRAVITY = 0.06;
+// Repulsion is only computed between units within this centre distance. Beyond it two units barely affect
+// each other anyway, and the cutoff stops far-apart / disconnected clusters from shoving each other ever
+// further out (the other half of the blow-up). Distant separation is handled by gravity + the spring net.
+const REPULSION_CUTOFF = 5 * DESIRED;
 
 interface Unit {
   readonly id: SceneNodeId;
@@ -85,6 +93,15 @@ export const relaxScene = (
       u.fx = 0;
       u.fy = 0;
     }
+    // Centroid of the current layout — the target every unit is gently pulled toward (gravity, below).
+    let cx = 0;
+    let cy = 0;
+    for (const u of list) {
+      cx += u.x;
+      cy += u.y;
+    }
+    cx /= list.length;
+    cy /= list.length;
     // Repulsion between every pair. Size-aware: the distance is measured between box edges (centre gap
     // minus each half-extent along the axis) so large boxes keep proportionally further apart.
     for (let i = 0; i < list.length; i++) {
@@ -96,6 +113,8 @@ export const relaxScene = (
         let dx = a.x - b.x;
         let dy = a.y - b.y;
         let dist = Math.hypot(dx, dy);
+        // Far-apart units barely repel — skip them so disconnected clusters aren't shoved ever further out.
+        if (dist > REPULSION_CUTOFF) continue;
         if (dist < 0.01) {
           // Coincident boxes: nudge apart deterministically by index so the sim doesn't divide by zero.
           dx = (i - j) * 0.5 || 0.5;
@@ -124,6 +143,12 @@ export const relaxScene = (
       a.fy -= uy * force;
       b.fx += ux * force;
       b.fy += uy * force;
+    }
+    // Gravity: pull every unit toward the centroid, proportional to its distance from it. This is the only
+    // force acting on a disconnected node, so it sets the layout's overall radius and stops it ballooning.
+    for (const u of list) {
+      u.fx += (cx - u.x) * GRAVITY;
+      u.fy += (cy - u.y) * GRAVITY;
     }
     // Cool linearly from k to ~0: the per-step move is capped by the temperature, so early iterations
     // make big rearrangements and late ones settle.

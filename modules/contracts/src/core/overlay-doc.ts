@@ -43,6 +43,9 @@ export interface OverlayDoc {
   record(): void;
   undo(): boolean;
   redo(): boolean;
+  // Whether an undo/redo is available — drives the enabled state of the toolbar Undo/Redo buttons.
+  canUndo(): boolean;
+  canRedo(): boolean;
   clearHistory(): void;
 
   persist(): void;

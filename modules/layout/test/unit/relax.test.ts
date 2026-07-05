@@ -99,3 +99,29 @@ describe("relaxScene box-overlap resolution", () => {
     }
   });
 });
+
+// Gravity + repulsion cutoff bound the layout: disconnected nodes (no incident edge) must NOT fly to
+// infinity — plain Fruchterman-Reingold would let pure repulsion blow the extent up to thousands of px.
+describe("relaxScene stays bounded (gravity + cutoff)", () => {
+  it("keeps disconnected nodes near the connected cluster instead of flinging them away", () => {
+    const nodes = [
+      node("a", 0, 0),
+      node("b", 40, 0),
+      node("c", 0, 40),
+      node("lonely1", 60, 60),
+      node("lonely2", 20, 80),
+    ];
+    const s = scene(nodes, [edge("e1", "a", "b"), edge("e2", "a", "c")]);
+    const r = relaxScene(s, new Set());
+    const centres = nodes.map((n) => {
+      const p = r.get(n.id) ?? n.bounds.origin;
+      return { x: p.x + 30, y: p.y + 20 };
+    });
+    const cx = centres.reduce((s2, p) => s2 + p.x, 0) / centres.length;
+    const cy = centres.reduce((s2, p) => s2 + p.y, 0) / centres.length;
+    // No node ends up an absurd distance from the centroid (blow-up would be thousands of px).
+    for (const p of centres) {
+      expect(Math.hypot(p.x - cx, p.y - cy)).toBeLessThan(600);
+    }
+  });
+});

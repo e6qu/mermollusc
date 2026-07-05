@@ -283,6 +283,8 @@ let editor!: Editor;
 let editorReady = false;
 const ctx = canvas.getContext("2d");
 if (ctx === null) throw new Error("playground: 2d context unavailable");
+const undoBtn = document.querySelector<HTMLButtonElement>("#undo");
+const redoBtn = document.querySelector<HTMLButtonElement>("#redo");
 const relaxBtn = document.querySelector<HTMLButtonElement>("#relax");
 const regenBtn = document.querySelector<HTMLButtonElement>("#regenerate");
 const resetPosBtn = document.querySelector<HTMLButtonElement>("#reset-positions");
@@ -392,6 +394,8 @@ if (
   zoomFitBtn === null ||
   minimap === null ||
   minimapToggle === null ||
+  undoBtn === null ||
+  redoBtn === null ||
   relaxBtn === null ||
   regenBtn === null ||
   resetPosBtn === null ||
@@ -919,6 +923,20 @@ const redoOverlay = (): void => {
       restoringHistory = false;
     });
   }
+};
+
+// History availability. Non-collab keeps its own unified (text + overlay) stacks; the collaborative doc
+// owns its Yjs undo history. The toolbar Undo/Redo buttons reflect whichever is active.
+const canUndo = (): boolean =>
+  collabSession !== null ? doc.canUndo() : unifiedUndoStack.length > 0;
+const canRedo = (): boolean =>
+  collabSession !== null ? doc.canRedo() : unifiedRedoStack.length > 0;
+
+// Refreshed from `paintScene` (the universal repaint, reached after every mutation and every undo/redo),
+// so the buttons never drift from the real history state. A viewer can't mutate, so both stay disabled.
+const updateHistoryButtons = (): void => {
+  undoBtn.disabled = viewerMode || !canUndo();
+  redoBtn.disabled = viewerMode || !canRedo();
 };
 
 // Light/dark + sketch state and the active-theme resolution live in `./theme.ts`. Forced-colors stays
@@ -1455,6 +1473,7 @@ const paintScene = (): void => {
   if (!isInteracting()) minimapView.rebuildCache();
   minimapView.draw();
   positionContextBar();
+  updateHistoryButtons();
 };
 
 // Coalesces repaints to one per animation frame. Pointer-move events (drag/resize/marquee) can fire
@@ -3522,6 +3541,9 @@ const relax = (): void => {
   doc.replaceOverrides(next);
   doc.persist();
   paintScene();
+  // A relax reflows the whole diagram (and can change its extent) — fit it back into view so the result
+  // is visible at a glance instead of leaving the user scrolled to a now-empty corner.
+  fitView();
   flashStatus(pinnedIds.size > 0 ? `relaxed around ${pinnedIds.size} pinned` : "relaxed layout");
 };
 
@@ -6616,6 +6638,15 @@ relaxBtn.addEventListener("click", () => {
 // Undoable — so the previous overlay can be restored (the groups are kept either way).
 const pinnedOverrides = (overrides: LayoutOverrides): LayoutOverrides =>
   new Map([...overrides].filter(([, override]) => override.pinned));
+
+undoBtn.addEventListener("click", () => {
+  if (viewerMode) return;
+  undoOverlay();
+});
+redoBtn.addEventListener("click", () => {
+  if (viewerMode) return;
+  redoOverlay();
+});
 
 regenBtn.addEventListener("click", () => {
   if (viewerMode) return;

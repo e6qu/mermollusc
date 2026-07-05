@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — OverlayDoc.canUndo()/canRedo()
+
+- Added `canUndo(): boolean` / `canRedo(): boolean` to the `OverlayDoc` port so the app can drive the
+  enabled state of the toolbar Undo/Redo buttons without reaching into either implementation's stacks.
+
 ## 2026-07-05 — MindmapSource.classSpans
 
 - `MindmapSource` gains `classSpans: ReadonlyMap<MindmapNodeId, TextSpan>` (inline `:::` span or insertion
