@@ -18,6 +18,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { childNodes, childTokens, imageOf, spanOf } from "./cst.js";
+import { singleStyleTarget } from "./style-spans.js";
 import type { Children } from "./cst.js";
 import { flowchartParser } from "./grammar.js";
 import { iconRefOf } from "./icon-ref.js";
@@ -336,32 +337,20 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       const linkStyle = childTokens(dc, "LinkStyleStmt")[0];
       if (style !== undefined) {
         styles.push({ kind: "style", raw: style.image.trim() });
-        // Record the directive-token span for a SINGLE-target `style <id> …` line, so the editor can
-        // update/remove that node's colour in place. A comma (multi-target) means it isn't editable here.
-        const target = style.image.trim().slice("style".length).trim().split(/[ \t]/)[0] ?? "";
-        if (target !== "" && !target.includes(",")) {
-          const lead = style.image.length - style.image.trimStart().length;
-          styleSpans.set(brand<string, "NodeId">(target), {
-            start: style.startOffset + lead,
-            end: style.startOffset + style.image.trimEnd().length,
-          });
-        }
+        // Record the span for a SINGLE-target `style <id> …` line, so the editor can update/remove that
+        // node's colour in place (multi-target lines aren't editable here).
+        const single = singleStyleTarget(style, "style");
+        if (single !== null) styleSpans.set(brand<string, "NodeId">(single.target), single.span);
       } else if (classDef !== undefined)
         styles.push({ kind: "classDef", raw: classDef.image.trim() });
       else if (cls !== undefined) styles.push({ kind: "class", raw: cls.image.trim() });
       else if (linkStyle !== undefined) {
         styles.push({ kind: "linkStyle", raw: linkStyle.image.trim() });
-        // Record the span of a SINGLE-index `linkStyle <n> …` line, so the editor can update/remove that
-        // edge's colour in place. A comma (multi-index) or `default` means it isn't editable here.
-        const target =
-          linkStyle.image.trim().slice("linkStyle".length).trim().split(/[ \t]/)[0] ?? "";
-        const idx = Number.parseInt(target, 10);
-        if (Number.isInteger(idx) && String(idx) === target) {
-          const lead = linkStyle.image.length - linkStyle.image.trimStart().length;
-          linkStyleSpans.set(idx, {
-            start: linkStyle.startOffset + lead,
-            end: linkStyle.startOffset + linkStyle.image.trimEnd().length,
-          });
+        // Record the span of a SINGLE-index `linkStyle <n> …` line so that edge's colour is editable.
+        const single = singleStyleTarget(linkStyle, "linkStyle");
+        const idx = single === null ? Number.NaN : Number.parseInt(single.target, 10);
+        if (single !== null && Number.isInteger(idx) && String(idx) === single.target) {
+          linkStyleSpans.set(idx, single.span);
         }
       }
     }

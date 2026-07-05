@@ -1,6 +1,13 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Write-side begins: shared style-span helper + state styleSpans
+
+- Extracted `singleStyleTarget` (in `style-spans.ts`): the single-target `style <id>`/`linkStyle <n>`
+  span-capture rule in ONE place (multi-target/`default` → null). Refactored flowchart's `collectStyles`
+  to use it. State now captures `StateSource.styleSpans`, so the editor can rewrite/remove a state's
+  colour in place — the first family beyond flowchart with source-colour WRITE support.
+
 ## 2026-07-05 — C4 styling (UpdateElementStyle → style)
 
 - C4 diagrams accept `UpdateElementStyle(id, $bgColor="…", $borderColor="…")` and `UpdateRelStyle(…)`.

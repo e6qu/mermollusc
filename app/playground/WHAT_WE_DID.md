@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Write state node colour to the source
+
+- `setNodeColour` now writes a `style <id> fill:…` directive into the SOURCE for state diagrams too (not
+  just flowchart), via a family-dispatched `nodeStyleSpanFor` + generalized `setNodeColourInSource`
+  (update-in-place / append / remove). Families without style-span capture yet still use the overlay.
+
 ## 2026-07-05 — Render C4 element colours from the source
 
 - `sourceNodeColors` now also colours C4 elements (scene ids equal element ids). C4 relationship colours
