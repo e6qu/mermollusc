@@ -91,10 +91,14 @@ test("a flowchart edge's colour is written to the source as a linkStyle directiv
 
 // A family whose dialect we don't parse `linkStyle` for keeps the overlay edge accent (additive, not a
 // fallback for Mermaid we can express).
-test("a non-flowchart family still colours an edge via the overlay accent", async ({ page }) => {
+// A family whose edges aren't in the shared `linkStyle` model (c4's relations) still colours an edge via
+// the overlay accent. (The families with edge link-styling now write to the source; see below.)
+test("a family without source edge-colour still colours an edge via the overlay accent", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
-  await setSource(page, "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Run\n");
+  await setSource(page, 'C4Context\n  Person(a, "A")\n  System(b, "B")\n  Rel(a, b, "uses")\n');
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   const { id } = await selectFirstEdge(page);
@@ -103,3 +107,42 @@ test("a non-flowchart family still colours an edge via the overlay accent", asyn
   await expect.poll(() => edgeAccent(page, id)).toBe("active");
   expect(await sourceText(page)).not.toContain("linkStyle");
 });
+
+// The write-side edge sweep: colouring an edge writes a `linkStyle <index> stroke:…` directive into the
+// SOURCE for every family that carries edges + link styling (state/er/block/network/cloud/class), just
+// like flowchart — targeting the edge by its declaration index, updating in place, clearing cleanly.
+for (const fam of [
+  { name: "state", source: "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Run\n" },
+  { name: "er", source: "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n" },
+  { name: "block", source: "block-beta\n  columns 2\n  A B\n  A --> B\n" },
+  { name: "network", source: 'network\n  server web1 "Web"\n  database db1 "DB"\n  web1 -- db1\n' },
+  { name: "cloud", source: 'cloud\n  compute web1 "Web"\n  storage s1 "S3"\n  web1 --> s1\n' },
+  { name: "class", source: "classDiagram\n  class Animal\n  class Dog\n  Animal <|-- Dog\n" },
+]) {
+  test(`a ${fam.name} edge's colour is written to the source as a linkStyle directive`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+    await setSource(page, fam.source);
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+    await selectFirstEdge(page);
+    const picker = page.locator("#ctx-colour-swatches");
+    await expect(picker).toBeVisible();
+    await picker.locator('.swatch[data-accent="danger"]').click();
+    await expect.poll(() => sourceText(page)).toContain("linkStyle 0 stroke:");
+
+    // re-colour updates in place — exactly one linkStyle 0 line
+    await selectFirstEdge(page);
+    await page.locator('#ctx-colour-swatches .swatch[data-accent="compute"]').click();
+    await expect
+      .poll(() => sourceText(page).then((t) => (t.match(/linkStyle 0 stroke:/g) ?? []).length))
+      .toBe(1);
+
+    // clearing removes the directive
+    await selectFirstEdge(page);
+    await page.locator('#ctx-colour-swatches .swatch[data-accent="none"]').click();
+    await expect.poll(() => sourceText(page)).not.toContain("linkStyle 0 stroke:");
+  });
+}

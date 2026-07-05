@@ -18,7 +18,7 @@ import type {
   TextSpan,
 } from "@m/contracts";
 import { childNodes, childTokens, imageOf, spanOf } from "./cst.js";
-import { singleStyleTarget } from "./style-spans.js";
+import { singleLinkStyleIndex, singleStyleTarget } from "./style-spans.js";
 import type { Children } from "./cst.js";
 import { flowchartParser } from "./grammar.js";
 import { iconRefOf } from "./icon-ref.js";
@@ -347,11 +347,8 @@ const buildResult = (cst: CstNode): Result<ParsedSource, ParseError> => {
       else if (linkStyle !== undefined) {
         styles.push({ kind: "linkStyle", raw: linkStyle.image.trim() });
         // Record the span of a SINGLE-index `linkStyle <n> …` line so that edge's colour is editable.
-        const single = singleStyleTarget(linkStyle, "linkStyle");
-        const idx = single === null ? Number.NaN : Number.parseInt(single.target, 10);
-        if (single !== null && Number.isInteger(idx) && String(idx) === single.target) {
-          linkStyleSpans.set(idx, single.span);
-        }
+        const single = singleLinkStyleIndex(linkStyle);
+        if (single !== null) linkStyleSpans.set(single.index, single.span);
       }
     }
   };

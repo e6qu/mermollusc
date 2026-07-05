@@ -18,7 +18,7 @@ import { lexingError, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { classParser } from "./class-grammar.js";
 import { classLexer } from "./class-tokens.js";
-import { singleStyleTarget } from "./style-spans.js";
+import { singleLinkStyleIndex, singleStyleTarget } from "./style-spans.js";
 
 export interface ParsedClass {
   readonly ast: ClassAst;
@@ -111,6 +111,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   const relSpans = new Map<ClassRelId, TextSpan>();
   const styles: FlowStyle[] = [];
   const styleSpans = new Map<ClassEntityId, TextSpan>();
+  const linkStyleSpans = new Map<number, TextSpan>();
   // `:::name` on a class ref → a synthesised `class <id> <name>` assignment (as everywhere else).
   const assign = (id: string, shorthand: IToken | undefined): void => {
     if (shorthand !== undefined)
@@ -142,7 +143,11 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
           styleSpans.set(brand<string, "ClassEntityId">(single.target), single.span);
         }
       } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
-      else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+      else if (ls !== undefined) {
+        styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        const singleLs = singleLinkStyleIndex(ls);
+        if (singleLs !== null) linkStyleSpans.set(singleLs.index, singleLs.span);
+      }
       continue;
     }
 
@@ -263,7 +268,7 @@ const buildResult = (cst: CstNode): Result<ParsedClass, ParseError> => {
   }));
   return ok({
     ast: { kind: "class", entities, relationships, styles },
-    source: { entities: entitySpans, relationships: relSpans, styleSpans },
+    source: { entities: entitySpans, relationships: relSpans, styleSpans, linkStyleSpans },
   });
 };
 

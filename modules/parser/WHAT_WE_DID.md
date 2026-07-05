@@ -1,6 +1,13 @@
 # @m/parser — work log
 
 
+## 2026-07-05 — Write-side linkStyleSpans for state/er/block/network/cloud/class
+
+- New shared `singleLinkStyleIndex` helper (extends `style-spans.ts`) captures a single-index
+  `linkStyle <n>` span; flowchart refactored onto it. Each edge-bearing family now captures
+  `linkStyleSpans` (keyed by declaration index), so the editor can rewrite/remove an edge's colour in
+  place — the write-side counterpart of the read-side `linkStyle` resolution.
+
 ## 2026-07-05 — Write-side styleSpans for ER/block/network/cloud/class
 
 - Each of these families now captures `styleSpans` (single-target `style <id>` line spans) via the shared

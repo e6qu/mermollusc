@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Write edge colour to source for the non-flowchart families
+
+- `setEdgeColour` now writes `linkStyle <index> stroke:…` into the SOURCE for state/er/block/network/
+  cloud/class too (generalized `setEdgeColourInSource` + `edgeDeclList`/`edgeLinkStyleSpanFor`). Only
+  c4 (rels not in the shared linkStyle model) and mindmap (no edges) keep the overlay edge accent.
+
 ## 2026-07-05 — Write node colour to source for ER/block/network/cloud/class
 
 - `setNodeColour` now writes `style <id> fill:…` into the SOURCE for ER/block/network/cloud/class too

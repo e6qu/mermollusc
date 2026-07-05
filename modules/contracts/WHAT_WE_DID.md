@@ -1,6 +1,11 @@
 # @m/contracts — work log
 
 
+## 2026-07-05 — linkStyleSpans on State/Er/Block/Network/Cloud/Class Source
+
+- Each gains `linkStyleSpans: ReadonlyMap<number, TextSpan>` (single-index `linkStyle <n>` spans, keyed
+  by the edge/transition/relationship/link declaration index).
+
 ## 2026-07-05 — styleSpans on ER/Block/Network/Cloud/Class Source
 
 - `ErSource`/`BlockSource`/`NetworkSource`/`CloudSource`/`ClassSource` each gain

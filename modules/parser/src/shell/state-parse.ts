@@ -20,7 +20,7 @@ import { lexingError, parseErrorAt, recognitionError } from "./parse-error.js";
 import type { ParseError } from "./parse-error.js";
 import { stateParser } from "./state-grammar.js";
 import { stateLexer } from "./state-tokens.js";
-import { singleStyleTarget } from "./style-spans.js";
+import { singleLinkStyleIndex, singleStyleTarget } from "./style-spans.js";
 
 const ANNOTATION_KIND: Record<string, StateKind> = {
   fork: "fork",
@@ -106,6 +106,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   const notes: StateNote[] = [];
   const styles: FlowStyle[] = [];
   const styleSpans = new Map<StateId, TextSpan>();
+  const linkStyleSpans = new Map<number, TextSpan>();
   let direction: FlowDirection = "TB";
 
   const addMember = (composite: string | null, id: string): void => {
@@ -181,7 +182,11 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
           if (single !== null) styleSpans.set(brand<string, "StateId">(single.target), single.span);
         } else if (cd !== undefined) styles.push({ kind: "classDef", raw: cd.image.trim() });
         else if (cl !== undefined) styles.push({ kind: "class", raw: cl.image.trim() });
-        else if (ls !== undefined) styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+        else if (ls !== undefined) {
+          styles.push({ kind: "linkStyle", raw: ls.image.trim() });
+          const singleLs = singleLinkStyleIndex(ls);
+          if (singleLs !== null) linkStyleSpans.set(singleLs.index, singleLs.span);
+        }
         continue;
       }
       const dirStmt = childNodes(stmt.children, "stateDirectionStmt")[0];
@@ -272,7 +277,7 @@ const buildResult = (cst: CstNode): Result<ParsedState, ParseError> => {
   }));
   return ok({
     ast: { kind: "state", direction, states, transitions, composites, notes, styles },
-    source: { states: stateSpans, transitions: transitionSpans, styleSpans },
+    source: { states: stateSpans, transitions: transitionSpans, styleSpans, linkStyleSpans },
   });
 };
 

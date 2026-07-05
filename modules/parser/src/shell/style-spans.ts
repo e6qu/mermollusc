@@ -25,3 +25,17 @@ export const singleStyleTarget = (
     },
   };
 };
+
+// The editable span of a single-index `linkStyle <n> …` directive, keyed by that integer edge index, or
+// null for a multi-index / `default` line. Shared by every family so an edge's colour is rewritable in
+// place by its declaration index.
+export const singleLinkStyleIndex = (
+  token: IToken,
+): { readonly index: number; readonly span: TextSpan } | null => {
+  const single = singleStyleTarget(token, "linkStyle");
+  if (single === null) return null;
+  const index = Number.parseInt(single.target, 10);
+  // Reject non-integer targets (`String(index) === target` rejects e.g. `01`, `1x`).
+  if (!Number.isInteger(index) || String(index) !== single.target) return null;
+  return { index, span: single.span };
+};
