@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-05 — Flag non-Mermaid diagrams in the UI
+
+- A `non-Mermaid` badge (amber, in the source header next to the kind badge) now marks diagrams whose
+  syntax isn't Mermaid — our custom `network`/`cloud` families and a Graphviz DOT import (`isDotImport`)
+  — so users don't assume the source round-trips to real Mermaid. Tooltip/aria-label name the dialect.
+
 ## 2026-07-05 — Write edge colour to source for the non-flowchart families
 
 - `setEdgeColour` now writes `linkStyle <index> stroke:…` into the SOURCE for state/er/block/network/

@@ -346,6 +346,7 @@
       .workbench[data-source-collapsed] #editor,
       .workbench[data-source-collapsed] .editor-tools,
       .workbench[data-source-collapsed] .editor-head .kind-badge,
+      .workbench[data-source-collapsed] .editor-head .dialect-badge,
       .workbench[data-source-collapsed] .editor-head .role-badge { display: none; }
       .workbench[data-source-collapsed] .editor-head { border-bottom: none; }
       .kind-badge {
@@ -367,6 +368,24 @@
         border: 1px solid var(--line);
         border-radius: 999px;
         padding: 2px 10px;
+      }
+      /* Flags a diagram whose syntax is NOT Mermaid (our custom network/cloud families, or a Graphviz
+         DOT import) so users don't assume it round-trips to real Mermaid. Amber, matching the viewer
+         role badge's "heads-up" treatment, and `cursor: help` to hint the explanatory tooltip. */
+      .dialect-badge {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.04em;
+        color: #8a5a00;
+        background: color-mix(in srgb, #f5a623 18%, transparent);
+        border: 1px solid #c47d0a;
+        border-radius: 999px;
+        padding: 2px 9px;
+        cursor: help;
+      }
+      html[data-theme="dark"] .dialect-badge {
+        color: #f7cd80;
+        background: color-mix(in srgb, #f5a623 26%, transparent);
       }
       .role-badge[data-role="viewer"] {
         color: #8a5a00;
@@ -1211,6 +1230,7 @@
             <span class="grow"></span>
             <span id="role-badge" class="role-badge" hidden></span>
             <span id="kind" class="kind-badge">flowchart</span>
+            <span id="dialect-badge" class="dialect-badge" hidden></span>
             <button id="source-collapse" class="head-btn" type="button" aria-expanded="true"
               aria-controls="editor" title="Collapse the source panel">‹</button>
           </div>

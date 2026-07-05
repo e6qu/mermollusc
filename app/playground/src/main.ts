@@ -294,6 +294,7 @@ const styleSelect = document.querySelector<HTMLSelectElement>("#layout-style");
 const loadPackEl = document.querySelector<HTMLInputElement>("#load-pack");
 const exampleEl = document.querySelector<HTMLSelectElement>("#example");
 const kindEl = document.querySelector<HTMLSpanElement>("#kind");
+const dialectEl = document.querySelector<HTMLSpanElement>("#dialect-badge");
 const statusEl = document.querySelector<HTMLElement>("#status");
 const stageWrap = document.querySelector<HTMLElement>("#stage-wrap");
 const diagramNav = document.querySelector<HTMLUListElement>("#diagram-nav");
@@ -400,6 +401,7 @@ if (
   loadPackEl === null ||
   exampleEl === null ||
   kindEl === null ||
+  dialectEl === null ||
   statusEl === null ||
   stageWrap === null ||
   diagramNav === null ||
@@ -2926,8 +2928,29 @@ statusEl.addEventListener("keydown", (ev) => {
 // Relax seeds ELK (flowchart specifically). Add-node now works for every family with a one-line node
 // decl (flowchart/block/network/sequence); off those it's disabled with a reason rather than a silent
 // dead click. Connect and Delete already work for every family.
+// `network`/`cloud` are this project's own diagram families — not part of Mermaid. A DOT import is
+// Graphviz, also not Mermaid (it parses to a flowchart AST, so `isDotImport` is what distinguishes it).
+const NON_MERMAID_KINDS: ReadonlySet<DiagramAst["kind"]> = new Set(["network", "cloud"]);
+
 const applyKind = (kind: DiagramAst["kind"]): void => {
   kindEl.textContent = kind;
+  // Flag non-Mermaid dialects so users don't assume the source is valid Mermaid (it won't paste into a
+  // Mermaid renderer). The tooltip/aria-label names the actual dialect.
+  const nonMermaidWhy = isDotImport
+    ? "Graphviz DOT — imported and rendered here, but not a Mermaid diagram type"
+    : NON_MERMAID_KINDS.has(kind)
+      ? `“${kind}” is a custom diagram type in this tool, not part of Mermaid`
+      : null;
+  if (nonMermaidWhy === null) {
+    dialectEl.hidden = true;
+    dialectEl.removeAttribute("title");
+    dialectEl.removeAttribute("aria-label");
+  } else {
+    dialectEl.hidden = false;
+    dialectEl.textContent = "non-Mermaid";
+    dialectEl.title = nonMermaidWhy;
+    dialectEl.setAttribute("aria-label", nonMermaidWhy);
+  }
   // A collaborative viewer is read-only: these mutate the diagram, so they must be truly `disabled`
   // (not just CSS-dimmed) or a keyboard / screen-reader user can still reach and "press" them.
   const isFlowchart = currentRenderValid && kind === "flowchart";
