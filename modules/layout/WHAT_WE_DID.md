@@ -1,5 +1,12 @@
 # @m/layout — work log
 
+
+## 2026-07-05 — relaxScene: generic force-directed relax
+
+- New pure `relaxScene(scene, pinned)` — deterministic Fruchterman-Reingold (seeds from current centres,
+  no randomness) over TOP-LEVEL units (a leaf, or a container moved rigidly with its descendants so
+  nesting is preserved). Pinned units are held and the forces flow around them. Returns new origins for
+  the moved nodes. Powers "Relax" for every node-graph family (was flowchart-only, ELK-seed).
 ## 2026-07-04 — SceneEdge.accent default
 
 - Every family's edge construction now sets the new required `SceneEdge.accent` to `"none"` (colour is
