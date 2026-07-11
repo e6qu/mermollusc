@@ -1,5 +1,5 @@
 import { point, rect, twoOrMore, type Point, type TwoOrMore } from "@m/std";
-import type { Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
+import type { EdgeEnd, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
 import type { MeasureText } from "./graph.js";
 import { mazeRoute, segmentThroughBox, OBSTACLE_CLEARANCE } from "./maze.js";
 
@@ -1391,20 +1391,44 @@ const compress = (pts: readonly Point[]): Point[] => {
 // reaches, route them all through one shared trunk line just off that side and into a single shared port:
 // each edge runs from its far end to the trunk, then along the trunk into the node. The trunk segment is
 // shared by the whole fan (a real backbone) and the renderer marks a junction where each edge joins it.
+// Ends that denote a flow DIRECTION (an arrowhead), as opposed to ER/UML cardinality glyphs or a plain
+// line end — mirrors the renderer's `DIRECTIONAL_ENDS`.
+const DIRECTIONAL_ENDS: ReadonlySet<EdgeEnd> = new Set(["arrow", "arrowOpen", "triangle"]);
+
+// A trunk backbone may only merge COMPATIBLE edges. Fans are grouped at the destination node `node`
+// (`node === e.to`), so the arrow at `toEnd` points INTO the node and the arrow at `fromEnd` points OUT.
+// Two edges share a trunk only when this key matches, so a directed edge never joins an undirected one,
+// and an into-node edge never joins an out-of-node one (opposite directions) — they get separate,
+// adjacent trunks instead.
+const trunkCompatKey = (e: SceneEdge): string => {
+  const into = DIRECTIONAL_ENDS.has(e.toEnd);
+  const outOf = DIRECTIONAL_ENDS.has(e.fromEnd);
+  if (!into && !outOf) return "u"; // undirected
+  return `d${into ? "i" : ""}${outOf ? "o" : ""}`;
+};
+const TRUNK_SEP = 16; // perpendicular gap between two adjacent trunks on the same node side
+
 // Bigger fans claim their edges first; an edge already in one trunk isn't pulled into another. Edges not
 // in any fan keep the routes they came in with — so callers pass an already-routed scene.
 const trunkMerge = (scene: Scene): Scene => {
   const boxOf = boxOfNode(scene);
   const obstacleBoxes = obstaclesForEdges(scene);
-  const fans = new Map<SceneNodeId, Map<Side, number[]>>();
-  const addIncident = (node: SceneNodeId, side: Side, idx: number): void => {
+  // node → side → compat-key → edge indices. The compat-key split keeps incompatible edges (directed vs
+  // undirected, into-node vs out-of-node) out of a shared trunk.
+  const fans = new Map<SceneNodeId, Map<Side, Map<string, number[]>>>();
+  const addIncident = (node: SceneNodeId, side: Side, key: string, idx: number): void => {
     let bySide = fans.get(node);
     if (bySide === undefined) {
       bySide = new Map();
       fans.set(node, bySide);
     }
-    const list = bySide.get(side);
-    if (list === undefined) bySide.set(side, [idx]);
+    let byKey = bySide.get(side);
+    if (byKey === undefined) {
+      byKey = new Map();
+      bySide.set(side, byKey);
+    }
+    const list = byKey.get(key);
+    if (list === undefined) byKey.set(key, [idx]);
     else list.push(idx);
   };
   scene.edges.forEach((e, idx) => {
@@ -1412,7 +1436,7 @@ const trunkMerge = (scene: Scene): Scene => {
     const fb = boxOf.get(e.from);
     const tb = boxOf.get(e.to);
     if (fb === undefined || tb === undefined) return;
-    addIncident(e.to, facingSide(tb, fb), idx);
+    addIncident(e.to, facingSide(tb, fb), trunkCompatKey(e), idx);
   });
   const groups: {
     readonly node: SceneNodeId;
@@ -1420,9 +1444,13 @@ const trunkMerge = (scene: Scene): Scene => {
     readonly edges: readonly number[];
   }[] = [];
   for (const [node, bySide] of fans)
-    for (const [side, edges] of bySide)
-      if (edges.length >= TRUNK_MIN) groups.push({ node, side, edges });
+    for (const [side, byKey] of bySide)
+      for (const edges of byKey.values())
+        if (edges.length >= TRUNK_MIN) groups.push({ node, side, edges });
   groups.sort((a, b) => b.edges.length - a.edges.length);
+  // How many trunks already placed on a given node side, so a second compatible group sits in an
+  // ADJACENT trunk (offset outward) rather than on top of the first.
+  const trunksOnSide = new Map<string, number>();
 
   const claimed = new Set<number>();
   const routed = new Map<number, TwoOrMore<Point>>();
@@ -1448,24 +1476,33 @@ const trunkMerge = (scene: Scene): Scene => {
 
     if (farPorts.length < TRUNK_MIN) continue;
 
+    // A second compatible group on this same node side is offset OUTWARD (toward the far ports) into an
+    // adjacent, parallel trunk — re-clamped so it never passes the far ports.
+    const placedKey = `${g.node}:${g.side}`;
+    const off = (trunksOnSide.get(placedKey) ?? 0) * TRUNK_SEP;
+    trunksOnSide.set(placedKey, (trunksOnSide.get(placedKey) ?? 0) + 1);
     let trunk: number;
     if (g.side === "R") {
       const x0 = tb.x + tb.w;
       const x1 = Math.min(...farPorts.map((p) => p.oPort.x));
-      trunk = Math.max(x0 + TRUNK_GAP, Math.min(x1 - TRUNK_GAP, (x0 + x1) / 2));
+      const base = Math.max(x0 + TRUNK_GAP, Math.min(x1 - TRUNK_GAP, (x0 + x1) / 2));
+      trunk = Math.min(x1 - TRUNK_GAP, base + off);
     } else if (g.side === "L") {
       const x0 = tb.x;
       const x1 = Math.max(...farPorts.map((p) => p.oPort.x));
-      trunk = Math.min(x0 - TRUNK_GAP, Math.max(x1 + TRUNK_GAP, (x0 + x1) / 2));
+      const base = Math.min(x0 - TRUNK_GAP, Math.max(x1 + TRUNK_GAP, (x0 + x1) / 2));
+      trunk = Math.max(x1 + TRUNK_GAP, base - off);
     } else if (g.side === "B") {
       const y0 = tb.y + tb.h;
       const y1 = Math.min(...farPorts.map((p) => p.oPort.y));
-      trunk = Math.max(y0 + TRUNK_GAP, Math.min(y1 - TRUNK_GAP, (y0 + y1) / 2));
+      const base = Math.max(y0 + TRUNK_GAP, Math.min(y1 - TRUNK_GAP, (y0 + y1) / 2));
+      trunk = Math.min(y1 - TRUNK_GAP, base + off);
     } else {
       // "T"
       const y0 = tb.y;
       const y1 = Math.max(...farPorts.map((p) => p.oPort.y));
-      trunk = Math.min(y0 - TRUNK_GAP, Math.max(y1 + TRUNK_GAP, (y0 + y1) / 2));
+      const base = Math.min(y0 - TRUNK_GAP, Math.max(y1 + TRUNK_GAP, (y0 + y1) / 2));
+      trunk = Math.max(y1 + TRUNK_GAP, base - off);
     }
 
     for (const { idx, e, oPort } of farPorts) {

@@ -5,11 +5,12 @@
 These came out of a precise routing audit of the deployed demo; each is its own follow-up PR (routing
 is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
 
-- **Trunk routing must not merge incompatible edges into one trunk.** Sharing a trunk is encouraged for
-  edges that genuinely run together, but a trunk must NOT combine edges of opposite direction, nor mix a
-  directed edge with an undirected one. Group trunk membership by (axis, direction/undirected-ness) so a
-  shared backbone only carries compatible edges; opposite-direction or directed+undirected pairs get
-  separate adjacent trunks.
+- *(done 2026-07-11)* **Trunk routing must not merge incompatible edges into one trunk.** `trunkMerge`
+  now partitions each node-side fan by a compatibility key (`trunkCompatKey`): undirected vs directed,
+  and — for directed — into-node vs out-of-node. Only edges with the same key share a backbone; a second
+  compatible group on the same side is placed in an adjacent, parallel trunk (offset by `TRUNK_SEP`).
+  Real examples are unchanged (each family's edges are uniformly directed or undirected → one group).
+  Guarded by a `route.test.ts` unit test (directed + undirected fan → two distinct trunk lines).
 - **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
   (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of
   connectors separates more and leaves the node farther before turning. STILL OPEN and needs a bigger

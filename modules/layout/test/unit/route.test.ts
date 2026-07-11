@@ -408,6 +408,47 @@ describe("spreadPorts", () => {
     expect(overlaps(trunkRoutes(scene))).toBeGreaterThan(0);
   });
 
+  it("trunk merges only COMPATIBLE edges: directed and undirected fans get separate adjacent trunks", () => {
+    // A hub `h` with four connectors entering its LEFT side: two DIRECTED into h (arrow at the h end)
+    // and two UNDIRECTED. A trunk must not merge a directed edge with an undirected one — they belong
+    // on separate, parallel backbones.
+    const directed = (id: string, from: string, to: string) => ({
+      ...edge(id, from, to),
+      toEnd: "arrow" as const,
+    });
+    const scene = {
+      nodes: [
+        node("h", 400, 150),
+        node("a", 0, 0),
+        node("b", 0, 90),
+        node("c", 0, 180),
+        node("d", 0, 270),
+      ],
+      edges: [
+        directed("ah", "a", "h"),
+        directed("bh", "b", "h"),
+        edge("ch", "c", "h"),
+        edge("dh", "d", "h"),
+      ],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 500, 320),
+    };
+    const routed = trunkRoutes(scene);
+    // The trunk-parallel segment enters h at the second-to-last waypoint; on the LEFT side the trunk is
+    // vertical, so that waypoint's x IS the trunk line.
+    const trunkX = (id: string): number => {
+      const e = routed.edges.find((x) => x.id === brand<string, "SceneEdgeId">(id));
+      const p = e?.waypoints[e.waypoints.length - 2];
+      return p?.x ?? Number.NaN;
+    };
+    // The two directed edges share one trunk; the two undirected share another.
+    expect(trunkX("ah")).toBeCloseTo(trunkX("bh"), 1);
+    expect(trunkX("ch")).toBeCloseTo(trunkX("dh"), 1);
+    // …and the directed trunk is a DIFFERENT line from the undirected one (never merged together).
+    expect(Math.abs(trunkX("ah") - trunkX("ch"))).toBeGreaterThan(4);
+  });
+
   it("reserves channel width by edge density: a busy channel pushes the far band apart", () => {
     // Three top-row nodes all feed one bottom node through a narrow gap → the channel must widen.
     const scene = {
