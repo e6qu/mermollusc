@@ -1,6 +1,34 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-11 — flake hardening (boy-scout sweep)
+
+Removed the fixed-wait races that made the e2e gate rely on its one retry. A static sweep + the earlier
+`make cov` timeout flake drove the fixes:
+
+- **Coverage-timeout flake class (all modules)** — a property test (`numRuns` in the hundreds) or an
+  ELK-driven integration test is a single vitest test under one timeout; under v8 coverage on a loaded
+  runner it could exceed the default 5s and flake `make cov`. Set `testTimeout`/`hookTimeout` to 20s
+  centrally in `tools/vitest.shared.mjs`, so every library module inherits the headroom the app already
+  had (`app/playground/vitest.config.ts`). Fixed the now-stale "nothing runs `make cov`" comment in
+  `modules/layout/vitest.config.ts` (the pre-push hook does).
+- **`waitForTimeout` → `expect.poll` conversions** — the classic "sleep N ms then assert the render
+  landed" race, which fails under load when the parse→layout→paint takes longer than the guess:
+  `paste-autodetect.spec.ts` (7 waits → poll the kind badge / geometry / override count),
+  `relax-pin.spec.ts` (poll the ER-render kind badge instead of a wait that `cw>0` couldn't gate; poll
+  the relaxed node's displacement), `edge-control-points.spec.ts` (poll the persisted waypoint; drop a
+  dead trailing wait), `edge-reconnect.spec.ts` (poll the two-way source rewrite), and my own
+  `e2e-pages/demo-artifact.spec.ts` negative assertions (wait for `networkidle`, not a fixed delay,
+  before asserting "no off-origin request / no WebSocket").
+- Deliberately left the *protective* settles: the negative "assert nothing happened" cases
+  (declined-reconnect, reset-cancelled), the 1s typing-debounce boundary in `undo`, the collab
+  seed-race window, and uncompared screenshots — where a fixed settle guards against a false pass rather
+  than racing a positive condition.
+
+Verified: the full UI suite passes 313/313 with **retries disabled** (was relying on `retries: 1`), and
+the converted specs pass `--repeat-each=3 --retries=0`.
+
+
 ## 2026-07-11 — Pages demo e2e coverage
 
 Broadened the `e2e-pages/` suite (which runs against the BUILT `site-dist/` artifact, not the dev

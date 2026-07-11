@@ -59,7 +59,9 @@ test("dragging an edge endpoint onto another node rewrites the source", async ({
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 
   await dragToEndpointOnto(page, "C");
-  expect(await sourceText(page)).toContain("A[A] --> C");
+  // Poll the source rewrite (the two-way patch + editor update is async) rather than trusting the
+  // helper's fixed settle to have elapsed past it.
+  await expect.poll(() => sourceText(page)).toContain("A[A] --> C");
 });
 
 // A chained endpoint (`A --> B --> C` reuses the `B` token for two edges) is declined, since rewriting it

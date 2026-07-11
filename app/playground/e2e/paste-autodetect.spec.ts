@@ -5,6 +5,12 @@ import { expect, test, type Page } from "@playwright/test";
 // Markdown/GitHub/chat) unwraps on paste.
 
 const kind = async (page: Page) => (await page.locator("#kind").textContent())?.trim() ?? null;
+// Poll the kind badge rather than sleeping a fixed time after an edit: the re-render is async (a
+// parse→layout→paint that runs slower under CI load), so a fixed wait races it.
+const expectKind = (page: Page, want: string) => expect.poll(() => kind(page)).toBe(want);
+const overrideCount = (page: Page) => page.evaluate(() => window.__overrideCount?.() ?? -1);
+const geometryNodeIds = (page: Page) =>
+  page.evaluate(() => (window.__shownGeometry?.()?.nodes ?? []).map((n) => n.id).sort());
 const canvasReady = (page: Page) =>
   expect
     .poll(() => page.locator("#stage").evaluate((c) => (c as HTMLCanvasElement).width))
@@ -15,7 +21,7 @@ const CHARTS: [string, string][] = [
   ["stateDiagram-v2\n  [*] --> Idle\n  Idle --> Run\n", "state"],
   ["classDiagram\n  Animal <|-- Dog\n", "class"],
   ["erDiagram\n  CUSTOMER ||--o{ ORDER : places\n", "er"],
-  ["pie title Pets\n  \"Dogs\": 3\n  \"Cats\": 2\n", "pie"],
+  ['pie title Pets\n  "Dogs": 3\n  "Cats": 2\n', "pie"],
   ["gantt\n  title T\n  section S\n  A task :a1, 2024-01-01, 3d\n", "gantt"],
   ["mindmap\n  root\n    a\n    b\n", "mindmap"],
   ["gitGraph\n  commit\n  branch dev\n  commit\n", "gitGraph"],
@@ -28,8 +34,7 @@ test("autodetects every family and drops the example select to placeholder", asy
   await canvasReady(page);
   for (const [src, want] of CHARTS) {
     await page.evaluate((s) => window.__editor?.setValue(s), src);
-    await page.waitForTimeout(250);
-    expect(await kind(page), want).toBe(want);
+    await expectKind(page, want);
     expect(await page.locator("#example").inputValue().catch(() => "")).toBe("");
   }
   expect(errs).toEqual([]);
@@ -46,14 +51,13 @@ test("switching diagrams re-syncs UI and drops the previous overlay", async ({ p
     await page.mouse.move(r.x + r.w / 2 + 40, r.y + r.h / 2 + 40, { steps: 6 });
     await page.mouse.up();
   }
-  await expect.poll(() => page.evaluate(() => window.__overrideCount?.() ?? -1)).toBe(1);
+  await expect.poll(() => overrideCount(page)).toBe(1);
   const styleBefore = await page.locator("#layout-style").evaluate((s) => (s as HTMLSelectElement).options.length);
 
   await page.evaluate(() => window.__editor?.setValue("sequenceDiagram\n  Alice->>Bob: Hi\n"));
-  await page.waitForTimeout(300);
-  expect(await kind(page)).toBe("sequence");
+  await expectKind(page, "sequence");
   // the flowchart's override must not linger on the sequence diagram
-  expect(await page.evaluate(() => window.__overrideCount?.() ?? -1)).toBe(0);
+  await expect.poll(() => overrideCount(page)).toBe(0);
   // the style select repopulated for the new family
   const styleAfter = await page.locator("#layout-style").evaluate((s) => (s as HTMLSelectElement).options.length);
   expect(styleAfter).not.toBe(styleBefore);
@@ -71,8 +75,7 @@ test("pasting a fenced ```mermaid block unwraps it and autodetects", async ({ pa
     dt.setData("text/plain", "```mermaid\nclassDiagram\n  A <|-- B\n```");
     el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
   });
-  await page.waitForTimeout(300);
-  expect(await kind(page)).toBe("class");
+  await expectKind(page, "class");
   expect((await page.evaluate(() => window.__editor?.value() ?? "")).includes("```")).toBe(false);
 });
 
@@ -81,21 +84,17 @@ test("pasting Mermaid with style/classDef/linkStyle directives parses (complianc
   await canvasReady(page);
   // land on a distinct graph first, so a failure to parse the styled source would be visible as staleness
   await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  Z --> W\n"));
-  await page.waitForTimeout(200);
+  await expect.poll(() => geometryNodeIds(page)).toEqual(["W", "Z"]);
   await page.evaluate(() =>
     window.__editor?.setValue(
       "flowchart TD\n  A[Start] --> B{Choice}\n  B --> C[Done]\n  style A fill:#f9f,stroke:#333\n  classDef hot fill:#f96\n  class C hot\n  linkStyle 0 stroke:#f00\n",
     ),
   );
-  await page.waitForTimeout(300);
-  const nodes = await page.evaluate(() =>
-    (window.__shownGeometry?.()?.nodes ?? []).map((n) => n.id).sort(),
-  );
-  expect(nodes).toEqual(["A", "B", "C"]);
+  await expect.poll(() => geometryNodeIds(page)).toEqual(["A", "B", "C"]);
 });
 
 test("pasting a WHOLE diagram replaces the current one + switches the renderer type", async ({ page }) => {
-  const pasteInto = async (text: string) => {
+  const pasteInto = async (text: string, expectKindValue: string) => {
     await page.locator(".cm-content").click();
     await page.evaluate((t) => {
       const el = document.querySelector(".cm-content");
@@ -104,26 +103,22 @@ test("pasting a WHOLE diagram replaces the current one + switches the renderer t
       dt.setData("text/plain", t);
       el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
     }, text);
-    await page.waitForTimeout(300);
+    await expectKind(page, expectKindValue);
   };
-  const kind = async () => (await page.locator("#kind").textContent())?.trim() ?? null;
 
   await page.goto("/");
   await canvasReady(page);
   await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  A --> B\n"));
-  await page.waitForTimeout(200);
+  await expectKind(page, "flowchart");
 
   // a full diagram paste (no select-all) replaces the whole document and re-detects the type
-  await pasteInto("sequenceDiagram\n  Alice->>Bob: Hi\n");
-  expect(await kind()).toBe("sequence");
+  await pasteInto("sequenceDiagram\n  Alice->>Bob: Hi\n", "sequence");
   expect(await page.evaluate(() => window.__editor?.value() ?? "")).not.toContain("flowchart");
-  await pasteInto("stateDiagram-v2\n  [*] --> Idle\n");
-  expect(await kind()).toBe("state");
+  await pasteInto("stateDiagram-v2\n  [*] --> Idle\n", "state");
 
   // a partial snippet (no diagram header) still inserts, not replaces
   await page.evaluate(() => window.__editor?.setValue("flowchart TD\n  A --> B\n"));
-  await page.waitForTimeout(150);
-  await pasteInto("  C --> D\n");
-  expect(await kind()).toBe("flowchart");
+  await expectKind(page, "flowchart");
+  await pasteInto("  C --> D\n", "flowchart");
   expect(await page.evaluate(() => window.__editor?.value() ?? "")).toContain("C --> D");
 });
