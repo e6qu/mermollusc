@@ -131,22 +131,30 @@ describe("style invariants", () => {
     expect(styleOk(scene([node("a", 0, 0), node("b", 10, 0)], []))).toBe(false);
   });
 
-  it("edgesUseCardinalMounts rejects endpoints away from side centres", () => {
-    const clean = scene(
+  it("edgesUseCardinalMounts accepts any on-side attach point but rejects off-side endpoints", () => {
+    const centreMount = scene(
       [node("a", 0, 0), node("b", 200, 0)],
       [edge("e", "a", "b", [40, 15], [200, 15])],
     );
-    const cornerish = scene(
+    // A fan of incompatible edges is spread ALONG a node side, so an off-centre but on-side attach point
+    // is valid under the relaxed invariant (node "a" is 40×30, so x=40 is its right side; y=5 is on it).
+    const offCentreOnSide = scene(
       [node("a", 0, 0), node("b", 200, 0)],
       [edge("e", "a", "b", [40, 5], [200, 15])],
     );
-    expect(edgesUseCardinalMounts(clean)).toBe(true);
-    expect(cardinalMountViolations(cornerish)).toEqual([
+    // An endpoint that floats off every side (here interior to the box) is still a violation.
+    const offSide = scene(
+      [node("a", 0, 0), node("b", 200, 0)],
+      [edge("e", "a", "b", [20, 15], [200, 15])],
+    );
+    expect(edgesUseCardinalMounts(centreMount)).toBe(true);
+    expect(edgesUseCardinalMounts(offCentreOnSide)).toBe(true);
+    expect(cardinalMountViolations(offSide)).toEqual([
       {
         edgeId: brand<string, "SceneEdgeId">("e"),
         nodeId: brand<string, "SceneNodeId">("a"),
         end: "from",
-        endpoint: point(40, 5),
+        endpoint: point(20, 15),
       },
     ]);
   });

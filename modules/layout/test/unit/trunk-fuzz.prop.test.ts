@@ -10,15 +10,17 @@ import { respreadPorts, trunkRoutes } from "../../src/core/route.js";
 // COMPATIBLE edges — never a directed with an undirected one, never two directed edges flowing opposite
 // ways. Complex graphs are where the overlaps hide, so we push node/edge counts up.
 //
-// PROGRESS (2026-07-12): `offsetParallelEdges` spreads ALL multi-edges between one node pair onto
-// distinct lanes — STRAIGHT pairs by a whole-route translate and BENT (L-route) pairs by a per-segment
-// perpendicular shift (each corner takes both its x- and y-offset), so a directed+undirected pair or an
-// A→B/B→A pair no longer shares a backbone whether the nodes are aligned or diagonal (guarded by
-// `NOW_CLEAN`). STILL OPEN: cross-node channel alignment in complex graphs — edges between DIFFERENT
-// pairs whose legs land on one track; that needs signature-aware lanes in the base router. The two
-// property tests below stay `it.fails` (they PASS while ANY violation remains and FLIP to failing the
-// day the router is fully fixed — the signal to drop `.fails` and promote them to real gates). See
-// modules/layout/DO_NEXT.md.
+// PROGRESS (2026-07-12): a final `separateIncompatibleBackbones` pass runs after routing (and after
+// trunk-merge). It finds any coincident collinear segment carrying two INCOMPATIBLE edges and moves one
+// segment onto its own track — perpendicular to its own axis so the route stays orthogonal; where the
+// moved segment carries a MOUNT, that mount slides ALONG the node side (the cardinal-mount invariant was
+// relaxed from "side centre" to "on the side", precisely so a mixed fan can spread instead of sharing a
+// stub). It searches outward for clear track with a best-so-far accumulator + displacement cap (no ugly
+// detours). This closes the cross-node cases `offsetParallelEdges` couldn't: collinear stacked nodes and
+// mixed-direction fans at a shared mount. TRUNK is now a REAL gate below. BUS is nearly closed but a rare
+// (~0.5%) residual survives in DENSE graphs (8 nodes / ~14 edges) where no local move converges, so its
+// property stays `it.fails` (it PASSES while a violation remains and flips to failing when bus is fully
+// clean). Closing the last of it needs node-moving relayout. See modules/layout/DO_NEXT.md.
 
 const nodeAt = (id: string, x: number, y: number, w = 60, h = 40): SceneNode => ({
   id: brand<string, "SceneNodeId">(id),
@@ -144,9 +146,11 @@ const graph: fc.Arbitrary<GraphSpec> = fc.record({
   ),
 });
 
-// Multi-edge offsetting (`offsetParallelEdges`) fixed these — they must STAY clean in both backbone
-// modes (a directed + undirected pair, an opposite pair, a mixed hub — all edges between one node pair,
-// whether the two nodes are aligned (straight route) or diagonal (bent L-route)).
+// Concrete cases the router now keeps clean of incompatible backbones in BOTH modes — they must never
+// re-break. The first three are same-pair multi-edges `offsetParallelEdges` fixed (aligned, hub, diagonal
+// L-route); the last two are cross-node cases `separateIncompatibleBackbones` fixed — collinear stacked
+// nodes, and a mixed directed/undirected fan leaving one shared mount. (This guards the backbone rule
+// only, not mount placement.)
 const NOW_CLEAN: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec }> = [
   {
     name: "opposite-direction pair between the same two nodes",
@@ -173,17 +177,43 @@ const NOW_CLEAN: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec
       ],
     },
   },
+  {
+    name: "collinear stacked nodes — a directed pass-through aligned with an undirected neighbour edge",
+    spec: {
+      nodeCount: 7,
+      edges: [
+        { a: 6, b: 0, directed: true },
+        { a: 0, b: 3, directed: false },
+      ],
+    },
+  },
+  {
+    name: "mixed directed/undirected fan leaving one shared source node",
+    spec: {
+      nodeCount: 6,
+      edges: [
+        { a: 5, b: 0, directed: true },
+        { a: 5, b: 3, directed: false },
+      ],
+    },
+  },
 ];
 
 describe("backbone routing fuzz — no incompatible edge sharing a trunk (trunk + bus)", () => {
-  // KNOWN BUG: still failing. `it.fails` passes while the violation exists; remove `.fails` when fixed.
-  it.fails("trunk routing never merges incompatible edges onto one backbone", () => {
+  // REAL GATE: trunk routing is clean of incompatible shared backbones across this fuzz sample (the
+  // separation pass runs twice for trunk — after routing and after trunk-merge). A vanishingly rare
+  // dense-graph residual can still exist (like bus, below); if one lands in this sample the gate flips
+  // red, which is the correct signal.
+  it("trunk routing never merges incompatible edges onto one backbone", () => {
     fc.assert(
       fc.property(graph, (spec) => incompatibleBackbone(trunkRoutes(buildFuzzScene(spec))) === null),
       { numRuns: 400, seed: 42 },
     );
   });
 
+  // KNOWN BUG: a rare (~0.5%) dense-graph residual survives in bus mode (see the header note). `it.fails`
+  // PASSES while any violation remains and flips to failing the day bus is fully clean — the signal to
+  // drop `.fails` and promote this to a real gate too.
   it.fails("bus routing never merges incompatible edges onto one backbone", () => {
     fc.assert(
       fc.property(graph, (spec) => incompatibleBackbone(respreadPorts(buildFuzzScene(spec), true)) === null),

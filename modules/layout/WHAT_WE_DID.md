@@ -1,5 +1,31 @@
 # @m/layout — work log
 
+## 2026-07-12 — separate incompatible backbones (mount spread + relaxed cardinal invariant)
+
+Closed the cross-node half of the "no incompatible shared backbone" rule that `offsetParallelEdges`
+(same-pair only) couldn't reach: collinear stacked nodes whose legs line up, and a mixed
+directed/undirected fan leaving one shared node along a common stub. New final pass
+`separateIncompatibleBackbones` (runs after routing, and again after trunk-merge) finds any coincident
+collinear segment carrying two INCOMPATIBLE edges — using a flow signature (undirected / flow-sign per
+axis) equal to the fuzzer oracle and `trunkCompatKey` — and moves one segment onto its own track,
+perpendicular to its own axis so the route stays orthogonal. A best-so-far search scans outward for clear
+track, takes bounded escape steps out of local minima, and is capped by a displacement budget so it never
+wanders into long ugly detours.
+
+Where the moved segment carries a MOUNT, that mount slides ALONG the node side. This required relaxing the
+cardinal-mount invariant (`cardinalMountViolations` / `edgesUseCardinalMounts`) from "endpoint at the side
+CENTRE" to "endpoint anywhere on a node side within its span" — a deliberate policy change, because two
+incompatible edges legitimately meeting one side-centre mount MUST share its stub unless one attaches
+off-centre. Off-side/interior endpoints are still violations; the side centre stays the default so clean
+diagrams don't move. `examples.test`'s cardinal-mount assertion and the `energy.test` unit test were
+updated to the relaxed semantics.
+
+Result: TRUNK is now a real gate in `trunk-fuzz.prop.test.ts` (was `it.fails`); the collinear-stack and
+mixed-fan repros are added to `NOW_CLEAN`. BUS is nearly closed but a ~0.5% residual survives in dense
+graphs (8 nodes / ~14 edges) where no local move converges, so its property stays `it.fails`. No demo
+golden moved; the c4/block/cloud bus/trunk examples keep on-side mounts. Verified the deployed-style bus
+render on the cloud example and a synthetic incompatible-fan flowchart (clean, separated, no page errors).
+
 ## 2026-07-12 — bent multi-edge offsetting (per-segment perpendicular spread)
 
 Extended `offsetParallelEdges` from a whole-route translate (which only separates a STRAIGHT pair) to a

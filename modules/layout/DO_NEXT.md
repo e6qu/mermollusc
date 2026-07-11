@@ -5,19 +5,19 @@
 These came out of a precise routing audit of the deployed demo; each is its own follow-up PR (routing
 is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
 
-- **Incompatible edges can still share a backbone in complex graphs (KNOWN BUG — rule violation).**
-  Progress so far: #294 fixed the per-node trunk FAN, and `offsetParallelEdges` now spreads ALL
-  multi-edges between one node pair onto distinct lanes — STRAIGHT pairs by a whole-route translate and
-  BENT (L-route) pairs by a per-segment perpendicular shift (2026-07-12: each corner takes both its x-
-  and y-offset, so the offset route stays orthogonal and truly parallel). Opposite pairs, mixed hubs, and
-  diagonal directed+undirected pairs are now clean in both modes (guarded by `NOW_CLEAN` in the fuzzer).
-  STILL OPEN, found by `test/unit/trunk-fuzz.prop.test.ts` (its two rule properties are `it.fails`):
-  - **Cross-node channel alignment** — edges between DIFFERENT pairs whose routes happen to align on one
-    track; the base router (`routeSpread`/`spreadPorts`) needs a directedness/flow-direction lane so
-    incompatible edges never share a track. (A post-hoc segment shift was tried and reverted — can't keep
-    orthogonality pulling long runs apart.) This is the last class before the two properties can drop
-    `.fails`.
-  Drive it with the fuzzer (drop `.fails`, extend `NOW_CLEAN`) and screenshot the demo architecture styles.
+- **Incompatible edges can still share a backbone — TRUNK closed, BUS ~0.5% dense residual.**
+  Progress: #294 fixed the per-node trunk FAN; `offsetParallelEdges` spreads same-pair multi-edges
+  (straight + bent); and `separateIncompatibleBackbones` (2026-07-12) closes the cross-node cases —
+  collinear stacked nodes and mixed fans at a shared mount — by moving one conflicting segment onto clear
+  track, sliding a carried mount along the node side (the cardinal-mount invariant was relaxed to
+  "on the side" for exactly this). TRUNK is now a REAL gate in `trunk-fuzz.prop.test.ts`.
+  - **BUS dense residual (~0.5%, KNOWN BUG, `it.fails`).** In dense graphs (8 nodes / ~14 edges) no local
+    single-segment move converges — clearing one axis lengthens a neighbour leg into a conflict on the
+    other. The remaining fix is NODE-MOVING relayout (nudge a node so the fan/stack stops aligning), not a
+    post-hoc route edit. Drive it with the fuzzer; drop bus `.fails` when clean.
+  - **Latent: trunk multi-edge ports go off-side in dense fuzz.** `cardinalMountViolations` (relaxed) still
+    flags some trunk+multi-edge scenes where `trunkMerge` places a shared port off the node side (not just
+    off-centre). Catalog examples are clean; this is fuzz-only. Fix `trunkMerge` to keep ports on the side.
 - **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
   (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of
   connectors separates more and leaves the node farther before turning. STILL OPEN and needs a bigger

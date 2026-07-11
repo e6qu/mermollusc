@@ -1,6 +1,7 @@
 import type { Point, Rect } from "@m/std";
 import type { Scene, SceneEdgeId, SceneNodeId } from "@m/contracts";
-import { containerHeaderBox, routeBoxOf, sideMounts } from "./route.js";
+import { containerHeaderBox, routeBoxOf } from "./route.js";
+import type { RouteBox } from "./route.js";
 import { segmentThroughBox } from "./maze.js";
 
 // Style invariants a laid-out scene must keep — the mechanical guard behind "energy-aware layout must not
@@ -88,8 +89,21 @@ export interface CardinalMountViolation {
 
 const POINT_EPS = 0.5;
 
-const pointOnMount = (p: Point, mounts: readonly Point[]): boolean =>
-  mounts.some((m) => Math.abs(m.x - p.x) <= POINT_EPS && Math.abs(m.y - p.y) <= POINT_EPS);
+// An edge endpoint must attach ON one of the node's four cardinal SIDES, anywhere along that side's span
+// (not only the side centre). The side centre is the default, but a fan of incompatible edges leaving one
+// node is spread ALONG a side so the edges don't share a stub — a directed and an undirected edge can't
+// both leave the exact centre without overlapping. Attaching along the side keeps the clean orthogonal
+// look while letting the router honour the "no incompatible shared backbone" rule. Off-side or interior
+// endpoints are still violations.
+const pointOnNodeSide = (p: Point, b: RouteBox): boolean => {
+  const withinX = p.x >= b.x - POINT_EPS && p.x <= b.x + b.w + POINT_EPS;
+  const withinY = p.y >= b.y - POINT_EPS && p.y <= b.y + b.h + POINT_EPS;
+  const onVerticalSide =
+    (Math.abs(p.x - b.x) <= POINT_EPS || Math.abs(p.x - (b.x + b.w)) <= POINT_EPS) && withinY;
+  const onHorizontalSide =
+    (Math.abs(p.y - b.y) <= POINT_EPS || Math.abs(p.y - (b.y + b.h)) <= POINT_EPS) && withinX;
+  return onVerticalSide || onHorizontalSide;
+};
 
 export const cardinalMountViolations = (scene: Scene): readonly CardinalMountViolation[] => {
   const boxById = new Map(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
@@ -100,10 +114,10 @@ export const cardinalMountViolations = (scene: Scene): readonly CardinalMountVio
     const last = rest[rest.length - 1] ?? second;
     const fromBox = boxById.get(edge.from);
     const toBox = boxById.get(edge.to);
-    if (fromBox === undefined || !pointOnMount(first, sideMounts(fromBox))) {
+    if (fromBox === undefined || !pointOnNodeSide(first, fromBox)) {
       violations.push({ edgeId: edge.id, nodeId: edge.from, end: "from", endpoint: first });
     }
-    if (toBox === undefined || !pointOnMount(last, sideMounts(toBox))) {
+    if (toBox === undefined || !pointOnNodeSide(last, toBox)) {
       violations.push({ edgeId: edge.id, nodeId: edge.to, end: "to", endpoint: last });
     }
   }

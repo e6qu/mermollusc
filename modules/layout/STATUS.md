@@ -110,9 +110,16 @@ into compact rows instead of a single horizontal strip.
 - **Side-centre mount cleanup:** `layoutDiagram` applies `snapSceneEdgesToMountPoints` only to
   flowchart/ER/class/requirement, moving corner-ish edge endpoints to top/bottom/left/right side centres
   while leaving architecture spread families and semantic families untouched.
-- **Cardinal mount invariant:** `cardinalMountViolations(scene)` reports edge/node/end/endpoint details
-  for any non-self edge whose first or last waypoint is not on a node's top/bottom/left/right mount;
+- **Cardinal mount invariant (relaxed to on-side):** `cardinalMountViolations(scene)` reports
+  edge/node/end/endpoint details for any non-self edge whose first or last waypoint is not on a node's
+  side. As of 2026-07-12 an endpoint may sit ANYWHERE along a side (not only the centre): a mixed fan of
+  incompatible edges is spread along the side by `separateIncompatibleBackbones` so the edges don't share
+  a stub. The side centre is still the default; off-side/interior endpoints are still violations.
   `edgesUseCardinalMounts(scene)` is the boolean form.
+- **Incompatible-backbone separation:** `separateIncompatibleBackbones` (final pass in `routeSpread`, and
+  again after `trunkMerge`) moves any coincident collinear segment carrying two incompatible edges
+  (directed+undirected, or opposite flows) onto its own track. TRUNK is a real fuzz gate; BUS has a rare
+  dense-graph residual (`it.fails`). See `test/unit/trunk-fuzz.prop.test.ts` and DO_NEXT.
 - tests: 165 unit + 24 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown

@@ -8,7 +8,9 @@ _None known._
   the final mount snap now applies through the display path and no longer exempts curved edges; spread
   routing keeps lane separation outside the node instead of moving endpoints away from cardinal mounts.
   The exported `cardinalMountViolations` invariant now checks the same endpoint contract across routed
-  catalog families and bus/trunk display routes.
+  catalog families and bus/trunk display routes. (Update 2026-07-12: that contract was deliberately
+  relaxed from "side centre" to "anywhere on the side" so a mixed fan of incompatible edges can spread
+  along a side rather than share a stub — off-side/interior endpoints are still violations.)
 
 - ~~**Edge routing chose extremely long detours around the diagram outside.**~~ Fixed — the candidate cost
   sorting in `minimizeCrossings` strictly prioritized crossings over length (lexicographical), forcing massive
