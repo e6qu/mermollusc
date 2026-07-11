@@ -1,5 +1,15 @@
 # @m/layout — work log
 
+## 2026-07-11 — multi-edge offsetting (fixes straight incompatible multi-edges)
+
+`offsetParallelEdges` (run at the end of `routeSpread`, after the mount snap) spreads every group of
+edges between the SAME node pair onto distinct parallel lanes by translating each route perpendicular to
+its endpoint axis (the mounts slide along their node sides, clamped to stay on the border). This closes
+the worst of the "incompatible backbone" bug: a straight `-->`+`---` pair, an opposite-direction pair,
+and a mixed hub no longer share a line in either trunk or bus — the fuzzer's `NOW_CLEAN` cases. No demo
+golden moved (the catalog has no multi-edges). Still open (bent multi-edges, cross-node alignment) —
+the fuzzer's two rule properties stay `it.fails`; see DO_NEXT.
+
 ## 2026-07-11 — graph fuzzer for the backbone-routing rule (confirms a known bug)
 
 Built a random-graph fuzzer (`test/unit/trunk-fuzz.prop.test.ts`) for the "no incompatible edge shares a

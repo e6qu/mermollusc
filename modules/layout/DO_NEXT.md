@@ -5,20 +5,19 @@
 These came out of a precise routing audit of the deployed demo; each is its own follow-up PR (routing
 is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
 
-- **Incompatible edges STILL share a backbone in both trunk and bus (KNOWN BUG, HIGH — rule violation).**
-  #294 fixed the per-node trunk FAN (`trunkMerge` groups a node side by `trunkCompatKey`), but a graph
-  fuzzer (`test/unit/trunk-fuzz.prop.test.ts`) shows the rule is still broken in general:
-  - **Bus mode** never separates incompatible coincident edges at all — reproduces on trivial graphs:
-    parallel `-->`+`---` between one pair, an opposite-direction pair, a hub with a directed and an
-    undirected edge from one source (saved as `REPROS`).
-  - **Trunk mode** still overlaps in more complex graphs (cross-node channels that align; parallel
-    multi-edges).
-  The fuzzer's two rule properties are `it.fails` (they pass while the bug exists and flip when fixed).
-  A post-hoc segment-shift pass was tried and **reverted** — it can't pull long shared runs apart while
-  keeping orthogonality, and made complex cases worse. The real fix is **signature-aware routing in the
-  BASE router** (`routeSpread`/`spreadPorts`): give a directedness/flow-direction lane to each edge so
-  incompatible edges never land on the same track, plus multi-edge offsetting for parallel pairs. Drive
-  it with the fuzzer (drop `.fails`, invert the repro test) and screenshot the demo architecture styles.
+- **Incompatible edges can still share a backbone in complex graphs (KNOWN BUG — rule violation).**
+  Progress so far: #294 fixed the per-node trunk FAN, and `offsetParallelEdges` (2026-07-11) now spreads
+  STRAIGHT multi-edges between one node pair onto distinct lanes — so opposite pairs and mixed hubs are
+  clean in both modes (guarded by `NOW_CLEAN` in the fuzzer). STILL OPEN, found by
+  `test/unit/trunk-fuzz.prop.test.ts` (its two rule properties are `it.fails`):
+  - **Bent multi-edges** — an L-routed parallel pair can't be separated by `offsetParallelEdges`' single
+    whole-route translate; it needs per-segment mount-spread (offset each mount along its side, then
+    re-route between the offset mounts).
+  - **Cross-node channel alignment** — edges between DIFFERENT pairs whose routes happen to align on one
+    track; the base router (`routeSpread`/`spreadPorts`) needs a directedness/flow-direction lane so
+    incompatible edges never share a track. (A post-hoc segment shift was tried and reverted — can't keep
+    orthogonality pulling long runs apart.)
+  Drive it with the fuzzer (drop `.fails`, extend `NOW_CLEAN`) and screenshot the demo architecture styles.
 - **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
   (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of
   connectors separates more and leaves the node farther before turning. STILL OPEN and needs a bigger
