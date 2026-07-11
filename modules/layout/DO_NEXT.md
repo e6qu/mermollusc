@@ -5,12 +5,20 @@
 These came out of a precise routing audit of the deployed demo; each is its own follow-up PR (routing
 is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
 
-- *(done 2026-07-11)* **Trunk routing must not merge incompatible edges into one trunk.** `trunkMerge`
-  now partitions each node-side fan by a compatibility key (`trunkCompatKey`): undirected vs directed,
-  and — for directed — into-node vs out-of-node. Only edges with the same key share a backbone; a second
-  compatible group on the same side is placed in an adjacent, parallel trunk (offset by `TRUNK_SEP`).
-  Real examples are unchanged (each family's edges are uniformly directed or undirected → one group).
-  Guarded by a `route.test.ts` unit test (directed + undirected fan → two distinct trunk lines).
+- **Incompatible edges STILL share a backbone in both trunk and bus (KNOWN BUG, HIGH — rule violation).**
+  #294 fixed the per-node trunk FAN (`trunkMerge` groups a node side by `trunkCompatKey`), but a graph
+  fuzzer (`test/unit/trunk-fuzz.prop.test.ts`) shows the rule is still broken in general:
+  - **Bus mode** never separates incompatible coincident edges at all — reproduces on trivial graphs:
+    parallel `-->`+`---` between one pair, an opposite-direction pair, a hub with a directed and an
+    undirected edge from one source (saved as `REPROS`).
+  - **Trunk mode** still overlaps in more complex graphs (cross-node channels that align; parallel
+    multi-edges).
+  The fuzzer's two rule properties are `it.fails` (they pass while the bug exists and flip when fixed).
+  A post-hoc segment-shift pass was tried and **reverted** — it can't pull long shared runs apart while
+  keeping orthogonality, and made complex cases worse. The real fix is **signature-aware routing in the
+  BASE router** (`routeSpread`/`spreadPorts`): give a directedness/flow-direction lane to each edge so
+  incompatible edges never land on the same track, plus multi-edge offsetting for parallel pairs. Drive
+  it with the fuzzer (drop `.fails`, invert the repro test) and screenshot the demo architecture styles.
 - **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
   (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of
   connectors separates more and leaves the node farther before turning. STILL OPEN and needs a bigger
