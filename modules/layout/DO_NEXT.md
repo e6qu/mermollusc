@@ -6,17 +6,17 @@ These came out of a precise routing audit of the deployed demo; each is its own 
 is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
 
 - **Incompatible edges can still share a backbone in complex graphs (KNOWN BUG — rule violation).**
-  Progress so far: #294 fixed the per-node trunk FAN, and `offsetParallelEdges` (2026-07-11) now spreads
-  STRAIGHT multi-edges between one node pair onto distinct lanes — so opposite pairs and mixed hubs are
-  clean in both modes (guarded by `NOW_CLEAN` in the fuzzer). STILL OPEN, found by
-  `test/unit/trunk-fuzz.prop.test.ts` (its two rule properties are `it.fails`):
-  - **Bent multi-edges** — an L-routed parallel pair can't be separated by `offsetParallelEdges`' single
-    whole-route translate; it needs per-segment mount-spread (offset each mount along its side, then
-    re-route between the offset mounts).
+  Progress so far: #294 fixed the per-node trunk FAN, and `offsetParallelEdges` now spreads ALL
+  multi-edges between one node pair onto distinct lanes — STRAIGHT pairs by a whole-route translate and
+  BENT (L-route) pairs by a per-segment perpendicular shift (2026-07-12: each corner takes both its x-
+  and y-offset, so the offset route stays orthogonal and truly parallel). Opposite pairs, mixed hubs, and
+  diagonal directed+undirected pairs are now clean in both modes (guarded by `NOW_CLEAN` in the fuzzer).
+  STILL OPEN, found by `test/unit/trunk-fuzz.prop.test.ts` (its two rule properties are `it.fails`):
   - **Cross-node channel alignment** — edges between DIFFERENT pairs whose routes happen to align on one
     track; the base router (`routeSpread`/`spreadPorts`) needs a directedness/flow-direction lane so
     incompatible edges never share a track. (A post-hoc segment shift was tried and reverted — can't keep
-    orthogonality pulling long runs apart.)
+    orthogonality pulling long runs apart.) This is the last class before the two properties can drop
+    `.fails`.
   Drive it with the fuzzer (drop `.fails`, extend `NOW_CLEAN`) and screenshot the demo architecture styles.
 - **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
   (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of

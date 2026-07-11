@@ -1,5 +1,16 @@
 # @m/layout — work log
 
+## 2026-07-12 — bent multi-edge offsetting (per-segment perpendicular spread)
+
+Extended `offsetParallelEdges` from a whole-route translate (which only separates a STRAIGHT pair) to a
+per-segment perpendicular shift: every waypoint moves by the lane offset along each adjacent segment's
+normal, so a corner takes both its x- and y-offset and an L-route becomes a genuinely parallel offset
+route that stays orthogonal. A non-orthogonal segment (shouldn't occur on routed edges) falls back to the
+old dominant-axis translate. Clamp is now the tightest half-extent across both endpoints so a mount stays
+on its border whichever axis it slides along. Result: a diagonal `-->`+`---` pair (bent L-route) is now
+clean in both trunk and bus — added to the fuzzer's `NOW_CLEAN` guard. Only cross-node channel alignment
+(different pairs sharing a track) remains; the two rule properties stay `it.fails`. No demo golden moved.
+
 ## 2026-07-11 — multi-edge offsetting (fixes straight incompatible multi-edges)
 
 `offsetParallelEdges` (run at the end of `routeSpread`, after the mount snap) spreads every group of
