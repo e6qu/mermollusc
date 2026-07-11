@@ -1,5 +1,20 @@
 # @m/layout — work log
 
+## 2026-07-11 — diamond nodes grow to contain their label + icon
+
+A diamond was sized like a rect (label width × 40) in `toElkGraph`, but a diamond's sloped sides shrink
+the usable area to its inscribed rhombus — so the label (and, since the omnibus gave flowchart diamonds
+an icon, the 40px icon+label group stacked inside) poked out the bottom vertex. Surfaced by a user
+looking at the deployed demo's default flowchart ("Authorized?" jammed against the diamond's tip).
+
+`diamondBox` now sizes a diamond so the centred content box fits the inscribed rhombus
+(`contentW/w + contentH/h ≤ 0.92`, budget split evenly): a plain diamond widens for its label (like the
+mindmap `{{hexagon}}` already did), and an icon diamond also grows taller for the renderer's 40px
+icon-group. Guarded by a new `transform.test.ts` invariant (label + icon fit the inscribed rhombus; the
+icon diamond is taller than the plain one). App display-list golden refreshed. Verified across
+flowchart/BPMN/state on the demo — labels now sit comfortably inside; empty-label state `<<choice>>`
+diamonds stay small.
+
 ## 2026-07-11 — Mermaid-parity scene features + label/route decollision hardening
 
 Screenshot-review fixes, all layout-side (no renderer/contracts changes — every new element rides the

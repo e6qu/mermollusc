@@ -49,6 +49,42 @@ describe("toElkGraph", () => {
     expect(circle.width).toBe(circle.height);
     expect(rectNode.width > rectNode.height).toBe(true);
   });
+
+  // A diamond's sloped sides shrink its usable area to the inscribed rhombus, so the label — and an
+  // icon stacked above it — must satisfy contentW/w + contentH/h ≤ 1 or it pokes out the vertices.
+  // Regression guard: a diamond used to be sized like a rect (label width × 40), clipping the label.
+  it("grows a diamond so its label (and stacked icon) fit inside the inscribed rhombus", () => {
+    const g = toElkGraph(
+      {
+        kind: "flowchart",
+        direction: "TB",
+        nodes: [
+          { id: nid("P"), label: "Authorized?", shape: "diamond", icon: null },
+          {
+            id: nid("Q"),
+            label: "Authorized?",
+            shape: "diamond",
+            icon: { pack: "devicon", name: "vault" },
+          },
+        ],
+        edges: [],
+        subgraphs: [],
+        styles: [],
+      },
+      new Map(),
+      heuristicMeasure,
+    );
+    const plain = g.children.find((c) => c.id === "P");
+    const withIcon = g.children.find((c) => c.id === "Q");
+    if (plain?.kind !== "leaf" || withIcon?.kind !== "leaf") throw new Error("not leaves");
+    const labelW = heuristicMeasure("Authorized?");
+    // Plain diamond: one 16px text line fits inside the rhombus with margin.
+    expect(labelW / plain.width + 16 / plain.height).toBeLessThanOrEqual(1);
+    // Icon diamond: the renderer's 40px icon-group (glyph 20 + gap 4 + text 16) must fit too, so it is
+    // taller than the plain one.
+    expect(labelW / withIcon.width + 40 / withIcon.height).toBeLessThanOrEqual(1);
+    expect(withIcon.height).toBeGreaterThan(plain.height);
+  });
 });
 
 describe("toScene", () => {

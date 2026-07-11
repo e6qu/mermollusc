@@ -1,5 +1,25 @@
 # @m/layout — do next
 
+## Routing quality (from the 2026-07-11 live-demo review — user-specified constraints)
+
+These came out of a precise routing audit of the deployed demo; each is its own follow-up PR (routing
+is the riskiest area — verify with the `edge-border-clearance` scorecard + before/after screenshots).
+
+- **Trunk routing must not merge incompatible edges into one trunk.** Sharing a trunk is encouraged for
+  edges that genuinely run together, but a trunk must NOT combine edges of opposite direction, nor mix a
+  directed edge with an undirected one. Group trunk membership by (axis, direction/undirected-ness) so a
+  shared backbone only carries compatible edges; opposite-direction or directed+undirected pairs get
+  separate adjacent trunks.
+- **Bus routing spacing is too tight (looks ugly).** Bus lines currently pack together and run close to
+  each other and to group/node borders. Increase the inter-line gap and the clearance from borders
+  (nodes and container outlines) so parallel bus runs read as distinct, separated channels.
+- **General routing-quality sweep.** Across families, hunt and fix: edges overlapping where they needn't,
+  edges running alongside a node/container border (reads as ambiguous "is it attached?"), and confusing
+  near-parallel runs. Extend the geometric guards (border clearance, label-vs-node) with an
+  edge-runs-alongside-border check.
+
+## Other
+
 - **Renderer support for richer caption styles.** Two Mermaid-parity items now emit plain captions and
   would look closer to Mermaid with a styled variant: gitGraph `tag:` labels (Mermaid draws a small
   BORDERED tag plate; we emit a plateless caption) and diagram titles (Mermaid uses a larger/bolder
