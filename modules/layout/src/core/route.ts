@@ -1361,7 +1361,7 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
   // where edges branch off it). The default instead minimises crossings then de-stacks the overlaps onto
   // separate lanes — the two complementary passes that give the clean parallel look.
   const routed = bus ? wired : separateOverlaps(minimizeCrossings(wired));
-  return offsetParallelEdges(snapSceneEdgesToMountPoints(routed));
+  return separateIncompatibleBackbones(offsetParallelEdges(snapSceneEdgesToMountPoints(routed)));
 };
 
 // Multiple edges between the SAME node pair route mount-to-mount identically and coincide. This is where
@@ -1441,6 +1441,255 @@ const offsetParallelEdges = (scene: Scene): Scene => {
     };
   });
   return { ...scene, edges };
+};
+
+// The router picks each segment's track without regard to edge direction, so a few geometries slip an
+// INCOMPATIBLE shared backbone past every earlier pass: collinear stacked nodes whose legs line up, or a
+// mixed-direction fan leaving one node along a common stub. The project rule is that a coincident collinear
+// segment may carry ≥2 edges only when they are COMPATIBLE — same flow direction, or both undirected —
+// never a directed with an undirected one and never two opposite flows. This final pass finds any remaining
+// incompatible coincidence and moves one of the two segments onto its own track: it shifts the segment
+// perpendicular to its own axis (both endpoints move, so neighbouring legs only lengthen and the route stays
+// orthogonal), and where the moved segment carries a MOUNT, that mount slides ALONG the node's side — a
+// spread the (relaxed) cardinal-mount invariant now permits — clamped to stay within the side's span. Only
+// incompatible coincidences are broken; a compatible shared backbone (the intended bus/trunk look) is kept.
+const BACKBONE_TRACK_TOL = 2;
+const BACKBONE_OVERLAP_MIN = 8;
+const BACKBONE_NUDGE = 12;
+const BACKBONE_SCAN_STEPS = 16; // gap-widths outward a conflicting segment may move to find clear track
+const BACKBONE_MOUNT_INSET = 4; // keep a slid mount this far from a node corner
+const BACKBONE_MAX_PASSES = 200;
+const BACKBONE_STALL_LIMIT = 8; // consecutive non-improving escape steps before giving up
+const BACKBONE_DISP_CAP = 600; // total nudge displacement budget — stops the search wandering into detours
+
+interface BackboneSeg {
+  readonly edgeIdx: number;
+  readonly segIdx: number;
+  readonly horizontal: boolean;
+  readonly track: number;
+  readonly lo: number;
+  readonly hi: number;
+}
+
+// Flow signature of an edge along one axis: "U" if it carries no directional arrowhead, else the sign of
+// the flow (source-centre → arrowhead-end) projected onto that axis. Two coincident segments conflict iff
+// their signatures on that axis differ. Mirrors the rule oracle and `trunkCompatKey`'s notion.
+const flowSignature = (
+  e: SceneEdge,
+  horizontal: boolean,
+  centre: Map<SceneNodeId, Point>,
+): string => {
+  const into = DIRECTIONAL_ENDS.has(e.toEnd);
+  const outOf = DIRECTIONAL_ENDS.has(e.fromEnd);
+  if (!into && !outOf) return "U";
+  const src = into ? e.from : e.to;
+  const dst = into ? e.to : e.from;
+  const cs = centre.get(src);
+  const cd = centre.get(dst);
+  if (cs === undefined || cd === undefined) return "U";
+  const delta = horizontal ? cd.x - cs.x : cd.y - cs.y;
+  return delta >= 0 ? "P" : "N";
+};
+
+const backboneSegments = (edgeIdx: number, w: readonly Point[]): BackboneSeg[] => {
+  const out: BackboneSeg[] = [];
+  for (let i = 0; i + 1 < w.length; i++) {
+    const a = w[i];
+    const b = w[i + 1];
+    if (a === undefined || b === undefined) continue;
+    if (Math.abs(a.y - b.y) < AXIS_TOL && Math.abs(a.x - b.x) >= AXIS_TOL)
+      out.push({
+        edgeIdx,
+        segIdx: i,
+        horizontal: true,
+        track: (a.y + b.y) / 2,
+        lo: Math.min(a.x, b.x),
+        hi: Math.max(a.x, b.x),
+      });
+    else if (Math.abs(a.x - b.x) < AXIS_TOL && Math.abs(a.y - b.y) >= AXIS_TOL)
+      out.push({
+        edgeIdx,
+        segIdx: i,
+        horizontal: false,
+        track: (a.x + b.x) / 2,
+        lo: Math.min(a.y, b.y),
+        hi: Math.max(a.y, b.y),
+      });
+  }
+  return out;
+};
+
+// Shift one segment (both its endpoints) perpendicular to its own axis; the compaction drops points the
+// shift made collinear. A mount (first/last waypoint) thereby slides along its node side.
+const nudgeSegment = (
+  w: readonly Point[],
+  segIdx: number,
+  horizontal: boolean,
+  delta: number,
+): Point[] =>
+  compactPoints(
+    w.map((p, idx) =>
+      idx === segIdx || idx === segIdx + 1
+        ? horizontal
+          ? point(p.x, p.y + delta)
+          : point(p.x + delta, p.y)
+        : p,
+    ),
+  );
+
+const separateIncompatibleBackbones = (scene: Scene): Scene => {
+  const centre = new Map<SceneNodeId, Point>(
+    scene.nodes.map((n) => [
+      n.id,
+      point(
+        n.bounds.origin.x + n.bounds.size.width / 2,
+        n.bounds.origin.y + n.bounds.size.height / 2,
+      ),
+    ]),
+  );
+  const boxById = new Map<SceneNodeId, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  const obstacleBoxes = obstaclesForEdges(scene);
+  const obstacleFor = (idx: number): readonly RouteBox[] => {
+    const e = scene.edges[idx];
+    return e === undefined ? [] : (obstacleBoxes.get(e.id) ?? []);
+  };
+  const sigOf = (idx: number, horizontal: boolean): string => {
+    const e = scene.edges[idx];
+    return e === undefined ? "U" : flowSignature(e, horizontal, centre);
+  };
+  // A candidate route is valid only if its two endpoints stay on their nodes' sides (within the span, with
+  // a small inset from the corners) — the relaxed cardinal-mount invariant. A slid mount that would leave
+  // the side is rejected.
+  const onSide = (p: Point, nodeId: SceneNodeId): boolean => {
+    const b = boxById.get(nodeId);
+    if (b === undefined) return false;
+    const onV =
+      (Math.abs(p.x - b.x) < 1 || Math.abs(p.x - (b.x + b.w)) < 1) &&
+      p.y >= b.y + BACKBONE_MOUNT_INSET &&
+      p.y <= b.y + b.h - BACKBONE_MOUNT_INSET;
+    const onH =
+      (Math.abs(p.y - b.y) < 1 || Math.abs(p.y - (b.y + b.h)) < 1) &&
+      p.x >= b.x + BACKBONE_MOUNT_INSET &&
+      p.x <= b.x + b.w - BACKBONE_MOUNT_INSET;
+    return onV || onH;
+  };
+  const endpointsOnSide = (idx: number, w: readonly Point[]): boolean => {
+    const e = scene.edges[idx];
+    const first = w[0];
+    const last = w[w.length - 1];
+    if (e === undefined || first === undefined || last === undefined) return false;
+    return onSide(first, e.from) && onSide(last, e.to);
+  };
+  const routes: Point[][] = scene.edges.map((e) => [...e.waypoints]);
+
+  const conflictsIn = (rs: readonly Point[][]): number => {
+    const segs = rs.flatMap((w, idx) => backboneSegments(idx, w));
+    let count = 0;
+    for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length; j++) {
+        const A = segs[i];
+        const B = segs[j];
+        if (A === undefined || B === undefined) continue;
+        if (A.edgeIdx === B.edgeIdx || A.horizontal !== B.horizontal) continue;
+        if (Math.abs(A.track - B.track) > BACKBONE_TRACK_TOL) continue;
+        if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= BACKBONE_OVERLAP_MIN) continue;
+        if (sigOf(A.edgeIdx, A.horizontal) !== sigOf(B.edgeIdx, B.horizontal)) count++;
+      }
+    }
+    return count;
+  };
+
+  const firstConflict = (): { readonly A: BackboneSeg; readonly B: BackboneSeg } | null => {
+    const segs = routes.flatMap((w, idx) => backboneSegments(idx, w));
+    for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length; j++) {
+        const A = segs[i];
+        const B = segs[j];
+        if (A === undefined || B === undefined) continue;
+        if (A.edgeIdx === B.edgeIdx || A.horizontal !== B.horizontal) continue;
+        if (Math.abs(A.track - B.track) > BACKBONE_TRACK_TOL) continue;
+        if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= BACKBONE_OVERLAP_MIN) continue;
+        if (sigOf(A.edgeIdx, A.horizontal) !== sigOf(B.edgeIdx, B.horizontal)) return { A, B };
+      }
+    }
+    return null;
+  };
+
+  let bestConflicts = conflictsIn(routes);
+  let bestRoutes: Point[][] = routes.map((w) => [...w]);
+  let disp = 0;
+  let bestDisp = 0;
+  let stall = 0;
+  for (let pass = 0; pass < BACKBONE_MAX_PASSES && bestConflicts > 0; pass++) {
+    const conflict = firstConflict();
+    if (conflict === null) break;
+    const base = conflictsIn(routes);
+    // Move either segment, scanning OUTWARD both perpendicular directions to reach empty track. Rank
+    // lexicographically by resulting conflict count then displacement — the cheapest resolving move wins.
+    const cands = [conflict.A, conflict.B].flatMap((s) =>
+      Array.from({ length: BACKBONE_SCAN_STEPS }, (_unused, k) => k + 1).flatMap((mult) =>
+        [1, -1].map((dir) => ({ seg: s, delta: dir * mult * BACKBONE_NUDGE })),
+      ),
+    );
+    let pick: {
+      readonly edgeIdx: number;
+      readonly route: Point[];
+      readonly c2: number;
+      readonly cost: number;
+    } | null = null;
+    for (const c of cands) {
+      const cur = routes[c.seg.edgeIdx];
+      if (cur === undefined) continue;
+      const moved = nudgeSegment(cur, c.seg.segIdx, c.seg.horizontal, c.delta);
+      if (moved.length < 2) continue;
+      if (!endpointsOnSide(c.seg.edgeIdx, moved)) continue;
+      if (routeHits(moved, obstacleFor(c.seg.edgeIdx)) > routeHits(cur, obstacleFor(c.seg.edgeIdx)))
+        continue;
+      const trial = routes.slice();
+      trial[c.seg.edgeIdx] = moved;
+      const c2 = conflictsIn(trial);
+      const cost = c2 * 1_000_000 + Math.abs(c.delta);
+      if (pick === null || cost < pick.cost)
+        pick = { edgeIdx: c.seg.edgeIdx, route: moved, c2, cost };
+    }
+    if (pick === null) break; // no admissible move — leave the rest (the fuzzer reports it)
+    routes[pick.edgeIdx] = pick.route;
+    disp += BACKBONE_NUDGE;
+    stall = pick.c2 < base ? 0 : stall + 1;
+    const now = conflictsIn(routes);
+    if (now < bestConflicts || (now === bestConflicts && disp < bestDisp)) {
+      bestConflicts = now;
+      bestRoutes = routes.map((w) => [...w]);
+      bestDisp = disp;
+    }
+    if (stall > BACKBONE_STALL_LIMIT || disp > BACKBONE_DISP_CAP) break;
+  }
+  for (let i = 0; i < routes.length; i++) {
+    const b = bestRoutes[i];
+    if (b !== undefined) routes[i] = b;
+  }
+
+  let changed = false;
+  const edges = scene.edges.map((e, i): SceneEdge => {
+    const w = routes[i];
+    if (w === undefined) return e;
+    const same =
+      w.length === e.waypoints.length &&
+      w.every((p, k) => {
+        const q = e.waypoints[k];
+        return q !== undefined && p.x === q.x && p.y === q.y;
+      });
+    if (same) return e;
+    changed = true;
+    const [w0, w1, ...wr] = w;
+    if (w0 === undefined || w1 === undefined) return e;
+    return {
+      ...e,
+      waypoints: twoOrMore(w0, w1, ...wr),
+      labelPos: e.labelPos === null ? null : pathMidpoint(w),
+    };
+  });
+  return changed ? { ...scene, edges } : scene;
 };
 
 // Initial layout: reserve channel room (moving bands apart by edge density) then route (default, no bus).
@@ -1613,7 +1862,8 @@ const trunkMerge = (scene: Scene): Scene => {
 
 // The trunk rendering option: spread the non-fan connectors normally, then merge each fan onto a shared
 // trunk. Like `respreadPorts`, it respects the node positions it's given (no channel reservation).
-export const trunkRoutes = (scene: Scene): Scene => trunkMerge(routeSpread(scene, false));
+export const trunkRoutes = (scene: Scene): Scene =>
+  separateIncompatibleBackbones(trunkMerge(routeSpread(scene, false)));
 
 // The midpoint of an orthogonal route's central cross-channel leg (p1→p2). That leg sits in the gap
 // between the two boxes by construction, so an edge label anchored here stays clear of both endpoints —
