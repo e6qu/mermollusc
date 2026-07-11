@@ -55,21 +55,19 @@ test("drag a bend point to reshape an edge; double-click removes it", async ({ p
   expect(Math.abs(moved.x - pick.bend.x) + Math.abs(moved.y - pick.bend.y)).toBeGreaterThan(20);
 
   // the manual waypoint survives a full re-render (it lives in the overlay, not the transient route)
+  const bendWaypoint = (id: string) =>
+    page.evaluate((edgeId) => {
+      const g = window.__shownGeometry?.();
+      const e = g?.edges.find((x) => x.from + "->" + x.to === edgeId);
+      return e?.waypoints[1] ?? null;
+    }, id);
   await page.evaluate(() => window.__editor?.setValue(window.__editor.value() + "\n"));
-  await page.waitForTimeout(200);
-  const afterRerender = await page.evaluate((id) => {
-    const g = window.__shownGeometry?.();
-    const e = g?.edges.find((x) => x.from + "->" + x.to === id);
-    return e?.waypoints[1] ?? null;
-  }, pick.id);
-  expect(afterRerender).not.toBeNull();
+  await expect.poll(() => bendWaypoint(pick.id)).not.toBeNull();
+  const afterRerender = await bendWaypoint(pick.id);
 
   // double-click the bend handle to remove it → back toward the auto route
   const bp2 = afterRerender === null ? bp : await scr(page, afterRerender.x, afterRerender.y);
-  if (bp2 !== null) {
-    await page.mouse.dblclick(bp2.x, bp2.y);
-    await page.waitForTimeout(200);
-  }
+  if (bp2 !== null) await page.mouse.dblclick(bp2.x, bp2.y);
 });
 
 // Dragging an edge control point past the sheet edge expands the viewport, exactly as dragging a node

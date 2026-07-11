@@ -21,8 +21,9 @@ test("Relax rearranges any graph family via force; a pinned node stays put", asy
   await page.goto("/");
   await expect.poll(() => cw(page)).toBeGreaterThan(100);
   await setSource(page, "erDiagram\n  A ||--o{ B : x\n  B ||--o{ C : y\n  C ||--o{ D : z\n  A ||--o{ D : w\n");
-  await expect.poll(() => cw(page)).toBeGreaterThan(0);
-  await page.waitForTimeout(200);
+  // Poll a signal specific to the NEW render — `cw > 0` is already true from the prior (flowchart)
+  // canvas, so it can't tell the ER layout has landed; the kind badge only reads "er" once it has.
+  await expect(page.locator("#kind")).toHaveText("er");
 
   // pin A
   await selectNode(page, "A");
@@ -36,11 +37,11 @@ test("Relax rearranges any graph family via force; a pinned node stays put", asy
   const bBefore = await sceneCenter(page, "B");
   await expect(page.locator("#relax")).toBeEnabled();
   await page.locator("#relax").click();
-  await page.waitForTimeout(300);
+  // Poll the observable outcome (unpinned B settled to a new position) instead of a fixed wait for the
+  // force pass; then read A, which the same pass has finished by.
+  await expect.poll(async () => dist(bBefore, await sceneCenter(page, "B"))).toBeGreaterThan(10);
   const aAfter = await sceneCenter(page, "A");
-  const bAfter = await sceneCenter(page, "B");
 
-  // pinned A didn't move; unpinned B did
+  // pinned A didn't move; unpinned B did (asserted by the poll above)
   expect(dist(aBefore, aAfter)).toBeLessThan(2);
-  expect(dist(bBefore, bAfter)).toBeGreaterThan(10);
 });

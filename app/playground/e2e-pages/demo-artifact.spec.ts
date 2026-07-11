@@ -15,6 +15,14 @@ const boot = async (page: Page, query = "") => {
   await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
 };
 
+// Boot and wait for network quiescence — for the negative assertions ("no off-origin request", "no
+// WebSocket") that must sample AFTER all load-time network activity has settled, not after a guessed
+// fixed delay.
+const bootIdle = async (page: Page) => {
+  await page.goto("./", { waitUntil: "networkidle" });
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+};
+
 test("boots the sample with no console or page errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -59,8 +67,7 @@ test("is self-contained and base-path-correct — no off-origin requests, no 404
       failed.push(`${res.status()} ${res.url()}`);
     }
   });
-  await boot(page);
-  await page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
+  await bootIdle(page);
   expect(offOrigin).toEqual([]);
   expect(failed).toEqual([]);
 });
@@ -74,8 +81,7 @@ test("opens no network WebSocket and fetches no relay WASM in plain (non-collab)
   page.on("request", (req) => {
     if (req.url().includes("relay.wasm")) wasmFetches.push(req.url());
   });
-  await boot(page);
-  await page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+  await bootIdle(page);
   // Plain demo mode has no collaboration at all — the WASM relay is only wired up under `?collab`.
   expect(sockets).toEqual([]);
   expect(wasmFetches).toEqual([]);
