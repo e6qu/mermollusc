@@ -1,5 +1,17 @@
 # @m/layout — work log
 
+## 2026-07-11 — wider bus-routing spacing (first step)
+
+From the live-demo routing review: bus mode packed parallel connectors too tightly and let a node's fan
+leave the box at the same shallow stub as the default. `routeSpread` now scales its lane separation and
+first-stub depth up when `bus` is on (`BUS_LANE_GAP` 22, `BUS_CHANNEL_GAP` 20 vs the default 14/10), so
+a fan reads as distinct lanes that leave the node farther before turning. Default (non-bus) routing is
+untouched (the gaps are gated on `bus`), so no goldens moved. `bus`/`trunk` e2e + `make check` green.
+
+Deliberately NOT in this change (bigger, cross-cutting — see DO_NEXT): pass-by clearance from *unrelated*
+node/group borders (the router only rejects crossings, not running-alongside), and dense-bus label
+overlap. Both touch every family / the `edge-border-clearance` guard, so they want their own careful PR.
+
 ## 2026-07-11 — diamond nodes grow to contain their label + icon
 
 A diamond was sized like a rect (label width × 40) in `toElkGraph`, but a diamond's sloped sides shrink

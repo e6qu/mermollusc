@@ -1224,7 +1224,16 @@ const reserveChannels = (scene: Scene): Scene => {
 // The position-respecting routing core: port-spread every box→box edge into distinct lanes, detour around
 // nodes, then minimise crossings and de-stack overlaps. Moves NO node — callers decide whether to reserve
 // channel room first. Shared by initial layout (`spreadPorts`) and post-drag re-routing (`respreadPorts`).
+// BUS routing keeps edges to a shared endpoint coincident on a backbone, so the non-shared parallels
+// that remain read as clutter when they sit at the tight default stagger. Give bus mode a wider lane
+// separation and a deeper first stub, so parallel runs are visibly distinct and every line leaves its
+// node farther before turning — keeping the backbones off node/group borders.
+const BUS_LANE_GAP = 22;
+const BUS_CHANNEL_GAP = 20;
+
 const routeSpread = (scene: Scene, bus: boolean): Scene => {
+  const laneGap = bus ? BUS_LANE_GAP : LANE_GAP;
+  const channelGap = bus ? BUS_CHANNEL_GAP : CHANNEL_GAP;
   const boxOf = boxOfNode(scene);
   const parentOf = new Map<string, string | null>(scene.nodes.map((n) => [n.id, n.parent]));
   const ancestorsOf = (id: string): ReadonlySet<string> => {
@@ -1297,8 +1306,8 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
     // staggered cross-channel leg — the fan leaves the shared mount cleanly instead of hugging the side.
     const p0 = mountAt(a, fs);
     const p3 = mountAt(b, s.ts);
-    const stub0 = CHANNEL_GAP + fr.rank * LANE_GAP;
-    const stub3 = CHANNEL_GAP + tr.rank * LANE_GAP;
+    const stub0 = channelGap + fr.rank * laneGap;
+    const stub3 = channelGap + tr.rank * laneGap;
     const exit0 = offsetOutside(p0, fs, stub0);
     const exit3 = offsetOutside(p3, s.ts, stub3);
     // The two facing sides are opposite on the dominant axis, so the path is a clean Z (h or v). Stagger
@@ -1306,7 +1315,7 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
     // into the gap so the leg stays between the two boxes.
     const horizontal = fs === "L" || fs === "R";
     const span = horizontal ? Math.abs(exit3.x - exit0.x) : Math.abs(exit3.y - exit0.y);
-    const raw = (fr.rank - (fr.count - 1) / 2) * LANE_GAP;
+    const raw = (fr.rank - (fr.count - 1) / 2) * laneGap;
     const limit = (span / 2) * 0.7;
     const off = Math.max(-limit, Math.min(limit, raw));
     const midX = (exit0.x + exit3.x) / 2 + (horizontal ? off : 0);

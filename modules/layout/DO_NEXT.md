@@ -10,9 +10,15 @@ is the riskiest area — verify with the `edge-border-clearance` scorecard + bef
   directed edge with an undirected one. Group trunk membership by (axis, direction/undirected-ness) so a
   shared backbone only carries compatible edges; opposite-direction or directed+undirected pairs get
   separate adjacent trunks.
-- **Bus routing spacing is too tight (looks ugly).** Bus lines currently pack together and run close to
-  each other and to group/node borders. Increase the inter-line gap and the clearance from borders
-  (nodes and container outlines) so parallel bus runs read as distinct, separated channels.
+- **Bus routing spacing.** *(partly done 2026-07-11)* Bus mode now uses a wider lane separation
+  (`BUS_LANE_GAP` 22 vs 14) and a deeper first stub (`BUS_CHANNEL_GAP` 20 vs 10), so a node's fan of
+  connectors separates more and leaves the node farther before turning. STILL OPEN and needs a bigger
+  routing pass: (a) backbones/legs still pass ~10px from *unrelated* node/group borders (measured) —
+  the direct-route common case checks only crossings, not pass-by proximity, so raising clearance means
+  making the router keep segments off borders it merely runs alongside (shared with the general sweep
+  below and the `edge-border-clearance` guard's threshold, so it touches every family); (b) in dense bus
+  diagrams the edge labels overlap nodes/each other ("SQL" on a node, "RPC"/"HTTP" overlapping) — the
+  decollision pass needs to handle bus-mode label positions.
 - **General routing-quality sweep.** Across families, hunt and fix: edges overlapping where they needn't,
   edges running alongside a node/container border (reads as ambiguous "is it attached?"), and confusing
   near-parallel runs. Extend the geometric guards (border clearance, label-vs-node) with an
