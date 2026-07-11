@@ -1,5 +1,24 @@
 # @m/app (playground) — bugs
 
+Resolved (2026-07-11, live-demo visual sweep):
+
+- ~~**Sequence messages collapsed onto the actor-header row after switching from a mount-snap family.**~~
+  Found by driving the deployed GitHub Pages demo and comparing raw layout vs `shownScene` geometry:
+  the raw layout was correct (messages at increasing y down the lifelines), but `shownScene` returned
+  them all at y≈20 (the actor-header mount). Two compounding causes, both introduced when `scene = laid.value`
+  was moved ahead of `applyKind` in the 2026-07-11 omnibus: (1) `ast = diagram` was still assigned
+  *after* the first paint, so `shownScene` derived `family` from the **previous** family (a mount-snap
+  one like flowchart) and snapped the sequence messages to the actor mounts; (2) the `shownScene` cache
+  key omitted `family`, so that collapsed result was served for the sequence scene (both share the
+  "classic" style string). Fix: publish `scene` and `ast` together before any paint, and add `family`
+  to the shown-scene cache key. Regression-guarded by `e2e/sequence.spec.ts` ("messages stay on their
+  lifeline rows after switching from a flowchart"). Default (classic) sequence rendering now matches
+  Mermaid; the relaxed/sketch/dark modes are unaffected.
+
+Known minor (not this fix): tight request→reply sequence pairs (e.g. "authorize payment" / "auth code")
+can overlap their labels — sequence label decollision for adjacent opposite-direction messages is a
+follow-up (see DO_NEXT).
+
 Resolved (2026-07-03, edge-label follow-up):
 
 - ~~**Edge labels were still struck through by their line.**~~ Fixed for real — the layout-side off-line

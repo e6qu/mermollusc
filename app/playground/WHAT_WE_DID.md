@@ -1,6 +1,23 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-11 — live GitHub Pages demo visual sweep + sequence-collapse fix
+
+Drove the DEPLOYED demo (`https://e6qu.github.io/mermollusc/demo/`) and screenshotted every family in
+every rendering mode/option (default, each layout style, dark, sketch) — 98 shots, zero page errors.
+All families rendered well EXCEPT sequence, which collapsed its messages onto the actor-header row in
+the default (classic) style while sketch mode rendered them correctly. Root-caused by comparing the raw
+`layoutDiagram` output (correct — messages march down) against `shownScene` (collapsed to the actor
+mounts) and fixed the two compounding causes described in BUGS.md: the `ast`/`scene` publish order and
+the family-blind shown-scene cache key. Default sequence rendering now matches Mermaid (the project's
+default-Mermaid-parity principle); relaxed/sketch/dark modes unaffected. Regression test added.
+
+Also confirmed on the live deploy: the #288 layout work all holds (gitGraph ids/tags, gantt/pie/timeline
+titles, donut hole, mindmap hexagon fit, cloud/block group-border routing), the backend-free CSP, and
+self-contained assets. (A fresh deploy shows transient GitHub-Pages CDN 404s on cold edges for a few
+minutes; a real browser boots cleanly once warm — not a build issue.)
+
+
 ## 2026-07-11 — flake hardening (boy-scout sweep)
 
 Removed the fixed-wait races that made the e2e gate rely on its one retry. A static sweep + the earlier
