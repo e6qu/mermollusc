@@ -134,6 +134,27 @@ describe("pipeline goldens", () => {
       expect(normalize(toDisplayList(laid.value))).toMatchSnapshot();
     });
   }
+
+  // Regression: a message and its immediate reply between the same actors sit on adjacent rows, and
+  // both labels get lifted toward the gap between them — at the old row spacing their label boxes
+  // overlapped ("authorize payment" printed over "auth code"). Assert the two labels' 16px-tall boxes
+  // stay vertically clear.
+  it("a sequence request and its reply do not overlap their labels", async () => {
+    const parsed = parseDiagram(
+      "sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: authorize payment\n  B-->>A: auth code\n",
+    );
+    if (!isOk(parsed)) throw new Error("parse failed");
+    const laid = await layoutDiagram(parsed.value, heuristicMeasure);
+    if (!isOk(laid)) throw new Error("layout failed");
+    const labels = toDisplayList(laid.value).flat().filter(
+      (c): c is Extract<typeof c, { kind: "label" }> => c.kind === "label",
+    );
+    const req = labels.find((l) => l.text === "authorize payment");
+    const rep = labels.find((l) => l.text === "auth code");
+    if (req === undefined || rep === undefined) throw new Error("labels missing");
+    // Boxes are 16px tall (centred on `y`); their vertical extents must not intersect.
+    expect(Math.abs(req.y - rep.y)).toBeGreaterThanOrEqual(16);
+  });
 });
 
 // The baseline for the (opt-in) energy-aware layout work: every default layout must satisfy the

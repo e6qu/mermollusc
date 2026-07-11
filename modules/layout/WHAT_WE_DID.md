@@ -1,5 +1,15 @@
 # @m/layout — work log
 
+## 2026-07-11 — wider sequence message row spacing (paired-label overlap)
+
+A request message and its immediate reply between the same actors sat one row apart, and both labels
+lifted toward the gap between them, so they overlapped ("authorize payment" printed over "auth code").
+Measuring the drawn label positions confirmed request/reply pairs landed ~12px apart vs ~28px for
+same-direction messages — the asymmetric label lift converges a pair. Widened `MESSAGE_GAP` 40 → 56 so
+even the tightest pair's 16px label boxes stay clear (Mermaid's sequence rows are similarly roomy).
+Only the sequence display-list golden moved. Guarded by a new `golden.test.ts` assertion (a request +
+its reply keep their label boxes vertically separated).
+
 ## 2026-07-11 — trunk merges only compatible edges
 
 From the routing review: a trunk backbone must not merge edges of opposite direction, nor a directed
