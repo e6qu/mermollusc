@@ -62,12 +62,13 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
    Research-grade; deliver as a best-effort pass, not exact.
 
 ## Layout / rendering
-- **Sequence label decollision for tight request→reply pairs.** A message and its immediate opposite-
-  direction reply (e.g. "authorize payment" / "auth code", "enqueue fulfilment" / "accepted") sit on
-  adjacent rows and their labels can overlap. `decollideEdgeLabels` handles graph edge labels; sequence
-  message rows need the same vertical nudge (or a per-row label offset) so paired labels don't collide.
-  Lower severity — legible, just cramped. (Surfaced in the 2026-07-11 live-demo sweep alongside the now-
-  fixed sequence header-collapse bug.)
+- *(done 2026-07-11)* **Sequence label overlap for tight request→reply pairs.** A message and its
+  immediate opposite-direction reply (e.g. "authorize payment" / "auth code") sat on adjacent rows and
+  both labels lifted toward the gap between them, overlapping. Root-caused by measuring the drawn label
+  positions (pairs were ~12px apart vs ~28px for same-direction messages). Fixed by widening the
+  sequence message row spacing (`MESSAGE_GAP` 40 → 56 in `@m/layout`'s `sequence.ts`) so even the
+  tightest pair clears — matching Mermaid's roomier row height. Guarded by a `golden.test.ts` assertion
+  (a request + reply's 16px label boxes stay vertically clear).
 - **Examples parity guard:** Done for parse → layout → display-list → SVG across every catalog entry,
   with explicit network/cloud catalog assertions and cardinal endpoint mount checks across the routed
   families plus bus/trunk architecture variants. Network/cloud starters are now curated for public demo
