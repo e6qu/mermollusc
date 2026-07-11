@@ -4,6 +4,7 @@
     "src",
     "test",
     "e2e",
-    "e2e-shots"
+    "e2e-shots",
+    "e2e-pages"
   ]
 }

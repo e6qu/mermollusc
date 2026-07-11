@@ -163,8 +163,9 @@ just that module. `run`/`stop` use the module's `RUN_CMD`/`STOP_CMD` (libs defau
   over `src/**`, barrels excluded) with a threshold ratchet set just below current coverage; raise
   the ratchet as coverage climbs. `contracts` (types-only) and `app` (covered by Playwright e2e,
   not vitest) carry no thresholds.
-- **Tests are typechecked.** Each module's `tsconfig.json` includes `test/` (the app also `e2e/`),
-  so `make typecheck` catches fixture/mock drift under the same strict config as `src` — not just
+- **Tests are typechecked.** Each module's `tsconfig.json` includes `test/` (the app also `e2e/`,
+  `e2e-shots/`, and `e2e-pages/`), so `make typecheck` catches fixture/mock drift under the same strict
+  config as `src` — not just
   the editor. Note: Biome lint and the type-guard still scope to `src/` (the core rules are a
   source-code contract); the strict compiler is what guards the tests.
 
