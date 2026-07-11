@@ -1364,13 +1364,16 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
   return offsetParallelEdges(snapSceneEdgesToMountPoints(routed));
 };
 
-// Multiple edges between the SAME node pair route mount-to-mount identically and coincide (a straight
-// pair has no cross-leg for the lane stagger to separate). This is where the "incompatible backbone"
-// rule breaks worst — a directed and an undirected edge, or an A→B and a B→A, drawn on one line. Spread
-// each such group onto distinct parallel lanes by translating its whole route perpendicular to the
-// endpoint axis; the mounts slide along their node sides (still valid attach points). Run AFTER the
-// mount snap so the snap doesn't pull them back to the shared centre.
+// Multiple edges between the SAME node pair route mount-to-mount identically and coincide. This is where
+// the "incompatible backbone" rule breaks worst — a directed and an undirected edge, or an A→B and a
+// B→A, drawn on one line. Spread each such group onto distinct parallel lanes. A whole-route translate
+// only separates a STRAIGHT pair (one segment); a bent L-route needs each segment moved perpendicular to
+// ITS OWN axis, so we shift every waypoint by the lane offset along each adjacent segment's normal — a
+// corner takes both its x- and y-shift, yielding a genuinely parallel offset route that stays orthogonal.
+// The mounts slide along their node sides (still valid attach points). Run AFTER the mount snap so the
+// snap doesn't pull the group back to the shared centre.
 const PARALLEL_GAP = 14;
+const AXIS_TOL = 0.5;
 const offsetParallelEdges = (scene: Scene): Scene => {
   const groups = new Map<string, number[]>();
   scene.edges.forEach((e, i) => {
@@ -1380,45 +1383,61 @@ const offsetParallelEdges = (scene: Scene): Scene => {
     if (g === undefined) groups.set(key, [i]);
     else g.push(i);
   });
-  const shift = new Map<number, { readonly dx: number; readonly dy: number }>();
-  const halfWidth = new Map<string, number>(
-    scene.nodes.map((n) => [n.id, n.bounds.size.width / 2]),
+  // A mount shifts perpendicular to its first/last segment, so it might slide off a narrow side. Clamp the
+  // spread to the tightest half-extent across both endpoints (min of half-width and half-height), minus a
+  // small inset — conservative but keeps every mount on its border whichever axis it slides along.
+  const halfSpan = new Map<string, number>(
+    scene.nodes.map((n) => [n.id, Math.min(n.bounds.size.width, n.bounds.size.height) / 2 - 4]),
   );
-  const halfHeight = new Map<string, number>(
-    scene.nodes.map((n) => [n.id, n.bounds.size.height / 2]),
-  );
+  const laneOff = new Map<number, number>();
   for (const idxs of groups.values()) {
     if (idxs.length < 2) continue;
     idxs.sort((a, b) => a - b);
     for (const [lane, idx] of idxs.entries()) {
       const e = scene.edges[idx];
       if (e === undefined) continue;
-      const w = e.waypoints;
-      const first = w[0];
-      const last = w[w.length - 1];
-      if (first === undefined || last === undefined) continue;
-      const vertical = Math.abs(last.y - first.y) >= Math.abs(last.x - first.x);
-      // Clamp the spread so the mount stays on its node side (a vertical pair slides along the top/bottom
-      // border, so the limit is the narrower endpoint's HALF-WIDTH, minus a small inset).
-      const limit = vertical
-        ? Math.min(halfWidth.get(e.from) ?? 30, halfWidth.get(e.to) ?? 30) - 4
-        : Math.min(halfHeight.get(e.from) ?? 20, halfHeight.get(e.to) ?? 20) - 4;
+      const limit = Math.max(0, Math.min(halfSpan.get(e.from) ?? 16, halfSpan.get(e.to) ?? 16));
       const raw = (lane - (idxs.length - 1) / 2) * PARALLEL_GAP;
-      const off = Math.max(-limit, Math.min(limit, raw));
-      shift.set(idx, vertical ? { dx: off, dy: 0 } : { dx: 0, dy: off });
+      laneOff.set(idx, Math.max(-limit, Math.min(limit, raw)));
     }
   }
-  if (shift.size === 0) return scene;
+  if (laneOff.size === 0) return scene;
   const edges = scene.edges.map((e, i): SceneEdge => {
-    const o = shift.get(i);
-    if (o === undefined || (o.dx === 0 && o.dy === 0)) return e;
-    const wp = e.waypoints.map((p) => point(p.x + o.dx, p.y + o.dy));
+    const off = laneOff.get(i);
+    if (off === undefined || off === 0) return e;
+    const w = e.waypoints;
+    // Shift each waypoint perpendicular to every axis-aligned segment it touches (a vertical segment moves
+    // its ends in x, a horizontal one in y). A non-orthogonal segment (should not occur on routed edges)
+    // has no well-defined normal, so fall back to translating the whole route along its dominant axis.
+    let orthogonal = true;
+    for (let k = 0; k + 1 < w.length; k++) {
+      const a = w[k];
+      const b = w[k + 1];
+      if (a === undefined || b === undefined) continue;
+      if (Math.abs(a.x - b.x) >= AXIS_TOL && Math.abs(a.y - b.y) >= AXIS_TOL) orthogonal = false;
+    }
+    const first = w[0];
+    const last = w[w.length - 1];
+    const vertical =
+      last === undefined ? false : Math.abs(last.y - first.y) >= Math.abs(last.x - first.x);
+    const wp = orthogonal
+      ? w.map((p, k) => {
+          let dx = 0;
+          let dy = 0;
+          for (const nb of [w[k - 1], w[k + 1]]) {
+            if (nb === undefined) continue;
+            if (Math.abs(nb.x - p.x) < AXIS_TOL) dx = off;
+            else if (Math.abs(nb.y - p.y) < AXIS_TOL) dy = off;
+          }
+          return point(p.x + dx, p.y + dy);
+        })
+      : w.map((p) => (vertical ? point(p.x + off, p.y) : point(p.x, p.y + off)));
     const [w0, w1, ...wr] = wp;
     if (w0 === undefined || w1 === undefined) return e;
     return {
       ...e,
       waypoints: twoOrMore(w0, w1, ...wr),
-      labelPos: e.labelPos === null ? null : point(e.labelPos.x + o.dx, e.labelPos.y + o.dy),
+      labelPos: e.labelPos === null ? null : pathMidpoint(wp),
     };
   });
   return { ...scene, edges };

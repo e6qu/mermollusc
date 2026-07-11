@@ -10,13 +10,15 @@ import { respreadPorts, trunkRoutes } from "../../src/core/route.js";
 // COMPATIBLE edges — never a directed with an undirected one, never two directed edges flowing opposite
 // ways. Complex graphs are where the overlaps hide, so we push node/edge counts up.
 //
-// PROGRESS (2026-07-11): `offsetParallelEdges` now spreads STRAIGHT multi-edges between one node pair
-// onto distinct lanes, so opposite pairs and mixed hubs no longer share a backbone (guarded by
-// `NOW_CLEAN`). STILL OPEN: bent multi-edges (an L-route can't be pulled apart by a single translate)
-// and cross-node channel alignment in complex graphs. Those need per-segment mount-spread / signature-
-// aware base routing. The two property tests below stay `it.fails` (they PASS while ANY violation
-// remains and FLIP to failing the day the router is fully fixed — the signal to drop `.fails` and
-// promote them to real gates). See modules/layout/DO_NEXT.md.
+// PROGRESS (2026-07-12): `offsetParallelEdges` spreads ALL multi-edges between one node pair onto
+// distinct lanes — STRAIGHT pairs by a whole-route translate and BENT (L-route) pairs by a per-segment
+// perpendicular shift (each corner takes both its x- and y-offset), so a directed+undirected pair or an
+// A→B/B→A pair no longer shares a backbone whether the nodes are aligned or diagonal (guarded by
+// `NOW_CLEAN`). STILL OPEN: cross-node channel alignment in complex graphs — edges between DIFFERENT
+// pairs whose legs land on one track; that needs signature-aware lanes in the base router. The two
+// property tests below stay `it.fails` (they PASS while ANY violation remains and FLIP to failing the
+// day the router is fully fixed — the signal to drop `.fails` and promote them to real gates). See
+// modules/layout/DO_NEXT.md.
 
 const nodeAt = (id: string, x: number, y: number, w = 60, h = 40): SceneNode => ({
   id: brand<string, "SceneNodeId">(id),
@@ -143,7 +145,8 @@ const graph: fc.Arbitrary<GraphSpec> = fc.record({
 });
 
 // Multi-edge offsetting (`offsetParallelEdges`) fixed these — they must STAY clean in both backbone
-// modes (a directed + undirected pair, an opposite pair, a mixed hub — all edges between one node pair).
+// modes (a directed + undirected pair, an opposite pair, a mixed hub — all edges between one node pair,
+// whether the two nodes are aligned (straight route) or diagonal (bent L-route)).
 const NOW_CLEAN: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec }> = [
   {
     name: "opposite-direction pair between the same two nodes",
@@ -157,6 +160,16 @@ const NOW_CLEAN: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec
         { a: 0, b: 2, directed: true },
         { a: 1, b: 2, directed: false },
         { a: 0, b: 2, directed: false },
+      ],
+    },
+  },
+  {
+    name: "bent (diagonal) directed + undirected pair — L-route, needs per-segment spread",
+    spec: {
+      nodeCount: 4,
+      edges: [
+        { a: 0, b: 3, directed: true },
+        { a: 0, b: 3, directed: false },
       ],
     },
   },
