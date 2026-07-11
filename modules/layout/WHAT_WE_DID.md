@@ -1,5 +1,19 @@
 # @m/layout — work log
 
+## 2026-07-11 — trunk merges only compatible edges
+
+From the routing review: a trunk backbone must not merge edges of opposite direction, nor a directed
+edge with an undirected one. `trunkMerge` grouped a node-side fan purely by (node, side), so a hub with
+both `A --> H` and `C --- H` on one side merged them onto a single backbone (a shared arrowhead across
+a directed + undirected pair — confusing). It now partitions each fan by `trunkCompatKey` — `u`
+(undirected), `di` (arrow into the node), `do` (arrow out), `dio` (bidirectional) — using the renderer's
+`DIRECTIONAL_ENDS` set. Only same-key edges share a backbone; a second compatible group on the same side
+is placed in an ADJACENT parallel trunk, offset by `TRUNK_SEP` (16) and re-clamped so it never passes
+the far ports. Real catalog examples are untouched (each family's edges are uniformly directed or
+undirected → a single group), so no goldens moved. Test-driven: a new `route.test.ts` case builds a hub
+with two directed + two undirected connectors on one side and asserts the two kinds land on distinct
+trunk lines.
+
 ## 2026-07-11 — wider bus-routing spacing (first step)
 
 From the live-demo routing review: bus mode packed parallel connectors too tightly and let a node's fan
