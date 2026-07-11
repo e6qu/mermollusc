@@ -2,6 +2,7 @@ import { ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId } from "@m/contracts";
 import type { PieAst, Scene, SceneNode, SceneWedge } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { withTitle } from "./title.js";
 
 const RADIUS = 150;
 const DONUT_INNER_RADIUS = 72;
@@ -30,13 +31,18 @@ export const layoutPie = (
   // An empty pie (header only) or an all-zero total has nothing to draw; return an empty scene rather
   // than dividing by zero. The parser already rejects non-positive slice values.
   if (total <= 0) {
-    return ok({
-      nodes: [],
-      edges: [],
-      wedges: [],
-      decorations: [],
-      extent: rect(0, 0, discSpan, discSpan),
-    });
+    return ok(
+      withTitle(
+        {
+          nodes: [],
+          edges: [],
+          wedges: [],
+          decorations: [],
+          extent: rect(0, 0, discSpan, discSpan),
+        },
+        ast.title,
+      ),
+    );
   }
 
   const TWO_PI = Math.PI * 2;
@@ -122,13 +128,18 @@ export const layoutPie = (
   const width = Math.max(discSpan, legendRight + MARGIN);
   const height = Math.max(discSpan, legendBottom + MARGIN);
 
-  return ok({
-    nodes,
-    edges: [],
-    wedges: [...slices, ...legend],
-    decorations: [],
-    extent: rect(0, 0, width, height),
-  });
+  return ok(
+    withTitle(
+      {
+        nodes,
+        edges: [],
+        wedges: [...slices, ...legend],
+        decorations: [],
+        extent: rect(0, 0, width, height),
+      },
+      ast.title,
+    ),
+  );
 };
 
 // Family-context style invariant: a pie's slices must tile the full circle (their angular spans sum to

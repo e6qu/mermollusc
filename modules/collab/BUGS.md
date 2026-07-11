@@ -2,6 +2,34 @@
 
 No known open bugs.
 
+Resolved (review sweep, found + fixed 2026-07-10):
+
+- ~~**Peers silently never saw restyles.**~~ Node colour accents and per-edge route styles were held in
+  per-client session memory ("not yet a synced Y.Map") while positions/groups synced — a collaborator's
+  recolour or curved-edge choice simply didn't propagate, with no error. Fixed: two more `Y.Map`s
+  (`edgeStyles`/`nodeStyles`) in the shared doc, written through `@m/builder`'s per-entry wire encoders
+  and re-materialised through the shared Zod decoder, included in the undo scope and in
+  `replace()`/`persist()`. Six new convergence tests (live restyle, late joiner, concurrent restyles,
+  undo sync, replace, onOverlayChange). The `OverlayDoc` port needed no change.
+- ~~**Inbound CONTROL frames were applied without validation.**~~ Any peer-controlled string became "the
+  role" and was written into the DOM by the app. Fixed: CONTROL payloads decode through the closed
+  `RelayControlMessage` union (`owner`/`editor`/`viewer` roles + the `seed` grant) at the transport
+  boundary; unknown payloads log `control-rejected` and are dropped.
+- ~~**Reconnect retried policy rejections like transient drops.**~~ A 1008 (bad room/token/rate-limit) or
+  1009 (frame too big) close was retried up to the full backoff budget, hammering the relay with replays
+  of the same rejection and hiding the real failure for ~minutes. Fixed: `SocketCloseEvent` exposes the
+  close code on every `onClose`; `reconnectingWebSocketTransport` stops immediately on 1008/1009, logs
+  `relay-rejected`, reports the new `rejected` status, and fires the consumer `onClose` with the code.
+- ~~**A Go runtime crash in the WASM relay was swallowed; a failed load was cached forever.**~~
+  `void go.run(instance)` discarded the runtime's exit/crash, leaving every connection believing it was
+  live, and a rejected `loaded` promise made every later `loadWasmRelay()` re-throw the stale error with
+  no retry. Fixed: `go.run`'s settlement is observed (loud `console.error` + every live wasm-relay socket
+  is closed), and a rejected load evicts the cache so the next call retries.
+- ~~**A relay-side rejection never reached the wasm-relay client.**~~ The Go side's `Close` was a no-op
+  towards JS (see `modules/relay/BUGS.md`); the TS side had no way to learn the connection was refused.
+  Fixed together with the relay: `mermolluscRelayConnect` now takes `onClosed(code, reason)`, and
+  `connectWasmRelay` fires its close listeners exactly once whichever side closes first.
+
 Resolved (relay-owned seed grant, 2026-07-02):
 
 - ~~**Two genuinely-simultaneous fresh clients could both seed a room.**~~ Fixed — the relay now grants

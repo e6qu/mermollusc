@@ -116,21 +116,50 @@ func (s *jsStore) Save(room string, snapshot []byte) error {
 
 // jsSocket bridges relay.Socket to a JS-side CollabSocket peer: Send calls onSend directly (a plain
 // synchronous JS function call, not a promise — never a deadlock hazard); the JS side drives incoming
-// data/close by calling relayReceive/relayClose, which invoke the listeners OnMessage/OnClose registered.
+// data/close by calling relayReceive/relayClose. Close — whether relay-initiated (a rejection) or
+// JS-initiated (relayClose) — drives the full teardown: the connection registry forgets the handle, the
+// JS-side onClosed callback learns the close code/reason, and the OnClose listener registered by
+// Core.Connect fires so the blocked Connect goroutine exits and the socket leaves its room. Without
+// that, a rejected connection leaked a goroutine on <-done, stayed in the room's socket set, and the
+// client believed it was still connected.
 type jsSocket struct {
 	mu        sync.Mutex
 	open      bool
+	closeSent bool
+	handle    int
 	onSend    js.Value
+	onClosed  js.Value
 	onMessage func(data []byte)
 	onClose   func()
 }
 
 func (s *jsSocket) Send(data []byte) { s.onSend.Invoke(bytesToUint8Array(data)) }
 
-func (s *jsSocket) Close(int, string) {
+// Close is safe from any goroutine but must NOT be called inline from a js.FuncOf handler: the OnClose
+// listener's teardown can reach the JS-promise-backed Store (a flush), which deadlocks the single-threaded
+// runtime if the JS event loop is blocked on the handler — see the package doc comment. relayClose
+// therefore dispatches it on a fresh goroutine.
+func (s *jsSocket) Close(code int, reason string) {
 	s.mu.Lock()
+	if !s.open {
+		s.mu.Unlock()
+		return
+	}
 	s.open = false
+	onClose := s.onClose
+	if onClose != nil {
+		s.closeSent = true
+	}
 	s.mu.Unlock()
+
+	mu.Lock()
+	delete(connections, s.handle)
+	mu.Unlock()
+
+	s.onClosed.Invoke(code, reason)
+	if onClose != nil {
+		onClose()
+	}
 }
 
 func (s *jsSocket) IsOpen() bool {
@@ -139,8 +168,33 @@ func (s *jsSocket) IsOpen() bool {
 	return s.open
 }
 
-func (s *jsSocket) OnMessage(listener func(data []byte)) { s.onMessage = listener }
-func (s *jsSocket) OnClose(listener func())              { s.onClose = listener }
+func (s *jsSocket) OnMessage(listener func(data []byte)) {
+	s.mu.Lock()
+	s.onMessage = listener
+	s.mu.Unlock()
+}
+
+// OnClose registers the core's close listener. If the socket was already closed before registration
+// (JS closed it in the window before Core.Connect ran), the listener fires immediately — otherwise the
+// Connect goroutine would block on a close notification that already happened.
+func (s *jsSocket) OnClose(listener func()) {
+	s.mu.Lock()
+	s.onClose = listener
+	fireNow := !s.open && !s.closeSent
+	if fireNow {
+		s.closeSent = true
+	}
+	s.mu.Unlock()
+	if fireNow {
+		listener()
+	}
+}
+
+func (s *jsSocket) message() func(data []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.onMessage
+}
 
 var (
 	mu          sync.Mutex
@@ -149,12 +203,14 @@ var (
 	nextHandle  = 0
 )
 
-// relayConnect(room, onSend, onLoad, onSave) -> handle. The Core is built once, lazily, on the first
-// call — a single browser tab's demo session, matching a real relay's one-Core-many-connections shape
-// rather than a per-connection reimplementation.
+// relayConnect(room, onSend, onLoad, onSave, onClosed) -> handle. onClosed(code, reason) fires exactly
+// once when the connection closes for any reason the relay drives (a rejection, a policy close) — the JS
+// side must surface it, or a rejected client believes it is still connected. The Core is built once,
+// lazily, on the first call — a single browser tab's demo session, matching a real relay's
+// one-Core-many-connections shape rather than a per-connection reimplementation.
 func relayConnect(_ js.Value, args []js.Value) any {
 	room := args[0].String()
-	socket := &jsSocket{open: true, onSend: args[1]}
+	socket := &jsSocket{open: true, onSend: args[1], onClosed: args[4]}
 	store := &jsStore{onLoad: args[2], onSave: args[3]}
 
 	mu.Lock()
@@ -163,6 +219,7 @@ func relayConnect(_ js.Value, args []js.Value) any {
 	}
 	handle := nextHandle
 	nextHandle++
+	socket.handle = handle
 	connections[handle] = socket
 	mu.Unlock()
 
@@ -177,8 +234,11 @@ func relayReceive(_ js.Value, args []js.Value) any {
 	mu.Lock()
 	socket, ok := connections[handle]
 	mu.Unlock()
-	if ok && socket.onMessage != nil {
-		socket.onMessage(data)
+	if !ok {
+		return nil
+	}
+	if onMessage := socket.message(); onMessage != nil {
+		onMessage(data)
 	}
 	return nil
 }
@@ -187,15 +247,12 @@ func relayClose(_ js.Value, args []js.Value) any {
 	handle := args[0].Int()
 	mu.Lock()
 	socket, ok := connections[handle]
-	delete(connections, handle)
 	mu.Unlock()
 	if !ok {
 		return nil
 	}
-	socket.Close(1000, "client close")
-	if socket.onClose != nil {
-		go socket.onClose()
-	}
+	// On a goroutine, never inline: Close's teardown can reach the promise-backed Store (see Close).
+	go socket.Close(1000, "client close")
 	return nil
 }
 

@@ -10,6 +10,7 @@ import type {
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { widestLine } from "./measure.js";
+import { withTitle } from "./title.js";
 
 const PAD = 14;
 const MIN_COL_W = 92;
@@ -174,13 +175,18 @@ export const layoutTimeline = (
     }
   }
 
-  return ok({
-    nodes,
-    edges,
-    wedges: [],
-    decorations,
-    extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
-  });
+  return ok(
+    withTitle(
+      {
+        nodes,
+        edges,
+        wedges: [],
+        decorations,
+        extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
+      },
+      ast.title,
+    ),
+  );
 };
 
 // Family-context style invariant: a timeline reads left→right, so each period sits strictly to the right

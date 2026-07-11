@@ -22,11 +22,23 @@ _None known._
   these placed edge labels at the routed midpoint (opaque plate) in a tight 24px gap, so a label landed
   on a node ("cloud is bunched up"). Widened `GAP` and, for the orthogonal cloud/block routes, anchored
   the label on the route's central cross-channel (`routeChannelMid`). Skipped-over nodes are avoided now
-  too (`decollideEdgeLabels` treats unrelated node/container boundaries as obstacles). Re-triaged
-  visually 2026-07-02: the residual overlap class is a label landing on its OWN edge's endpoint box on a
-  short segment (endpoint ancestors are deliberately excluded from the obstacle set — e.g. network's
-  "filtered" on its Internet endpoint) — tracked in `app/playground/DO_NEXT.md`, a narrower bug than
-  this resolved one.
+  too (`decollideEdgeLabels` treats unrelated node/container boundaries as obstacles). The residual
+  class re-triaged 2026-07-02 (a label on its OWN edge's endpoint box, e.g. network's "filtered" on its
+  Internet endpoint; plus labels clipping the sheet edge, e.g. "SSH" at the top) is resolved 2026-07-11:
+  endpoint LEAF boxes are obstacles with a clearance gap, related groups contribute title-band + border
+  strips, and every label position is clamped onto the sheet.
+
+- ~~**Block composite children poked over the group border.**~~ Fixed — a composite whose content needs
+  more columns than its parent grid offers had its width column-snap-clamped below the content
+  (`span ≤ columns`), so the right-most children (demo `web-1`/`api-2` row) sat on/over the border. The
+  box width is now floored at the natural content width; that case spans the full row, so nothing sits
+  to its right.
+
+- ~~**Connectors tunnelled into groups through non-facing sides / slid along their target's border.**~~
+  Fixed — `rerouteBoxEdges` now walls an entered group's non-facing sides for the maze, counts
+  border-sliding entries as hugs, and re-ranks maze + L/Z pattern candidates by on-screen badness
+  (cloud `alb→web "HTTP"` dove past Services and skimmed web's flank; block `lb→web-1` looped outside
+  the group and entered from the left).
 
 - ~~**Stack overflow on a duplicate id nested in its twin.**~~ Fixed (pipeline-fuzz find) — `layoutC4`'s
   `place` and `toElkGraph`'s `container` recurse over an id-keyed children map. A source with two
@@ -83,3 +95,7 @@ Checked while family-gating side-centre mount snapping and covering corner-ish e
 
 Checked while switching network defaults to vendored icons, honoring state direction, and sizing escaped
 multiline labels.
+
+Checked while adding gantt/pie/timeline titles, gitGraph classic id/tag captions, milestone side
+labels, mindmap hexagon sizing, and the label/route decollision hardening (sheet clamp, border
+strips, facing-side group entry).

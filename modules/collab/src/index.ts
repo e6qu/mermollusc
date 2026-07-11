@@ -5,6 +5,8 @@ export {
   webSocketTransport,
   connectWebSocket,
   reconnectingWebSocketTransport,
+  decodeControlMessage,
+  isPolicyClose,
   createIndexedDbRoomStore,
   createMemoryRoomStore,
   createWebStorageRoomStore,
@@ -13,6 +15,9 @@ export {
 } from "./shell/index.js";
 export type {
   CollabSocket,
+  SocketCloseEvent,
+  RelayRole,
+  RelayControlMessage,
   TransportHooks,
   ReconnectStatus,
   ReconnectDeps,

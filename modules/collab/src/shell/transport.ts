@@ -1,15 +1,30 @@
-import type { CollabSession } from "./session.js";
+import { type Logger, stamp } from "@m/std";
+import type { CollabEvent, CollabSession } from "./session.js";
 
 // The transport seam between a `CollabSession` and a peer/relay. The session speaks only binary Yjs
 // updates (`state`/`applyUpdate`/`onUpdate`); a `CollabSocket` is any duplex carrier for those bytes,
 // so the wiring (`connectTransport`) is identical whether the carrier is a real WebSocket, an in-memory
 // pair (tests), or a future provider. Keeping it an interface keeps Yjs out of the transport contract.
+
+// Why the close event carries a code: the relay closes with 1008 (policy violation — bad room, bad
+// token, rate-limit breach) or the peer with 1009 (frame too big); those are PERMANENT rejections that
+// must not be retried, unlike a transient network drop (`code: null` when no close code is known).
+export interface SocketCloseEvent {
+  readonly code: number | null;
+  readonly reason: string;
+}
+
+// RFC 6455 close codes the relay uses as policy rejections — retrying them replays the same rejection.
+const POLICY_CLOSE_CODES: ReadonlySet<number> = new Set([1008, 1009]);
+export const isPolicyClose = (event: SocketCloseEvent): boolean =>
+  event.code !== null && POLICY_CLOSE_CODES.has(event.code);
+
 export interface CollabSocket {
   isOpen(): boolean;
   send(data: Uint8Array): void;
   onOpen(listener: () => void): void;
   onMessage(listener: (data: Uint8Array) => void): void;
-  onClose(listener: () => void): void;
+  onClose(listener: (event: SocketCloseEvent) => void): void;
   close(): void;
 }
 
@@ -29,15 +44,37 @@ const framed = (tag: number, payload: Uint8Array): Uint8Array => {
   return frame;
 };
 
+// The CONTROL channel's closed vocabulary — the relay's granted role, or the reserved "seed" grant (the
+// relay's promise that THIS connection and no other may seed an empty room's initial content, see
+// modules/relay: room.seeder). Anything else on the wire is decoded to `null` at this boundary, logged
+// loudly, and dropped — a raw peer string never reaches the app (which renders the role into the DOM).
+export type RelayRole = "owner" | "editor" | "viewer";
+export type RelayControlMessage =
+  | { readonly kind: "role"; readonly role: RelayRole }
+  | { readonly kind: "seed" };
+
+export const decodeControlMessage = (text: string): RelayControlMessage | null => {
+  switch (text) {
+    case "owner":
+    case "editor":
+    case "viewer":
+      return { kind: "role", role: text };
+    case "seed":
+      return { kind: "seed" };
+    default:
+      return null;
+  }
+};
+
 // Optional hooks. `authToken` sends an access token as the first client frame on every socket open;
-// `onControl` receives a server control message (a short UTF-8 string) — today either the granted role
-// ("owner"/"editor"/"viewer") or the reserved "seed" grant, the relay's promise that THIS connection
-// and no other may seed an empty room's initial content (see modules/relay: room.seeder); `onClose`
-// fires when the underlying socket drops or errors (so a disconnect is surfaced, not silent).
+// `onControl` receives a decoded server control message; `onClose` fires when the underlying socket
+// drops or errors (so a disconnect is surfaced, not silent), with the close code when one is known;
+// `logger` is the loud-logging sink for boundary failures (an undecodable CONTROL payload).
 export interface TransportHooks {
   readonly authToken?: string;
-  onControl?: (message: string) => void;
-  onClose?: () => void;
+  onControl?: (message: RelayControlMessage) => void;
+  onClose?: (event: SocketCloseEvent) => void;
+  readonly logger?: Logger<CollabEvent>;
 }
 
 // Bind a session to a socket: on open, send our whole document + presence so the peer/relay can merge
@@ -63,9 +100,17 @@ export const connectTransport = (
     const payload = data.subarray(1);
     if (data[0] === DOC) session.applyUpdate(payload);
     else if (data[0] === AWARE) session.applyAwarenessUpdate(payload);
-    else if (data[0] === CONTROL) hooks.onControl?.(new TextDecoder().decode(payload));
+    else if (data[0] === CONTROL) {
+      const message = decodeControlMessage(new TextDecoder().decode(payload));
+      if (message === null) {
+        hooks.logger?.log(stamp("error", "collab", "control-rejected"));
+        return;
+      }
+      hooks.onControl?.(message);
+    }
   });
-  if (hooks.onClose !== undefined) socket.onClose(hooks.onClose);
+  const onClose = hooks.onClose;
+  if (onClose !== undefined) socket.onClose((event) => onClose(event));
   const offDoc = session.onUpdate((update) => {
     if (socket.isOpen()) socket.send(framed(DOC, update));
   });
@@ -100,16 +145,17 @@ export const webSocketTransport = (url: string): CollabSocket => {
         if (data instanceof ArrayBuffer) listener(new Uint8Array(data));
       }),
     onClose: (listener) => {
-      // A relay drop surfaces as `close`; a failed connection as `error` (which is also followed by
-      // `close` in browsers, but Node's WebSocket may only emit `error`) — fire the listener once.
+      // A relay drop surfaces as `close` (carrying the server's close code); a failed connection as
+      // `error` (which is also followed by `close` in browsers, but Node's WebSocket may only emit
+      // `error`) — fire the listener once, preferring the close event's code when both arrive.
       let fired = false;
-      const once = (): void => {
+      const once = (event: SocketCloseEvent): void => {
         if (fired) return;
         fired = true;
-        listener();
+        listener(event);
       };
-      ws.addEventListener("close", once);
-      ws.addEventListener("error", once);
+      ws.addEventListener("close", (e) => once({ code: e.code, reason: e.reason }));
+      ws.addEventListener("error", () => once({ code: null, reason: "socket error" }));
     },
     close: () => ws.close(),
   };
@@ -124,14 +170,17 @@ export const connectWebSocket = (
 
 // The reconnect lifecycle the app can surface. `reconnecting` = the inner socket dropped and we're
 // backing off to retry; `reconnected` = a fresh socket opened and state was re-exchanged; `disconnected`
-// = the backoff cap was exhausted, we've given up (this is when the consumer `onClose` fires).
-export type ReconnectStatus = "reconnecting" | "reconnected" | "disconnected";
+// = the backoff cap was exhausted, we've given up; `rejected` = the relay closed with a POLICY code
+// (1008/1009) — retrying would replay the same rejection, so we stop immediately. `disconnected` and
+// `rejected` are when the consumer `onClose` fires.
+export type ReconnectStatus = "reconnecting" | "reconnected" | "disconnected" | "rejected";
 
 // Injected impurities + tuning for `reconnectingWebSocketTransport`, so the backoff schedule is fully
 // deterministic under test. `now`/`schedule`/`random` replace `Date.now`/`setTimeout`/`Math.random`;
 // `mkSocket` mints the inner socket (defaults to `webSocketTransport`, overridable for tests). The
 // backoff is `min(baseMs * 2^attempt, capMs)` plus up to `jitter` × that of random jitter; after
-// `maxRetries` consecutive failed attempts we declare `disconnected`.
+// `maxRetries` consecutive failed attempts we declare `disconnected`. `logger` logs a policy rejection
+// loudly at this boundary.
 export interface ReconnectDeps {
   readonly mkSocket?: (url: string) => CollabSocket;
   readonly schedule?: (run: () => void, delayMs: number) => void;
@@ -141,6 +190,7 @@ export interface ReconnectDeps {
   readonly jitter?: number;
   readonly maxRetries?: number;
   readonly onStatus?: (status: ReconnectStatus) => void;
+  readonly logger?: Logger<CollabEvent>;
 }
 
 // The exponential-backoff-with-jitter delay for retry `attempt` (0-based). Exposed so a test can assert
@@ -161,7 +211,9 @@ export const backoffDelay = (
 // backoff + jitter up to a cap. On each successful reopen it re-fires the consumer's `onOpen`, so
 // `connectTransport`'s state exchange re-runs and the peers re-sync (Yjs merges idempotently). The
 // consumer's `onClose` fires only once the retry budget is exhausted — a transient drop is healed
-// silently, a permanent one is surfaced. A `ReconnectStatus` is reported throughout for the UI.
+// silently, a permanent one is surfaced. A POLICY close (1008/1009 — the relay REJECTED us) is never
+// retried: replaying it can't succeed and hammers the relay, so it surfaces immediately as `rejected`.
+// A `ReconnectStatus` is reported throughout for the UI.
 export const reconnectingWebSocketTransport = (
   url: string,
   deps: ReconnectDeps = {},
@@ -178,18 +230,25 @@ export const reconnectingWebSocketTransport = (
   // swap, so we hold them here and re-bind each fresh socket to them.
   const openListeners: Array<() => void> = [];
   const messageListeners: Array<(data: Uint8Array) => void> = [];
-  const closeListeners: Array<() => void> = [];
+  const closeListeners: Array<(event: SocketCloseEvent) => void> = [];
 
   let inner: CollabSocket = mkSocket(url);
   let attempt = 0;
-  let closedByUser = false;
+  // Set on a user-initiated close AND on a permanent failure (policy rejection / exhausted budget) —
+  // either way no further reconnect may run.
+  let stopped = false;
   let reconnectedPending = false;
 
   const report = (s: ReconnectStatus): void => deps.onStatus?.(s);
 
+  const surfaceClose = (event: SocketCloseEvent): void => {
+    for (const l of closeListeners) l(event);
+  };
+
   // Wire a fresh inner socket to the held consumer listeners. On its open we reset the retry counter and
-  // re-fire the consumer `onOpen` (state re-exchange). On its close we schedule a reconnect — never the
-  // consumer `onClose`, which fires only when the budget is exhausted.
+  // re-fire the consumer `onOpen` (state re-exchange). On its close we schedule a reconnect — unless the
+  // close is a policy rejection, which is permanent; the consumer `onClose` fires only on permanent
+  // failures.
   const bind = (socket: CollabSocket): void => {
     socket.onOpen(() => {
       attempt = 0;
@@ -202,17 +261,25 @@ export const reconnectingWebSocketTransport = (
     socket.onMessage((data) => {
       for (const l of messageListeners) l(data);
     });
-    socket.onClose(() => {
-      if (closedByUser) return;
+    socket.onClose((event) => {
+      if (stopped) return;
+      if (isPolicyClose(event)) {
+        stopped = true;
+        deps.logger?.log(stamp("error", "collab", "relay-rejected"));
+        report("rejected");
+        surfaceClose(event);
+        return;
+      }
       reconnect();
     });
   };
 
   const reconnect = (): void => {
-    if (closedByUser) return;
+    if (stopped) return;
     if (attempt >= maxRetries) {
+      stopped = true;
       report("disconnected");
-      for (const l of closeListeners) l(); // budget exhausted → surface the drop to the consumer
+      surfaceClose({ code: null, reason: "reconnect retries exhausted" });
       return;
     }
     const delay = backoffDelay(attempt, base, cap, jitter, random);
@@ -220,7 +287,7 @@ export const reconnectingWebSocketTransport = (
     reconnectedPending = true;
     report("reconnecting");
     schedule(() => {
-      if (closedByUser) return;
+      if (stopped) return;
       inner = mkSocket(url); // a fresh socket — the old one's listeners are dead
       bind(inner);
     }, delay);
@@ -240,7 +307,7 @@ export const reconnectingWebSocketTransport = (
     onMessage: (listener) => messageListeners.push(listener),
     onClose: (listener) => closeListeners.push(listener),
     close: () => {
-      closedByUser = true;
+      stopped = true;
       inner.close();
     },
   };

@@ -7,6 +7,7 @@ export type AppEvent =
   | "auth-login-failed"
   | "clipboard-write-failed"
   | "collab-disconnected"
+  | "collab-role-rejected"
   | "collapse-state-load-failed"
   | "collapse-state-persist-failed"
   | "edge-label-rejected"

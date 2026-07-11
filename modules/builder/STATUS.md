@@ -27,7 +27,7 @@ for drag gestures that already know the resolved calendar day.
 - snap geometry (core): `snapAxis(edges, targets)` → `{ delta, line }` (closest candidate within
   `SNAP_T`, first-seen-wins on a tie) and `snapCandidates(nodes, exceptId)` → other nodes'
   left/centre/right xs + top/middle/bottom ys; `SNAP_T` = 6 px. Moved verbatim from the app shell.
-- tests: 54 unit + 79 integration passing (incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
+- tests: unit + integration all passing (`make test` for the live counts; incl. property-based: `patchSpan` splice/reverse, `moveNode`/`applyOverrides`
   reposition-exactly-one, `addNode`/`deleteNode` text invariants, `deleteEdge` keep/skip cases,
   parser-backed `relabelNode` (span-accurate, others untouched) + `connect` (one edge, nodes kept),
   `relabelNode` never-corrupts (round-trips through parse OR returns err), `validateLabel` per-context
@@ -35,6 +35,12 @@ for drag gestures that already know the resolved calendar day.
   the no-style `applyStyles(..., snapToMountPoints)` display path).
 - groups (sidecar, in `@m/contracts`): `group`/`ungroup`/`setLocked`/`setGroupLabel`/`pruneGroups` + `parentOf`/`leafNodes`/
   `topGroupOfNode`/`pathLocked`/`topGroups` — nestable, member-ordered, move-only lock; never in text.
+- overlay codec (`src/shell/overlay.ts`): `serializeOverlay`/`decodeOverlay` plus the four per-entry
+  wire encoders — `encodeOverrideEntry`/`encodeGroupEntry`/`encodeEdgeStyleEntry`/`encodeNodeStyleEntry`
+  — ALL exported through the barrels (the style pair joined 2026-07-10 so `@m/collab` can write style
+  Y.Map entries through the same single source of truth as JSON persistence). Backward-compatible:
+  an old serialized overlay without style entries still decodes (`.default([])`), and the legacy
+  `{curved}` edge shape still normalises to the `route` enum.
 - The app wires these into affordances: shift-click multi-select → **Connect**; **Delete** key →
   family-specific node/element/actor and edge/relation/message removal.
 - Not yet: span-accurate delete (line-based heuristic for now); change-direction.

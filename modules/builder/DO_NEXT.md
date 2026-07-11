@@ -13,6 +13,8 @@
 - *(done)* Unit coverage for `applyStyles(scene, emptyEdgeStyles, emptyNodeStyles, true)` guards the
   no-style branch so it continues to honor mount snapping.
 - *(done)* Sidecar group labels (`setGroupLabel`) persist through the overlay codec.
+- *(done)* Per-entry style encoders (`encodeEdgeStyleEntry`/`encodeNodeStyleEntry`) exported through the
+  barrels for `@m/collab`'s style Y.Map sync, with a codec round-trip unit test.
 - *(done)* Property coverage for `relabelNode` (span-accurate relabel, others untouched) and
   `connect` (appends exactly one edge, nodes preserved).
 - *(done)* Gantt dependency-start drag support: `setGanttStartFromDay` rewrites `after ...` spans to an

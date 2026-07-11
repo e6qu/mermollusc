@@ -12,10 +12,12 @@ crossing "hop" arcs), which real Mermaid does not draw. Classic additionally dra
 Catmull-Rom splines through the routed waypoints (`EdgeFinish = "decorated" | "plain" | "spline"`) —
 the last appearance-level parity gap closed; what remains is the engine difference (ELK vs dagre, a
 layout concern). Container display boxes honor
-`SceneNode.accent`, the palette maps semantic cloud/network accents to theme-aware colours, and edge
-labels render as bare 75%-alpha text with NO background plate in canvas and SVG — the label decollision
-pass keeps them clear of nodes and lines, and the transparency lets dense diagrams read through the
-label layer instead of white boxes punching holes in it.
+`SceneNode.accent`, and the palette maps semantic cloud/network accents to theme-aware colours — the
+dark-theme accent fills are desaturated (~25–32% HSL saturation, the dark counterpart of the light
+pastels) so dark-mode cloud group panels don't glow; a saturation + WCAG-contrast test guards both.
+Edge labels render per `labelStyle` (see the label bullet below): 75%-alpha text, lifted plateless
+above a horizontal run, or kept in-channel on a small opaque masking plate when a line would cross the
+text.
 
 - core (pure): `toDisplayList(scene)` → `DrawCmd[]` (box/diamond/state-marker shapes, node labels, edge
   polylines with dashed/solid stroke + per-end markers, edge labels anchored by exported
@@ -26,8 +28,14 @@ label layer instead of white boxes punching holes in it.
 - core pathing: `src/core/path.ts` owns bezier controls, rounded routed corners, crossing detection,
   and visual hop `PathCmd`s. `toDisplayList` asks it for edge paths, keeping scene-to-display
   layering separate from route geometry.
+- **Diamonds:** the `diamond` `DrawCmd` carries the same `accent`/`fill`/`stroke` fields as `box`, so
+  decision diamonds honour colour accents and raw `style`/`classDef` directives, and a diamond node's
+  `icon` renders (glyph stacked above the label, the pair centred inside the shape) — in both
+  backends.
 - **Pie wedges:** a `wedge` `DrawCmd` (filled circular sector) renders `scene.wedges` — the canvas
-  painter draws an `arc` sector (or annular sector for donuts), the SVG backend a `<path>` sector,
+  painter draws an `arc` sector (or annular sector for donuts: outer arc forward, inner arc swept
+  BACK anticlockwise so the hole stays open — `Canvas2D.arc` requires the direction argument so this
+  can't regress silently), the SVG backend a `<path>` sector,
   both filled from a shared categorical palette (`wedgeColor(colorIndex)`) so a slice matches across
   backends. `toDisplayList` pairs each slice with a centred percentage label and each full-disc legend
   swatch with a left-aligned label. Node/edge families carry no wedges, so they're unaffected.
@@ -47,10 +55,14 @@ label layer instead of white boxes punching holes in it.
 - multi-line labels: a `label` whose text contains an actual newline or a literal `\n` is drawn as stacked lines centred on the
   anchor (in both `paint` and `toSvg`); single-line labels are unchanged. The first line is the
   primary label; continuation lines (a C4 description) render smaller and dimmed.
-- edge labels carry a `plate` flag: a padded translucent background box is drawn behind the text (so the routed line
-  + end markers don't strike through it, and labels read as deliberate callouts instead of tight white
-  cuts). `paint` measures the widest line; `toSvg` estimates it. Node/title/row labels keep
-  `plate: false`.
+- labels carry a `labelStyle: "node" | "edge" | "edge-masked"` union (there is no boolean `plate`
+  flag): `"node"` is full-opacity text (node/title/row/decoration labels); `"edge"` is 75%-alpha text
+  with NO background — a horizontal edge label lifted `LABEL_LINE_CLEARANCE` (16px) above its line;
+  `"edge-masked"` is 75%-alpha text on a small OPAQUE background-colour plate that masks the line —
+  used for vertical-run labels (kept in-channel instead of dodging sideways) AND for any lifted label
+  whose text box another edge line would still cross (its own bend, or the lifelines a sequence
+  message spans — sequence message labels therefore always render masked). `paint` measures the plate
+  from the widest line; `toSvg` estimates it (0.6em per glyph).
 - shell: `paint(ctx, cmds, iconImages?, theme?)` executes the display list against a `Canvas2D`
   (structural subset of `CanvasRenderingContext2D`; a real 2D context is assignable). `iconImages`
   maps `${pack}/${name}` → a pre-rasterised `CanvasImageSource` (missing → glyph skipped); `theme`

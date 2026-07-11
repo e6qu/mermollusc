@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   boxCenter,
   decollideEdgeLabels,
+  enteredContainerWalls,
   mazeRerouteEdges,
   respreadPorts,
   retidyRoutes,
@@ -634,5 +635,214 @@ describe("rerouteBoxEdges", () => {
     };
     const out = rerouteBoxEdges(scene);
     expect(out.edges[0]!.waypoints).toEqual(scene.edges[0]!.waypoints);
+  });
+});
+
+describe("decollideEdgeLabels — node obstacles, sheet clamp, group borders", () => {
+  const measure = (s: string): number => s.length * 8;
+  const node = (id: string, x: number, y: number, w = 40, h = 30) => ({
+    id: brand<string, "SceneNodeId">(id),
+    bounds: rect(x, y, w, h),
+    label: id,
+    shape: "rect" as const,
+    parent: null,
+    icon: null,
+    rows: null,
+    rowDivider: null,
+    subtitle: null,
+    accent: "none" as const,
+    role: "normal" as const,
+  });
+  const edge = (id: string, from: string, to: string) => ({
+    id: brand<string, "SceneEdgeId">(id),
+    from: brand<string, "SceneNodeId">(from),
+    to: brand<string, "SceneNodeId">(to),
+    waypoints: twoOrMore(point(0, 0), point(1, 1)),
+    label: null as string | null,
+    stroke: "solid" as const,
+    fromEnd: "none" as const,
+    toEnd: "none" as const,
+    curved: false,
+    fromLabel: null,
+    toLabel: null,
+    accent: "none" as const,
+    labelPos: null,
+  });
+  const labelRect = (cx: number, cy: number, text: string) => ({
+    x1: cx - (measure(text) + 8) / 2,
+    x2: cx + (measure(text) + 8) / 2,
+    y1: cy - 8,
+    y2: cy + 8,
+  });
+
+  it("clamps a label that would clip past the sheet's edge back onto the sheet", () => {
+    const scene = {
+      nodes: [node("a", 0, 300), node("b", 400, 300)],
+      edges: [{ ...edge("e0", "a", "b"), label: "SSH", labelPos: point(200, -7) }],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 500, 500),
+    };
+    const out = decollideEdgeLabels(scene, measure);
+    const pos = out.edges[0]?.labelPos;
+    if (pos === null || pos === undefined) throw new Error("labelPos missing");
+    // The whole label box (16px tall) sits inside the extent.
+    expect(pos.y - 8).toBeGreaterThanOrEqual(0);
+    expect(pos.x).toBe(200);
+  });
+
+  it("moves a label off a node box (including its own endpoints') and keeps a clear gap", () => {
+    const a = node("a", 0, 80);
+    const b = node("b", 400, 80);
+    const m = node("m", 180, 80); // an unrelated node under the label anchor
+    const scene = {
+      nodes: [a, m, b],
+      edges: [{ ...edge("e0", "a", "b"), label: "RPC", labelPos: point(200, 95) }],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 500, 300),
+    };
+    const out = decollideEdgeLabels(scene, measure);
+    const pos = out.edges[0]?.labelPos;
+    if (pos === null || pos === undefined) throw new Error("labelPos missing");
+    const r = labelRect(pos.x, pos.y, "RPC");
+    const nx1 = m.bounds.origin.x;
+    const nx2 = nx1 + m.bounds.size.width;
+    const ny1 = m.bounds.origin.y;
+    const ny2 = ny1 + m.bounds.size.height;
+    const clear = r.x2 <= nx1 || r.x1 >= nx2 || r.y2 <= ny1 || r.y1 >= ny2;
+    expect(clear).toBe(true);
+  });
+
+  it("keeps a label inside its own group but off the group's border", () => {
+    const g = {
+      ...node("g", 0, 0, 300, 200),
+      shape: "container" as const,
+    };
+    const inGroup = (n: ReturnType<typeof node>) => ({
+      ...n,
+      parent: brand<string, "SceneNodeId">("g"),
+    });
+    const a = inGroup(node("a", 20, 150));
+    const b = inGroup(node("b", 240, 150));
+    // The anchor straddles the group's bottom border (y = 200).
+    const scene = {
+      nodes: [g, a, b],
+      edges: [{ ...edge("e0", "a", "b"), label: "in", labelPos: point(150, 200) }],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 400, 400),
+    };
+    const out = decollideEdgeLabels(scene, measure);
+    const pos = out.edges[0]?.labelPos;
+    if (pos === null || pos === undefined) throw new Error("labelPos missing");
+    const r = labelRect(pos.x, pos.y, "in");
+    // The label box no longer straddles the border line y=200.
+    expect(r.y1 >= 200 || r.y2 <= 200).toBe(true);
+  });
+});
+
+describe("rerouteBoxEdges — entering a group through the side facing the source", () => {
+  const mk = (id: string, x: number, y: number, w: number, h: number, opts: { container?: boolean; parent?: string } = {}) => ({
+    id: brand<string, "SceneNodeId">(id),
+    bounds: rect(x, y, w, h),
+    label: id,
+    shape: opts.container === true ? ("container" as const) : ("rect" as const),
+    parent: opts.parent === undefined ? null : brand<string, "SceneNodeId">(opts.parent),
+    icon: null,
+    rows: null,
+    rowDivider: null,
+    subtitle: null,
+    accent: "none" as const,
+    role: "normal" as const,
+  });
+  const g = mk("g", 0, 200, 400, 130, { container: true });
+  const t = mk("t", 20, 240, 80, 40, { parent: "g" });
+  const s = mk("s", 300, 0, 100, 40);
+  // A bad incoming route: down the outside, then IN through the group's flank, sliding along the
+  // target's right border into its R mount.
+  const badEdge = {
+    id: brand<string, "SceneEdgeId">("e0"),
+    from: brand<string, "SceneNodeId">("s"),
+    to: brand<string, "SceneNodeId">("t"),
+    waypoints: twoOrMore(point(350, 40), point(350, 180), point(100, 180), point(100, 260)),
+    label: null,
+    stroke: "solid" as const,
+    fromEnd: "none" as const,
+    toEnd: "arrow" as const,
+    curved: false,
+    fromLabel: null,
+    toLabel: null,
+    labelPos: null,
+    accent: "none" as const,
+  };
+  const scene = {
+    nodes: [g, t, s],
+    edges: [badEdge],
+    wedges: [],
+    decorations: [],
+    extent: rect(0, 0, 450, 400),
+  };
+
+  const crossings = (
+    pts: readonly { x: number; y: number }[],
+  ): { top: number; bottom: number; left: number; right: number } => {
+    const out = { top: 0, bottom: 0, left: 0, right: 0 };
+    const gx1 = 0;
+    const gx2 = 400;
+    const gy1 = 200;
+    const gy2 = 330;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      if (a === undefined || b === undefined) continue;
+      if (Math.abs(a.x - b.x) < 0.5) {
+        // vertical segment crosses a horizontal border line
+        const lo = Math.min(a.y, b.y);
+        const hi = Math.max(a.y, b.y);
+        if (a.x > gx1 && a.x < gx2) {
+          if (lo < gy1 && hi > gy1) out.top++;
+          if (lo < gy2 && hi > gy2) out.bottom++;
+        }
+      } else if (Math.abs(a.y - b.y) < 0.5) {
+        const lo = Math.min(a.x, b.x);
+        const hi = Math.max(a.x, b.x);
+        if (a.y > gy1 && a.y < gy2) {
+          if (lo < gx1 && hi > gx1) out.left++;
+          if (lo < gx2 && hi > gx2) out.right++;
+        }
+      }
+    }
+    return out;
+  };
+
+  it("walls the group's non-facing sides only", () => {
+    const walls = enteredContainerWalls(scene, badEdge);
+    // The source sits ABOVE the group (within its x-span): top open, left/right/bottom walled.
+    expect(walls).toHaveLength(3);
+    const isTopWall = (w: { x: number; y: number; w: number; h: number }): boolean =>
+      Math.abs(w.y - 200) <= 1 && w.w === 400;
+    expect(walls.some(isTopWall)).toBe(false);
+  });
+
+  it("reroutes the sliding entry into a single crossing through the facing (top) side", () => {
+    const out = rerouteBoxEdges(scene);
+    const wp = out.edges[0]?.waypoints ?? [];
+    const c = crossings(wp);
+    expect(c.top).toBe(1);
+    expect(c.bottom).toBe(0);
+    expect(c.left).toBe(0);
+    expect(c.right).toBe(0);
+    // No leg slides along the target's right border any more.
+    for (let i = 1; i < wp.length; i++) {
+      const a = wp[i - 1];
+      const b = wp[i];
+      if (a === undefined || b === undefined) continue;
+      if (Math.abs(a.x - 100) < 0.5 && Math.abs(b.x - 100) < 0.5) {
+        const lo = Math.min(a.y, b.y);
+        const hi = Math.max(a.y, b.y);
+        expect(Math.min(hi, 277) - Math.max(lo, 243)).toBeLessThanOrEqual(0);
+      }
+    }
   });
 });

@@ -565,7 +565,7 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        max-width: min(420px, calc(100% - 220px));
+        max-width: min(560px, calc(100% - 220px));
         padding: 7px 10px;
         color: var(--ink);
         background: color-mix(in srgb, var(--hud) 88%, var(--surface) 12%);
@@ -593,8 +593,9 @@
       }
       .stage-hud span {
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
         color: var(--ink-soft);
       }
 
@@ -763,11 +764,13 @@
       [data-theme="dark"] .swatch.muted { background: #94a3b8; border-color: #cbd5e1 !important; }
       [data-theme="dark"] .swatch.active { background: #60a5fa; border-color: #bfdbfe !important; }
       [data-theme="dark"] .swatch.danger { background: #f87171; border-color: #fecaca !important; }
-      [data-theme="dark"] .swatch.compute { background: #14532d; border-color: #86efac !important; }
-      [data-theme="dark"] .swatch.data { background: #713f12; border-color: #fde68a !important; }
-      [data-theme="dark"] .swatch.network { background: #164e63; border-color: #a5f3fc !important; }
-      [data-theme="dark"] .swatch.security { background: #7f1d1d; border-color: #fecaca !important; }
-      [data-theme="dark"] .swatch.ops { background: #4c1d95; border-color: #ddd6fe !important; }
+      /* Mid-tone fills, not the renderer's 900-level dark node fills: at 20px on a dark panel those
+         all read as near-black rings — the picker needs the HUE legible more than an exact preview. */
+      [data-theme="dark"] .swatch.compute { background: #16a34a; border-color: #86efac !important; }
+      [data-theme="dark"] .swatch.data { background: #d97706; border-color: #fde68a !important; }
+      [data-theme="dark"] .swatch.network { background: #0891b2; border-color: #a5f3fc !important; }
+      [data-theme="dark"] .swatch.security { background: #b91c1c; border-color: #fecaca !important; }
+      [data-theme="dark"] .swatch.ops { background: #7c3aed; border-color: #ddd6fe !important; }
 
       /* ---- status bar ---- */
       .statusbar {
@@ -902,12 +905,12 @@
         color: var(--ink-soft);
         margin-bottom: 6px;
       }
-      .picker-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+      .picker-icons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
       .picker-icon {
         display: grid;
         place-items: center;
-        aspect-ratio: 1;
-        padding: 7px;
+        gap: 3px;
+        padding: 7px 4px 5px;
         background: color-mix(in srgb, var(--panel) 78%, var(--bg) 22%);
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -915,6 +918,17 @@
       }
       .picker-icon:hover { border-color: var(--primary); background: var(--accent-soft); }
       .picker-icon img { width: 24px; height: 24px; pointer-events: none; }
+      /* The visible name under each glyph — a grid of anonymous monochrome marks is unguessable,
+         and the filter box needs a name you can only otherwise get from a hover tooltip. */
+      .picker-icon-name {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 9px;
+        color: var(--ink-soft);
+        pointer-events: none;
+      }
       .picker-empty { color: var(--ink-soft); font-size: 13px; }
 
       .help-overlay {
@@ -1046,7 +1060,9 @@
           justify-content: flex-start;
           gap: 6px;
         }
-        .toolbar-group {
+        /* Scoped to the topbar: the stage's zoom cluster also carries .toolbar-group for its pill
+           chrome, and a 100%-width stretch would push it past the stage's left edge. */
+        .topbar-actions .toolbar-group {
           align-self: stretch;
           width: 100%;
           max-width: 100%;
@@ -1054,17 +1070,17 @@
           overflow: hidden;
         }
         /* The overflow group hosts an absolutely-positioned popover; it must not clip it. */
-        .toolbar-group.overflow { overflow: visible; }
+        .topbar-actions .toolbar-group.overflow { overflow: visible; }
         .more-menu { right: auto; left: 0; }
-        .toolbar-group > button,
-        .toolbar-group > .filebtn,
-        .toolbar-group > .select-field {
+        .topbar-actions .toolbar-group > button,
+        .topbar-actions .toolbar-group > .filebtn,
+        .topbar-actions .toolbar-group > .select-field {
           flex: 1 1 auto;
           min-height: 34px;
           padding: 5px 9px;
           font-size: 11.5px;
         }
-        .toolbar-group > .select-field { flex-basis: 100%; }
+        .topbar-actions .toolbar-group > .select-field { flex-basis: 100%; }
         .select-field { gap: 6px; }
         .select-field span { font-size: 9.5px; }
         .workbench {
@@ -1113,8 +1129,12 @@
       }
 
       @media (max-width: 500px) {
+        /* Fixed, not absolute: the stage column can be taller than the phone viewport, and a bar
+           pinned to the column's bottom lands below the fold — the tap that opened it gets no
+           visible response. Fixed pins the sheet to the visual viewport instead. */
         .context-bar {
-          position: absolute !important;
+          position: fixed !important;
+          z-index: 40 !important;
           bottom: 12px !important;
           top: auto !important;
           left: 12px !important;
@@ -1136,8 +1156,15 @@
           flex: 0 0 auto !important;
           padding: 8px 12px !important;
         }
-        #context-bar:not([hidden]) ~ .stage-wrap .stage-hud { display: none !important; }
-        #context-bar:not([hidden]) ~ #minimap { display: none !important; }
+        /* The open bottom-sheet covers the stage's bottom corners, so the HUD and minimap yield.
+           (`~` only matches later siblings — the HUD lives in the PRECEDING .stage-wrap and the map
+           inside .minimap-wrap, so the old sibling selectors never fired.) */
+        .stage-col:has(> #context-bar:not([hidden])) .stage-hud { display: none !important; }
+        #context-bar:not([hidden]) ~ .minimap-wrap { display: none !important; }
+      }
+      /* Keyboard/mouse gesture hints are noise on a touch phone and cost two status-bar rows. */
+      @media (max-width: 760px) and (hover: none) {
+        .statusbar .hints { display: none; }
       }
     </style>
   </head>
@@ -1269,7 +1296,7 @@
               <canvas id="stage" width="400" height="300" role="img" aria-label="Diagram" tabindex="-1"></canvas>
               <div id="stage-empty" class="stage-empty" hidden>
                 <strong>No diagram rendered</strong>
-                <span>Fix the source error or load an example to start from a valid diagram.</span>
+                <span>Type in the source panel, fix the current error, or load an example.</span>
               </div>
               <div id="stage-hud" class="stage-hud" hidden>
                 <strong>Task</strong>
@@ -1414,7 +1441,7 @@
                 <dt>corner drag</dt><dd>resize</dd>
                 <dt>double-click</dt><dd>rename label</dd>
                 <dt>↑ ↓ ← →</dt><dd>nudge (<span data-mod="shift">⇧</span> = larger)</dd>
-                <dt><span data-mod="alt">⌥</span> ↑ ↓ ← →</dt><dd>resize selected node (<span data-mod="shift">⇧</span> = larger)</dd>
+                <dt><span data-mod="alt">⌥</span> ↑ ↓ ← →</dt><dd>resize selected node (<span data-mod="shift">⇧</span> = larger; in the diagram list it moves instead)</dd>
                 <dt><span data-mod="mod">⌘</span> D</dt><dd>duplicate node(s)</dd>
                 <dt><span data-mod="mod">⌘</span> C / <span data-mod="mod">⌘</span> V</dt><dd>copy / paste node(s) <small>(flowchart)</small></dd>
                 <dt>S</dt><dd>cycle node shape <small>(flowchart)</small></dd>
@@ -1455,8 +1482,10 @@
                 <dt>Tab</dt><dd>focus the diagram list</dd>
                 <dt>↑ ↓ ← →</dt><dd>move between nodes and edges (<span data-mod="shift">⇧</span> = extend selection)</dd>
                 <dt>Enter</dt><dd>rename the active item</dd>
-                <dt><span data-mod="alt">⌥</span> ↑ ↓ ← →</dt><dd>move the active node (<span data-mod="shift">⇧</span> = larger)</dd>
+                <dt><span data-mod="alt">⌥</span> ↑ ↓ ← →</dt><dd>move the active node (<span data-mod="shift">⇧</span> = larger; on the canvas the same chord resizes)</dd>
                 <dt>c … c</dt><dd>connect nodes: source, then target</dd>
+                <dt>d</dt><dd>duplicate the active node</dd>
+                <dt>Home / End</dt><dd>jump to the first / last item</dd>
                 <dt>g / u</dt><dd>group / ungroup the selection</dd>
                 <dt>s</dt><dd>cycle shape <small>(flowchart)</small></dd>
                 <dt>e</dt><dd>collapse / expand a cloud group</dd>

@@ -11,17 +11,20 @@ import { connectWasmRelay } from "../../src/index.js";
 const fakeRelay = (): {
   relay: WasmRelayGlobal;
   send: (bytes: Uint8Array) => void;
+  closeFromRelay: (code: number, reason: string) => void;
   received: Array<{ handle: number; bytes: Uint8Array }>;
   closed: number[];
   flushed: number;
 } => {
   let onSend: ((bytes: Uint8Array) => void) | null = null;
+  let onClosed: ((code: number, reason: string) => void) | null = null;
   const received: Array<{ handle: number; bytes: Uint8Array }> = [];
   const closed: number[] = [];
   let flushed = 0;
   const relay: WasmRelayGlobal = {
-    mermolluscRelayConnect: (_room, send) => {
+    mermolluscRelayConnect: (_room, send, _onLoad, _onSave, closedCb) => {
       onSend = send;
+      onClosed = closedCb;
       return 42;
     },
     mermolluscRelayReceive: (handle, bytes) => {
@@ -38,6 +41,7 @@ const fakeRelay = (): {
   return {
     relay,
     send: (bytes) => onSend?.(bytes),
+    closeFromRelay: (code, reason) => onClosed?.(code, reason),
     received,
     closed,
     get flushed() {
@@ -61,7 +65,39 @@ describe("connectWasmRelay", () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
+  });
+
+  it("a relay-driven close (a rejection) fires onClose listeners with the code and flips isOpen", async () => {
+    const fake = fakeRelay();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { socket } = await connectWasmRelay({ room: "r", store: fakeStore(), relay: fake.relay });
+    const closes: Array<{ code: number | null; reason: string }> = [];
+    socket.onClose((e) => closes.push(e));
+
+    fake.closeFromRelay(1008, "invalid room name");
+    expect(closes).toEqual([{ code: 1008, reason: "invalid room name" }]);
+    expect(socket.isOpen()).toBe(false);
+    expect(errorSpy).toHaveBeenCalled(); // a rejection is loud, never silent
+
+    // the Go side confirming the close afterwards must not re-fire the listeners
+    fake.closeFromRelay(1008, "invalid room name");
+    expect(closes).toHaveLength(1);
+    errorSpy.mockRestore();
+  });
+
+  it("a client close followed by the relay's onClosed confirmation fires listeners exactly once", async () => {
+    const fake = fakeRelay();
+    const { socket } = await connectWasmRelay({ room: "r", store: fakeStore(), relay: fake.relay });
+    let closes = 0;
+    socket.onClose(() => {
+      closes += 1;
+    });
+    socket.close();
+    fake.closeFromRelay(1000, "client close"); // the Go side echoes the close back
+    expect(closes).toBe(1);
+    expect(fake.closed).toEqual([42]);
   });
 
   it("is open immediately and never fires onOpen (already open by construction)", async () => {

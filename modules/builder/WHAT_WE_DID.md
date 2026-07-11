@@ -1,6 +1,15 @@
 # @m/builder — work log
 
 
+## 2026-07-10 — Style per-entry encoders exported through the barrels
+
+- Added `encodeEdgeStyleEntry`/`encodeNodeStyleEntry` to the shell + root barrels (they already existed
+  in `src/shell/overlay.ts`, used internally by `serializeOverlay`) so `@m/collab` can write edge/node
+  style Y.Map entries through the same single-source-of-truth wire encoders JSON persistence uses —
+  the collab style sync must not grow a second, drifting encoding. Purely additive; no behavior change.
+  New codec unit test: the style encoders flatten brands and round-trip through `decodeOverlay` (the
+  exact path collab's `materialize` takes).
+
 ## 2026-07-05 — Edge waypoints expand the viewport (growExtentToContent)
 
 - Extracted `growExtentToContent(scene)` — grows the extent to enclose every node box AND every edge

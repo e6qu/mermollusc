@@ -20,7 +20,7 @@ path plugs in as alternate implementations without touching call sites.
 | 2 | Sync model | **Server-authoritative WebSocket** |
 | 3 | Persistence / hosting | **Self-hosted: Postgres (update log) + S3 (snapshots) + Redis (fan-out)** |
 | 4 | Auth / tenancy | **OIDC via Auth0** (JWKS token verification from the first WS auth frame); tenant = org; region-pinned storage. |
-| 5 | Server stack | **Extend the repo's minimal Node relay** for Phases 1–2; keep Hocuspocus as a fallback; revisit Go/Rust only if Phase 3 fan-out demands it |
+| 5 | Server stack | **Our own relay, rewritten in Go** (`modules/relay`) — superseding the original "extend the Node relay" call; see decision 6 below (revised 2026-07-02). One Go codebase serves the native production binary and the backend-free demo's WASM build. |
 
 The rest of this doc records the design these decisions resolve.
 

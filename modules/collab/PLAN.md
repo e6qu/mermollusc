@@ -6,7 +6,8 @@ Phase 1 of [`docs/collab-editor-plan.md`](../../docs/collab-editor-plan.md).
 ## Responsibility
 
 - Hold the **shared** editor state in one `Y.Doc`: the diagram **source text** (`Y.Text`) and the
-  sidecar **overlay** (manual node positions/sizes + element groups, in two `Y.Map`s).
+  sidecar **overlay** (manual node positions/sizes, element groups, and visual styles — node colour
+  accents + per-edge route styles — in four `Y.Map`s).
 - Provide a `CollabSession` whose `overlay` satisfies the `@m/contracts` **`OverlayDoc`** port, so the
   app swaps the local single-user document for the collaborative one without touching call sites.
 - Expose the binary-sync seam (`state`/`applyUpdate`/`onUpdate`) a transport (a WebSocket server, or an
@@ -21,8 +22,9 @@ the merged source+overlay — see the plan §4), own a network transport/server,
 
 ## Public API (stable surface)
 
-- `createCollabSession({ initialOverrides, initialGroups, initialSource, initialUpdate, save }) →
-  CollabSession`; `initialUpdate` is an optional whole-room Yjs snapshot that wins over seeds.
+- `createCollabSession({ initialOverrides, initialGroups, initialSource, initialEdgeStyles?,
+  initialNodeStyles?, initialUpdate?, save }) → CollabSession`; `initialUpdate` is an optional whole-room
+  Yjs snapshot that wins over seeds.
 - `CollabSession`: `overlay: OverlayDoc`, `source()/setSource()/spliceSource()`,
   `sourceBinding()` (a CodeMirror extension binding the editor to the source `Y.Text`, with presence),
   `setLocalUser()`, `onSourceChange()/onOverlayChange()`, the binary-sync seam
@@ -36,12 +38,17 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   so a corrupt remote overlay is logged + surfaced instead of throwing.
 - Transport: `connectTransport(session, socket, hooks?)` / `webSocketTransport(url)` /
   `connectWebSocket(session, url, hooks?)` — frames document, presence, and server→client control
-  (e.g. the role, via `TransportHooks.onControl`) distinctly on one socket; `TransportHooks.authToken`
-  sends an access token as the first client auth frame when auth is enabled. Plus
+  distinctly on one socket. CONTROL payloads are decoded at this boundary through the closed
+  `RelayControlMessage` union (`{kind:"role", role: owner|editor|viewer}` | `{kind:"seed"}`) —
+  an unknown payload logs `control-rejected` and is dropped, so a raw peer string never reaches the app.
+  `TransportHooks.authToken` sends an access token as the first client auth frame when auth is enabled;
+  `onClose` receives a `SocketCloseEvent` (`{code, reason}`). Plus
   `reconnectingWebSocketTransport(url, deps)` — a self-healing `CollabSocket` (mints a fresh inner
   socket on drop, backoff + jitter + cap, re-exchanges state on reopen, fires the consumer `onClose`
-  only when the budget is exhausted) surfacing a closed-union `ReconnectStatus`
-  (`reconnecting`/`reconnected`/`disconnected`); `ReconnectDeps` injects `schedule`/`random`/`mkSocket`.
+  only on a permanent failure) surfacing a closed-union `ReconnectStatus`
+  (`reconnecting`/`reconnected`/`disconnected`/`rejected`). A POLICY close (1008/1009 — the relay
+  rejected us) is never retried: it surfaces immediately as `rejected` + `onClose` with the code;
+  `ReconnectDeps` injects `schedule`/`random`/`mkSocket` (+ an optional `logger`).
 - Browser-compatible stores: sync `RoomStore` implementations (`createMemoryRoomStore()`,
   `createWebStorageRoomStore(storage, keyPrefix?)`) plus async `createIndexedDbRoomStore(indexedDB)`
   persist whole-room Yjs snapshots for backend-free runtime parity.
@@ -51,8 +58,11 @@ the merged source+overlay — see the plan §4), own a network transport/server,
   same core compiled to WebAssembly for the backend-free demo). `make collab-server` at the repo root
   still runs *a* relay for local two-tab dev; it now runs `modules/relay`'s binary.
 - **WASM relay seam (`src/shell/wasm-relay.ts`):** `loadWasmRelay()` (script-injects `wasm_exec.js`,
-  instantiates `relay.wasm`) and `connectWasmRelay({ room, store })` (returns a `CollabSocket` wired to
-  the WASM module's four exported functions, fed into the same `connectTransport` the real-relay path
+  instantiates `relay.wasm`; a load failure or a Go runtime death evicts the cached promise so the next
+  call retries, and a runtime crash/exit is logged loudly and closes every live wasm-relay socket) and
+  `connectWasmRelay({ room, store })` (returns a `CollabSocket` wired to the WASM module's four exported
+  functions — including the `onClosed(code, reason)` callback, so a relay-side rejection fires the
+  socket's close listeners exactly once — fed into the same `connectTransport` the real-relay path
   uses) — this is what makes the backend-free demo run the real relay in-process instead of skipping it.
   `WasmRelayGlobal` is injectable so the wiring logic unit-tests without a browser; the loading mechanics
   themselves are browser-only and covered by `app/playground`'s Playwright e2e suite instead.

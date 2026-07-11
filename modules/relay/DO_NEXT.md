@@ -8,7 +8,7 @@
 - *(done)* **Milestone 2 — WASM + demo integration.** `cmd/relay-wasm` exposes `relay.Core` via
   `syscall/js` to `modules/collab/src/shell/wasm-relay.ts`; the backend-free Pages demo runs the real relay
   in-process. `tools/build-pages.mjs` compiles and stages the artifacts (lazy-loaded, demo-build only,
-  ~1.45MB gzipped measured on the actual build) and patches the built demo's CSP with the narrow
+  ≈1.4MB gzipped measured on the actual build) and patches the built demo's CSP with the narrow
   `'wasm-unsafe-eval'` allowance WASM compilation requires. Verified end-to-end via a rewritten
   `e2e-pages/backend-free-collab.spec.ts`.
 - *(done)* **Coverage gate.** `make cov` enforces a 69% total floor (`COV_MIN` in the Makefile) using

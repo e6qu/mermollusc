@@ -1,6 +1,7 @@
 import { err, isOk, ok, point, rect, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import type {
+  Decoration,
   GitBranchName,
   GitCommit,
   GitCommitId,
@@ -96,6 +97,11 @@ const HEAD_GAP = 28; // between a branch-name head and its lane's first commit
 const HEAD_H = 50; // tall enough for the per-branch stickman plus its name on the bottom row
 const HEAD_PAD = 16;
 const MIN_HEAD_W = 48;
+// Classic (Mermaid parity) draws each commit as a bare dot, so its id and `tag:` text — which Mermaid
+// renders as adjacent labels — are emitted as caption decorations next to the dot: the id below it
+// (beside it in a vertical layout) and the tag on the opposite side.
+const CAPTION_GAP = 10; // dot border → caption centre, along the lane's cross axis
+const CAPTION_H = 12; // caption text height reserved when growing the extent
 
 // A short, git-like abbreviated SHA derived deterministically from the commit id (FNV-1a → 7 hex), so
 // every commit reads like a real one (`a3f9c21`) regardless of how it was authored. Same id → same sha.
@@ -163,6 +169,7 @@ export const layoutGitGraph = (
   const build = (laneOf: ReadonlyMap<GitBranchName, number>): Result<Scene, LayoutError> => {
     const nodes: SceneNode[] = [];
     const edges: SceneEdge[] = [];
+    const decorations: Decoration[] = [];
     const center = new Map<GitCommitId, { readonly x: number; readonly y: number }>();
     const widthById = new Map<GitCommitId, number>();
     let maxX = 0;
@@ -221,6 +228,49 @@ export const layoutGitGraph = (
         role: "normal",
       });
       grow(c.x + w / 2, c.y + COMMIT_H / 2);
+
+      // Classic dots carry no label of their own — surface the commit id and tag as adjacent captions
+      // (Mermaid parity). The Pills style already folds both into the pill label, so it emits none.
+      if (classic) {
+        const idText = String(commit.id);
+        if (vertical) {
+          decorations.push({
+            kind: "caption",
+            at: point(c.x + w / 2 + CAPTION_GAP, c.y),
+            text: idText,
+            align: "left",
+          });
+          grow(c.x + w / 2 + CAPTION_GAP + measure(idText), c.y + CAPTION_H / 2);
+          if (commit.tag !== null) {
+            // The tag sits on the other side of the dot, right-aligned against it (align is only
+            // left/center, so the x is pre-shifted by the measured width; clamped to the sheet).
+            const tagX = Math.max(2, c.x - w / 2 - CAPTION_GAP - measure(commit.tag));
+            decorations.push({
+              kind: "caption",
+              at: point(tagX, c.y),
+              text: commit.tag,
+              align: "left",
+            });
+          }
+        } else {
+          decorations.push({
+            kind: "caption",
+            at: point(c.x, c.y + COMMIT_H / 2 + CAPTION_GAP),
+            text: idText,
+            align: "center",
+          });
+          grow(c.x + measure(idText) / 2, c.y + COMMIT_H / 2 + CAPTION_GAP + CAPTION_H / 2);
+          if (commit.tag !== null) {
+            decorations.push({
+              kind: "caption",
+              at: point(c.x, c.y - COMMIT_H / 2 - CAPTION_GAP),
+              text: commit.tag,
+              align: "center",
+            });
+            grow(c.x + measure(commit.tag) / 2, c.y);
+          }
+        }
+      }
     }
 
     // Trim an endpoint from a pill's centre to where the parent→child line crosses its border, so the
@@ -268,7 +318,7 @@ export const layoutGitGraph = (
       nodes,
       edges,
       wedges: [],
-      decorations: [],
+      decorations,
       extent: rect(0, 0, maxX + MARGIN, maxY + MARGIN),
     });
   };

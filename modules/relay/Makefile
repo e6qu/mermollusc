@@ -7,7 +7,7 @@
 MODULE := relay
 
 .PHONY: install build typecheck lint lint-fix fmt fmt-check \
-        test test-unit test-int test-e2e test-watch cov \
+        test test-native test-unit test-int test-e2e test-watch cov \
         run stop clean doc-check check build-wasm test-wasm
 
 install:    ; go mod download
@@ -22,7 +22,11 @@ fmt-check:
 	  echo "not gofmt-clean:"; echo "$$unformatted"; exit 1; \
 	fi
 
-test:       ; go test ./...
+# `test` is the gate: native suite AND the GOOS=js GOARCH=wasm suite. The build tag on cmd/relay-wasm
+# makes the native run skip it silently, so without the explicit test-wasm leg the WASM entrypoint's
+# tests would never run anywhere and rot.
+test: test-native test-wasm
+test-native: ; go test ./...
 # relay/ + store/ are pure-logic unit tests (no network/socket); auth/ + cmd/ drive a real local
 # HTTP/JWKS/WebSocket harness — the module's rough unit/integration split.
 test-unit:  ; go test ./relay/... ./store/...
@@ -34,7 +38,7 @@ test-watch: ; go test ./... -count=1
 # cmd/relay-server's integration harness, which plain per-package profiles don't count). The awk gate is
 # the enforced ratchet — same convention as the TS modules' vitest thresholds: set just below current
 # coverage, raise as it climbs, never lower silently.
-COV_MIN := 69
+COV_MIN := 73
 cov:
 	@go test ./... -coverprofile=coverage.out -covermode=atomic -coverpkg=./...
 	@go tool cover -func=coverage.out | tail -1

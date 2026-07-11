@@ -31,9 +31,11 @@
   house additions: `toDisplayList`'s `plainEdges` flag (the classic/Mermaid-parity look) omits them.
 - The default light theme is Mermaid's own default palette (provenance in `paint.ts`); `Theme.nodeStroke`
   is split from `Theme.stroke` because Mermaid borders nodes (purple) differently from its lines (dark).
-- Edge labels are bare 75%-alpha text (no background plate) in both canvas and SVG: layout's label
-  decollision keeps them off nodes/lines, and transparency beats boxes on dense diagrams. The `plate`
-  DrawCmd flag now marks "edge label text treatment" rather than an actual plate.
+- Edge labels render 75%-alpha in both canvas and SVG per the `labelStyle` union (`"node" | "edge" |
+  "edge-masked"`): a horizontal-run label lifts above its line as bare text (transparency beats boxes
+  on dense diagrams); a vertical-run label — or any lifted label another edge line would still cross,
+  e.g. a sequence message spanning lifelines — stays in-channel on a small opaque plate that masks the
+  line behind the text.
 
 ## Notes
 

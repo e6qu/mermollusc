@@ -1,6 +1,46 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-11 — review-omnibus: user-journey + UX + security sweep (app side)
+
+A multi-agent review of every user journey, plus backend/security/fake-functionality audits. The app's
+share of the fixes:
+
+- **Error & empty-state journeys.** A parse error no longer strands the floating selection context bar
+  over the dimmed stale render (it hides with the selection until the render is valid again). Emptying
+  the source is now a fresh start, not a failure: the scene/selection drop, the stage shows the
+  recovery empty box, and the status reads "nothing to render — type a diagram or load an example"
+  instead of the CodeMirror lexer's "Expecting token …". New `e2e/stale-ux.spec.ts`.
+- **Collab join flash + seed deadlock.** Collab boot now paints nothing under a "joining the shared
+  room" status until the first `Y.Text` sync lands (which renders + auto-fits), instead of flashing the
+  local/sample diagram for ~300ms. A relay that never answers (reconnect backoff exhausted) clears the
+  seed gate so the editor can't stay permanently blank while the banner claims "editing locally".
+- **Typed CONTROL + role hardening.** The transport now hands `main.ts` a closed union (`role`/`seed`);
+  the role is re-checked against `owner|editor|viewer` before it reaches the DOM/badge, and the new
+  `rejected` reconnect status (a 1008/1009 policy close) gets its own banner instead of the generic
+  disconnect message. Transport boundary failures log through `consoleLogger`.
+- **Overlay visual-style sync.** Node colour accents and per-edge route styles travel through the
+  shared Yjs overlay in collab rooms now (they were session-local, so peers never saw a restyle);
+  single-user localStorage persistence is unchanged.
+- **Mobile.** Phone-width first visit starts with the source panel + minimap collapsed so the diagram
+  is on screen; the context bar is a fixed bottom sheet on the visual viewport; the zoom cluster no
+  longer overflows the stage edge (a `.toolbar-group` full-width stretch meant for the topbar was
+  also catching the stage-pinned zoom group — now scoped to `.topbar-actions`); touch hides the
+  keyboard hint row; the "hide HUD/minimap when the sheet is open" CSS actually matches now (`:has()`).
+- **CSP.** `connect-src` is generated per build in `vite.config.ts` — Auth0 origin only when
+  configured, `VITE_RELAY_ORIGINS` for explicit deploy relays, no blanket `https:`, and no `wss:` in
+  the backend-free Pages demo. Dev mode stays permissive.
+- **Honesty/polish.** Killed the "Relax: flowchart only" task lie (Relax is enabled for 9 families);
+  pie/gantt status counts say "slices"/"tasks · links"; icon-picker glyphs show their names; dark-mode
+  context swatches use distinguishable mid-tone hues; the task HUD wraps instead of ellipsizing; the
+  help dialog gained the navigator's `d` + Home/End rows and an Alt+Arrow canvas-vs-navigator note.
+- **Docs.** README (Connect/Add/Relax/Regenerate breadth, arbitrary class stereotypes, DAG now shows
+  collab + relay), PLAN.md + docs/collab-editor-plan.md (Go relay + Auth0 finalised), the site landing
+  preview (draws the `Edit` node its own source snippet declares), and this module's STATUS/DO_NEXT.
+  Display-list goldens refreshed for the layout scene changes (titles, gitGraph tags/ids, milestone
+  diamonds, decollided labels).
+
+
 ## 2026-07-05 — Undo/Redo toolbar buttons + relax tuning
 
 - Added visible **Undo / Redo** toolbar buttons (were keyboard-only). They mirror the real history:

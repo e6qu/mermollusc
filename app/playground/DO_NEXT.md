@@ -11,14 +11,15 @@ Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known
   (`wrapBareEdge`) should extend to network/cloud links (grammar supports `: "label"`) and state
   transitions — the graph-wide-scope rule applies; today those families answer "this item has no
   editable label".
-- **Collab join flash.** Joining an existing room paints the local/sample diagram first, then swaps
-  when the sync settles (~300ms) — suppress the first paint or show "syncing…" until the seed decision.
+- *(done, 2026-07-11)* **Collab join flash.** Collab boot now paints nothing under a "joining the
+  shared room" status until the first `Y.Text` sync (which renders + fits), so a joiner never sees the
+  local/sample diagram first.
 - *(done)* **Room-invite affordance** — in a collab session, Share copies the room link itself.
 - **Gantt keyboard parity.** Bar reschedule/duration are mouse-only (`keyboardResizeSelection` excludes
   gantt); add Alt+Arrow day-shift/duration keys. Gantt `after` dependencies also have no canvas
   Connect even though the grammar expresses them.
-- **Alt+Arrow semantics differ by focus** (resize on canvas, move in the navigator) — the help dialog
-  now needs a note, or the chords should unify.
+- *(done, 2026-07-11)* **Alt+Arrow semantics differ by focus** (resize on canvas, move in the
+  navigator) — the help dialog now carries the note in both its Edit and keyboard-only sections.
 
 ## Sweep-round audit backlog (deferred from the multi-agent review)
 - *(done)* Add a screenshot review pass specifically for selected-node mount handles across light/dark,
@@ -73,11 +74,11 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
   original BPMN glyphs remain unchanged.
 - **Container-title visual guard:** Done for every catalog entry via `edgesAvoidContainerHeaders`; future
   demo examples fail integration if a connector cuts through a container title label.
-- **c4 + network edge labels still bleed into node boxes on busy diagrams** (re-triaged visually
-  2026-07-02: the old "~24px gap" premise is stale — gaps are 44/48px now and `spreadPorts` +
-  `decollideEdgeLabels` run for both families — but short segments still put labels on box borders,
-  e.g. network's "filtered"/"443/tcp", c4's "writes"/"queues"). The remaining fix is label-vs-NODE
-  obstacle avoidance in the decollision pass, which today only avoids other labels/edges.
+- *(done, 2026-07-11)* **c4 + network edge labels bled into node boxes.** `decollideEdgeLabels` now
+  treats every node/container box (incl. the edge's own endpoints, and group title bands/border strips)
+  as an obstacle with a clearance ring, and clamps labels to the sheet so a long one can't clip off the
+  top edge. Applied for every family that runs the pass. Covered by `test/integration/parity.test.ts`
+  in `@m/layout` (labels off node boxes + on-sheet + pairwise-separated for network/c4/cloud/state/DOT).
 - *(done)* **`routeWaypoints` fallback wording** — the `<2`-point case is documented in
   `modules/layout/PLAN.md` as a defined-geometry boundary contract (a degenerate ELK section still
   yields real, drawable geometry loudly derived from the node centres), not a silent fallback.
@@ -113,12 +114,19 @@ The renderer already supports curved edges (bezier) and `labelPos`. Build in thi
 - *(done)* **Browser Auth0 login.** Env-gated Auth0 Authorization Code + PKCE now supplies the relay
   access token and presence identity.
 - *(done)* **WS auth hardening (before auth ships).** Tokens now travel in the first WebSocket auth
-  frame after open, and `index.html` carries a `connect-src` CSP.
+  frame after open, and the app carries a `connect-src` CSP.
+- *(done, 2026-07-11)* **Relay style sync in collab rooms.** Node colour accents + edge route styles
+  now sync through the shared Yjs overlay instead of being session-local (peers see restyles).
 
-## Security (LOW — not exploitable today)
-- **Icon-pack SVG sanitiser** misses external-subresource refs (`<image href="http…">`, `<use>`) and SMIL
-  `set`. Not exploitable today (pack markup is only embedded via `<image href="data:…">`, where image
-  mode disables scripting/fetch). Tighten to an element/attribute allowlist if it's ever inlined.
+## Security (addressed 2026-07-11 in review-omnibus)
+- *(done)* **Icon-pack SVG sanitiser** — replaced the regex denylist with a parse-based element/attribute
+  allowlist in `@m/icons` (`load.ts`): remote `<image href>`, external `<use>`, and SMIL animation
+  elements are now rejected loudly through the decode boundary; every bundled glyph is swept through it.
+- *(done)* **CSP `connect-src`** — narrowed and build-generated (`vite.config.ts`): no blanket `https:`,
+  Auth0 origin only when configured, no `wss:` in the backend-free demo.
+- *(done)* **Relay cross-origin WS upgrades** — `modules/relay` now enforces an Origin policy
+  (loopback/same-host + `ALLOWED_ORIGINS`) before the upgrade, so an auth-off local relay can't be
+  driven by an arbitrary visited page. JWT verification is also alg-pinned to RS256.
 
 ## Code hygiene
 - **Move `arrangeDeltas`** align/distribute math from `main.ts` into `@m/builder` core (boundary hygiene).

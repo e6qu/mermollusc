@@ -26,7 +26,9 @@
 - HTML-in-Canvas: `htmlInCanvasSupported()` detection is in; build the actual rich-label backend
   once the API ships in stable Chromium (it's flag-only today, so unverifiable here).
 - *(mostly done)* Display-list goldens exist in `app` (`test/integration/golden.test.ts`, one per
-  example); only the optional PIXEL golden (paint regressions rather than geometry) remains open.
+  example); only the optional PIXEL golden (paint regressions rather than geometry) remains open —
+  it would have caught the canvas donut-hole fill (the display list was correct; only the painter's
+  arc winding was wrong).
 - *(done)* Edge-label plates are padded in both canvas and SVG so labelled network/cloud connectors read
   as callouts, not text stamped directly onto the stroke.
 - *(done)* Export `edgeLabelAnchor` so app overlays can share the renderer's routed edge-label

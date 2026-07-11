@@ -19,8 +19,10 @@ for graph layout.
   pasted in and imports as a flowchart.
 - **Two-way editing.** Double-click any node, edge, or label on the canvas to rename it in place;
   the edit is patched back into the source text (formatting and comments preserved). **Connect** and
-  **Delete** work across every family; drag-to-move, box-select, group/lock, align/distribute, resize,
-  and undo/redo work on any family's nodes; **Add node** and **Relax/Regenerate** are flowchart's.
+  **Delete** work across every family whose grammar accepts the result (the chart-like pie and Gantt
+  keep Connect off, with the reason shown); drag-to-move, box-select, group/lock, align/distribute,
+  resize, and undo/redo work on any family's nodes; **Add node** covers the node-declaring families,
+  **Relax** the node-graph families, and **Regenerate** re-lays-out every family.
 - **Icons in nodes.** Network and cloud nodes show glyphs; any leaf can carry an explicit
   `icon "<pack>/<name>"` override. A built-in icon picker browses the bundled packs (simple-icons,
   devicon, gilbarbara, Kubernetes) by category and inserts the reference for you.
@@ -136,7 +138,8 @@ erDiagram
 ```
 
 **Class** — `classDiagram`; `class Foo { +field\n +method() }` bodies (visibility `+`/`-`/`#`/`~`,
-field/method compartments), a `<<interface>>`/`<<abstract>>` stereotype, and UML relationship
+field/method compartments), a `<<stereotype>>` line (any text — `<<interface>>`, `<<abstract>>`,
+`<<service>>`, …), and UML relationship
 operators `<|--` (inheritance) · `..|>` (realization) · `*--` (composition) · `o--` (aggregation) ·
 `-->` (association) · `..>` (dependency).
 
@@ -260,11 +263,14 @@ text ──▶ parser ──AST──▶ layout ──SceneGraph IR──▶ ren
                                                       ▲
                         builder (hit-test, drag, two-way sync) ┘
 
-std ◀ contracts ◀ { parser, layout, renderer, icons } ◀ builder ◀ app
+std ◀ contracts ◀ { parser, layout, renderer, icons } ◀ builder ◀ collab ◀ app
+                                                        relay (Go) ◀ app (dev server / e2e)
 ```
 
 The functional core is pure (branded data → `Result`, no IO); the shell does canvas, the ELK worker,
-decoding, and logging. See [PLAN.md](PLAN.md) for the full design.
+decoding, and logging. `@m/collab` is the Yjs-backed collaboration layer behind the default-off
+`?collab` flag; `modules/relay` is its optional Go relay (native binary in production, WASM in the
+backend-free demo). See [PLAN.md](PLAN.md) for the full design.
 
 ## Development
 

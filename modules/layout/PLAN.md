@@ -51,7 +51,19 @@
 - Trunk-routing merges fans of incident edges (minimum fan threshold of 2) on a node side into a shared trunk. Approaches from the other nodes to the trunk are routed using the A* maze router to prevent obstacle clipping, and the trunk line is dynamically placed in the middle of the available routing channel between the target node and the source endpoints.
 - Unified `layoutStyle` options parameter on `layout` and `layoutDiagram` allowing diagram family-specific rendering modes (such as Classic Mermaid empty circles and straight lines for gitGraph, Relaxed message curves for sequence, Classic rects and straight spokes for mindmaps, and Donut charts for pie).
 - Self-relations in c4/network/cloud are standardized to draw a 5-point right-angle loop at the top-right corner of the node, with the label positioned at the outer corner.
-- Edge label decollision search in decollideEdgeLabels checks for overlaps against unrelated node and container group boundaries in the scene (excluding direct endpoint ancestors of each edge) to prevent labels from being placed directly over intervening nodes.
+- Edge label decollision (`decollideEdgeLabels`) treats every node box — including the edge's own
+  endpoint leaves — as an obstacle with a small clearance ring; related (ancestor) groups stay open
+  except their title band and thin border strips, so a label lives inside its own group without
+  straddling its outline; and every label position is clamped onto the scene extent so labels never
+  clip off the sheet. Runs last in `layoutDiagram` for every family.
+- Diagram titles (gantt/pie/timeline — the families whose AST carries `title`) are emitted by the pure
+  `withTitle` helper as a centred caption in a reserved band above the shifted chart, matching how
+  Mermaid draws a title. gitGraph classic emits commit ids and tags as adjacent captions the same way.
+- Entered-group routing: `rerouteBoxEdges` walls the sides of an entered group that don't face the
+  edge's other end (soft — walls only join the maze obstacles; an unroutable edge keeps its path), and
+  scores maze plus orthodox L/Z pattern candidates by on-screen badness so connectors enter a group
+  once, through the facing side, arriving perpendicular to the mount rather than sliding along a
+  border.
 - Container-aware routing treats a container's visible title label as an obstacle even when an edge
   legitimately enters that container to reach a member, preventing connectors from cutting through group
   titles without forcing large detours around the whole container.

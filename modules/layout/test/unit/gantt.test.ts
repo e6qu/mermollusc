@@ -290,3 +290,65 @@ describe("layoutGantt", () => {
     expect(ganttTasksStackInRowOrder(collapsed, g)).toBe(false);
   });
 });
+
+describe("gantt title and milestone labels", () => {
+  it("emits the diagram title as a centred caption above the chart, shifting the chart down", () => {
+    const tasks = [
+      task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 3 }),
+    ];
+    const untitled = layoutGantt(ast(tasks), heuristicMeasure);
+    const titled = layoutGantt({ ...ast(tasks), title: "Release plan" }, heuristicMeasure);
+    if (!untitled.ok) throw new Error(untitled.error.message);
+    if (!titled.ok) throw new Error(titled.error.message);
+    const cap = titled.value.decorations.flatMap((d) =>
+      d.kind === "caption" && d.text === "Release plan" ? [d] : [],
+    )[0];
+    if (cap === undefined) throw new Error("title caption missing");
+    expect(cap.align).toBe("center");
+    const shift =
+      (titled.value.nodes[0]?.bounds.origin.y ?? 0) -
+      (untitled.value.nodes[0]?.bounds.origin.y ?? 0);
+    expect(shift).toBeGreaterThan(0);
+    const topNode = Math.min(...titled.value.nodes.map((n) => n.bounds.origin.y));
+    expect(cap.at.y).toBeLessThan(topNode);
+    expect(titled.value.extent.size.height).toBeCloseTo(
+      untitled.value.extent.size.height + shift,
+    );
+  });
+
+  it("draws a milestone as a compact diamond with its label beside it, the hook at its right corner", () => {
+    const g = ast([
+      task({ id: tid("a"), start: { kind: "date", date: gd("2024-01-01") }, durationDays: 5 }),
+      task({
+        id: tid("m"),
+        label: "Launch",
+        milestone: true,
+        start: aft(tid("a")),
+        durationDays: 0,
+      }),
+    ]);
+    const r = layoutGantt(g, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    const m = r.value.nodes.find((n) => n.id === "m");
+    if (m === undefined) throw new Error("milestone node missing");
+    expect(m.shape).toBe("diamond");
+    // A compact square marker, not a label-wide diamond; the text lives in the adjacent caption.
+    expect(m.bounds.size.width).toBe(m.bounds.size.height);
+    expect(m.label).toBe("");
+    const cap = r.value.decorations.flatMap((d) =>
+      d.kind === "caption" && d.text === "Launch" ? [d] : [],
+    )[0];
+    if (cap === undefined) throw new Error("milestone caption missing");
+    const right = m.bounds.origin.x + m.bounds.size.width;
+    expect(cap.at.x).toBeGreaterThan(right);
+    expect(cap.at.y).toBeCloseTo(m.bounds.origin.y + m.bounds.size.height / 2);
+    // The caption fits on the sheet.
+    expect(cap.at.x + heuristicMeasure("Launch")).toBeLessThanOrEqual(
+      r.value.extent.size.width,
+    );
+    // The dependency hook re-enters the milestone at its RIGHT corner (never through the body).
+    const dep = r.value.edges[0];
+    const last = dep?.waypoints[dep.waypoints.length - 1];
+    expect(last?.x).toBeCloseTo(right);
+  });
+});

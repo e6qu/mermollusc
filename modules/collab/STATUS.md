@@ -9,11 +9,17 @@ relay — a real network one (via `reconnectingWebSocketTransport`) in productio
 core compiled to WASM and driven in-process (via `connectWasmRelay`) in the backend-free demo — and binds
 the editor to the shared doc.
 
-- **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + an overrides `Y.Map` +
-  a groups `Y.Map`). Its `overlay` implements the `OverlayDoc` port (move/resize/group/ungroup/lock/
-  label/prune/replace/replaceOverrides/clear, undo/redo via `Y.UndoManager`, persist via injected
-  `save`). Source channel: `source`/`setSource`/`spliceSource` + `onSourceChange`. Binary sync:
-  `state`/`applyUpdate`/`onUpdate`.
+- **What works:** `createCollabSession` wraps a `Y.Doc` (source `Y.Text` + overrides, groups,
+  edge-style, and node-style `Y.Map`s). Its `overlay` implements the `OverlayDoc` port (move/resize/
+  group/ungroup/lock/label/prune/replace/replaceOverrides/clear + setEdgeStyle/setNodeStyle, undo/redo
+  via `Y.UndoManager`, persist via injected `save`). Source channel: `source`/`setSource`/`spliceSource`
+  + `onSourceChange`. Binary sync: `state`/`applyUpdate`/`onUpdate`.
+- **Visual overlay styles sync:** node colour accents and per-edge route styles live in their own
+  `Y.Map`s and propagate to peers exactly like positions/groups do (they used to be per-client session
+  memory, so peers silently never saw a restyle). Writes go through `@m/builder`'s shared per-entry wire
+  encoders (`encodeEdgeStyleEntry`/`encodeNodeStyleEntry`); reads re-materialise through the same Zod
+  overlay decoder as everything else. Styles are in the undo scope and in `replace()`/`persist()`;
+  `createCollabSession` accepts optional `initialEdgeStyles`/`initialNodeStyles` seeds.
 - **Per-member group merge:** a group is a nested `Y.Map` (`id`/`label`/`locked` + a nested `members`
   `Y.Array`), not one flat LWW value — `label`/`locked` are per-field LWW, `members` merges per-element
   like `Y.Text`. Two peers concurrently editing *different members of the same group* (e.g. each
@@ -42,8 +48,12 @@ the editor to the shared doc.
 - **WASM relay (`src/shell/wasm-relay.ts`):** `loadWasmRelay()` lazily loads `modules/relay`'s
   `cmd/relay-wasm` build (script-inject `wasm_exec.js`, `fetch` + `WebAssembly.instantiateStreaming` the
   `.wasm`, falling back to the buffered `instantiate` path if a static file server doesn't send
-  `Content-Type: application/wasm`); `connectWasmRelay({ room, store })` drives it in-process and returns
-  a `CollabSocket` fed into the same `connectTransport` the real-relay path uses. This is the seam the
+  `Content-Type: application/wasm`). A rejected load is NOT cached (the next call retries), and a Go
+  runtime crash/exit — previously swallowed by `void go.run(...)` — is logged loudly and closes every
+  live wasm-relay socket. `connectWasmRelay({ room, store })` drives it in-process and returns a
+  `CollabSocket` fed into the same `connectTransport` the real-relay path uses; it registers the
+  `onClosed(code, reason)` callback the Go side now requires, so a relay-side rejection fires the
+  socket's close listeners exactly once (client-close and relay-confirm can't double-fire). This is the seam the
   backend-free demo uses to run the *real* relay (RBAC, room registry, persistence via the injected
   `store`) instead of skipping it — verified end-to-end by `app/playground/e2e-pages/
   backend-free-collab.spec.ts` (a genuine CONTROL frame sets the role badge; an override survives reload
@@ -52,10 +62,18 @@ the editor to the shared doc.
   self-healing `CollabSocket` — on the inner socket's close it mints a **fresh** WebSocket and re-binds
   all listeners (a dead socket's listeners never fire again), retrying with exponential backoff + jitter
   up to a cap; on reopen it re-fires `onOpen` so `connectTransport`'s state exchange re-runs (Yjs merges
-  idempotently). The consumer `onClose` fires only when the retry budget is exhausted. It surfaces a
-  closed-union `ReconnectStatus` (`reconnecting`/`reconnected`/`disconnected`) for the app, and injects
-  `schedule`/`random`/`mkSocket` so the backoff is deterministic under test. `webSocketTransport`/
-  `connectWebSocket` are unchanged.
+  idempotently). The close code is exposed (`SocketCloseEvent = {code, reason}` on every `onClose`), and
+  a POLICY close (1008 policy violation / 1009 message too big — the relay REJECTED us) is **never
+  retried**: it logs `relay-rejected`, reports the `rejected` status, and fires the consumer `onClose`
+  with the code immediately; a transient drop still heals silently, and `onClose` otherwise fires only
+  when the retry budget is exhausted (`disconnected`). The closed-union `ReconnectStatus` is
+  `reconnecting`/`reconnected`/`disconnected`/`rejected`; `schedule`/`random`/`mkSocket` are injected so
+  the backoff is deterministic under test.
+- **Typed CONTROL channel:** inbound CONTROL frames are decoded at the shell boundary through the closed
+  `RelayControlMessage` union (`{kind:"role", role: owner|editor|viewer}` | `{kind:"seed"}`) before
+  reaching `TransportHooks.onControl`; an unknown payload logs `control-rejected` (via the optional
+  `TransportHooks.logger`) and is dropped — a raw peer-controlled string can no longer flow into the app
+  (which writes the role into the DOM).
 - **Decode-as-Result + status surface (`src/shell/session.ts`):** `materialize` now RETURNS the decode
   `Result` instead of throwing inside the Yjs observer. On a corrupt remote overlay the observer logs
   loudly via a `Logger<CollabEvent>` (`"overlay-decode-rejected"`, threaded through
@@ -77,25 +95,30 @@ the editor to the shared doc.
 - **Presence:** a y-protocols `Awareness` rides the same transport on a distinct frame. `setLocalUser`
   labels the client (name/colour); the source binding tracks the local cursor into awareness, so remote
   carets/selections render in peers' editors. Ephemeral — relayed, never stored.
-- **Verified:** 64 tests green (53 unit + 11 integration, incl. 7 for `wasm-relay.ts`'s wiring logic) —
-  single-client overlay (incl.
+- **Verified:** run `make test` (unit + integration, all green) — single-client overlay (incl.
   `replaceOverrides` and **group undo/redo**: a minted group, a top-level ungroup, and a nested-subgroup
   ungroup that splices its freed leaves into the parent's members array) + undo/redo + source + the
   **corrupt-remote-overlay** path (logs `overlay-decode-rejected`, surfaces `overlay-rejected`, keeps
   last-good, no throw) (unit); transport wiring over in-memory paired sockets + a mocked-`WebSocket`
-  `webSocketTransport` + presence-frame routing + the **reconnecting transport** (backoff schedule,
-  re-mint-on-drop + re-fire-onOpen state re-exchange, budget-exhausted `disconnected` + consumer onClose,
-  user-close stops retry) (unit); two-peer **convergence** (integration): late-joiner catch-up, concurrent
-  moves of different nodes (no lost update), same-node LWW agreement, **two-client concurrent grouping
-  both survive** (collision-proof ids), **two clients concurrently ungrouping different children of the
-  same parent both survive** (no dangling group reference), **two clients concurrently pruning different
-  dead members of the same group both survive** (neither client's removal is dropped), group⊕move merge,
-  character-level source merge, remote-only notifications, and a property test that any interleaving
-  converges. `store.ts`'s IndexedDB path is covered via `fake-indexeddb` (a real `IDBFactory`
-  implementation, dependency-injected the same way the app injects the real browser `indexedDB`):
-  round-trip + miss, copy-on-save/load, persistence across separate store handles opened against the same
-  factory, a stored Yjs snapshot hydrating a session, and the non-binary-value-in-store rejection path.
-  Module-wide coverage: 85.7% stmts/73.1% branch/85.0% funcs/88.9% lines against an 85/73/84/88 ratchet
+  `webSocketTransport` + presence-frame routing + **CONTROL decoding** (closed union accepted, unknown
+  payload logged + dropped) + the **reconnecting transport** (backoff schedule, re-mint-on-drop +
+  re-fire-onOpen state re-exchange, budget-exhausted `disconnected` + consumer onClose, policy-close
+  `rejected` with NO retry for 1008/1009 while a 1006 still retries, close-code propagation, user-close
+  stops retry) + the **wasm-relay close paths** (relay-driven rejection fires close listeners once with
+  the code; client-close + relay-confirm never double-fires) (unit); two-peer **convergence**
+  (integration): late-joiner catch-up, concurrent moves of different nodes (no lost update), same-node
+  LWW agreement, **two-client concurrent grouping both survive** (collision-proof ids), **two clients
+  concurrently ungrouping different children of the same parent both survive** (no dangling group
+  reference), **two clients concurrently pruning different dead members of the same group both survive**
+  (neither client's removal is dropped), group⊕move merge, **visual-style convergence** (live restyle
+  seen by the peer, late-joiner styles, concurrent restyles of different elements, restyle undo syncing,
+  `replace()` style swap, restyle firing `onOverlayChange`), character-level source merge, remote-only
+  notifications, and a property test that any interleaving converges. `store.ts`'s IndexedDB path is
+  covered via `fake-indexeddb` (a real `IDBFactory` implementation, dependency-injected the same way the
+  app injects the real browser `indexedDB`): round-trip + miss, copy-on-save/load, persistence across
+  separate store handles opened against the same factory, a stored Yjs snapshot hydrating a session, and
+  the non-binary-value-in-store rejection path.
+  Module-wide coverage: above the 85/73/84/88 ratchet
   (`vitest.config.ts`) — `make cov` passes. The ratchet dropped from the module's earlier 92/76/89/95 to
   account for `wasm-relay.ts`'s loading mechanics (script injection, fetch, `WebAssembly` instantiation),
   which — like `store.ts`'s IndexedDB path before it needed `fake-indexeddb` — are real browser API

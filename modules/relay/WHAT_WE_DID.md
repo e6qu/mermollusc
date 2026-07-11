@@ -1,5 +1,24 @@
 # @m/relay — work log
 
+- 2026-07-10 review sweep — ten found+fixed bugs (full details in `BUGS.md`): raised the inbound frame
+  cap to 4MiB (`SetReadLimit`; the 32KiB default 1009-closed big DOC snapshots); `Store.Load` failures
+  now fail the admission instead of seeding an empty room over a good snapshot; fixed the
+  last-leave/first-join registry race (pending-admission counter + flush-before-forget + re-checked
+  delete) that could fork a doc; put a mutex in the rate bucket (data race between the auth-off pending
+  replay and live reads); replaced synchronous sequential broadcast with bounded per-peer outbound
+  queues (a slow consumer is closed loudly, senders never stall); `envInt` fails loudly on a malformed
+  `PORT`; shutdown drains live connections before the final flush (hijacked conns are invisible to
+  `http.Server.Shutdown`); the WASM `jsSocket.Close` now drives the real teardown and the
+  `mermolluscRelayConnect` contract gained `onClosed(code, reason)`; replaced `InsecureSkipVerify` with
+  an explicit Origin policy (loopback/same-host/`ALLOWED_ORIGINS`, 403 otherwise); pinned JWT
+  verification to RS256 by filtering the JWKS. Repaired the red WASM admission test (the seed-grant
+  CONTROL frame) and wired `make test-wasm` into `test`/`check` so it can't rot unrun again. New tests:
+  core churn/replay races (run under `-race`; the replay test was verified to fail with the bucket mutex
+  removed), load-failure admission, origin policy (4), large-frame relay, slow-consumer teardown, WASM
+  rejection teardown, RS512-rejection. Corrected these docs where they had drifted from the code: the
+  `loadRoom` guard was described as "request-coalescing via `pendingLoads`" (no such symbol; it is
+  double-checked locking), exact test counts were stale, and the wasm gzip size is now stated once from
+  a fresh measurement (≈1.4MB). Raised `COV_MIN` 69 → 73 (coverage climbed with the new tests).
 - Relay-owned seed coordination (fixes the last open bug in the repo — the collab seed race): the
   admission path grants the reserved "seed" CONTROL message to exactly one connection per EMPTY room
   (`room.seeder`, decided under `c.mu` so concurrent admissions can never both win; emptiness =
@@ -55,10 +74,10 @@
 - Ported the room registry, RBAC enforcement (`rbac.mjs`/`membership.mjs`), rate limiting, frame protocol,
   and crash-guarded CRDT merge into `relay.Core`, parameterized over `Socket`/`Store`/`Authorizer`/
   `RoomAuthorizer` interfaces — zero knowledge of native vs. WASM, matching the injected-dependency shape
-  the JS relay already had. Added an explicit mutex and a room-load request-coalescing guard that the JS
-  original never needed (single-threaded execution serialized everything for free there; Go's real
-  goroutine concurrency does not) — found and fixed via `go test -race`, which caught a genuine data race
-  in the native transport adapter's listener registration before it could ship.
+  the JS relay already had. Added an explicit mutex and a double-checked-locking first-touch guard in
+  `loadRoom` that the JS original never needed (single-threaded execution serialized everything for free
+  there; Go's real goroutine concurrency does not) — found and fixed via `go test -race`, which caught a
+  genuine data race in the native transport adapter's listener registration before it could ship.
 - Ported `modules/collab/test/integration/relay.test.mjs`'s full scenario set (RBAC allow/deny, viewer
   read-only, rate-limit breach on both dimensions, malformed-update crash guard, room-name validation
   including a `%2F..%2F` traversal attempt, tag allow-list, role announcement, auth-frame-not-URL-query) to

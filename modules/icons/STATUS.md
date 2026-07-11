@@ -8,11 +8,11 @@
 - **Categories**: every pack groups its icons (authored packs: arch → compute/data/network/messaging/
   people, bpmn → event/activity/gateway/data; vendored brand packs → `brands`; k8s → `resources`;
   user packs default to `all` or honour a `categories` field).
-- `builtinPack` ("arch"): 21 original AGPL glyphs — the family node kinds (server, database, cloud,
+- `builtinPack` ("arch"): 20 original AGPL glyphs — the family node kinds (server, database, cloud,
   user, queue, router, switch, firewall, host, compute, storage, cdn) + a richer infra palette
   (load-balancer, gateway, container, microservice, cache, bucket, key, lock), grouped compute/data/
   network/messaging/security/people; `defaultRegistry`.
-- `bpmnPack` ("bpmn"): 41 original AGPL BPMN-2.0 glyphs — the full element matrix: typed start/
+- `bpmnPack` ("bpmn"): 47 original AGPL BPMN-2.0 glyphs — the full element matrix: typed start/
   intermediate/end events (message/timer/signal/error/escalation/conditional/link/terminate) composed
   from a ring + trigger symbol; all task types (user/service/script/manual/send/receive/business-rule)
   + subprocess/call-activity/transaction; exclusive/parallel/inclusive/complex/event gateways; data
@@ -27,6 +27,14 @@
   payload (`{ meta, icons }`) into an `IconPack`; `registerPack(registry, pack)` (pure) merges it.
   This is the compliant path for vendor cloud packs (AWS/Azure/GCP) — loaded at runtime, never
   bundled.
+- **SVG sanitiser** (`svgViolation`, shell): every glyph is vetted structurally against an ELEMENT +
+  ATTRIBUTE ALLOWLIST (pure string tag scan — no DOM needed, identical in browser and vitest); every
+  `href`/`xlink:href` must be internal (`#…`) or an inline raster `data:image/png|jpeg|gif|webp` payload, style values may
+  only `url(#…)`, and comments/PIs/CDATA/DOCTYPE and malformed tags are rejected. A violation fails
+  `decodePack` loudly (Result error naming the offender) — nothing is silently stripped. Replaced the
+  old single-regex denylist, which missed `<image href="http…">`, external `<use href>`, and SMIL
+  `<set>/<animate>`. The allowlist deliberately admits the inert Inkscape/sodipodi/Dublin-Core editor
+  metadata the vendored packs carry; a test sweeps every bundled pack through the sanitiser.
 - **Bundled OSS packs** (vendored with pinned provenance by `tools/source-icons.mjs`, in `defaultRegistry`):
   - `simpleIconsPack` — 36 cloud-native/devops marks from simple-icons **CC0-1.0**.
   - `deviconPack` — 61 colored logos from devicon **MIT**: cloud/devops brand marks (**AWS / Azure /
@@ -40,9 +48,10 @@
 - **Archival (git-LFS, not in `defaultRegistry`)**: `vendor/open/cncf.json` — the full CNCF landscape
   (2423 logos, ~64 MB, Apache-2.0) tracked via git-LFS; referenced by no code, load at runtime if
   wanted. Kept out of the bundle so it can't affect app/test performance.
-- tests: 16 passing (registry/resolver, `registerPack`, categories incl. `brands`, `decodePack`
-  valid/invalid + default/explicit categories incl. the script/handler/foreignObject reject, BPMN +
-  sketch packs, vendored-pack provenance).
+- tests: registry/resolver, `registerPack`, categories incl. `brands`, `decodePack` valid/invalid +
+  default/explicit categories, the sanitiser suite (script/handler/foreignObject, external
+  `image`/`use` hrefs, SMIL, style `url()`, malformed markup) plus an every-bundled-glyph allowlist
+  sweep, BPMN + sketch packs, vendored-pack provenance.
 - The **cloud** family renders these marks (kind→slug map); the **network**, **cloud**, and **block**
   families each accept a per-node `icon "<pack>/<name>"` override (`icon: IconRef | null` on their AST
   nodes) that resolves against any registered pack.

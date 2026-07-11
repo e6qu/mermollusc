@@ -2,6 +2,32 @@
 
 **State:** interactive editor; renders **flowchart, sequence, C4, block, network, cloud, state, ER, class, requirement, gitGraph, timeline, mindmap, pie, gantt** (ER crow's-foot + attribute compartments; class UML heads + field/method compartments; requirement «kind» tags + field rows + verb arrows; pie donuts; gantt task bars on a day axis with `after`-chains); `make check` green.
 
+**2026-07-11 review-omnibus sweep (app side):**
+- **Error/empty journeys:** a stale (unparsable) render hides the floating selection context bar with
+  the selection it anchored to; an **emptied** source is treated as a fresh start — scene/selection
+  drop, the stage shows the recovery empty state, and the status says "nothing to render — type a
+  diagram or load an example" instead of lexer jargon (`e2e/stale-ux.spec.ts`).
+- **Collab joins:** no more wrong-diagram flash — collab boot paints nothing and shows a "joining the
+  shared room" status until the first `Y.Text` sync, which renders + fits; a relay that never answers
+  (backoff exhausted) unblocks the seed gate so the editor can't stay blank; CONTROL frames arrive as
+  the transport's closed union (`role`/`seed`), the role is re-validated before touching the DOM, and
+  the new `rejected` reconnect status (policy close 1008/1009) gets its own explanatory banner.
+- **Overlay style sync:** node colour accents + per-edge route styles now travel through the shared
+  Yjs overlay in collab rooms (they were silently local-only); single-user persistence is unchanged.
+- **Mobile:** first visit at phone width starts with the source panel and minimap collapsed; the
+  context bar is a fixed bottom sheet pinned to the visual viewport; the zoom cluster no longer
+  stretches past the stage edge (the topbar-only `.toolbar-group` stretch was hitting it); keyboard
+  gesture hints hide on touch; the "hide HUD/minimap behind the open sheet" rules actually fire now
+  (`:has()` — the old sibling selectors could never match).
+- **CSP:** `connect-src` is assembled at build time (`vite.config.ts`): the Auth0 origin only when
+  configured, `VITE_RELAY_ORIGINS` for explicit deploys, no blanket `https:`, and no `wss:` at all in
+  the backend-free Pages demo; dev stays permissive for LAN testing.
+- **Smaller fixes:** the task strip's "Relax: flowchart only" lie is gone (reason driven by
+  `RELAX_FAMILIES`); pie/gantt status counts read "slices"/"tasks · links"; the icon picker shows
+  visible glyph names; dark-mode context swatches use distinguishable mid-tones; the task HUD wraps
+  to two lines instead of ellipsizing; the help dialog documents the navigator's `d` + Home/End and
+  the Alt+Arrow canvas-resize vs navigator-move split.
+
 **Current demo-parity note:** cloud and network have first-class style buckets and vendored default
 icons; cloud defaults to trunk routing; edge labels can be dragged along their routes and preserve their
 relative positions; examples are richer across families; BPMN starters keep the original BPMN glyphs for
@@ -69,7 +95,9 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   `src/examples.ts` and `test/integration/examples.test.ts` asserts every entry parses, lays out,
   lowers to `DrawCmd`s, avoids container-title crossings, uses cardinal endpoint mounts for routed
   families (including bus/trunk architecture variants), and exports as SVG, with explicit `network`/`cloud` catalog guards; the kind badge shows the
-  active family; Connect/Delete dispatch per family, Add/Relax disable off-flowchart, and Regenerate
+  active family; Connect/Delete dispatch per family, Add disables (with the per-family reason) only
+  where the grammar has no node declaration, Relax covers the node-graph families
+  (`RELAX_FAMILIES`) and reports "not available for {kind}" elsewhere, and Regenerate
   stays live for all. **⌥-drag** from a node to another creates an edge directly (a rubber-band
   preview; reuses per-family `appendEdge`); **⌘D** duplicates the selected node(s) and **⌘C / ⌘V**
   copy-paste them via a persistent in-memory clipboard (cascading each paste); a single-node drag
@@ -254,12 +282,6 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   PDF + SVG export + icon-picker (insert + empty-filter) + an **audit-omnibus** spec (family-capability
   gating, layout-survives-edit + share-carries-overlay, example-load confirm guard, platform modifier
   chips + syntax reference) to the prior set (source-persistence,
-  family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
-  network-icons + override, structural edit coverage for every family, group outline selection +
-  label editing, dpr, load-pack ×2). Specs drive the editor through the `window.__editor` handle.
-- Playwright (`make e2e-ui`): covers requirement diagram (render/example, «kind» tags + field rows + verb arrows) + class diagram (render/example, UML heads + field/method compartments) + ER attribute blocks (crow's-foot + compartments) + ER family (render/example) + canvas a11y label + keyboard navigator node + edge coverage + mobile responsive shell/workflow coverage + group-prune-on-edit + empty/truncated-input crash guard + composite states + state-diagram render/example + pie donut render + regenerate-preserves-pinned overrides + corner-handle resize + Arrange (align-left + undo-as-one) + keyboard affordances (select-all+escape, arrow nudge) + box-select (shift-drag marquee) + undo/redo (drag-undo+redo, group-undo) + editor coverage (inline parse-error marker; highlight
-  spans) + subgraph render (no-crash) + share-link (load + encode) + stadium/circle shapes + PNG +
-  PDF + SVG export + icon-picker (insert + empty-filter) to the prior set (source-persistence,
   family/edit flows incl. inline editor, sketch + theme toggles + persistence, cloud render/relabel,
   network-icons + override, structural edit coverage for every family, group outline selection +
   label editing, dpr, load-pack ×2). Specs drive the editor through the `window.__editor` handle.

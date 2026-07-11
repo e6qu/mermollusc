@@ -722,6 +722,11 @@ if (useCollab) {
     },
   });
 }
+// True from collab boot until the Y.Text binding delivers the room's first text — the window in which
+// the stage deliberately shows "joining" instead of a local diagram that may not be the room's.
+// Declared here (not next to its first write in `onTextChange`) because the initial render's
+// `updateTask` reads it before that point — a later `let` would be in the temporal dead zone.
+let collabJoinPending = collabSession !== null;
 
 interface UnifiedHistoryEntry {
   readonly text: string;
@@ -1761,6 +1766,21 @@ const familyAffordances = (kind: DiagramAst["kind"]): FamilyAffordances => {
   }
 };
 
+// Force-directed "Relax" applies to the node-graph families (boxes joined by connectors); it's
+// meaningless for the structural/temporal families (sequence rows, a pie, a gantt/timeline axis, a
+// gitGraph rail), which are excluded.
+const RELAX_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
+  "flowchart",
+  "state",
+  "er",
+  "class",
+  "block",
+  "network",
+  "cloud",
+  "c4",
+  "mindmap",
+]);
+
 const reasonedTask = (base: string, reasons: readonly string[]): string =>
   reasons.length === 0 ? base : `${base} · ${reasons.join(" · ")}`;
 
@@ -1769,7 +1789,7 @@ const familyToolReasons = (): readonly string[] => {
   const affordances = familyAffordances(ast.kind);
   const reasons: string[] = [];
   if (!affordances.addNode) reasons.push(`Add: adding nodes isn't available for ${ast.kind}`);
-  if (ast.kind !== "flowchart") reasons.push("Relax: flowchart only");
+  if (!RELAX_FAMILIES.has(ast.kind)) reasons.push(`Relax: not available for ${ast.kind}`);
   return reasons;
 };
 
@@ -1791,7 +1811,13 @@ const selectedActionReasons = (caps: CapabilityState): readonly string[] => {
 
 const updateTask = (caps: CapabilityState = computeCapabilities()): void => {
   if (!currentRenderValid) {
-    setTask("fix the source before editing or exporting", "blocked");
+    if (collabJoinPending) {
+      setTask("joining the shared room — the diagram appears when the first sync lands", "quiet");
+    } else if (editorReady && editor.value().trim().length === 0) {
+      setTask("type a diagram or pick an example to get started", "quiet");
+    } else {
+      setTask("fix the source before editing or exporting", "blocked");
+    }
     return;
   }
   if (selection.nodes.size + selection.edges.size === 0) {
@@ -2752,10 +2778,13 @@ const announce = (message: string): void => {
 
 // The minimap (offscreen cache + viewport scrim + its own pointer/keyboard nav) lives in `./minimap.ts`;
 // it reads the live render/theme and drives the stage scroll through `scrollToLogical`.
+// With no stored preference, phone-width viewports start with the overview collapsed — a 120px map
+// over a ~300px stage hides more diagram than it orients; the "Map" toggle stays one tap away.
+const phoneWidthViewport = window.matchMedia("(max-width: 760px)").matches;
 const minimapView = createMinimap({
   minimap,
   toggle: minimapToggle,
-  initiallyCollapsed: loadMinimapCollapsed(),
+  initiallyCollapsed: loadMinimapCollapsed() ?? phoneWidthViewport,
   persistCollapsed: saveMinimapCollapsed,
   miniCtx,
   stageWrap,
@@ -2920,8 +2949,13 @@ const setStatus = (
     statusEl.setAttribute("tabindex", "0");
   }
   stageWrap.setAttribute("data-stale", level === "error" ? "true" : "false");
-  stageEmpty.hidden = !(level === "error" && scene === null);
+  // No scene at all (never rendered, or the source was emptied) → the recovery empty state,
+  // whatever the status level; with a scene the canvas itself is the feedback.
+  stageEmpty.hidden = scene !== null;
   errorRange = range;
+  // The context bar anchors to the selection on a VALID render; re-evaluate on every status flip so
+  // a parse error can't strand it floating over the dimmed stale canvas.
+  positionContextBar();
   // Mirror the located error into the editor as an inline diagnostic (red squiggle + gutter marker +
   // hover message); clears it on any non-error status.
   editor.setError(range, message);
@@ -3305,6 +3339,23 @@ const renderFromText = async (text: string): Promise<void> => {
   // discriminator: it separates flowchart from DOT-import (both have ast kind `flowchart`).
   const parsed = parseDiagramWithSource(text);
   if (!isOk(parsed)) {
+    // An emptied source is a fresh start, not a mistake: the lexer's "Expecting token …" message and
+    // a dimmed ghost of the last render would both read as breakage. Drop the stale scene so the
+    // stage shows the recovery empty state, and say what to do instead of what failed.
+    if (text.trim().length === 0) {
+      ast = null;
+      scene = null;
+      lastRender = null;
+      isDotImport = false;
+      selection = { nodes: new Set(), edges: new Set() };
+      selectionOrder = [];
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      minimapView.draw();
+      navController.rebuild();
+      setStatusAndAnnounce("warning", "nothing to render — type a diagram or load an example");
+      return;
+    }
     // The source is the only place to fix a parse error, so never leave it hidden — reveal it (without
     // overwriting the saved preference) so the lint marker + click-to-locate are reachable.
     if (workbench.hasAttribute("data-source-collapsed")) setSourceCollapsed(false, false);
@@ -3326,8 +3377,8 @@ const renderFromText = async (text: string): Promise<void> => {
   }
   const result = parsed.value;
   const diagram = result.ast;
-  // A DOT import parses to a flowchart AST but has no editable spans — set this before applyKind, which
-  // gates the Add button on it.
+  // A DOT import parses to a flowchart AST; the flag routes source patches through the DOT printer
+  // (relabel/reshape/add emit `digraph` syntax, not flowchart syntax) and labels the dialect badge.
   isDotImport = result.family === "dot";
   lastDirection = "direction" in diagram ? diagram.direction : null;
   updateStyleOptions(diagram.kind);
@@ -3343,9 +3394,25 @@ const renderFromText = async (text: string): Promise<void> => {
     return;
   }
   currentRenderValid = true;
+  // Publish the new scene BEFORE setStatus: setStatus toggles the stage empty-state off `scene`, and
+  // on the very first render `scene` is otherwise still null when setStatus runs, flashing the "no
+  // diagram" recovery box over the diagram that just rendered.
+  scene = laid.value;
   applyKind(diagram.kind);
   const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
-  const statusMsg = `${diagram.kind} · ${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`;
+  // The chart-like families aren't node/edge graphs — "pie · 5 nodes · 0 edges" reads as a bug, so
+  // name their real units (and drop the meaningless edge count for pie).
+  const countSummary = ((): string => {
+    switch (diagram.kind) {
+      case "pie":
+        return plural(laid.value.nodes.length, "slice");
+      case "gantt":
+        return `${plural(laid.value.nodes.length, "task")} · ${plural(laid.value.edges.length, "link")}`;
+      default:
+        return `${plural(laid.value.nodes.length, "node")} · ${plural(laid.value.edges.length, "edge")}`;
+    }
+  })();
+  const statusMsg = `${diagram.kind} · ${countSummary}`;
   setStatus("ok", statusMsg);
   // Enrich the canvas's screen-reader text with the actual node labels (capped so a huge diagram
   // doesn't produce an unwieldy string).
@@ -3354,10 +3421,12 @@ const renderFromText = async (text: string): Promise<void> => {
     .filter((l) => l.length > 0)
     .slice(0, 24);
   const ellipsis = laid.value.nodes.filter((n) => n.label.length > 0).length > labels.length;
+  const labelListName =
+    diagram.kind === "pie" ? "Slices" : diagram.kind === "gantt" ? "Tasks" : "Nodes";
   canvas.setAttribute(
     "aria-label",
-    `${diagram.kind} diagram: ${plural(laid.value.nodes.length, "node")}, ${plural(laid.value.edges.length, "edge")}${
-      labels.length > 0 ? `. Nodes: ${labels.join(", ")}${ellipsis ? ", …" : ""}` : ""
+    `${diagram.kind} diagram: ${countSummary.replaceAll(" · ", ", ")}${
+      labels.length > 0 ? `. ${labelListName}: ${labels.join(", ")}${ellipsis ? ", …" : ""}` : ""
     }`,
   );
   ast = diagram;
@@ -3365,8 +3434,8 @@ const renderFromText = async (text: string): Promise<void> => {
   // families that want it (`usesCardinalMounts`) and runs label decollision after. The unconditional
   // app-side re-snap this replaces corrupted every other family (sequence messages dragged onto the
   // header boxes, mindmap/gitGraph elbows, detached timeline connectors) and clobbered decollided edge
-  // labels back onto the nodes they'd just been moved off.
-  scene = laid.value;
+  // labels back onto the nodes they'd just been moved off. (`scene` was published above, before
+  // setStatus, so the empty-state toggle sees it.)
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   navController.rebuild();
@@ -3499,22 +3568,6 @@ const renderFromText = async (text: string): Promise<void> => {
   paintScene();
   updateGroupButtons();
 };
-
-// Relax: re-run ELK seeded by the current node positions, cleaning up overlaps/routing.
-// Force-directed "Relax" applies to the node-graph families (boxes joined by connectors); it's
-// meaningless for the structural/temporal families (sequence rows, a pie, a gantt/timeline axis, a
-// gitGraph rail), which are excluded.
-const RELAX_FAMILIES: ReadonlySet<DiagramAst["kind"]> = new Set([
-  "flowchart",
-  "state",
-  "er",
-  "class",
-  "block",
-  "network",
-  "cloud",
-  "c4",
-  "mindmap",
-]);
 
 // Relax: spring/force-directed rearrangement of the current layout (via the pure `relaxScene`). PINNED
 // nodes are held and the forces flow around them; the moved nodes are written as UNPINNED position
@@ -3740,8 +3793,12 @@ const positionOverlay = (el: HTMLElement, at: ScreenPoint): void => {
 // relative to `.stage-col` (the bar's offset parent), so it stays put as the sheet scrolls inside it.
 const CONTEXT_BAR_GAP = 10;
 const positionContextBar = (): void => {
+  // `!currentRenderValid`: on a stale render the bar's verbs would edit a diagram that no longer
+  // matches the text, so the whole bar hides with the selection it anchored to (the dimmed canvas
+  // already signals staleness).
   if (
     scene === null ||
+    !currentRenderValid ||
     isInteracting() ||
     (selection.nodes.size === 0 && selection.edges.size === 0)
   ) {
@@ -6589,7 +6646,7 @@ window.addEventListener("keydown", (ev) => {
       }
       if (selectionOrder.length === 0) return;
       // With a node selection, explain why nothing happens off-flowchart instead of a silent no-op
-      // (parity with the navigator). `isDotImport` parses to flowchart but with an empty source map.
+      // (parity with the navigator).
       if (ast.kind !== "flowchart") {
         ev.preventDefault();
         flashStatus("shape change is only available for flowchart");
@@ -6850,9 +6907,12 @@ const buildIconGrid = (filter: string): void => {
         btn.className = "picker-icon";
         btn.title = `${packId}/${name}`;
         const img = document.createElement("img");
-        img.alt = name;
+        img.alt = "";
         img.src = svgDataUrl(svg);
-        btn.append(img);
+        const caption = document.createElement("span");
+        caption.className = "picker-icon-name";
+        caption.textContent = name;
+        btn.append(img, caption);
         btn.addEventListener("click", () => insertIconRef(packId, name));
         grid.append(btn);
         shown += 1;
@@ -7174,8 +7234,14 @@ const onTextChange = (text: string): void => {
   // either render now (leading edge of a burst) or queue a trailing render for when the cooldown ends.
   sourcePersistenceArmed = true; // a hand edit takes ownership of shared/example-link source
   saveSource(text);
+  // In collab mode the first text this callback ever sees IS the room's authoritative document
+  // arriving through the Y.Text binding (seed or sync) — that first paint gets the same
+  // fit-in-viewport treatment the single-user initial render gets.
+  const firstCollabText = collabJoinPending;
+  collabJoinPending = false;
   if (renderCooldown === null) {
-    void renderFromText(text); // leading edge of a burst: render now
+    const rendered = renderFromText(text); // leading edge of a burst: render now
+    if (firstCollabText) void rendered.then(() => fitView());
     armRenderCooldown();
   } else {
     renderQueued = true; // within the cooldown: coalesce into the trailing render
@@ -7245,17 +7311,24 @@ const navController = createNavigator({
 refreshNavigatorGroups = () => navController.rebuild();
 
 // Restore the saved source-panel collapse preference before the first render so the canvas is sized
-// right from the start (no flash of the expanded layout).
-setSourceCollapsed(loadSourceCollapsed(), false);
+// right from the start (no flash of the expanded layout). First visit on a phone starts collapsed:
+// topbar + expanded editor otherwise consume the whole first screen and the diagram is out of view.
+setSourceCollapsed(loadSourceCollapsed() ?? phoneWidthViewport, false);
 
-// Render the resolved initial source now so the canvas isn't blank on load. In collab mode the editor
-// itself starts empty and is filled by the seed/sync below; `onTextChange` then re-renders from the
-// authoritative shared text (identical when this client seeds; the room's text when it joins one).
+// Render the resolved initial source now so the canvas isn't blank on load — except in collab mode,
+// where the editor starts empty and the `Y.Text` binding fills it with the room's authoritative text
+// (this client's seed, or the synced room content). Painting the LOCAL initial source there flashed
+// the wrong diagram for ~300ms on every join of an existing room; instead the stage waits under an
+// explicit "joining" status and the binding's first delivery renders + fits (see `onTextChange`).
 // Fit the whole diagram in the viewport on first paint, so a wide one (e.g. a full git-flow) is visible
 // at once instead of running off the edge. `fitView` caps at 100%, so a small diagram is left untouched.
 // Kept as a handle so collab-boot messages can sequence AFTER the first render — the render completion
 // sets the summary status, which would silently clobber anything shown before it.
-const initialRenderDone = renderFromText(initialSource).then(() => fitView());
+const initialRenderDone = ((): Promise<void> => {
+  if (collabSession === null) return renderFromText(initialSource).then(() => fitView());
+  setStatus("warning", "joining the shared room — waiting for the first sync…");
+  return Promise.resolve();
+})();
 // A typo'd ?example= link silently showed the visitor's own persisted diagram — say what happened.
 if (exampleParam !== null && exampleFromUrl === null) {
   void initialRenderDone.then(() => {
@@ -7322,6 +7395,12 @@ if (collabSession !== null) {
   // read-only, with a badge — the server already drops a viewer's edits, so this is the matching UX.
   const roleBadge = document.querySelector<HTMLElement>("#role-badge");
   const applyRole = (role: string): void => {
+    // CONTROL frames are relay input: only the closed role set may reach the DOM/badge — anything
+    // else is a protocol violation, logged loudly and dropped (never rendered).
+    if (role !== "owner" && role !== "editor" && role !== "viewer") {
+      appLog("error", "collab-role-rejected", role);
+      return;
+    }
     viewerMode = role === "viewer";
     editor.setReadOnly(viewerMode);
     document.body.setAttribute("data-role", role);
@@ -7355,19 +7434,29 @@ if (collabSession !== null) {
     transportConnected = true;
     connectTransport(session, socket, {
       ...(authToken === null ? {} : { authToken }),
-      // The CONTROL channel carries the granted role, plus the reserved "seed" grant message.
+      // Boundary failures (an undecodable CONTROL frame, a policy rejection) must be loud (§8).
+      logger: consoleLogger,
+      // The CONTROL channel is decoded in the transport into a closed union — only the three known
+      // roles or the seed grant can reach this callback (unknown frames are logged + dropped there).
       onControl: (message) => {
-        if (message === "seed") {
+        if (message.kind === "seed") {
           seedGranted = true;
           maybeSeed();
           return;
         }
-        applyRole(message);
+        applyRole(message.role);
       },
       // Surface a permanent drop loudly rather than silently desyncing — local edits keep working, but
       // the user must know they're no longer shared.
       onClose: () => {
         appLog("error", "collab-disconnected");
+        // The relay is gone for good (backoff exhausted): unblock the seed gate, or a client that
+        // never reached the relay waits forever for a "seed" grant and faces a permanently blank
+        // editor while the status claims it's "editing locally". seedSourceIfEmpty's empty-check
+        // keeps a synced-then-dropped room's content intact.
+        transportConnected = false;
+        seedGranted = false;
+        maybeSeed();
         flashStatus("disconnected from the collaboration relay — editing locally", "warning");
       },
     });
@@ -7382,10 +7471,18 @@ if (collabSession !== null) {
         flashStatus("⚠ reconnecting to the collaboration relay…", "warning");
       } else if (status === "reconnected") {
         flashStatus("reconnected to the collaboration relay");
+      } else if (status === "rejected") {
+        // A policy close (unauthorized / invalid room / frame too big): retrying is futile, so the
+        // transport stopped for good — distinct from the generic disconnect banner.
+        flashStatus(
+          "the relay rejected this connection — check the room name and your permissions",
+          "error",
+        );
       }
     };
     const socket = reconnectingWebSocketTransport(`${wsBase}/${encodeURIComponent(collabRoom)}`, {
       onStatus: onReconnectStatus,
+      logger: consoleLogger,
     });
     // A resolved Auth0 access token is sent as the first WebSocket auth frame, never in the relay URL.
     // Absent in local dev → the relay's default allow-all accepts.
