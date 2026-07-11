@@ -1,7 +1,7 @@
 import { err, ok, point, rect, type Point, type Result } from "@m/std";
 import { sceneNodeId, sceneEdgeId } from "@m/contracts";
 import { boxCenter, routeWaypoints } from "./route.js";
-import { clampedWidth } from "./measure.js";
+import { clampedWidth, widestLine } from "./measure.js";
 import type {
   EdgeEnd,
   EdgeId,
@@ -53,6 +53,30 @@ const EDGE_LABEL_HEIGHT = 18;
 const nodeWidth = (label: string, measure: MeasureText): number =>
   clampedWidth(label, measure, MIN_NODE_WIDTH, LABEL_PADDING);
 
+// One text line and the renderer's icon-group height (ICON_SIZE 20 + gap 4 + label 16 — see the
+// renderer's diamond `nodeCmds`), used to size a diamond around its content.
+const TEXT_LINE_H = 16;
+const ICON_GROUP_H = 40;
+// A diamond's sides slope in, so a centred content box (w×h) fits only inside the inscribed rhombus:
+// contentW/boxW + contentH/boxH ≤ 1. Splitting the budget evenly (each term ≤ FILL/2) minimises the
+// larger dimension; FILL < 1 leaves a small margin off the sloped edges. Without this a diamond was
+// sized like a rect (label width × 40) and the label — worse, an icon stacked above it — poked out the
+// bottom vertex.
+const DIAMOND_FILL = 0.92;
+const diamondBox = (
+  label: string,
+  hasIcon: boolean,
+  measure: MeasureText,
+): { readonly width: number; readonly height: number } => {
+  const lines = label.length === 0 ? 1 : label.split("\n").length;
+  const contentW = widestLine(label, measure);
+  const contentH = hasIcon ? ICON_GROUP_H : lines * TEXT_LINE_H;
+  return {
+    width: Math.max(MIN_NODE_WIDTH, Math.round(contentW / (DIAMOND_FILL / 2))),
+    height: Math.max(NODE_HEIGHT, Math.round(contentH / (DIAMOND_FILL / 2))),
+  };
+};
+
 // A non-empty `seed` (node → current position) switches ELK into semi-interactive layered layout:
 // it relaxes the graph around the given coordinates instead of laying out from scratch (an empty
 // map means a clean layout). `measure` sizes node labels. Both are explicit — no defaults — so the
@@ -66,6 +90,13 @@ export const toElkGraph = (
 
   const leaf = (n: FlowNode): LeafNode => {
     const at = seed.get(n.id);
+    const position = at === undefined ? null : { x: at.x, y: at.y };
+    // A diamond's sloped sides shrink the usable area to its inscribed rhombus, so it must grow around
+    // the label (and, when present, the icon stacked above it) — a rect-sized diamond clips them.
+    if (n.shape === "diamond") {
+      const box = diamondBox(n.label, n.icon !== null, measure);
+      return { kind: "leaf", id: n.id, width: box.width, height: box.height, position };
+    }
     const width = nodeWidth(n.label, measure);
     // A circle must be square to actually render as a circle (the renderer rounds corners by
     // min(w,h)/2); size it to the larger of the label width and the standard node height.
@@ -75,7 +106,7 @@ export const toElkGraph = (
       id: n.id,
       width: n.shape === "circle" ? side : width,
       height: n.shape === "circle" ? side : NODE_HEIGHT,
-      position: at === undefined ? null : { x: at.x, y: at.y },
+      position,
     };
   };
 
