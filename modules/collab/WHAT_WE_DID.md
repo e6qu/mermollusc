@@ -1,6 +1,33 @@
 # @m/collab — work log
 
 
+## 2026-07-10 — Review sweep: style sync, typed CONTROL, policy-close handling, wasm-relay close/crash
+
+- **Visual overlay styles now sync** (`session.ts`): node colour accents and per-edge route styles moved
+  from per-client session memory into two more `Y.Map`s on the shared doc (`edgeStyles`/`nodeStyles`),
+  written through `@m/builder`'s shared per-entry encoders (`encodeEdgeStyleEntry`/`encodeNodeStyleEntry`,
+  newly re-exported from the builder barrels) and re-materialised through the same Zod overlay decoder as
+  overrides/groups. Styles are in the `UndoManager` scope, in `replace()` (targeted per-entry
+  set/delete, not a blind rewrite) and `persist()`, and `createCollabSession` gained optional
+  `initialEdgeStyles`/`initialNodeStyles` seeds. Six convergence tests (two docs, restyle in one, assert
+  in the other; late joiner; concurrent restyles; undo sync; replace; onOverlayChange). No `OverlayDoc`
+  port change was needed.
+- **CONTROL is a typed boundary** (`transport.ts`): inbound CONTROL payloads decode through the closed
+  `RelayControlMessage` union (`owner|editor|viewer` roles + the `seed` grant); unknown payloads log
+  `control-rejected` (new `CollabEvent` member, via the new optional `TransportHooks.logger`) and are
+  dropped — previously any peer string flowed straight to the app, which writes the role into the DOM.
+- **Policy closes are permanent** (`transport.ts`): every `CollabSocket.onClose` now receives a
+  `SocketCloseEvent` (`{code, reason}`); `reconnectingWebSocketTransport` stops immediately on a policy
+  close (1008/1009) instead of replaying the rejection through the whole backoff budget — logs
+  `relay-rejected`, reports the new `rejected` `ReconnectStatus`, and fires the consumer `onClose` with
+  the code. Transient drops (e.g. 1006) still heal silently.
+- **wasm-relay failure surfacing** (`wasm-relay.ts`): `go.run(instance)`'s settlement is observed — a Go
+  runtime crash/exit logs loudly and closes every live wasm-relay socket (previously `void go.run(...)`
+  swallowed it); a rejected `loadWasmRelay()` no longer caches the rejection (next call retries).
+  `connectWasmRelay` registers the Go side's new `onClosed(code, reason)` callback
+  (`mermolluscRelayConnect`'s fifth argument — see modules/relay), firing close listeners exactly once
+  whichever side closes first, so a relay rejection no longer leaves the client believing it's connected.
+
 ## 2026-07-05 — OverlayDoc.canUndo()/canRedo() in the collab session
 
 - Implemented the new `canUndo()/canRedo()` port methods over the Yjs `UndoManager` (`undoManager.canUndo()

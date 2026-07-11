@@ -105,3 +105,23 @@ describe("layoutMindmap", () => {
     expect(Number.isFinite(out.value.extent.size.width)).toBe(true);
   });
 });
+
+describe("hexagon sizing", () => {
+  it("sizes a {{hexagon}} (diamond-rendered) node so its label fits inside the sloped sides", () => {
+    const label = "a rather long hexagon label";
+    const hex: MindmapAst = {
+      kind: "mindmap",
+      styles: [],
+      nodes: [mk("root", null, 0), { ...mk("h", "root", 1, "hexagon"), label }],
+    };
+    const r = layoutMindmap(hex, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    const n = r.value.nodes.find((x) => x.id === "h");
+    if (n === undefined) throw new Error("hexagon node missing");
+    expect(n.shape).toBe("diamond");
+    // Inscribed-rectangle condition for a diamond: labelW/w + textH/h ≤ 1 (one 16px text line).
+    const w = n.bounds.size.width;
+    const h = n.bounds.size.height;
+    expect(heuristicMeasure(label) / w + 16 / h).toBeLessThanOrEqual(1);
+  });
+});

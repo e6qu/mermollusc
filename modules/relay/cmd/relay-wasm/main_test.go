@@ -23,10 +23,15 @@ func resolvedPromise(value js.Value) js.Value {
 	return js.Global().Get("Promise").Call("resolve", value)
 }
 
+func noopClosed() js.Value {
+	return jsFunc(func(_ []js.Value) any { return nil })
+}
+
 // TestConnectAdmissionSendsControlThenDoc drives relayConnect with fake JS callbacks (an in-memory
 // onLoad/onSave, and an onSend that captures frames) and confirms the same admission sequence a real
-// socket-backed connection gets: a CONTROL frame announcing the (zero-auth, default) role, then a DOC
-// frame with the room's initial state.
+// socket-backed connection gets: a CONTROL frame announcing the (zero-auth, default) role, a CONTROL
+// "seed" grant (this is the first — and only — connection into an empty room), then a DOC frame with the
+// room's initial state.
 func TestConnectAdmissionSendsControlThenDoc(t *testing.T) {
 	core = nil // fresh Core per test — package state is otherwise shared across TestXxx functions
 	connections = make(map[int]*jsSocket)
@@ -40,7 +45,7 @@ func TestConnectAdmissionSendsControlThenDoc(t *testing.T) {
 	onLoad := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Null()) })
 	onSave := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Undefined()) })
 
-	handleVal := relayConnect(js.Undefined(), []js.Value{js.ValueOf("test-room"), onSend, onLoad, onSave})
+	handleVal := relayConnect(js.Undefined(), []js.Value{js.ValueOf("test-room"), onSend, onLoad, onSave, noopClosed()})
 	handle, ok := handleVal.(int)
 	if !ok {
 		t.Fatalf("relayConnect returned %T, want int", handleVal)
@@ -48,7 +53,7 @@ func TestConnectAdmissionSendsControlThenDoc(t *testing.T) {
 
 	var frames [][]byte
 	timeout := time.After(2 * time.Second)
-	for len(frames) < 2 {
+	for len(frames) < 3 {
 		select {
 		case f := <-sent:
 			frames = append(frames, f)
@@ -62,11 +67,67 @@ func TestConnectAdmissionSendsControlThenDoc(t *testing.T) {
 	if got := string(frames[0][1:]); got != "editor" {
 		t.Errorf("control role = %q, want editor (zero-auth default)", got)
 	}
-	if len(frames[1]) == 0 || frames[1][0] != 0 {
-		t.Errorf("second frame tag = %v, want DOC (0)", frames[1])
+	if len(frames[1]) == 0 || frames[1][0] != 2 || string(frames[1][1:]) != "seed" {
+		t.Errorf("second frame = %v, want CONTROL (2) %q (empty-room seed grant)", frames[1], "seed")
+	}
+	if len(frames[2]) == 0 || frames[2][0] != 0 {
+		t.Errorf("third frame tag = %v, want DOC (0)", frames[2])
 	}
 
 	relayClose(js.Undefined(), []js.Value{js.ValueOf(handle)})
+}
+
+// TestCloseDrivesTeardownAndNotifiesJS proves a relay-initiated close (here: a rejected connection —
+// invalid room name) reaches the JS side via the onClosed callback AND fully tears the connection down
+// (the handle leaves the registry), instead of leaking a goroutine blocked in Core.Connect and leaving
+// the client believing it is connected.
+func TestCloseDrivesTeardownAndNotifiesJS(t *testing.T) {
+	core = nil
+	connections = make(map[int]*jsSocket)
+	nextHandle = 0
+
+	onSend := jsFunc(func(_ []js.Value) any { return nil })
+	onLoad := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Null()) })
+	onSave := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Undefined()) })
+	type closeEvent struct {
+		code   int
+		reason string
+	}
+	closed := make(chan closeEvent, 1)
+	onClosed := jsFunc(func(args []js.Value) any {
+		closed <- closeEvent{code: args[0].Int(), reason: args[1].String()}
+		return nil
+	})
+
+	handleVal := relayConnect(js.Undefined(), []js.Value{js.ValueOf(".."), onSend, onLoad, onSave, onClosed})
+	handle, ok := handleVal.(int)
+	if !ok {
+		t.Fatalf("relayConnect returned %T, want int", handleVal)
+	}
+
+	select {
+	case ev := <-closed:
+		if ev.code != 1008 {
+			t.Errorf("close code = %d, want 1008 (policy: invalid room name), reason=%q", ev.code, ev.reason)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onClosed never fired for a rejected connection")
+	}
+
+	deadline := time.After(2 * time.Second)
+	for {
+		mu.Lock()
+		_, alive := connections[handle]
+		mu.Unlock()
+		if !alive {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatal("rejected connection was never removed from the registry")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 // TestReceiveRelaysBetweenTwoConnectionsInTheSameRoom proves relayReceive actually drives the shared
@@ -86,18 +147,23 @@ func TestReceiveRelaysBetweenTwoConnectionsInTheSameRoom(t *testing.T) {
 		})
 		onLoad := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Null()) })
 		onSave := jsFunc(func(_ []js.Value) any { return resolvedPromise(js.Undefined()) })
-		hv := relayConnect(js.Undefined(), []js.Value{js.ValueOf(room), onSend, onLoad, onSave})
+		hv := relayConnect(js.Undefined(), []js.Value{js.ValueOf(room), onSend, onLoad, onSave, noopClosed()})
 		h, ok := hv.(int)
 		if !ok {
 			t.Fatalf("relayConnect returned %T, want int", hv)
 		}
 		return h, sent
 	}
+	// The admission sequence ends with the initial DOC frame (the first joiner additionally gets the
+	// CONTROL "seed" grant before it) — drain up to and including DOC, bounded by the protocol itself.
 	drainAdmission := func(sent chan []byte) {
 		timeout := time.After(2 * time.Second)
-		for i := 0; i < 2; i++ {
+		for {
 			select {
-			case <-sent:
+			case f := <-sent:
+				if len(f) > 0 && f[0] == 0 {
+					return
+				}
 			case <-timeout:
 				t.Fatalf("timed out draining admission frames")
 			}
@@ -161,7 +227,7 @@ func TestRelayFlushResolves(t *testing.T) {
 		}
 		return resolvedPromise(js.Undefined())
 	})
-	relayConnect(js.Undefined(), []js.Value{js.ValueOf("flush-room"), onSend, onLoad, onSave})
+	relayConnect(js.Undefined(), []js.Value{js.ValueOf("flush-room"), onSend, onLoad, onSave, noopClosed()})
 
 	promise, ok := relayFlush(js.Undefined(), nil).(js.Value)
 	if !ok {

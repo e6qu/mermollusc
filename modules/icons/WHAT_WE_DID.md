@@ -50,3 +50,13 @@
   line-art (provenance rule: nothing vendored). Verified each renders through the real pipeline (flowchart
   `icon "bpmn/..."` + network `icon "arch/..."` screenshots). New test: a spread of the typed BPMN
   elements resolve, and an invariant that every authored glyph belongs to a category (no orphans).
+- SVG sanitiser hardened (review fix): replaced the single-regex denylist in `src/shell/load.ts`
+  (missed remote `<image href>`, external `<use href>`, SMIL `<set>/<animate>`) with a structural
+  element + attribute ALLOWLIST (`svgViolation`) — pure string tag scanning, so it runs identically
+  in the browser shell and vitest. Hrefs must be internal (`#…`) or inline raster `data:image/<png|jpeg|gif|webp>`; style
+  values may only reference `url(#…)`; comments/PIs/CDATA/DOCTYPE and markup escaping the tag scan
+  reject. Violations fail `decodePack` loudly with the offending element/attribute named (never
+  silently stripped). The allowlist deliberately admits the inert Inkscape/sodipodi/Dublin-Core
+  editor metadata inside the vendored packs; a new test sweeps every bundled glyph (arch/bpmn/sketch
+  + the four vendored packs) through the sanitiser and the decode boundary. Also corrected STATUS
+  glyph counts against the code (arch 20, bpmn 47).

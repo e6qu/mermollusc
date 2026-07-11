@@ -93,7 +93,9 @@ test("task guidance surfaces disabled action reasons without hover", async ({ pa
 
   await setSource(page, "timeline\n  2001 : Alpha : Beta\n  2002 : Gamma\n");
   await expect(task).toContainText("Add: adding nodes isn't available for timeline");
-  await expect(task).toContainText("Relax: flowchart only");
+  // Relax runs for 9 node-graph families; timeline isn't one, so the reason names the family
+  // rather than the old (and, for e.g. state/cloud, wrong) "flowchart only" claim.
+  await expect(task).toContainText("Relax: not available for timeline");
   await expect(task).toHaveCSS("white-space", "normal");
 
   await setSource(page, "gitGraph\n  commit\n  branch develop\n  commit\n  branch feature\n  commit\n");

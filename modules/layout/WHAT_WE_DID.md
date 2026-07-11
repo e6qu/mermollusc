@@ -1,5 +1,55 @@
 # @m/layout — work log
 
+## 2026-07-11 — Mermaid-parity scene features + label/route decollision hardening
+
+Screenshot-review fixes, all layout-side (no renderer/contracts changes — every new element rides the
+existing SceneGraph caption/decoration mechanism):
+
+- **Diagram titles render (gantt/pie/timeline).** New pure `core/title.ts` (`withTitle`): shifts the
+  whole scene down one `TITLE_BAND` and adds the `title` as a centred caption above the chart, the way
+  Mermaid draws it. Wired into `layoutGantt`, `layoutPie`, `layoutTimeline` (including their empty-scene
+  early returns).
+- **gitGraph classic shows commit ids + tags.** Classic dots carry no label, so Mermaid's id/tag text
+  was silently dropped. `layoutGitGraph` (classic only — Pills already folds both into the pill label)
+  now emits captions: the id below the dot and the tag above it (beside/opposite in TB/BT, the tag
+  right-aligned against the dot via the measurer), growing the extent to fit. A bordered "tag plate"
+  look would need renderer support (a caption style); plain captions for now.
+- **Mindmap `{{hexagon}}` no longer overflows.** The hexagon renders as a diamond, whose sloped sides
+  cut into a centred label: sized by the inscribed-rect condition `labelW/w + textH/h ≤ 1` instead of
+  the flat-shape `clampedWidth`, so the text stays inside.
+- **Gantt milestone labels sit beside the diamond.** A milestone is now a compact `BAR_HEIGHT`-square
+  diamond on its date with an adjacent left-aligned caption (Mermaid-style), not a label-wide diamond
+  with squeezed text; the chart width covers the captions, and the dependency hook enters a milestone
+  at its RIGHT corner instead of crossing the diamond body to its left edge.
+- **`decollideEdgeLabels` hardening (all families).** (1) Sheet clamp: every position — anchor,
+  candidates, and the give-up fallback — is clamped inside the scene extent, so labels can't clip off
+  the sheet (network's "SSH" at the top edge). (2) A `LABEL_GAP` clearance ring around node boxes, so
+  labels don't graze borders (state's "correct" 2px off the note box). (3) Related containers (the
+  endpoints' ancestor groups) contribute their TITLE BAND and four thin BORDER STRIPS as obstacles —
+  a label may live inside its own group but no longer straddles the group outline or its title.
+  (4) `marker`-role nodes (pie slice hit proxies) are skipped. (5) Diagonal search directions after the
+  cardinals, for dense scenes.
+- **Group-border tangles (cloud/block).** (a) `layoutBlock`: a composite whose content needs more
+  columns than its parent grid offers had its width column-snap-clamped BELOW the content, so children
+  (demo `web-1`/`api-2`) poked over the group border — the box width is now floored at the natural
+  content width (that case spans the full row, so nothing sits to its right). (b) `rerouteBoxEdges`
+  now adds `enteredContainerWalls` — thin wall boxes along the sides of an entered group that do NOT
+  face the edge's other end — to the maze obstacles, counts border-sliding entries along an endpoint
+  leaf's own border as hugs in `routeBadness`, and picks from maze candidates PLUS new orthodox L/Z
+  `patternCandidates` (the maze returns one length-optimal path per mount pair, which on grid-aligned
+  diagrams runs exactly along a sibling's border; the patterns supply the clean staircases) by fewest
+  hits → least on-screen badness → shortest. Demo effects: cloud `alb→web "HTTP"` enters Services once
+  through the facing (top) side instead of skimming the border into web's flank; block `lb→web-1`
+  enters the `app` group through its top instead of looping outside the left border.
+- **DOT cluster margin: verified shared, covered.** DOT-imported clusters already go through the same
+  `CONTAINER_PADDING` ELK path as flowchart subgraphs (12px sides / 28px title band — confirmed in
+  code and by test); new integration coverage asserts the member padding and that edge labels never
+  straddle the cluster border (the border strips above fix the "relax" graze).
+- Tests: +16 unit (`title.test.ts`, gantt title/milestone, pie/timeline titles, gitGraph classic
+  captions incl. TB, mindmap hexagon fit, block composite containment, decollide clamp/gap/border,
+  `enteredContainerWalls` + facing-side reroute) and +6 integration (`parity.test.ts`: demo-mirroring
+  network/c4/cloud/block/state/DOT fixtures asserting labels on-sheet + off nodes, pairwise label
+  separation, single facing-side group entry, group containment, note clearance, cluster padding).
 
 ## 2026-07-05 — relaxScene: gravity + repulsion cutoff (no more blow-up)
 

@@ -316,6 +316,116 @@ describe("toDisplayList", () => {
     expect(nodeLabel?.kind === "label" ? nodeLabel.labelStyle : null).toBe("node");
   });
 
+  it("carries a diamond node's accent and raw directive colours on its draw command", () => {
+    const decision: Scene = {
+      ...scene,
+      nodes: [
+        { id: snid("D"), bounds: rect(0, 0, 80, 48), label: "D?", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "danger" as const,
+      role: "normal", rows: null },
+      ],
+      edges: [],
+    };
+    const plain = toDisplayList(decision).find((c) => c.kind === "diamond");
+    if (plain?.kind !== "diamond") throw new Error("no diamond");
+    expect(plain.accent).toBe("danger");
+    expect(plain.fill).toBeNull();
+    expect(plain.stroke).toBeNull();
+    const styled = toDisplayList(
+      decision,
+      false,
+      "decorated",
+      new Map([[snid("D"), { fill: "#123456", stroke: "#654321" }]]),
+    ).find((c) => c.kind === "diamond");
+    if (styled?.kind !== "diamond") throw new Error("no diamond");
+    expect(styled.fill).toBe("#123456");
+    expect(styled.stroke).toBe("#654321");
+  });
+
+  it("emits a diamond node's icon stacked above its label, centred inside the shape", () => {
+    const decision: Scene = {
+      ...scene,
+      nodes: [
+        { id: snid("D"), bounds: rect(0, 0, 80, 48), label: "Ship?", shape: "diamond", parent: null, icon: { pack: "arch", name: "server" }, rowDivider: null, subtitle: null, accent: "none" as const,
+      role: "normal", rows: null },
+      ],
+      edges: [],
+    };
+    const out = toDisplayList(decision);
+    const icon = out.find((c) => c.kind === "icon");
+    const label = out.find((c) => c.kind === "label" && c.text === "Ship?");
+    if (icon?.kind !== "icon" || label?.kind !== "label") throw new Error("missing icon/label");
+    expect(icon.ref).toEqual({ pack: "arch", name: "server" });
+    // Glyph above the text, and the glyph+text group is centred on the node centre (cy = 24), so
+    // neither pokes out of the diamond's narrow top.
+    expect(icon.y).toBeLessThan(label.y);
+    expect(icon.x).toBe(30); // cx 40 − half the 20px glyph
+    expect(icon.y).toBeGreaterThan(0);
+    expect(label.y).toBeLessThan(48);
+  });
+
+  it("lifts a horizontal edge label above its line when nothing else crosses it", () => {
+    // A box-family edge: the layout provided a decollided `labelPos` on the line, so the lift puts
+    // the text genuinely clear of it and no other edge crosses the lifted box.
+    const horizontal: Scene = {
+      ...scene,
+      edges: [
+        {
+          id: seid("e"),
+          from: snid("A"),
+          to: snid("B"),
+          waypoints: [point(0, 50), point(200, 50)],
+          label: "go",
+          stroke: "solid",
+          fromEnd: "none",
+          toEnd: "arrow",
+          curved: false,
+          fromLabel: null,
+          toLabel: null,
+          labelPos: point(100, 50),
+          accent: "none" as const,
+        },
+      ],
+    };
+    const label = toDisplayList(horizontal).find((c) => c.kind === "label" && c.text === "go");
+    if (label?.kind !== "label") throw new Error("no label");
+    expect(label.labelStyle).toBe("edge");
+    expect(label.y).toBe(34); // anchor y 50 lifted by the 16px clearance
+  });
+
+  it("masks a horizontal message label that other lines (sequence lifelines) would cross", () => {
+    const message = {
+      id: seid("m0"),
+      from: snid("A"),
+      to: snid("C"),
+      waypoints: [point(30, 100), point(170, 100)] as const,
+      label: "long enough to span",
+      stroke: "solid" as const,
+      fromEnd: "none" as const,
+      toEnd: "arrow" as const,
+      curved: false,
+      fromLabel: null,
+      toLabel: null,
+      labelPos: null,
+      accent: "none" as const,
+    };
+    const lifeline = (id: string, x: number) => ({
+      ...message,
+      id: seid(id),
+      waypoints: [point(x, 40), point(x, 200)] as const,
+      label: null,
+      stroke: "dashed" as const,
+      toEnd: "none" as const,
+    });
+    // The middle actor's lifeline (x=100) runs straight through the message label's lifted box.
+    const seq: Scene = { ...scene, edges: [message, lifeline("l1", 30), lifeline("l2", 100), lifeline("l3", 170)] };
+    const label = toDisplayList(seq).find((c) => c.kind === "label" && c.text === message.label);
+    if (label?.kind !== "label") throw new Error("no label");
+    expect(label.labelStyle).toBe("edge-masked"); // opaque plate hides the crossing lines
+    // Stays in-channel at the anchor (its perpendicular 11px nudge included, so the plate still
+    // spans the message line) rather than lifting into bare transparent text.
+    expect(Math.abs(label.y - 100)).toBeLessThanOrEqual(11);
+  });
+
   it("emits an icon command (with the ref) for a node that carries an icon", () => {
     const withIcon: Scene = {
       nodes: [

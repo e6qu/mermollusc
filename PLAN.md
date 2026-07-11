@@ -201,9 +201,11 @@ Added the Mermaid families we lacked, one PR at a time. Each is a full vertical 
   rooms + server-side RBAC give tenant isolation). Enterprise-ready, but a large infra commitment and a
   deliberate departure from the current client-only design.
 
-  **Decisions signed off (2026-06-20, doc §10):** Yjs · server-authoritative WebSocket · self-hosted
-  Postgres + S3 + Redis · OIDC via the existing IdP (specific provider TBD) · extend the repo's Node
-  relay rather than Hocuspocus. **Phased roadmap** (doc §9):
+  **Decisions signed off (2026-06-20, doc §10; provider/runtime finalised since):** Yjs ·
+  server-authoritative WebSocket · self-hosted Postgres + S3 + Redis · OIDC via **Auth0**
+  (browser PKCE login + relay-side JWKS verification, both shipped) · our own relay rather than
+  Hocuspocus — rewritten in **Go** (`modules/relay`, doc §10 decision 6) so one codebase serves the
+  native production binary and the backend-free demo's WASM build. **Phased roadmap** (doc §9):
   - **Phase 0 — the seam (no infra). ✅ DONE.** Overlay state (overrides + groups + history)
     extracted behind the `OverlayDoc` document-model interface in the app
     (`app/playground/src/document-model.ts`), with `createLocalDocument` as the single-user

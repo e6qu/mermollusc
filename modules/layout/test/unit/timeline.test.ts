@@ -144,3 +144,22 @@ describe("layoutTimeline", () => {
     expect(timelinePeriodsAdvanceLeftToRight(collapsed, ast)).toBe(false);
   });
 });
+
+describe("timeline title", () => {
+  it("emits the title as a centred caption above the periods; none when the title is null", () => {
+    const titled = layoutTimeline(ast, heuristicMeasure);
+    if (!titled.ok) throw new Error(titled.error.message);
+    const cap = titled.value.decorations.flatMap((d) =>
+      d.kind === "caption" && d.text === "History" ? [d] : [],
+    )[0];
+    if (cap === undefined) throw new Error("title caption missing");
+    expect(cap.align).toBe("center");
+    const topNode = Math.min(...titled.value.nodes.map((n) => n.bounds.origin.y));
+    expect(cap.at.y).toBeLessThan(topNode);
+    const untitled = layoutTimeline({ ...ast, title: null }, heuristicMeasure);
+    if (!untitled.ok) throw new Error(untitled.error.message);
+    expect(
+      untitled.value.decorations.some((d) => d.kind === "caption" && d.text === "History"),
+    ).toBe(false);
+  });
+});

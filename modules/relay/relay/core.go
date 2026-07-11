@@ -86,6 +86,11 @@ type room struct {
 	doc       *ycrdt.Doc
 	sockets   map[Socket]struct{}
 	saveTimer *time.Timer
+	// Admissions that have looked this room up in the registry but not yet registered their socket.
+	// Guarded by Core.mu. dropSocket may forget an empty room only when this is zero too — otherwise a
+	// concurrent joiner between the lookup and the registration would be left on a ghost room while the
+	// next joiner loads a fresh Doc for the same name, forking the document.
+	pending int
 	// The one live connection allowed to seed this still-empty room's initial content. Granted to the
 	// first admission into an empty room, re-granted to a surviving peer if the holder disconnects while
 	// the room is still empty, and irrelevant once the doc has content (grants gate on emptiness too).
@@ -188,13 +193,19 @@ func controlFrame(message string) []byte {
 	return frame
 }
 
-// loadRoom returns the room for name, loading it from the store on first touch. Returns (nil, nil) if the
-// room cap is hit for a brand-new room. Concurrent first-touches of the SAME new room are coalesced via
-// pendingLoads so two callers never create two divergent Docs for one room name (the JS original didn't
-// need this — synchronous execution made it unreachable there; Go's real concurrency makes it reachable).
+// loadRoom returns the room for name, loading it from the store on first touch, and reserves a pending
+// admission slot on it (the caller MUST register a socket or the connection dies before that — either way
+// admit decrements `pending` exactly once). Returns (nil, nil) if the room cap is hit for a brand-new
+// room; a Store.Load failure is returned, never swallowed — seeding an empty room over a transient load
+// error would let the debounced save overwrite the good stored snapshot. First-touch uses double-checked
+// locking: the store load runs outside c.mu, then the registry is re-checked under the lock; a concurrent
+// loader that won the race keeps its room and ours is discarded, so two callers never install two
+// divergent Docs for one room name (the JS original didn't need this — synchronous execution made it
+// unreachable there; Go's real concurrency makes it reachable).
 func (c *Core) loadRoom(name string) (*room, error) {
 	c.mu.Lock()
 	if r, ok := c.rooms[name]; ok {
+		r.pending++
 		c.mu.Unlock()
 		return r, nil
 	}
@@ -204,9 +215,9 @@ func (c *Core) loadRoom(name string) (*room, error) {
 	}
 	c.mu.Unlock()
 
-	snapshot, err := c.safeLoad(name)
+	snapshot, err := c.store.Load(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("store load for room %q failed: %w", name, err)
 	}
 	doc := ycrdt.NewDoc(name, false, nil, nil, false)
 	if snapshot != nil {
@@ -218,23 +229,15 @@ func (c *Core) loadRoom(name string) (*room, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if r, ok := c.rooms[name]; ok {
+		r.pending++
 		return r, nil // a concurrent loader won the race — use its room, discard ours
 	}
 	if len(c.rooms) >= maxRooms {
 		return nil, nil
 	}
-	r := &room{doc: doc, sockets: make(map[Socket]struct{})}
+	r := &room{doc: doc, sockets: make(map[Socket]struct{}), pending: 1}
 	c.rooms[name] = r
 	return r, nil
-}
-
-func (c *Core) safeLoad(name string) ([]byte, error) {
-	snapshot, err := c.store.Load(name)
-	if err != nil {
-		c.log.Printf("relay: store.Load(%q) failed — %v", name, err)
-		return nil, nil
-	}
-	return snapshot, nil
 }
 
 func (c *Core) safeSave(name string, r *room) {
@@ -415,6 +418,7 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 	cn.mu.Unlock()
 
 	c.mu.Lock()
+	r.pending--
 	r.sockets[cn.socket] = struct{}{}
 	c.mu.Unlock()
 
@@ -469,17 +473,24 @@ func (c *Core) dropSocket(name string, r *room, socket Socket) {
 			}
 		}
 	}
-	empty := len(r.sockets) == 0
+	empty := len(r.sockets) == 0 && r.pending == 0
 	c.mu.Unlock()
 	if regrant != nil {
 		regrant.Send(controlFrame(seedGrantMessage))
 	}
-	if empty {
-		c.flush(name, r)
-		c.mu.Lock()
-		delete(c.rooms, name)
-		c.mu.Unlock()
+	if !empty {
+		return
 	}
+	// Flush BEFORE forgetting the room, while it is still registered — a joiner arriving mid-flush lands
+	// on this same live room instead of loading a stale snapshot from the store. The emptiness decision is
+	// then re-taken in the same critical section as the registry delete: if a joiner arrived (registered
+	// or pending) since the check above, the room stays.
+	c.flush(name, r)
+	c.mu.Lock()
+	if len(r.sockets) == 0 && r.pending == 0 && c.rooms[name] == r {
+		delete(c.rooms, name)
+	}
+	c.mu.Unlock()
 }
 
 func (cn *conn) closedNow() bool {

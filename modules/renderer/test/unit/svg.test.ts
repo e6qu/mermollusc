@@ -131,6 +131,25 @@ describe("toSvg", () => {
     expect(svg).toContain("<text"); // labels
   });
 
+  it("fills a diamond from its accent / raw directive colour (matching the canvas painter)", () => {
+    const decision: Scene = {
+      ...scene,
+      nodes: [
+        { id: snid("D"), bounds: rect(0, 0, 80, 48), label: "D?", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "danger" as const,
+      role: "normal", rows: null },
+      ],
+      edges: [],
+    };
+    const opts = { width: 80, height: 48, origin: { x: 0, y: 0 }, margin: 0, theme: defaultTheme, icons: new Map<string, string>() };
+    const accented = toSvg(toDisplayList(decision), opts);
+    expect(accented).toMatch(/<polygon points="[^"]*" fill="#fecaca"/); // the light `danger` accent
+    const styled = toSvg(
+      toDisplayList(decision, false, "decorated", new Map([[snid("D"), { fill: "#123456", stroke: "#654321" }]])),
+      opts,
+    );
+    expect(styled).toMatch(/<polygon points="[^"]*" fill="#123456" stroke="#654321"/);
+  });
+
   it("renders a vertical edge label as translucent text on a small opaque masking plate", () => {
     // The scene's "go" edge is vertical (30,40)->(30,80): the label stays in-channel on an opaque
     // (background-fill) plate that hides the line, rather than dodging sideways.

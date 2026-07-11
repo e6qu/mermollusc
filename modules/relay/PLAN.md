@@ -49,13 +49,24 @@ modules/relay/
   same assertions, driven over a real Go WebSocket client instead of a real `ws` client).
 - **Concurrency is the one real behavioral difference from the JS source.** The JS relay could rely on
   single-threaded execution to serialize all room/socket mutations for free; Go connections run on real
-  goroutines. `relay.Core` adds an explicit mutex around every mutation of shared state, plus a
-  request-coalescing guard in `loadRoom` (two connections racing to first-touch the same brand-new room
-  now share one `Doc`, never two divergent ones — unreachable in the single-threaded JS original, real
-  under Go's actual parallelism). Verified with `go test -race`, not just by inspection.
+  goroutines. `relay.Core` adds an explicit mutex around every mutation of shared state, plus two
+  first-touch/teardown guards in the room registry: `loadRoom` uses double-checked locking (the store
+  load runs outside the mutex; the registry is re-checked under it, so two connections racing to
+  first-touch the same brand-new room never install two divergent `Doc`s — the loser adopts the winner's
+  room), and each room carries a pending-admission counter so the last-leaver's flush-and-forget can
+  never delete a room a concurrent joiner is mid-admission into (the ghost-room fork). Both were
+  unreachable in the single-threaded JS original, real under Go's actual parallelism. Verified with
+  `go test -race` (including a leave/join churn test and a pending-replay race test), not just by
+  inspection.
 - **Async-capable Store.** `Store.Load`/`Store.Save` return errors (not just data), so a future async
   network-backed store (Postgres/S3) drops in without touching `relay.Core` — the still-open "production
   store" item this unblocks rather than blocks.
+- **Origin is checked regardless of auth.** Auth (when on) authenticates the USER, not the PAGE: a
+  malicious website in a signed-in visitor's browser would connect with that user's ambient credentials.
+  So the native entrypoint gates every upgrade on an explicit Origin policy (no-Origin non-browser
+  clients, loopback, same-hostname, plus the `ALLOWED_ORIGINS` env allowlist; anything else is a logged
+  403) instead of the earlier `InsecureSkipVerify`, which had restored the JS relay's
+  never-checked-Origin behavior and let any website drive a local relay.
 - **Auth stays config-gated, not demo-gated.** `AuthRequired`/`Authorize`/`AuthorizeRoom` are the same
   three seams in every deployment; the demo runs zero-auth for the same reason local dev does today (no
   Auth0 domain/audience configured), not because of a special-cased "am I the demo" branch anywhere.
@@ -91,7 +102,7 @@ e2e suite unchanged.
 real relay in-process instead of skipping it. Verified end-to-end: `app/playground/e2e-pages/
 backend-free-collab.spec.ts` proves a genuine CONTROL frame from the WASM relay's own RBAC resolver sets
 the role badge, an override survives reload via the relay's own debounced save into IndexedDB, and zero
-real `WebSocket`s are ever opened. Compiled `relay.wasm`: 5.3MB raw / **1.45MB gzipped** (measured on the
+real `WebSocket`s are ever opened. Compiled `relay.wasm`: 5.3MB raw / **≈1.4MB gzipped** (measured on the
 real `cmd/relay-wasm` build, not the earlier size spike) — lazy-loaded only behind `?collab`, never on a
 normal page load.
 

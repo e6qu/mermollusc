@@ -1,5 +1,8 @@
 # @m/icons — do next
 
+- The sanitiser allowlist excludes `<image>` entirely (no bundled pack uses it). If a future pack
+  legitimately embeds rasters, extend the allowlist to `<image>` with the existing href rule
+  (inline rasters only) rather than loosening anything else.
 - Subdivide vendored brand packs into finer categories (devicon → language/framework/tool/cloud
   rather than one `brands`); add an "area"/region category. *(The app now has an icon-picker drawer
   that groups by pack → category and inserts an `icon "pack/name"` override at the caret; finer

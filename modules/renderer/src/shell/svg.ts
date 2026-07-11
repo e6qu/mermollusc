@@ -79,7 +79,8 @@ const cmdToSvg = (cmd: DrawCmd, theme: Theme, icons: ReadonlyMap<string, string>
       const hw = cmd.width / 2;
       const hh = cmd.height / 2;
       const pts = `${num(cmd.cx)},${num(cmd.cy - hh)} ${num(cmd.cx + hw)},${num(cmd.cy)} ${num(cmd.cx)},${num(cmd.cy + hh)} ${num(cmd.cx - hw)},${num(cmd.cy)}`;
-      return `<polygon points="${pts}" fill="${theme.nodeFill}" stroke="${theme.nodeStroke}" stroke-width="1.5"/>`;
+      // Same precedence as `box`: a raw directive fill/stroke wins over the accent/theme.
+      return `<polygon points="${pts}" fill="${cmd.fill ?? accentFill(cmd.accent, theme)}" stroke="${cmd.stroke ?? theme.nodeStroke}" stroke-width="1.5"/>`;
     }
     case "actor": {
       const figureH = cmd.height - 16;

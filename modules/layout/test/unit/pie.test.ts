@@ -124,3 +124,19 @@ describe("layoutPie", () => {
     expect(pieSlicesTileCircle({ ...scene, wedges: broken })).toBe(false);
   });
 });
+
+describe("pie title", () => {
+  it("emits the title as a centred caption above the disc; no caption when the title is null", () => {
+    const titled = layoutPie(ast, heuristicMeasure);
+    if (!titled.ok) throw new Error(titled.error.message);
+    const cap = titled.value.decorations.flatMap((d) => (d.kind === "caption" ? [d] : []))[0];
+    if (cap === undefined) throw new Error("title caption missing");
+    expect(cap.text).toBe("Pets");
+    expect(cap.align).toBe("center");
+    const discTop = Math.min(...titled.value.wedges.map((w) => w.center.y - w.radius));
+    expect(cap.at.y).toBeLessThan(discTop);
+    const untitled = layoutPie({ ...ast, title: null }, heuristicMeasure);
+    if (!untitled.ok) throw new Error(untitled.error.message);
+    expect(untitled.value.decorations).toEqual([]);
+  });
+});

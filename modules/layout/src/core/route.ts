@@ -368,32 +368,28 @@ export const sideMounts = (b: RouteBox): readonly Point[] => [
   point(b.x + b.w / 2, b.y),
 ];
 
-// Route an obstacle-crossing edge with the maze router, trying every (from-side, to-side) mount-point
-// pair and keeping the path with the fewest obstacle hits, then the shortest. Returns null when the
-// edge already clears everything or no better orthogonal path is found.
-export const mazeAroundObstacles = (
+// Every distinct maze route between the two boxes' (from-side, to-side) mount-point pairs, sorted by
+// fewest obstacle hits, then fewest bends, then shortest — the shared candidate list behind
+// `mazeAroundObstacles` (which takes the head) and `rerouteBoxEdges` (which re-ranks the best-hits
+// group by on-screen badness).
+export interface MazePathCandidate {
+  readonly path: readonly Point[];
+  readonly hits: number;
+  readonly len: number;
+  readonly bends: number;
+}
+
+export const mazePathCandidates = (
   fromBox: RouteBox | null,
   toBox: RouteBox | null,
   start: Point,
   end: Point,
-  current: readonly Point[],
   obstacles: readonly RouteBox[],
-  routeOption: number | null = null,
-  // When true, search for a route even if `current` clears every obstacle — the caller has another
-  // reason to want alternatives (e.g. the current route HUGS a border though it doesn't cross a node).
-  force = false,
-): readonly Point[] | null => {
-  if (!force && routeOption === null && routeHits(current, obstacles) === 0) return null;
+): MazePathCandidate[] => {
   const starts = fromBox === null ? [start] : sideMounts(fromBox);
   const ends = toBox === null ? [end] : sideMounts(toBox);
 
-  interface Candidate {
-    readonly path: readonly Point[];
-    readonly hits: number;
-    readonly len: number;
-    readonly bends: number;
-  }
-  const candidates: Candidate[] = [];
+  const candidates: MazePathCandidate[] = [];
   const seenPaths = new Set<string>();
 
   for (const s of starts) {
@@ -412,14 +408,32 @@ export const mazeAroundObstacles = (
     }
   }
 
-  if (candidates.length === 0) return null;
-
   candidates.sort((a, b) => {
     if (a.hits !== b.hits) return a.hits - b.hits;
     if (a.bends !== b.bends) return a.bends - b.bends;
     return a.len - b.len;
   });
+  return candidates;
+};
 
+// Route an obstacle-crossing edge with the maze router, trying every (from-side, to-side) mount-point
+// pair and keeping the path with the fewest obstacle hits, then the shortest. Returns null when the
+// edge already clears everything or no better orthogonal path is found.
+export const mazeAroundObstacles = (
+  fromBox: RouteBox | null,
+  toBox: RouteBox | null,
+  start: Point,
+  end: Point,
+  current: readonly Point[],
+  obstacles: readonly RouteBox[],
+  routeOption: number | null = null,
+  // When true, search for a route even if `current` clears every obstacle — the caller has another
+  // reason to want alternatives (e.g. the current route HUGS a border though it doesn't cross a node).
+  force = false,
+): readonly Point[] | null => {
+  if (!force && routeOption === null && routeHits(current, obstacles) === 0) return null;
+  const candidates = mazePathCandidates(fromBox, toBox, start, end, obstacles);
+  if (candidates.length === 0) return null;
   if (routeOption === null) {
     return candidates[0]?.path ?? null;
   }
@@ -458,15 +472,16 @@ export const mazeRerouteEdges = (scene: Scene): Scene => {
   return { ...scene, edges };
 };
 
-// De-collide mid-edge labels on dense diagrams: where two edge labels (each placed at its `labelPos`)
-// would overlap, move the later one to the NEAREST clear spot — searching outward in all four
-// directions, so it follows the edge (smallest displacement) rather than dropping straight down. Greedy
-// and order-stable; a label that fits is left exactly where the router put it (a no-op when nothing
-// overlaps). Only edges with a label AND an explicit `labelPos` participate (a null one is anchored later
-// by the renderer). `measure` is the pure text metric the layout already uses.
+// De-collide mid-edge labels on dense diagrams: where a label (placed at its `labelPos`) would overlap
+// another label or a node box, move it to the NEAREST clear spot — searching outward first in the four
+// cardinal directions (so it follows the edge, smallest displacement), then diagonally. Greedy and
+// order-stable; a label that fits is left exactly where the router put it (a no-op when nothing
+// overlaps). Only edges with a label AND an explicit `labelPos` participate (a null one is anchored
+// later by the renderer). `measure` is the pure text metric the layout already uses. Every position —
+// including the give-up fallback — is clamped to the sheet, so a label can never clip off the extent.
 const LABEL_HEIGHT = 16;
 const LABEL_X_PAD = 8; // horizontal padding folded into a label's measured width
-const LABEL_GAP = 4; // minimum clear gap kept between two labels
+const LABEL_GAP = 4; // minimum clear gap kept between a label and any other label or box
 const DECOLLIDE_STEP = 6;
 const DECOLLIDE_MAX = 140; // give up past this displacement and leave the label put
 const DECOLLIDE_DIRS: ReadonlyArray<readonly [number, number]> = [
@@ -474,7 +489,12 @@ const DECOLLIDE_DIRS: ReadonlyArray<readonly [number, number]> = [
   [0, -1],
   [1, 0],
   [-1, 0],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
 ];
+const CONTAINER_BORDER_W = 2; // a related group's border, as a thin strip a label must not straddle
 
 export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene => {
   interface LabelBox {
@@ -487,17 +507,18 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     Math.abs(cx - b.cx) < halfW + b.halfW + LABEL_GAP &&
     Math.abs(cy - b.cy) < LABEL_HEIGHT + LABEL_GAP;
 
-  const overlapsNode = (cx: number, cy: number, halfW: number, n: SceneNode): boolean => {
-    const lx1 = cx - halfW;
-    const lx2 = cx + halfW;
-    const ly1 = cy - LABEL_HEIGHT / 2;
-    const ly2 = cy + LABEL_HEIGHT / 2;
-    const nx1 = n.bounds.origin.x;
-    const nx2 = n.bounds.origin.x + n.bounds.size.width;
-    const ny1 = n.bounds.origin.y;
-    const ny2 = n.bounds.origin.y + n.bounds.size.height;
-    return lx1 < nx2 && lx2 > nx1 && ly1 < ny2 && ly2 > ny1;
-  };
+  const overlapsBox = (cx: number, cy: number, halfW: number, b: RouteBox): boolean =>
+    cx - halfW < b.x + b.w + LABEL_GAP &&
+    cx + halfW > b.x - LABEL_GAP &&
+    cy - LABEL_HEIGHT / 2 < b.y + b.h + LABEL_GAP &&
+    cy + LABEL_HEIGHT / 2 > b.y - LABEL_GAP;
+
+  const borderStrips = (b: RouteBox): RouteBox[] => [
+    { x: b.x, y: b.y, w: b.w, h: CONTAINER_BORDER_W },
+    { x: b.x, y: b.y + b.h - CONTAINER_BORDER_W, w: b.w, h: CONTAINER_BORDER_W },
+    { x: b.x, y: b.y, w: CONTAINER_BORDER_W, h: b.h },
+    { x: b.x + b.w - CONTAINER_BORDER_W, y: b.y, w: CONTAINER_BORDER_W, h: b.h },
+  ];
 
   const nodesMap = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
 
@@ -505,11 +526,11 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     const anchor = e.labelPos;
     if (e.label === null || anchor === null) return e;
 
-    // A label may live inside the endpoints' enclosing CONTAINERS (that's its natural home) — but the
-    // endpoint leaf boxes themselves are obstacles: a label sitting on its own edge's node ("filtered"
-    // stamped over the Internet box) reads as a bug just as much as one on an unrelated node. If no
-    // clear spot exists within DECOLLIDE_MAX the label stays put, so a short edge with nowhere to go
-    // degrades exactly as before.
+    // A label may live INSIDE the endpoints' enclosing containers (that's its natural home), so those
+    // are not whole-box obstacles — but their border strips and title bands are, so a label never
+    // straddles a group's outline or sits on its title. Every other node box — INCLUDING the endpoint
+    // leaves — is a full obstacle: a label stamped on its own edge's node ("filtered" over the Internet
+    // box) reads as a bug just as much as one on an unrelated node.
     const related = new Set<string>();
     const addAncestors = (id: string): void => {
       const leaf = nodesMap.get(id);
@@ -523,20 +544,37 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     addAncestors(e.to);
     const isEndpoint = (id: string): boolean => id === e.from || id === e.to;
 
-    const obstacles = scene.nodes.filter((n) => {
-      if (related.has(n.id)) return false;
-      // An edge attached directly to a container keeps that container out of its obstacle set — the
-      // label near its border would otherwise be pushed entirely outside the group.
-      if (isEndpoint(n.id) && n.shape === "container") return false;
-      return true;
-    });
+    const obstacles: RouteBox[] = [];
+    for (const n of scene.nodes) {
+      if (n.role === "marker") continue; // invisible hit regions occupy no visual space
+      const box = routeBoxOf(n);
+      if (related.has(n.id) || (isEndpoint(n.id) && n.shape === "container")) {
+        obstacles.push(containerHeaderBox(box, n.label), ...borderStrips(box));
+        continue;
+      }
+      obstacles.push(box);
+    }
     const halfW = (measure(e.label) + LABEL_X_PAD) / 2;
-    const ax: number = anchor.x;
-    const ay: number = anchor.y;
+
+    // Sheet clamp: the label box (plus its clear gap) must stay inside the extent. A sheet narrower
+    // than the label can't be satisfied — then the clamp is skipped rather than inverted.
+    const ex = scene.extent.origin.x;
+    const ey = scene.extent.origin.y;
+    const loX = ex + halfW + LABEL_GAP;
+    const hiX = ex + scene.extent.size.width - halfW - LABEL_GAP;
+    const loY = ey + LABEL_HEIGHT / 2 + LABEL_GAP;
+    const hiY = ey + scene.extent.size.height - LABEL_HEIGHT / 2 - LABEL_GAP;
+    const clampX = (v: number): number => (hiX < loX ? v : Math.min(hiX, Math.max(loX, v)));
+    const clampY = (v: number): number => (hiY < loY ? v : Math.min(hiY, Math.max(loY, v)));
+    const onSheet = (cx: number, cy: number): boolean => clampX(cx) === cx && clampY(cy) === cy;
+
+    const ax: number = clampX(anchor.x);
+    const ay: number = clampY(anchor.y);
 
     const fits = (cx: number, cy: number, hw: number): boolean =>
+      onSheet(cx, cy) &&
       placed.every((p) => !overlaps(cx, cy, hw, p)) &&
-      obstacles.every((n) => !overlapsNode(cx, cy, hw, n));
+      obstacles.every((b) => !overlapsBox(cx, cy, hw, b));
 
     let spot: { readonly cx: number; readonly cy: number } | null = null;
     if (!fits(ax, ay, halfW)) {
@@ -552,8 +590,8 @@ export const decollideEdgeLabels = (scene: Scene, measure: MeasureText): Scene =
     const cx = spot?.cx ?? ax;
     const cy = spot?.cy ?? ay;
     placed.push({ cx, cy, halfW });
-    // Always adopt the computed position — it carries the off-line nudge even when no decollision was
-    // needed (returning `e` unchanged there would leave the label struck through by its own line).
+    // Always adopt the computed position — it carries the on-sheet clamp and the off-line nudge even
+    // when no decollision was needed.
     return { ...e, labelPos: point(cx, cy) };
   });
   return { ...scene, edges };
@@ -1732,10 +1770,12 @@ interface ScoreBox {
 const HUG_TOL = 5; // visual "runs along a border" threshold — matches the e2e clearance guard
 
 // A route's VISUAL badness: axis-aligned segments that cross a non-endpoint LEAF node's interior
-// (heavily weighted — an edge cutting through a node is the worst) plus segments that hug any
-// non-endpoint box border. This is exactly the metric the `edge-border-clearance` guard measures, so
-// the reroute only accepts a maze detour that is strictly cleaner ON SCREEN — not merely by the
-// router's own overlap test (which counts a container-boundary graze the eye doesn't).
+// (heavily weighted — an edge cutting through a node is the worst) plus segments that hug any box
+// border. Hugs are counted against the endpoint LEAVES too: a leg sliding along its own node's border
+// into the mount reads as a fault, while a clean perpendicular arrival only touches the border at the
+// mount point and never registers. This is exactly the metric the `edge-border-clearance` guard
+// measures, so the reroute only accepts a maze detour that is strictly cleaner ON SCREEN — not merely
+// by the router's own overlap test (which counts a container-boundary graze the eye doesn't).
 const routeBadness = (
   pts: readonly Point[],
   boxes: readonly ScoreBox[],
@@ -1756,8 +1796,9 @@ const routeBadness = (
     const y0 = Math.min(a.y, b.y);
     const y1 = Math.max(a.y, b.y);
     for (const { id, box, container } of boxes) {
-      if (id === from || id === to) continue;
-      if (!container) {
+      const endpoint = id === from || id === to;
+      if (endpoint && container) continue; // a group the edge attaches to is its own geometry
+      if (!container && !endpoint) {
         if (
           horizontal &&
           a.y > box.y + 2 &&
@@ -1788,11 +1829,148 @@ const routeBadness = (
   return crossings * 10 + hugs;
 };
 
+// The side of `b` whose centre mount `p` sits on, or null when `p` is not a cardinal mount of `b`.
+const mountSideOf = (b: RouteBox, p: Point): Side | null => {
+  const midX = b.x + b.w / 2;
+  const midY = b.y + b.h / 2;
+  if (Math.abs(p.x - midX) < 0.6 && Math.abs(p.y - b.y) < 0.6) return "T";
+  if (Math.abs(p.x - midX) < 0.6 && Math.abs(p.y - (b.y + b.h)) < 0.6) return "B";
+  if (Math.abs(p.y - midY) < 0.6 && Math.abs(p.x - b.x) < 0.6) return "L";
+  if (Math.abs(p.y - midY) < 0.6 && Math.abs(p.x - (b.x + b.w)) < 0.6) return "R";
+  return null;
+};
+
+// Orthodox L- and Z-shaped candidates between every mount pair, with the Z's cross leg scanned across
+// (and beyond) the inter-box span. Complements the maze candidates in `rerouteBoxEdges`: the maze
+// returns one length-optimal path per mount pair, which on grid-aligned diagrams often runs exactly
+// along a sibling's border; these patterns supply the staircase alternatives the maze skipped. Each
+// candidate must LEAVE its from-mount outward and ARRIVE at its to-mount perpendicular from outside —
+// a sliding (border-parallel) arrival is rejected here rather than scored.
+const patternCandidates = (
+  fromBox: RouteBox,
+  toBox: RouteBox,
+  obstacles: readonly RouteBox[],
+): MazePathCandidate[] => {
+  const out: MazePathCandidate[] = [];
+  const seen = new Set<string>();
+  const add = (raw: readonly Point[]): void => {
+    const pts = compactPoints(raw);
+    if (pts.length < 2) return;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      if (a === undefined || b === undefined) return;
+      if (Math.abs(a.x - b.x) >= 0.5 && Math.abs(a.y - b.y) >= 0.5) return; // diagonal — not a pattern
+    }
+    const s0 = pts[0];
+    const s1 = pts[1];
+    const tN = pts[pts.length - 1];
+    const tP = pts[pts.length - 2];
+    if (s0 === undefined || s1 === undefined || tN === undefined || tP === undefined) return;
+    const fs = mountSideOf(fromBox, s0);
+    const ts = mountSideOf(toBox, tN);
+    if (fs === null || ts === null) return;
+    const [fnx, fny] = sideNormal(fs);
+    if ((s1.x - s0.x) * fnx + (s1.y - s0.y) * fny <= 0) return; // doesn't leave the box outward
+    const [tnx, tny] = sideNormal(ts);
+    if ((tP.x - tN.x) * tnx + (tP.y - tN.y) * tny <= 0) return; // arrives sliding along the border
+    const key = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(";");
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      path: pts,
+      hits: routeHits(pts, obstacles),
+      len: routeLength(pts),
+      bends: pts.length,
+    });
+  };
+  for (const s of sideMounts(fromBox)) {
+    for (const t of sideMounts(toBox)) {
+      if (s === undefined || t === undefined) continue;
+      add([s, point(s.x, t.y), t]);
+      add([s, point(t.x, s.y), t]);
+      const ySpan = Math.max(Math.abs(t.y - s.y), 1);
+      const yLo = Math.min(s.y, t.y);
+      for (let k = 0; k <= OBSTACLE_SCAN_STEPS; k++) {
+        const m = yLo - ySpan + k * ((3 * ySpan) / OBSTACLE_SCAN_STEPS);
+        add([s, point(s.x, m), point(t.x, m), t]);
+      }
+      const xSpan = Math.max(Math.abs(t.x - s.x), 1);
+      const xLo = Math.min(s.x, t.x);
+      for (let k = 0; k <= OBSTACLE_SCAN_STEPS; k++) {
+        const m = xLo - xSpan + k * ((3 * xSpan) / OBSTACLE_SCAN_STEPS);
+        add([s, point(m, s.y), point(m, t.y), t]);
+      }
+    }
+  }
+  return out;
+};
+
+const WALL_T = 2; // thickness of a group-border "wall" laid along a side an edge must not tunnel through
+
+// Thin obstacle boxes along the sides of every group the edge ENTERS (a container holding exactly one
+// endpoint) that do NOT face the edge's other end — so a rerouted connector enters the group through a
+// side facing its source instead of diving around and tunnelling in through the back or the bottom.
+// Soft guidance, not a wall in the hard sense: the walls join only the maze's obstacle list, and when
+// no walled route exists the maze fails and the edge keeps its current path.
+export const enteredContainerWalls = (scene: Scene, edge: SceneEdge): RouteBox[] => {
+  const nodeById = new Map<string, SceneNode>(scene.nodes.map((n) => [n.id, n]));
+  const ancestorsOf = (id: string): ReadonlySet<string> => {
+    const out = new Set<string>();
+    let cur = nodeById.get(id)?.parent ?? null;
+    for (let depth = 0; cur !== null && depth < MAX_NEST_DEPTH; depth++) {
+      out.add(cur);
+      cur = nodeById.get(cur)?.parent ?? null;
+    }
+    return out;
+  };
+  const fromAnc = ancestorsOf(edge.from);
+  const toAnc = ancestorsOf(edge.to);
+  const centerOf = (id: string): Point | null => {
+    const n = nodeById.get(id);
+    if (n === undefined) return null;
+    return point(
+      n.bounds.origin.x + n.bounds.size.width / 2,
+      n.bounds.origin.y + n.bounds.size.height / 2,
+    );
+  };
+  const walls: RouteBox[] = [];
+  const addWalls = (containerId: string, other: Point): void => {
+    const container = nodeById.get(containerId);
+    if (container === undefined) return;
+    const g = routeBoxOf(container);
+    const openL = other.x < g.x;
+    const openR = other.x > g.x + g.w;
+    const openT = other.y < g.y;
+    const openB = other.y > g.y + g.h;
+    // The other endpoint overlaps the group's span in both axes — no side clearly faces it, so leave
+    // the group unwalled rather than sealing every entry.
+    if (!openL && !openR && !openT && !openB) return;
+    if (!openT) walls.push({ x: g.x, y: g.y - WALL_T / 2, w: g.w, h: WALL_T });
+    if (!openB) walls.push({ x: g.x, y: g.y + g.h - WALL_T / 2, w: g.w, h: WALL_T });
+    if (!openL) walls.push({ x: g.x - WALL_T / 2, y: g.y, w: WALL_T, h: g.h });
+    if (!openR) walls.push({ x: g.x + g.w - WALL_T / 2, y: g.y, w: WALL_T, h: g.h });
+  };
+  for (const id of fromAnc) {
+    if (toAnc.has(id) || id === edge.to) continue;
+    const other = centerOf(edge.to);
+    if (other !== null) addWalls(id, other);
+  }
+  for (const id of toAnc) {
+    if (fromAnc.has(id) || id === edge.from) continue;
+    const other = centerOf(edge.from);
+    if (other !== null) addWalls(id, other);
+  }
+  return walls;
+};
+
 // Reroute box-family (block/network/cloud/c4) edges that CROSS a node or HUG a border, choosing the
 // mount pair + orthogonal detour (via the maze router, which stands off every obstacle by
 // OBSTACLE_CLEARANCE so its routes neither cross nor hug) that is strictly cleaner than the current
-// path. Clean edges — and any the maze can't improve — are left exactly as the trunk/spread router laid
-// them, so the backbone aesthetic survives everywhere it already reads well.
+// path. Entered groups contribute border walls on their non-facing sides (above), so the detour enters
+// a group through the side facing the other end. Clean edges — and any the maze can't improve — are
+// left exactly as the trunk/spread router laid them, so the backbone aesthetic survives everywhere it
+// already reads well.
 export const rerouteBoxEdges = (scene: Scene): Scene => {
   const boxes: ScoreBox[] = scene.nodes.flatMap((n) => {
     const body = { id: n.id, box: routeBoxOf(n), container: n.shape === "container" };
@@ -1811,18 +1989,36 @@ export const rerouteBoxEdges = (scene: Scene): Scene => {
     const obstacles = obstacleBoxes.get(e.id) ?? [];
     const curBad = routeBadness(e.waypoints, boxes, e.from, e.to);
     if (curBad === 0) return e; // already clean
-    const maze = mazeAroundObstacles(
-      boxById.get(e.from) ?? null,
-      boxById.get(e.to) ?? null,
-      start,
-      end,
-      e.waypoints,
-      obstacles,
-      null,
-      true,
-    );
+    const fromBox = boxById.get(e.from);
+    const toBox = boxById.get(e.to);
+    const walledObstacles = [...obstacles, ...enteredContainerWalls(scene, e)];
+    // Two candidate sources: the maze (arbitrary detours) and the orthodox L/Z patterns (staircase
+    // alternatives the maze's per-pair length optimum skips). Pick by fewest obstacle/wall hits, then
+    // the least on-screen badness, then the shortest — so the accepted route both respects the group
+    // walls and arrives clean rather than sliding along a border.
+    const pool = [
+      ...mazePathCandidates(fromBox ?? null, toBox ?? null, start, end, walledObstacles),
+      ...(fromBox !== undefined && toBox !== undefined
+        ? patternCandidates(fromBox, toBox, walledObstacles)
+        : []),
+    ];
+    let maze: readonly Point[] | null = null;
+    let bestHits = Number.POSITIVE_INFINITY;
+    let newBad = Number.POSITIVE_INFINITY;
+    let bestLen = Number.POSITIVE_INFINITY;
+    for (const c of pool) {
+      const bad = routeBadness(c.path, boxes, e.from, e.to);
+      if (
+        c.hits < bestHits ||
+        (c.hits === bestHits && (bad < newBad || (bad === newBad && c.len < bestLen)))
+      ) {
+        maze = c.path;
+        bestHits = c.hits;
+        newBad = bad;
+        bestLen = c.len;
+      }
+    }
     if (maze === null || maze.length < 2) return e;
-    const newBad = routeBadness(maze, boxes, e.from, e.to);
     if (newBad >= curBad) return e; // not strictly cleaner on screen — keep the original
     const [w0, w1, ...wr] = maze;
     if (w0 === undefined || w1 === undefined) return e;

@@ -16,7 +16,9 @@ import {
 import type { Extension } from "@codemirror/state";
 import {
   decodeOverlay,
+  encodeEdgeStyleEntry,
   encodeGroupEntry,
+  encodeNodeStyleEntry,
   encodeOverrideEntry,
   group,
   moveNode,
@@ -48,16 +50,18 @@ import {
 } from "@m/std";
 
 // A collaborative document: the diagram **source text** (a `Y.Text`) and the sidecar **overlay**
-// (overrides + groups, in two `Y.Map`s) share one `Y.Doc`, so concurrent edits merge as a CRDT. The
-// rendered diagram is *not* shared — each client re-derives it locally from the merged source+overlay
-// (see docs/collab-editor-plan.md §4), keeping the doc tiny and conflict-free.
+// (overrides + groups + visual styles, in four `Y.Map`s) share one `Y.Doc`, so concurrent edits merge
+// as a CRDT. The rendered diagram is *not* shared — each client re-derives it locally from the merged
+// source+overlay (see docs/collab-editor-plan.md §4), keeping the doc tiny and conflict-free.
 //
 // `overlay` satisfies the same `OverlayDoc` port as the local single-user document, so the app swaps
 // one for the other without touching call sites. Transport is left to the caller: `state`/`applyUpdate`
 // /`onUpdate` are the binary-sync seam a WebSocket server (or an in-memory test) wires together.
 // Closed event union for this module's structured logging (the @m/std `Logger` contract). The core
-// never logs; the session shell logs loudly at the boundary where peer data is decoded.
-export type CollabEvent = "overlay-decode-rejected";
+// never logs; the shell logs loudly at the boundaries where peer data is decoded
+// (`overlay-decode-rejected`, `control-rejected` — see the transport) and where the relay permanently
+// rejects a connection (`relay-rejected`).
+export type CollabEvent = "overlay-decode-rejected" | "control-rejected" | "relay-rejected";
 
 // A surfaced session-health status the app can show. `synced` is the healthy steady state; a corrupt
 // remote overlay that fails to decode drops us to `overlay-rejected` (last-good state is retained, the
@@ -155,6 +159,8 @@ export const createCollabSession = (opts: {
   readonly initialOverrides: LayoutOverrides;
   readonly initialGroups: Groups;
   readonly initialSource: string;
+  readonly initialEdgeStyles?: EdgeStyles;
+  readonly initialNodeStyles?: NodeStyles;
   readonly initialUpdate?: Uint8Array | undefined;
   readonly save: (serialized: string) => void;
   // Loud-logging sink for boundary failures (a corrupt remote overlay). Omitted in tests that don't
@@ -165,6 +171,11 @@ export const createCollabSession = (opts: {
   const yText: YText = doc.getText("source");
   const yOverrides: YMap<unknown> = doc.getMap("overrides");
   const yGroups: YMap<YMap<unknown>> = doc.getMap("groups");
+  // Visual overlay styles sync exactly like positions/groups do — per-entry Y.Map values through the
+  // builder's shared wire encoders, so a peer's restyle (a coloured node, a curved edge) is seen by
+  // everyone, not held in per-client session memory.
+  const yEdgeStyles: YMap<unknown> = doc.getMap("edgeStyles");
+  const yNodeStyles: YMap<unknown> = doc.getMap("nodeStyles");
   // Presence is ephemeral and travels on its own frame (see the transport), so the awareness origin is
   // distinct from the doc origins — applied remote presence isn't re-broadcast.
   const awareness = new Awareness(doc);
@@ -173,9 +184,17 @@ export const createCollabSession = (opts: {
   // Local materialised view (branded). Local mutations update it synchronously; remote/undo changes
   // rebuild it from the Y.Maps through the shared Zod decoder, so peer data crosses the boundary
   // validated — never trusted raw.
-  let cache: { overrides: LayoutOverrides; groups: Groups } = {
+  interface OverlayCache {
+    overrides: LayoutOverrides;
+    groups: Groups;
+    edgeStyles: EdgeStyles;
+    nodeStyles: NodeStyles;
+  }
+  let cache: OverlayCache = {
     overrides: opts.initialOverrides,
     groups: opts.initialGroups,
+    edgeStyles: opts.initialEdgeStyles ?? new Map(),
+    nodeStyles: opts.initialNodeStyles ?? new Map(),
   };
   // Mints fresh group ids; monotonic for the document's lifetime.
   let groupSeq = 0;
@@ -183,7 +202,7 @@ export const createCollabSession = (opts: {
   // Materialise the branded view from the Y.Maps through the shared Zod decoder. Pure: it RETURNS the
   // decode Result (never throws), so the caller — a Yjs observer running on a remote update — can keep
   // last-good state and surface the failure rather than the throw escaping the observer and crashing.
-  const materialize = (): Result<{ overrides: LayoutOverrides; groups: Groups }, DecodeError> => {
+  const materialize = (): Result<OverlayCache, DecodeError> => {
     const overrides: Array<[string, unknown]> = [];
     yOverrides.forEach((v, k) => {
       overrides.push([k, v]);
@@ -196,7 +215,15 @@ export const createCollabSession = (opts: {
     yGroups.forEach((v, k) => {
       groups.push([k, v instanceof YMap ? v.toJSON() : null]);
     });
-    return decodeOverlay({ overrides, groups });
+    const edgeStyles: Array<[string, unknown]> = [];
+    yEdgeStyles.forEach((v, k) => {
+      edgeStyles.push([k, v]);
+    });
+    const nodeStyles: Array<[string, unknown]> = [];
+    yNodeStyles.forEach((v, k) => {
+      nodeStyles.push([k, v]);
+    });
+    return decodeOverlay({ overrides, groups, edgeStyles, nodeStyles });
   };
 
   const writeOverrides = (next: LayoutOverrides): void => {
@@ -224,10 +251,14 @@ export const createCollabSession = (opts: {
       if (opts.initialSource.length > 0) yText.insert(0, opts.initialSource);
       for (const [id, o] of opts.initialOverrides) yOverrides.set(id, encodeOverrideEntry(o));
       for (const [id, g] of opts.initialGroups) yGroups.set(id, buildGroupType(g));
+      for (const [id, s] of cache.edgeStyles) yEdgeStyles.set(id, encodeEdgeStyleEntry(s));
+      for (const [id, s] of cache.nodeStyles) yNodeStyles.set(id, encodeNodeStyleEntry(s));
     }, SEED);
   }
 
-  const undoManager = new UndoManager([yOverrides, yGroups], { trackedOrigins: new Set([LOCAL]) });
+  const undoManager = new UndoManager([yOverrides, yGroups, yEdgeStyles, yNodeStyles], {
+    trackedOrigins: new Set([LOCAL]),
+  });
 
   const overlayListeners = new Set<() => void>();
   const sourceListeners = new Set<(text: string) => void>();
@@ -270,6 +301,8 @@ export const createCollabSession = (opts: {
   // integrated nested Y.Map/Y.Array.
   const onGroupsChange = (_events: unknown, transaction: { origin: unknown }): void =>
     onMapChange(transaction.origin);
+  const onStylesChange = (e: { transaction: { origin: unknown } }): void =>
+    onMapChange(e.transaction.origin);
   const onTextChange = (e: { transaction: { origin: unknown } }): void => {
     if (e.transaction.origin === LOCAL) return;
     const text = yText.toString();
@@ -281,52 +314,62 @@ export const createCollabSession = (opts: {
   };
   yOverrides.observe(onOverridesChange);
   yGroups.observeDeep(onGroupsChange);
+  yEdgeStyles.observe(onStylesChange);
+  yNodeStyles.observe(onStylesChange);
   yText.observe(onTextChange);
   doc.on("update", onDocUpdate);
-
-  // Presentation styling (curved edges, coloured nodes) is a per-client visual preference held in
-  // session memory here — not yet a synced Y.Map, so it doesn't propagate to peers (positions/groups
-  // do). Satisfies the port and keeps collab working; sharing styling across peers is a follow-up.
-  let cacheEdgeStyles: EdgeStyles = new Map();
-  let cacheNodeStyles: NodeStyles = new Map();
 
   const overlay: OverlayDoc = {
     overrides: () => cache.overrides,
     groups: () => cache.groups,
-    edgeStyles: () => cacheEdgeStyles,
-    nodeStyles: () => cacheNodeStyles,
+    edgeStyles: () => cache.edgeStyles,
+    nodeStyles: () => cache.nodeStyles,
     setEdgeStyle: (id, style) => {
-      const next = new Map(cacheEdgeStyles);
+      const next = new Map(cache.edgeStyles);
       if (style === null) next.delete(id);
       else next.set(id, style);
-      cacheEdgeStyles = next;
+      doc.transact(() => {
+        if (style === null) yEdgeStyles.delete(id);
+        else {
+          const enc = encodeEdgeStyleEntry(style);
+          if (!sameJson(yEdgeStyles.get(id), enc)) yEdgeStyles.set(id, enc);
+        }
+      }, LOCAL);
+      cache = { ...cache, edgeStyles: next };
       notifyOverlay();
     },
     setNodeStyle: (id, style) => {
-      const next = new Map(cacheNodeStyles);
+      const next = new Map(cache.nodeStyles);
       if (style === null) next.delete(id);
       else next.set(id, style);
-      cacheNodeStyles = next;
+      doc.transact(() => {
+        if (style === null) yNodeStyles.delete(id);
+        else {
+          const enc = encodeNodeStyleEntry(style);
+          if (!sameJson(yNodeStyles.get(id), enc)) yNodeStyles.set(id, enc);
+        }
+      }, LOCAL);
+      cache = { ...cache, nodeStyles: next };
       notifyOverlay();
     },
     moveNode: (id, to: Point) => {
       const next = moveNode(cache.overrides, id, to);
       writeOverrides(next);
-      cache = { overrides: next, groups: cache.groups };
+      cache = { ...cache, overrides: next };
     },
     resizeNode: (id, origin: Point, dim: Size) => {
       const next = resizeNode(cache.overrides, id, origin, dim);
       writeOverrides(next);
-      cache = { overrides: next, groups: cache.groups };
+      cache = { ...cache, overrides: next };
     },
     clearOverrides: () => {
       const next: LayoutOverrides = new Map();
       writeOverrides(next);
-      cache = { overrides: next, groups: cache.groups };
+      cache = { ...cache, overrides: next };
     },
     replaceOverrides: (overrides) => {
       writeOverrides(overrides);
-      cache = { overrides, groups: cache.groups };
+      cache = { ...cache, overrides };
     },
     groupNodes: (units) => {
       // Namespace the minted id with this client's awareness clientID so two collaborators grouping at
@@ -341,7 +384,7 @@ export const createCollabSession = (opts: {
           yGroups.set(id, buildGroupType(g));
         }, LOCAL);
       }
-      cache = { overrides: cache.overrides, groups: next };
+      cache = { ...cache, groups: next };
     },
     ungroupAt: (top) => {
       const dissolved = cache.groups.get(top);
@@ -370,7 +413,7 @@ export const createCollabSession = (opts: {
         const freed = encodeGroupEntry(dissolved).members;
         if (freed.length > 0) yMembers.insert(idx, freed);
       }, LOCAL);
-      cache = { overrides: cache.overrides, groups: next };
+      cache = { ...cache, groups: next };
     },
     setGroupLocked: (top, locked) => {
       const next = setLocked(cache.groups, top, locked);
@@ -378,7 +421,7 @@ export const createCollabSession = (opts: {
       doc.transact(() => {
         yGroups.get(top)?.set("locked", locked);
       }, LOCAL);
-      cache = { overrides: cache.overrides, groups: next };
+      cache = { ...cache, groups: next };
     },
     setGroupLabel: (id, label) => {
       const next = setGroupLabel(cache.groups, id, label);
@@ -386,7 +429,7 @@ export const createCollabSession = (opts: {
       doc.transact(() => {
         yGroups.get(id)?.set("label", label);
       }, LOCAL);
-      cache = { overrides: cache.overrides, groups: next };
+      cache = { ...cache, groups: next };
     },
     pruneGroupsTo: (liveNodeIds) => {
       const next = pruneGroups(cache.groups, liveNodeIds);
@@ -417,7 +460,7 @@ export const createCollabSession = (opts: {
           }
         }
       }, LOCAL);
-      cache = { overrides: cache.overrides, groups: next };
+      cache = { ...cache, groups: next };
       return true;
     },
     replace: (overrides, groups, edgeStyles, nodeStyles) => {
@@ -425,10 +468,22 @@ export const createCollabSession = (opts: {
       doc.transact(() => {
         for (const key of [...yGroups.keys()]) yGroups.delete(key);
         for (const [id, g] of groups) yGroups.set(id, buildGroupType(g));
+        for (const key of [...yEdgeStyles.keys()]) {
+          if (!edgeStyles.has(brand<string, "SceneEdgeId">(key))) yEdgeStyles.delete(key);
+        }
+        for (const [id, s] of edgeStyles) {
+          const enc = encodeEdgeStyleEntry(s);
+          if (!sameJson(yEdgeStyles.get(id), enc)) yEdgeStyles.set(id, enc);
+        }
+        for (const key of [...yNodeStyles.keys()]) {
+          if (!nodeStyles.has(brand<string, "SceneNodeId">(key))) yNodeStyles.delete(key);
+        }
+        for (const [id, s] of nodeStyles) {
+          const enc = encodeNodeStyleEntry(s);
+          if (!sameJson(yNodeStyles.get(id), enc)) yNodeStyles.set(id, enc);
+        }
       }, LOCAL);
-      cacheEdgeStyles = edgeStyles;
-      cacheNodeStyles = nodeStyles;
-      cache = { overrides, groups };
+      cache = { overrides, groups, edgeStyles, nodeStyles };
     },
     record: () => undoManager.stopCapturing(),
     undo: () => {
@@ -445,7 +500,9 @@ export const createCollabSession = (opts: {
     canRedo: () => undoManager.canRedo(),
     clearHistory: () => undoManager.clear(),
     persist: () =>
-      opts.save(serializeOverlay(cache.overrides, cache.groups, cacheEdgeStyles, cacheNodeStyles)),
+      opts.save(
+        serializeOverlay(cache.overrides, cache.groups, cache.edgeStyles, cache.nodeStyles),
+      ),
   };
 
   return {
@@ -511,6 +568,8 @@ export const createCollabSession = (opts: {
     destroy: () => {
       yOverrides.unobserve(onOverridesChange);
       yGroups.unobserveDeep(onGroupsChange);
+      yEdgeStyles.unobserve(onStylesChange);
+      yNodeStyles.unobserve(onStylesChange);
       yText.unobserve(onTextChange);
       doc.off("update", onDocUpdate);
       overlayListeners.clear();

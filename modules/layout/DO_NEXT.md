@@ -1,16 +1,23 @@
 # @m/layout — do next
 
+- **Renderer support for richer caption styles.** Two Mermaid-parity items now emit plain captions and
+  would look closer to Mermaid with a styled variant: gitGraph `tag:` labels (Mermaid draws a small
+  BORDERED tag plate; we emit a plateless caption) and diagram titles (Mermaid uses a larger/bolder
+  title face; ours renders at the node-label size). Both need a renderer-side caption style (e.g. a
+  `style: "plain" | "tag" | "title"` on the caption decoration) — layout already positions them.
+
 - **Squeeze the last box-family crossings/hugs.** `rerouteBoxEdges` maze-routes cross-group edges that
   cross a node or hug a border to a cleaner mount pair, cutting the four-family total from 22 to 18.
-  The residual 18 are edges the maze can't beat on the current metric (tight channels, mount-anchored
-  L-edges). Further gains need denser routing channels (layout spacing) or per-edge port selection to
-  give the maze more room; the `edge-border-clearance` e2e's total is the scorecard.
+  The badness-ranked candidate pool (maze + L/Z patterns + entered-group walls) has since retired the
+  worst class — sliding entries along a target's own border and back-side group tunnelling (cloud
+  `alb→web`, block `lb→web1`). Remaining gains need denser routing channels (layout spacing) or
+  per-edge port selection; the `edge-border-clearance` e2e's total is the scorecard.
 
 - **Mount re-selection to kill the last border-hugs.** `separateEdgesFromBorders` clears interior
   channel legs, but a 3-point L-edge whose first/last (mount-anchored) segment sits exactly on an
-  adjacent box's border can't be shifted without moving the mount (network `fw→rtr`, block `lb→web1`).
-  Needs per-edge mount/port selection (choose a side whose approach doesn't run along a neighbour's
-  border) — the same redesign as block column spans / per-edge ports.
+  adjacent box's border can't be shifted without moving the mount (network `fw→rtr`; block `lb→web1`
+  is fixed by the facing-side reroute above). Needs per-edge mount/port selection (choose a side whose
+  approach doesn't run along a neighbour's border) — the same redesign as per-edge ports.
 
 - **Span-wide block boxes funnel every edge through one side-centre mount.** Cardinal mounts are the
   side CENTRES only, so a full-width block row (`lb:4`) forces all its edges through a single point —

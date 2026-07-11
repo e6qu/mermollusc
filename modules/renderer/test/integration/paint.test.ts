@@ -16,6 +16,8 @@ class RecordingCtx implements Canvas2D {
   readonly fillTextFonts: string[] = [];
   readonly fillTexts: { readonly text: string; readonly alpha: number }[] = [];
   readonly fillRects: { readonly w: number; readonly h: number; readonly alpha: number; readonly fill: string }[] = [];
+  readonly arcs: { readonly radius: number; readonly start: number; readonly end: number; readonly anticlockwise: boolean }[] = [];
+  readonly fills: string[] = [];
   beginPath(): void {
     this.calls.push("beginPath");
   }
@@ -39,6 +41,7 @@ class RecordingCtx implements Canvas2D {
   }
   fill(): void {
     this.calls.push("fill");
+    this.fills.push(String(this.fillStyle));
   }
   fillText(text: string): void {
     this.calls.push(`fillText:${text}`);
@@ -55,8 +58,16 @@ class RecordingCtx implements Canvas2D {
   roundRect(): void {
     this.calls.push("roundRect");
   }
-  arc(): void {
+  arc(
+    _x: number,
+    _y: number,
+    radius: number,
+    start: number,
+    end: number,
+    anticlockwise: boolean,
+  ): void {
     this.calls.push("arc");
+    this.arcs.push({ radius, start, end, anticlockwise });
   }
   setLineDash(): void {
     this.calls.push("setLineDash");
@@ -439,6 +450,77 @@ describe("paint", () => {
     expect(ctx.calls).toContain("stroke");
   });
 
+  it("sweeps a donut slice's inner arc backwards (anticlockwise) so it never fills the hole", () => {
+    const donut: Scene = {
+      nodes: [],
+      edges: [],
+      wedges: [
+        {
+          center: point(100, 100),
+          radius: 80,
+          innerRadius: 40,
+          startAngle: -Math.PI / 2,
+          endAngle: Math.PI / 2,
+          label: "Half",
+          value: 50,
+          percent: 50,
+          colorIndex: 1,
+        },
+      ],
+      decorations: [],
+      extent: rect(0, 0, 200, 200),
+    };
+    const ctx = new RecordingCtx();
+    paint(ctx, toDisplayList(donut));
+    // Outer rim sweeps forward start→end; the inner rim returns end→start anticlockwise. A forward
+    // inner sweep winds across the hole, so every slice would paint a solid disc over it.
+    expect(ctx.arcs).toEqual([
+      { radius: 80, start: -Math.PI / 2, end: Math.PI / 2, anticlockwise: false },
+      { radius: 40, start: Math.PI / 2, end: -Math.PI / 2, anticlockwise: true },
+    ]);
+  });
+
+  it("fills a diamond from its accent / raw directive colour, like any other shape", () => {
+    const diamondScene: Scene = {
+      ...scene,
+      nodes: [
+        { id: snid("D"), bounds: rect(0, 0, 80, 48), label: "D?", shape: "diamond", parent: null, icon: null, rowDivider: null, subtitle: null, accent: "danger" as const,
+      role: "normal", rows: null },
+      ],
+      edges: [],
+    };
+    const accented = new RecordingCtx();
+    paint(accented, toDisplayList(diamondScene));
+    expect(accented.fills).toContain(accentFill("danger", defaultTheme));
+    const styled = new RecordingCtx();
+    paint(
+      styled,
+      toDisplayList(diamondScene, false, "decorated", new Map([[snid("D"), { fill: "#123456", stroke: "#654321" }]])),
+    );
+    expect(styled.fills).toContain("#123456");
+    expect(styled.strokeStyle).toBe("#654321");
+    // Sketch mode tints its translucent overlay with the same resolved colour.
+    const sketchy = new RecordingCtx();
+    paint(sketchy, toDisplayList(diamondScene), new Map(), { ...defaultTheme, sketch: true });
+    expect(sketchy.fills).toContain(accentFill("danger", defaultTheme));
+  });
+
+  it("draws a diamond node's icon glyph when its image is supplied", () => {
+    const diamondIcon: Scene = {
+      ...scene,
+      nodes: [
+        { id: snid("D"), bounds: rect(0, 0, 80, 48), label: "Ship?", shape: "diamond", parent: null, icon: { pack: "arch", name: "server" }, rowDivider: null, subtitle: null, accent: "none" as const,
+      role: "normal", rows: null },
+      ],
+      edges: [],
+    };
+    const ctx = new RecordingCtx();
+    const fakeImage = new RecordingCtx() as unknown as CanvasImageSource;
+    paint(ctx, toDisplayList(diamondIcon), new Map([["arch/server", fakeImage]]));
+    expect(ctx.calls).toContain("drawImage");
+    expect(ctx.calls).toContain("fillText:Ship?");
+  });
+
   it("draws an icon glyph only when its image is supplied", () => {
     const without = new RecordingCtx();
     paint(without, toDisplayList(iconScene));
@@ -525,6 +607,27 @@ describe("palette contrast (WCAG AA)", () => {
     for (const theme of themes) {
       expect(contrast(theme.stroke, theme.nodeFill)).toBeGreaterThanOrEqual(3);
       expect(contrast(theme.stroke, theme.background)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("dark accent fills stay muted (≤ 40% HSL saturation), matching the light pastels' feel", () => {
+    const saturation = (hex: string): number => {
+      const n = Number.parseInt(hex.slice(1), 16);
+      const r = ((n >> 16) & 255) / 255;
+      const g = ((n >> 8) & 255) / 255;
+      const b = (n & 255) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      if (max === min) return 0;
+      const l = (max + min) / 2;
+      return (max - min) / (l > 0.5 ? 2 - max - min : max + min);
+    };
+    for (const accent of accents) {
+      if (accent === "none") continue;
+      expect(
+        saturation(accentFill(accent, darkTheme)),
+        `${accent} dark fill saturation`,
+      ).toBeLessThanOrEqual(0.4);
     }
   });
 });

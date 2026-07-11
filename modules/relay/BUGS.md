@@ -1,6 +1,66 @@
 # @m/relay — bugs
 
-No known open bugs.
+No known open bugs. The module shipped with real ones, though — the earlier "no known open bugs" claim
+was true only until a review actually went looking. Recorded below so the history stays honest.
+
+Resolved (review sweep, found + fixed 2026-07-10):
+
+- ~~**The 32KiB default read limit killed any DOC frame bigger than that.**~~ No `SetReadLimit` was set
+  after `websocket.Accept`, so coder/websocket's 32KiB default closed the connection with 1009 on any
+  legitimately large document snapshot (reproduced). Fixed: `maxFrameBytes` (4MiB, matching the rate
+  limiter's per-second byte bucket) in `cmd/relay-server/socket.go`, with a relayed-110KB-frame test.
+- ~~**A transient `Store.Load` failure silently seeded an empty room.**~~ `safeLoad` swallowed the error
+  and returned `(nil, nil)`, so the room came up empty and the next debounced save overwrote the good
+  stored snapshot with nothing. Fixed: `loadRoom` propagates the load error and the admission closes
+  1011 "room load error"; `TestLoadErrorNeverSeedsAnEmptyRoom` pins both the rejection and the recovery.
+- ~~**Last-leave/first-join race could fork a room's doc.**~~ `dropSocket` computed emptiness in one
+  critical section but deleted the room from the registry in a later one; a joiner admitted in between
+  was left on a ghost room while the next joiner loaded a fresh doc for the same name. Fixed: the room
+  now carries a pending-admission counter (reserved in `loadRoom` under the same lock as the registry
+  lookup, released at socket registration), the flush runs while the room is still registered, and the
+  registry delete re-checks sockets+pending in its own critical section. `TestLeaveJoinChurnNeverForksTheDoc`
+  hammers the window under `-race`.
+- ~~**Data race on the rate bucket during the auth-off pending-frame replay.**~~ `admit` replays buffered
+  frames on the Connect goroutine while the read loop dispatches fresh frames concurrently — both debit
+  the same unsynchronized `rateBucket`. Fixed with a mutex inside the bucket;
+  `TestPendingReplayRacesLiveFramesWithoutDataRace` reproduces the race (verified: it fails under `-race`
+  with the mutex removed).
+- ~~**One stuck peer stalled every sender; send failures were log-and-continue.**~~ Broadcast wrote to
+  peers synchronously and sequentially with a 10s timeout per frame, so a single non-reading peer could
+  stall the whole room, and a failed write left the peer half-alive. Fixed: per-peer bounded outbound
+  queues drained by a writer goroutine — queue overflow or a write error/timeout closes that peer loudly
+  (`cmd/relay-server/socket.go`), covered by `TestSlowConsumerIsClosedWithoutStallingSenders`.
+- ~~**Malformed `PORT` silently fell back to the default.**~~ `envInt` returned the default on a parse
+  error; now it exits with a clear message (fail loudly).
+- ~~**Shutdown flushed before closing hijacked WebSocket conns.**~~ `FlushAll` ran while connections were
+  still live (and `http.Server.Shutdown` never waits for hijacked conns), so an edit inside the 400ms
+  save-debounce window at SIGTERM could be dropped. Fixed: a socket registry drains (closes + waits for)
+  every live connection — whose last-out teardown flushes each room — before the final `FlushAll`.
+- ~~**`cmd/relay-wasm`'s `jsSocket.Close` was a no-op teardown.**~~ It flipped `open` but never fired the
+  registered close listener nor told JS: a rejected connection leaked a goroutine blocked in
+  `Core.Connect`, stayed in the room's socket set, and the client believed it was connected. Fixed:
+  `Close` now drives the full close path and the `mermolluscRelayConnect` contract gained an
+  `onClosed(code, reason)` callback (wired through `modules/collab`'s `wasm-relay.ts` so the client's
+  close listeners fire). `TestCloseDrivesTeardownAndNotifiesJS` covers the rejection path.
+- ~~**The WASM test suite was red on main and ran nowhere.**~~ `TestConnectAdmissionSendsControlThenDoc`
+  still expected the pre-seed-grant admission sequence ([CONTROL role, DOC]) after the relay started
+  sending [CONTROL role, CONTROL "seed", DOC], and nothing ran `make test-wasm` (the `js && wasm` build
+  tag silently excludes it from every native `go test`). Fixed the test to the real protocol and wired
+  `test-wasm` into this module's `test` (and therefore `check`) target — it runs under Go's own
+  Node-based `go_js_wasm_exec`, no browser needed.
+- ~~**SECURITY: `InsecureSkipVerify: true` accepted cross-origin WebSocket upgrades.**~~ With auth off by
+  default, any website could drive a local relay from a visitor's browser. Replaced with an explicit
+  Origin policy (`cmd/relay-server/server.go`): no-Origin (non-browser) requests, loopback origins, and
+  same-hostname origins are allowed, plus an `ALLOWED_ORIGINS` env allowlist; everything else is rejected
+  with a logged 403 before the upgrade. Four origin-policy tests.
+- ~~**SECURITY hardening: the accepted JWS algorithm set followed the JWKS.**~~ `jwt.Parse` with a key
+  set accepts whatever algorithm each key advertises, so a future JWKS entry could widen the set. `auth/`
+  now filters the looked-up set to keys explicitly declared RS256 before verification
+  (`TestPinsAcceptedAlgorithmToRS256` proves a validly-signed RS512 token is rejected).
+- **Doc-accuracy note:** earlier revisions of these docs described `loadRoom`'s first-touch guard as
+  "request-coalescing via `pendingLoads`" — no such symbol ever existed. The real mechanism is
+  double-checked locking (load outside the lock, re-check the registry under it, discard the losing doc),
+  now stated correctly everywhere.
 
 Resolved (caught during the Go port/WASM milestones, fixed before shipping — flagged here because they're
 exactly the kind of thing worth remembering when touching this code again):
@@ -24,8 +84,10 @@ exactly the kind of thing worth remembering when touching this code again):
   exist" check and its "create it" step — a window two real concurrent connections could both fall into,
   each building their own `Doc` for the same room name. Unreachable in the JS original (no `await` inside
   the equivalent check-then-create, so single-threaded execution ran it atomically); reachable under Go's
-  real parallelism. Fixed with a request-coalescing guard in `loadRoom` (concurrent first-touches of the
-  same new room share one in-flight load).
+  real parallelism. Fixed with double-checked locking in `loadRoom`: the store load runs outside the
+  mutex, then the registry is re-checked under it — the loser of a concurrent first-touch adopts the
+  winner's room and discards its own doc, so one room name can never map to two docs. (Both loaders do
+  hit the store; correctness comes from the re-check, not from coalescing the loads.)
 - **(Milestone 2) `relay.wasm`/`wasm_exec.js` resolved against the site root instead of the demo's base
   path.** The Pages demo isn't hosted at the domain root (`/mermollusc/demo/`, not `/`); hardcoded
   `/relay.wasm` URLs 404'd. Neither Go-side nor TypeScript-side unit tests could have caught this — it's a

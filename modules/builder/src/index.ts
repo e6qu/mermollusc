@@ -79,5 +79,7 @@ export {
   decodeOverlay,
   encodeOverrideEntry,
   encodeGroupEntry,
+  encodeEdgeStyleEntry,
+  encodeNodeStyleEntry,
 } from "./shell/index.js";
 export type { Overlay } from "./shell/index.js";

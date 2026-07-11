@@ -88,7 +88,7 @@
   these by name instead of each re-declaring the local `Children` dict + the `as IToken[]`/`as
   CstNode[]` casts. The sanctioned `as` casts now live in one place; semantics are byte-identical (the
   `?? []` idiom is preserved — an absent optional child is `[]`, not a `Result`).
-- tests: 159 passing (33 unit + 126 integration) — printer incl. subgraph blocks; flowchart
+- tests: all passing (`make test` for the live count) — printer incl. subgraph blocks; flowchart
   parse/node+edge spans incl. stadium/circle + subgraph membership/nesting/round-trip + a depth-first
   nested-subgraph ordering golden; sequence parse + spans; C4 parse with nesting + label spans; block
   parse + label/edge spans; network parse + label spans + icon override; cloud parse + nested groups +

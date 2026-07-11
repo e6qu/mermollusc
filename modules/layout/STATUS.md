@@ -64,17 +64,25 @@ into compact rows instead of a single horizontal strip.
   **mindmap**, **pie**) → pure layouts.
 - **mindmap (`layoutMindmap`):** a deterministic **radial** layout (no ELK) — the root sits at the
   centre and each subtree fans into an angular sector sized by its leaf count, depth → radius; a forest
-  rings its roots around a virtual hub. Nodes are shaped (hexagon → diamond), edges arrowless spokes.
+  rings its roots around a virtual hub. Nodes are shaped (hexagon → diamond, widened by the diamond's
+  inscribed-rect condition so the label fits inside the sloped sides), edges arrowless spokes.
 - **pie (`layoutPie`):** a deterministic radial layout — slices sized by share of the total, laid
   clockwise from 12 o'clock. `pie donut` slices get an inner radius while legend swatches stay full
   discs. Output is a `Scene` carrying only `wedges` (the SceneGraph radial primitive); no nodes/edges.
 - **gitGraph (`layoutGitGraph`):** deterministic lane layout — commits in creation order along the main
   axis, one lane per branch on the cross axis (`LR` default; `TB`/`BT` swap/flip the axes); commits are
   circle nodes (`HIGHLIGHT` → rect), branch names round head nodes, one edge per parent (fork out at a
-  `branch`, fan in at a `merge`).
+  `branch`, fan in at a `merge`). Classic emits each commit's id and `tag:` as adjacent captions
+  (Mermaid parity — the bare dot carries no label); Pills folds both into the pill label instead.
 - **timeline (`layoutTimeline`):** deterministic column layout — periods in a spine-joined left→right
   row (rounded header nodes), each period's events stacked as rects in its column below it, and a
   `container` band above each contiguous `section` run. Columns sized to the widest label.
+- **Diagram titles (gantt/pie/timeline):** `withTitle` (`core/title.ts`) shifts the scene down one
+  `TITLE_BAND` and adds the parsed `title` as a centred caption above the chart — Mermaid draws titles;
+  these three families' ASTs carry one.
+- **Gantt milestones:** a compact `BAR_HEIGHT`-square diamond centred on its date with the label as an
+  adjacent caption to its right (Mermaid puts milestone text beside the marker); the dependency hook
+  enters a milestone at its right corner so it never crosses the diamond body.
 - **Compartment families (ER, class, requirement)** share one engine, `layoutCompartments`: each
   family maps its AST to `CompartmentBox`/`CompartmentEdge` specs + a metrics record (direction, title/
   row/subtitle heights, padding, min width), and the engine sizes each box to its rows (a flowchart
@@ -105,7 +113,7 @@ into compact rows instead of a single horizontal strip.
 - **Cardinal mount invariant:** `cardinalMountViolations(scene)` reports edge/node/end/endpoint details
   for any non-self edge whose first or last waypoint is not on a node's top/bottom/left/right mount;
   `edgesUseCardinalMounts(scene)` is the boolean form.
-- tests: 134 unit + 18 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
+- tests: 165 unit + 24 integration (toElkGraph/toScene incl. square circle nodes + subgraph hierarchy
   (container + absolute member coords); clean layout; relax; sequence; C4; block/network grid; cloud
   nesting + icons; injected-measurer sizing; routing; per-family **fail-loudly** cases for unknown
   endpoints and dangling parents; state role restoration; property-based: `widestLine`/`clampedWidth`
@@ -115,4 +123,17 @@ into compact rows instead of a single horizontal strip.
 - **Trunk Routing:** Enhanced `trunkMerge` with A* maze-routed approaches for each edge's connection to the trunk backbone (preventing obstacle clipping), dynamic balanced trunk line placement centered within the routing channel (clamped to safe margins), and a minimum fan threshold of `2`. Playground UI defaults `trunkEnabled` to `true` on first load.
 - **Unified Layout Style Option:** Wired unified `layoutStyle` string parameter through the layout entry points (`layout`, `layoutDiagram`), mapping styles (classic, tidy, organic, relaxed, bus, trunk) to the internal routing pipelines and layout engine presets. Dynamic style dropdown replaces the isolated buttons in the playground UI, persisting the style preference per diagram family in local storage. Supported family custom styles include Classic vs Relaxed sequence (curved lines), Radial Spoke vs Classic mindmap (straight lines and rect nodes), Classic vs Donut pie charts, and Classic vs Pills gitGraph (empty circle commits and straight lines).
 - **Self-Loops (c4/network/cloud):** Standardized self-loops to render as a 5-point right-angle loop at the top-right corner of the node, with the label positioned at the outer corner, resolving silent drops (Cloud) and degenerate dots (C4/Network).
-- **Edge Label Decollision obstacle avoidance:** Updated `decollideEdgeLabels` to check for overlaps against unrelated node and container group boundaries in the scene, using ancestor tracking to prevent labels from being pushed away from their own endpoints.
+- **Edge Label Decollision obstacle avoidance:** `decollideEdgeLabels` treats every node box —
+  including the edge's own endpoint leaves — as an obstacle with a `LABEL_GAP` clearance ring, keeps
+  related (ancestor) groups open EXCEPT their title band and four thin border strips (a label may live
+  inside its own group but never straddles its outline or title), skips invisible `marker` nodes,
+  searches cardinal then diagonal directions, and clamps every position — anchor, candidates, and the
+  give-up fallback — onto the sheet so a label can never clip off the extent.
+- **Facing-side group entry (`rerouteBoxEdges`):** entered groups contribute `enteredContainerWalls`
+  (thin walls along the sides NOT facing the edge's other end) to the maze obstacles; sliding entries
+  along an endpoint leaf's own border count as hugs in `routeBadness`; and the reroute picks from maze
+  candidates plus orthodox L/Z `patternCandidates` by fewest hits → least on-screen badness → shortest,
+  so a connector into a group enters once, through the side facing its source, arriving perpendicular.
+- **Block composite width floor:** a `block:id` composite whose content needs more columns than its
+  parent grid offers keeps its natural content width (it spans the full row) instead of being
+  column-snap-clamped below its children — members no longer poke over the group border.

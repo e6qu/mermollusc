@@ -11,12 +11,13 @@ import type {
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
 import { optimalMountPoints, type RouteBox } from "./route.js";
-import { clampedWidth } from "./measure.js";
+import { clampedWidth, widestLine } from "./measure.js";
 
 const RING = 150; // radial distance between successive depth levels
 const NODE_H = 34;
 const PAD = 22; // horizontal label padding
 const MIN_W = 44;
+const TEXT_H = 16; // one label line's height — sizes the diamond so the text stays inside its slopes
 const MARGIN = 24;
 const MAX_NEST_DEPTH = 64; // a cyclic `parent` can't arise from the parser; cap to stay total
 
@@ -117,10 +118,16 @@ export const layoutMindmap = (
     if (root !== undefined) place(root, 0, TWO_PI, 0);
   }
 
-  const sizeOf = (node: MindmapNode): { readonly w: number; readonly h: number } => ({
-    w: clampedWidth(node.label, measure, MIN_W, PAD),
-    h: NODE_H,
-  });
+  const sizeOf = (node: MindmapNode): { readonly w: number; readonly h: number } => {
+    // A `{{hexagon}}` renders as a diamond, whose sides slope in over the text: a centred label rect of
+    // height TEXT_H fits only when labelW/w + TEXT_H/h ≤ 1, so the box must be wider than the flat
+    // rect/round shapes by that factor or the text pokes out both sloped sides.
+    if (node.shape === "hexagon") {
+      const label = widestLine(node.label, measure);
+      return { w: Math.max(MIN_W, label / (1 - TEXT_H / NODE_H) + PAD), h: NODE_H };
+    }
+    return { w: clampedWidth(node.label, measure, MIN_W, PAD), h: NODE_H };
+  };
 
   // Bounds over all node boxes (centred on their positions), so we can shift into positive coordinates.
   let minX = Number.POSITIVE_INFINITY;

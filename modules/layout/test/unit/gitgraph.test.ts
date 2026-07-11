@@ -200,3 +200,53 @@ describe("layoutGitGraph", () => {
     expect(off.value).toEqual(explicitOff.value);
   });
 });
+
+describe("classic commit id + tag captions", () => {
+  const tagged: GitGraphAst = {
+    ...ast,
+    commits: ast.commits.map((c) => (c.id === "mc" ? { ...c, tag: "v1.0" } : c)),
+  };
+
+  it("classic (Mermaid parity) surfaces every commit id and any tag as adjacent captions", () => {
+    const r = layoutGitGraph(tagged, heuristicMeasure, false, true);
+    if (!r.ok) throw new Error(r.error.message);
+    const caps = r.value.decorations.flatMap((d) => (d.kind === "caption" ? [d] : []));
+    for (const id of ["c0", "c1", "c2", "mc"]) {
+      expect(caps.some((c) => c.text === id)).toBe(true);
+    }
+    const tag = caps.find((c) => c.text === "v1.0");
+    const idCap = caps.find((c) => c.text === "mc");
+    const mc = r.value.nodes.find((n) => n.id === "mc");
+    if (tag === undefined || idCap === undefined || mc === undefined)
+      throw new Error("caption or commit missing");
+    // LR: the id sits below the dot, the tag above it.
+    expect(idCap.at.y).toBeGreaterThan(mc.bounds.origin.y + mc.bounds.size.height);
+    expect(tag.at.y).toBeLessThan(mc.bounds.origin.y);
+    // Captions stay on the sheet and inside the extent.
+    for (const c of caps) {
+      expect(c.at.x).toBeGreaterThanOrEqual(0);
+      expect(c.at.y).toBeGreaterThanOrEqual(0);
+      expect(c.at.y).toBeLessThanOrEqual(r.value.extent.size.height);
+    }
+  });
+
+  it("puts the id beside the dot (and the tag on the other side) in a vertical layout", () => {
+    const tb: GitGraphAst = { ...tagged, direction: "TB" };
+    const r = layoutGitGraph(tb, heuristicMeasure, false, true);
+    if (!r.ok) throw new Error(r.error.message);
+    const caps = r.value.decorations.flatMap((d) => (d.kind === "caption" ? [d] : []));
+    const idCap = caps.find((c) => c.text === "mc");
+    const tag = caps.find((c) => c.text === "v1.0");
+    const mc = r.value.nodes.find((n) => n.id === "mc");
+    if (idCap === undefined || tag === undefined || mc === undefined)
+      throw new Error("caption or commit missing");
+    expect(idCap.at.x).toBeGreaterThan(mc.bounds.origin.x + mc.bounds.size.width);
+    expect(tag.at.x).toBeLessThan(mc.bounds.origin.x);
+  });
+
+  it("the Pills style keeps ids/tags inside the pill labels — no captions", () => {
+    const r = layoutGitGraph(tagged, heuristicMeasure, false, false);
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.decorations).toEqual([]);
+  });
+});

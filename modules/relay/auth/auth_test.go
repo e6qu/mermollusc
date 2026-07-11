@@ -31,6 +31,11 @@ const (
 // key itself is a jwk.Key with KeyID set, not a raw *rsa.PrivateKey.
 func newTestVerifier(t *testing.T) (relay.Authorizer, jwk.Key) {
 	t.Helper()
+	return newTestVerifierWithAlg(t, jwa.RS256())
+}
+
+func newTestVerifierWithAlg(t *testing.T, alg jwa.SignatureAlgorithm) (relay.Authorizer, jwk.Key) {
+	t.Helper()
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatalf("generate key: %v", err)
@@ -42,7 +47,7 @@ func newTestVerifier(t *testing.T) (relay.Authorizer, jwk.Key) {
 	if err := privJWK.Set(jwk.KeyIDKey, testKID); err != nil {
 		t.Fatalf("set kid: %v", err)
 	}
-	if err := privJWK.Set(jwk.AlgorithmKey, jwa.RS256()); err != nil {
+	if err := privJWK.Set(jwk.AlgorithmKey, alg); err != nil {
 		t.Fatalf("set alg: %v", err)
 	}
 
@@ -177,6 +182,29 @@ func TestRejectsWrongIssuer(t *testing.T) {
 	}
 	if result.OK {
 		t.Errorf("expected rejection for wrong issuer")
+	}
+}
+
+func TestPinsAcceptedAlgorithmToRS256(t *testing.T) {
+	// A JWKS key advertising any other algorithm is excluded from verification entirely: a new JWKS
+	// entry must never widen the accepted-algorithm set beyond RS256, even with a valid signature.
+	verifier, priv := newTestVerifierWithAlg(t, jwa.RS512())
+	tok := jwt.New()
+	_ = tok.Set(jwt.SubjectKey, "u")
+	_ = tok.Set(jwt.IssuerKey, testIssuer)
+	_ = tok.Set(jwt.AudienceKey, []string{testAudience})
+	_ = tok.Set(jwt.IssuedAtKey, time.Now())
+	_ = tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour))
+	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.RS512(), priv))
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	result, err := verifier(context.Background(), req(t, string(signed)))
+	if err != nil {
+		t.Fatalf("verifier error: %v", err)
+	}
+	if result.OK {
+		t.Errorf("a validly-signed RS512 token was accepted — the algorithm pin is not enforced")
 	}
 }
 

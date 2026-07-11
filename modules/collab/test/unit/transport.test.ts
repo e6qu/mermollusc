@@ -1,16 +1,19 @@
-import { brand, point } from "@m/std";
+import { brand, point, type Logger } from "@m/std";
 import type { SceneNodeId } from "@m/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   connectTransport,
   connectWebSocket,
   createCollabSession,
+  type CollabEvent,
   type CollabSocket,
   type ReconnectStatus,
+  type RelayControlMessage,
+  type SocketCloseEvent,
   reconnectingWebSocketTransport,
   webSocketTransport,
 } from "../../src/index.js";
-import { backoffDelay } from "../../src/shell/transport.js";
+import { backoffDelay, decodeControlMessage } from "../../src/shell/transport.js";
 
 const n = (s: string): SceneNodeId => brand<string, "SceneNodeId">(s);
 
@@ -163,24 +166,57 @@ describe("collab transport — connectTransport", () => {
     a.destroy();
   });
 
-  it("routes a server control frame to onControl", () => {
-    const a = blank();
-    const wire = pair();
-    let control = "";
-    connectTransport(a, wire.a, {
-      onControl: (m) => {
-        control = m;
-      },
-    });
-    wire.connect();
-    // the "server" (the other end) sends a control frame (tag 2) carrying the role
-    const payload = new TextEncoder().encode("viewer");
+  const controlFrame = (text: string): Uint8Array => {
+    const payload = new TextEncoder().encode(text);
     const frame = new Uint8Array(payload.byteLength + 1);
     frame[0] = 2;
     frame.set(payload, 1);
-    wire.b.send(frame);
-    expect(control).toBe("viewer");
+    return frame;
+  };
+
+  it("routes a server control frame to onControl, decoded through the closed union", () => {
+    const a = blank();
+    const wire = pair();
+    const controls: RelayControlMessage[] = [];
+    connectTransport(a, wire.a, {
+      onControl: (m) => {
+        controls.push(m);
+      },
+    });
+    wire.connect();
+    // the "server" (the other end) sends control frames (tag 2): the role, then the seed grant
+    wire.b.send(controlFrame("viewer"));
+    wire.b.send(controlFrame("seed"));
+    expect(controls).toEqual([{ kind: "role", role: "viewer" }, { kind: "seed" }]);
     a.destroy();
+  });
+
+  it("drops an unknown control payload, logging loudly — a raw peer string never reaches the app", () => {
+    const a = blank();
+    const wire = pair();
+    const controls: RelayControlMessage[] = [];
+    const events: CollabEvent[] = [];
+    const logger: Logger<CollabEvent> = { log: (e) => events.push(e.event) };
+    connectTransport(a, wire.a, {
+      onControl: (m) => {
+        controls.push(m);
+      },
+      logger,
+    });
+    wire.connect();
+    wire.b.send(controlFrame('<img src=x onerror="alert(1)">'));
+    expect(controls).toEqual([]);
+    expect(events).toContain("control-rejected");
+    a.destroy();
+  });
+
+  it("decodeControlMessage accepts exactly the closed vocabulary", () => {
+    expect(decodeControlMessage("owner")).toEqual({ kind: "role", role: "owner" });
+    expect(decodeControlMessage("editor")).toEqual({ kind: "role", role: "editor" });
+    expect(decodeControlMessage("viewer")).toEqual({ kind: "role", role: "viewer" });
+    expect(decodeControlMessage("seed")).toEqual({ kind: "seed" });
+    expect(decodeControlMessage("admin")).toBeNull();
+    expect(decodeControlMessage("")).toBeNull();
   });
 
   it("disconnect stops forwarding further edits", () => {
@@ -210,24 +246,24 @@ class FakeWebSocket {
   private readonly listeners: {
     open: Array<() => void>;
     message: Array<(e: { data: unknown }) => void>;
-    close: Array<() => void>;
+    close: Array<(e: { code: number; reason: string }) => void>;
     error: Array<() => void>;
   } = { open: [], message: [], close: [], error: [] };
   constructor(readonly url: string) {
     FakeWebSocket.instances.push(this);
   }
-  addEventListener(type: "open" | "message" | "close" | "error", cb: () => void): void {
-    if (type === "open") this.listeners.open.push(cb);
-    else if (type === "close") this.listeners.close.push(cb);
-    else if (type === "error") this.listeners.error.push(cb);
+  addEventListener(type: "open" | "message" | "close" | "error", cb: (e: never) => void): void {
+    if (type === "open") this.listeners.open.push(cb as () => void);
+    else if (type === "close") this.listeners.close.push(cb as (e: { code: number; reason: string }) => void);
+    else if (type === "error") this.listeners.error.push(cb as () => void);
     else this.listeners.message.push(cb as (e: { data: unknown }) => void);
   }
   send(data: ArrayBuffer): void {
     this.sent.push(data);
   }
-  close(): void {
+  close(code = 1000, reason = ""): void {
     this.readyState = 3;
-    for (const l of this.listeners.close) l();
+    for (const l of this.listeners.close) l({ code, reason });
   }
   error(): void {
     for (const l of this.listeners.error) l();
@@ -305,6 +341,17 @@ describe("collab transport — webSocketTransport (platform socket)", () => {
     session.destroy();
   });
 
+  it("exposes the server's close code and reason on the close event", () => {
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    const socket = webSocketTransport("wss://relay.example/room-c");
+    const ws = FakeWebSocket.instances[0];
+    if (ws === undefined) throw new Error("no socket created");
+    const closes: SocketCloseEvent[] = [];
+    socket.onClose((e) => closes.push(e));
+    ws.close(1008, "forbidden: board");
+    expect(closes).toEqual([{ code: 1008, reason: "forbidden: board" }]);
+  });
+
   it("onClose fires once on a drop, whether close or error (or both) arrive", () => {
     vi.stubGlobal("WebSocket", FakeWebSocket);
     const session = blank();
@@ -332,7 +379,7 @@ class ControlSocket {
   readonly sent: Uint8Array[] = [];
   private readonly openCbs: Array<() => void> = [];
   private readonly msgCbs: Array<(d: Uint8Array) => void> = [];
-  private readonly closeCbs: Array<() => void> = [];
+  private readonly closeCbs: Array<(e: SocketCloseEvent) => void> = [];
   constructor(readonly url: string) {
     ControlSocket.minted.push(this);
   }
@@ -348,7 +395,7 @@ class ControlSocket {
   onMessage(l: (d: Uint8Array) => void): void {
     this.msgCbs.push(l);
   }
-  onClose(l: () => void): void {
+  onClose(l: (e: SocketCloseEvent) => void): void {
     this.closeCbs.push(l);
   }
   close(): void {
@@ -358,9 +405,9 @@ class ControlSocket {
     this.open = true;
     for (const l of this.openCbs) l();
   }
-  drop(): void {
+  drop(event: SocketCloseEvent = { code: null, reason: "dropped" }): void {
     this.open = false;
-    for (const l of this.closeCbs) l();
+    for (const l of this.closeCbs) l(event);
   }
   deliver(d: Uint8Array): void {
     for (const l of this.msgCbs) l(d);
@@ -472,6 +519,76 @@ describe("collab transport — reconnectingWebSocketTransport", () => {
     expect(statuses).toContain("disconnected");
     expect(closedToConsumer).toBe(1);
 
+    socket.close();
+  });
+
+  it("NEVER retries a policy close (1008) — surfaces `rejected` and the close code immediately", () => {
+    const scheduled: Array<() => void> = [];
+    const statuses: ReconnectStatus[] = [];
+    const events: CollabEvent[] = [];
+    const logger: Logger<CollabEvent> = { log: (e) => events.push(e.event) };
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run) => scheduled.push(run),
+      random: () => 0,
+      onStatus: (s) => statuses.push(s),
+      logger,
+    });
+    const closes: SocketCloseEvent[] = [];
+    socket.onClose((e) => closes.push(e));
+
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+
+    // The relay rejects us (bad room / bad token / rate-limit breach). Retrying replays the rejection,
+    // so no reconnect may be scheduled — the failure is permanent and loud.
+    first.drop({ code: 1008, reason: "forbidden: board" });
+    expect(scheduled).toHaveLength(0);
+    expect(statuses).toEqual(["rejected"]);
+    expect(closes).toEqual([{ code: 1008, reason: "forbidden: board" }]);
+    expect(events).toContain("relay-rejected");
+  });
+
+  it("NEVER retries a message-too-big close (1009)", () => {
+    const scheduled: Array<() => void> = [];
+    const statuses: ReconnectStatus[] = [];
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run) => scheduled.push(run),
+      random: () => 0,
+      onStatus: (s) => statuses.push(s),
+    });
+    let closed = 0;
+    socket.onClose(() => {
+      closed += 1;
+    });
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+    first.drop({ code: 1009, reason: "message too big" });
+    expect(scheduled).toHaveLength(0);
+    expect(statuses).toEqual(["rejected"]);
+    expect(closed).toBe(1);
+  });
+
+  it("still retries a NORMAL close code (a transient drop is not a rejection)", () => {
+    const scheduled: Array<() => void> = [];
+    const socket = reconnectingWebSocketTransport("wss://relay/room", {
+      mkSocket: (u) => new ControlSocket(u),
+      schedule: (run) => scheduled.push(run),
+      random: () => 0,
+    });
+    let closed = 0;
+    socket.onClose(() => {
+      closed += 1;
+    });
+    const first = ControlSocket.minted[0];
+    if (first === undefined) throw new Error("no socket minted");
+    first.flipOpen();
+    first.drop({ code: 1006, reason: "abnormal closure" });
+    expect(scheduled).toHaveLength(1);
+    expect(closed).toBe(0);
     socket.close();
   });
 

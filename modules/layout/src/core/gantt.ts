@@ -11,6 +11,7 @@ import type {
   SceneNode,
 } from "@m/contracts";
 import type { LayoutError, MeasureText } from "./graph.js";
+import { withTitle } from "./title.js";
 
 // A task's status maps to a fill accent the renderer colours: done is muted, active highlighted, crit
 // flagged; a normal task takes the ordinary fill (`none`).
@@ -26,6 +27,11 @@ export const LEFT_GUTTER = 96; // exported with DAY_WIDTH so source rewrites use
 const ROW_HEIGHT = 30;
 const BAR_HEIGHT = 22;
 const LABEL_PAD = 12;
+// A milestone is a compact diamond marker on its date; its label sits BESIDE it (like Mermaid's
+// adjacent milestone text), never squeezed inside the diamond.
+const MILESTONE_W = BAR_HEIGHT;
+// Clears the DEP_LEAD hook that re-enters a milestone from the right, so the label never sits under it.
+const MILESTONE_LABEL_GAP = 16;
 // Horizontal lead-out past the later of the two bar ends, so the elbow never overlaps either bar.
 const DEP_LEAD = 8;
 const TOP_AXIS = 22; // band above the bars for the date captions
@@ -146,7 +152,12 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   }
 
   if (placed.length === 0)
-    return ok({ nodes: [], edges: [], wedges: [], decorations: [], extent: rect(0, 0, 1, 1) });
+    return ok(
+      withTitle(
+        { nodes: [], edges: [], wedges: [], decorations: [], extent: rect(0, 0, 1, 1) },
+        ast.title,
+      ),
+    );
 
   const minDay = placed.reduce((m, p) => Math.min(m, p.startDay), Number.POSITIVE_INFINITY);
   const maxDay = placed.reduce((m, p) => Math.max(m, p.endDay), Number.NEGATIVE_INFINITY);
@@ -155,13 +166,17 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
   const dayX = (day: number): number => LEFT_GUTTER + (day - minDay) * DAY_WIDTH;
 
   const nodes: SceneNode[] = placed.map((p, i) => {
-    // A task is a bar (start..end); a milestone is a diamond centred on its single date.
-    const w = Math.max((p.endDay - p.startDay) * DAY_WIDTH, measure(p.label) + LABEL_PAD);
+    // A task is a bar (start..end); a milestone is a compact diamond centred on its single date. The
+    // milestone's text is emitted as an adjacent caption below, so the node itself carries no label —
+    // widening the diamond to hold the text would squash it against the dependency connectors.
+    const w = p.milestone
+      ? MILESTONE_W
+      : Math.max((p.endDay - p.startDay) * DAY_WIDTH, measure(p.label) + LABEL_PAD);
     const x = p.milestone ? dayX(p.startDay) - w / 2 : dayX(p.startDay);
     return {
       id: sceneNodeId(p.id),
       bounds: rect(x, rowY(i), w, BAR_HEIGHT),
-      label: p.label,
+      label: p.milestone ? "" : p.label,
       shape: p.milestone ? "diamond" : "rect",
       parent: null,
       icon: null,
@@ -173,7 +188,14 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     };
   });
 
-  const width = nodes.reduce((mx, n) => Math.max(mx, n.bounds.origin.x + n.bounds.size.width), 0);
+  // The chart width covers the widest bar AND every milestone's adjacent label caption.
+  const width = placed.reduce(
+    (mx, p) =>
+      p.milestone
+        ? Math.max(mx, dayX(p.startDay) + MILESTONE_W / 2 + MILESTONE_LABEL_GAP + measure(p.label))
+        : mx,
+    nodes.reduce((mx, n) => Math.max(mx, n.bounds.origin.x + n.bounds.size.width), 0),
+  );
   const bottom = rowY(placed.length);
   const rowPad = (ROW_HEIGHT - BAR_HEIGHT) / 2;
   const decorations: Decoration[] = [];
@@ -231,6 +253,17 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     lastSection = p.section;
   });
 
+  // Each milestone's label, adjacent to its diamond (Mermaid places milestone text beside the marker).
+  placed.forEach((p, i) => {
+    if (!p.milestone) return;
+    decorations.push({
+      kind: "caption",
+      at: point(dayX(p.startDay) + MILESTONE_W / 2 + MILESTONE_LABEL_GAP, rowY(i) + BAR_HEIGHT / 2),
+      text: p.label,
+      align: "left",
+    });
+  });
+
   // Dependency connectors: from the predecessor bar's visual end, a short lead-out, down (or up, for a
   // same-row-direction quirk) to the successor's row, then into the successor bar's start. Bar bounds
   // (not raw day maths) anchor both ends, so label-widened bars and centred milestones stay attached.
@@ -245,7 +278,13 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     if (fromNode === undefined || toNode === undefined) continue;
     const fromX = fromNode.bounds.origin.x + fromNode.bounds.size.width;
     const fromY = fromNode.bounds.origin.y + fromNode.bounds.size.height / 2;
-    const toX = toNode.bounds.origin.x;
+    // A bar is entered at its start (left) edge. A milestone diamond is centred ON its date — its left
+    // half lies before the date — so the hook comes back to its RIGHT corner instead of drawing
+    // through the diamond's body (the connector always approaches from the lead-out on the right).
+    const toMilestone = placed[toRow]?.milestone ?? false;
+    const toX = toMilestone
+      ? toNode.bounds.origin.x + toNode.bounds.size.width
+      : toNode.bounds.origin.x;
     const toY = toNode.bounds.origin.y + toNode.bounds.size.height / 2;
     const leadX = Math.max(fromX, toX) + DEP_LEAD;
     edges.push({
@@ -270,7 +309,12 @@ export const layoutGantt = (ast: GanttAst, measure: MeasureText): Result<Scene, 
     });
   }
 
-  return ok({ nodes, edges, wedges: [], decorations, extent: rect(0, 0, width, bottom) });
+  return ok(
+    withTitle(
+      { nodes, edges, wedges: [], decorations, extent: rect(0, 0, width, bottom) },
+      ast.title,
+    ),
+  );
 };
 
 // Family-context style invariant: a Gantt chart stacks one task per row, top-to-bottom in task order, so

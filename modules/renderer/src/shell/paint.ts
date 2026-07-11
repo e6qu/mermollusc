@@ -25,7 +25,16 @@ export interface Canvas2D {
   fillRect(x: number, y: number, w: number, h: number): void;
   measureText(text: string): { readonly width: number };
   roundRect(x: number, y: number, w: number, h: number, radius: number): void;
-  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void;
+  // `anticlockwise` is required here (the DOM makes it optional): the donut inner arc MUST sweep
+  // backwards or each slice fills across the hole, so the painter always states the direction.
+  arc(
+    x: number,
+    y: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    anticlockwise: boolean,
+  ): void;
   setLineDash(segments: readonly number[]): void;
   drawImage(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void;
 }
@@ -62,7 +71,10 @@ const isDarkTheme = (theme: Theme): boolean => {
 // A node's semantic fill accent → a concrete colour (theme-aware). `none` is the ordinary node fill;
 // muted/active/danger cover generic status, and the architecture accents let cloud/network diagrams
 // keep provider/service roles visible without embedding raw colours in layout. Exhaustive, so a new
-// accent must be handled here.
+// accent must be handled here. The dark shades are desaturated (~25–32% HSL saturation, matching the
+// pastel feel of the light shades) — the earlier saturated 700/900-level hues made dark-mode cloud
+// group panels glow. Every dark shade keeps ≥ 4.5:1 contrast under the dark theme's text colour
+// (guarded by the palette contrast test).
 export const accentFill = (accent: NodeAccent, theme: Theme): string => {
   const dark = isDarkTheme(theme);
   switch (accent) {
@@ -71,19 +83,19 @@ export const accentFill = (accent: NodeAccent, theme: Theme): string => {
     case "muted":
       return dark ? "#475569" : "#e2e8f0";
     case "active":
-      return dark ? "#1d4ed8" : "#bfdbfe";
+      return dark ? "#2f405b" : "#bfdbfe";
     case "danger":
-      return dark ? "#b91c1c" : "#fecaca";
+      return dark ? "#562e2e" : "#fecaca";
     case "compute":
-      return dark ? "#14532d" : "#dcfce7";
+      return dark ? "#2c4938" : "#dcfce7";
     case "data":
-      return dark ? "#713f12" : "#fef3c7";
+      return dark ? "#493e27" : "#fef3c7";
     case "network":
-      return dark ? "#164e63" : "#cffafe";
+      return dark ? "#29464c" : "#cffafe";
     case "security":
-      return dark ? "#7f1d1d" : "#fee2e2";
+      return dark ? "#522e37" : "#fee2e2";
     case "ops":
-      return dark ? "#4c1d95" : "#ede9fe";
+      return dark ? "#41355a" : "#ede9fe";
     default:
       return assertNever(accent);
   }
@@ -263,7 +275,14 @@ const drawMarker = (ctx: Canvas2D, marker: EndMarker, theme: Theme, color: strin
   if (marker.circle !== null) {
     ctx.fillStyle = theme.background;
     ctx.beginPath();
-    ctx.arc(marker.circle.center.x, marker.circle.center.y, marker.circle.radius, 0, Math.PI * 2);
+    ctx.arc(
+      marker.circle.center.x,
+      marker.circle.center.y,
+      marker.circle.radius,
+      0,
+      Math.PI * 2,
+      false,
+    );
     ctx.fill();
     ctx.stroke();
   }
@@ -312,14 +331,14 @@ export const paint = (
       case "stateStart": {
         ctx.fillStyle = theme.stroke;
         ctx.beginPath();
-        ctx.arc(cmd.cx, cmd.cy, Math.max(3, cmd.radius - 3), 0, Math.PI * 2);
+        ctx.arc(cmd.cx, cmd.cy, Math.max(3, cmd.radius - 3), 0, Math.PI * 2, false);
         ctx.fill();
         break;
       }
       case "junction": {
         ctx.fillStyle = theme.stroke;
         ctx.beginPath();
-        ctx.arc(cmd.cx, cmd.cy, cmd.radius, 0, Math.PI * 2);
+        ctx.arc(cmd.cx, cmd.cy, cmd.radius, 0, Math.PI * 2, false);
         ctx.fill();
         break;
       }
@@ -327,12 +346,12 @@ export const paint = (
         ctx.fillStyle = theme.background;
         ctx.strokeStyle = theme.stroke;
         ctx.beginPath();
-        ctx.arc(cmd.cx, cmd.cy, Math.max(5, cmd.radius - 1), 0, Math.PI * 2);
+        ctx.arc(cmd.cx, cmd.cy, Math.max(5, cmd.radius - 1), 0, Math.PI * 2, false);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = theme.stroke;
         ctx.beginPath();
-        ctx.arc(cmd.cx, cmd.cy, Math.max(2.5, cmd.radius - 6), 0, Math.PI * 2);
+        ctx.arc(cmd.cx, cmd.cy, Math.max(2.5, cmd.radius - 6), 0, Math.PI * 2, false);
         ctx.fill();
         break;
       }
@@ -346,7 +365,10 @@ export const paint = (
       case "diamond": {
         const hw = cmd.width / 2;
         const hh = cmd.height / 2;
-        ctx.strokeStyle = theme.nodeStroke;
+        // A raw `fill`/`stroke` from a Mermaid `style`/`classDef` directive wins over the accent/theme,
+        // exactly as for `box`.
+        ctx.strokeStyle = cmd.stroke ?? theme.nodeStroke;
+        const fill = cmd.fill ?? accentFill(cmd.accent, theme);
         if (theme.sketch) {
           const s = seedOf(cmd.cx, cmd.cy, cmd.width);
           // Opaque base + translucent accent so an edge routed under the diamond is occluded (the sketch
@@ -359,7 +381,7 @@ export const paint = (
           ctx.closePath();
           ctx.fillStyle = theme.background;
           ctx.fill();
-          ctx.fillStyle = theme.nodeFill;
+          ctx.fillStyle = fill;
           ctx.globalAlpha = 0.62;
           ctx.fill();
           ctx.globalAlpha = 1;
@@ -369,7 +391,7 @@ export const paint = (
           sketchLine(ctx, cmd.cx - hw, cmd.cy, cmd.cx, cmd.cy - hh, s + 3);
           break;
         }
-        ctx.fillStyle = theme.nodeFill;
+        ctx.fillStyle = fill;
         ctx.beginPath();
         ctx.moveTo(cmd.cx, cmd.cy - hh);
         ctx.lineTo(cmd.cx + hw, cmd.cy);
@@ -396,7 +418,7 @@ export const paint = (
         ctx.fillStyle = theme.background;
         ctx.setLineDash([]);
         ctx.beginPath();
-        ctx.arc(cxm, headCy, r, 0, Math.PI * 2);
+        ctx.arc(cxm, headCy, r, 0, Math.PI * 2, false);
         ctx.fill();
         ctx.stroke();
         ctx.beginPath();
@@ -517,13 +539,15 @@ export const paint = (
           const innerEndX = cmd.cx + cmd.innerRadius * Math.cos(cmd.endAngle);
           const innerEndY = cmd.cy + cmd.innerRadius * Math.sin(cmd.endAngle);
           ctx.moveTo(outerStartX, outerStartY);
-          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
+          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle, false);
           ctx.lineTo(innerEndX, innerEndY);
-          ctx.arc(cmd.cx, cmd.cy, cmd.innerRadius, cmd.endAngle, cmd.startAngle);
+          // The inner arc sweeps BACK (anticlockwise) so the annulus path returns along the hole's
+          // rim; swept forward it would wind across the hole and every slice would fill it solid.
+          ctx.arc(cmd.cx, cmd.cy, cmd.innerRadius, cmd.endAngle, cmd.startAngle, true);
           ctx.closePath();
         } else {
           if (!full) ctx.moveTo(cmd.cx, cmd.cy);
-          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle);
+          ctx.arc(cmd.cx, cmd.cy, cmd.radius, cmd.startAngle, cmd.endAngle, false);
           if (!full) ctx.closePath();
         }
         ctx.fill();

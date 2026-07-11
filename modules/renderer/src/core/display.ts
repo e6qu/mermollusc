@@ -89,6 +89,12 @@ export type DrawCmd =
       readonly cy: Coordinate;
       readonly width: Length;
       readonly height: Length;
+      // Same fill resolution as `box`: a raw `style`/`classDef` fill/stroke wins over the semantic
+      // accent, which wins over the theme — so a flowchart decision diamond honours colour directives
+      // exactly like every other shape.
+      readonly accent: NodeAccent;
+      readonly fill: string | null;
+      readonly stroke: string | null;
     }
   | {
       // A UML-style stickman (head, body, arms, legs) drawn to fit the box — a person/actor.
@@ -456,7 +462,39 @@ const nodeCmds = (node: SceneNode, colors: NodeColors): DrawCmd[] => {
     ];
   }
   if (node.shape === "diamond") {
-    return [{ kind: "diamond", cx, cy, width: size.width, height: size.height }, label];
+    const diamond = {
+      kind: "diamond",
+      cx,
+      cy,
+      width: size.width,
+      height: size.height,
+      accent: node.accent,
+      fill: colors.fill,
+      stroke: colors.stroke,
+    } satisfies DrawCmd;
+    if (node.icon === null) return [diamond, label];
+    // With an icon, stack glyph-above-text centred on the node (a diamond narrows toward its top, so
+    // the top-anchored placement rect nodes use would poke the glyph outside the shape).
+    const gap = 4;
+    const groupH = ICON_SIZE + gap + 16;
+    return [
+      diamond,
+      {
+        kind: "icon",
+        ref: node.icon,
+        x: coordinate(origin.x + size.width / 2 - ICON_SIZE / 2),
+        y: coordinate(cy - groupH / 2),
+        size: length(ICON_SIZE),
+      },
+      {
+        kind: "label",
+        x: cx,
+        y: coordinate(cy - groupH / 2 + ICON_SIZE + gap + 8),
+        text: node.label,
+        align: "center",
+        labelStyle: "node",
+      },
+    ];
   }
   if (node.shape === "actor") {
     // A stickman filling the upper part of the box, with its label on the bottom row.
@@ -686,6 +724,63 @@ const labelVsLine = (
     : { x, y, masked: true };
 };
 
+// Liang-Barsky segment-vs-rect: does the segment a–b pass through the axis-aligned rectangle?
+const segCrossesRect = (
+  a: Point,
+  b: Point,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+): boolean => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  return (
+    clip(-dx, a.x - minX) && clip(dx, maxX - a.x) && clip(-dy, a.y - minY) && clip(dy, maxY - a.y)
+  );
+};
+
+// Estimated text-box metrics for an edge label at the default 16px theme font. The core is
+// theme-agnostic, so this mirrors the SVG backend's estimate (0.6em average glyph width); a rough hit
+// test is all the masking decision needs.
+const LABEL_EST_CHAR_W = 9.6;
+const LABEL_EST_LINE_H = 16;
+const LABEL_EST_PAD = 2;
+
+// Would ANY edge line pass through a label box centred at (x, y)? A lifted (horizontal-run) edge label
+// draws as bare transparent text, which only reads over empty canvas: its own bend can cross it, and —
+// the sequence family — a message label's lifted box spans the lifelines between the two actors. When
+// crossed, the label falls back to the in-channel opaque masking plate instead.
+const labelCrossed = (x: number, y: number, text: string, edges: Scene["edges"]): boolean => {
+  const lines = labelLines(text);
+  const widest = lines.reduce((w, l) => Math.max(w, l.length), 0);
+  const halfW = (widest * LABEL_EST_CHAR_W) / 2 + LABEL_EST_PAD;
+  const halfH = (lines.length * LABEL_EST_LINE_H) / 2 + LABEL_EST_PAD;
+  for (const e of edges) {
+    for (let i = 0; i + 1 < e.waypoints.length; i++) {
+      const a = e.waypoints[i];
+      const b = e.waypoints[i + 1];
+      if (a === undefined || b === undefined) continue;
+      if (segCrossesRect(a, b, x - halfW, y - halfH, x + halfW, y + halfH)) return true;
+    }
+  }
+  return false;
+};
+
 const JUNCTION_R = 3.2; // radius of a bus-junction dot
 const SEG_EPS = 0.5; // axis-alignment / same-track tolerance for junction detection
 
@@ -832,13 +927,16 @@ export const toDisplayList = (
       // wasted horizontal space dodging aside).
       const anchor = edge.labelPos ?? edgeLabelAnchor(pts);
       const placed = labelVsLine(anchor.x, anchor.y, pts);
+      // A lifted label is bare transparent text; when an edge line would still cross it (its own bend,
+      // or the lifelines a sequence message spans), keep it in-channel on the opaque masking plate.
+      const lifted = !placed.masked && !labelCrossed(placed.x, placed.y, edge.label, scene.edges);
       labels.push({
         kind: "label",
-        x: coordinate(placed.x),
-        y: coordinate(placed.y),
+        x: coordinate(lifted ? placed.x : anchor.x),
+        y: coordinate(lifted ? placed.y : anchor.y),
         text: edge.label,
         align: "center",
-        labelStyle: placed.masked ? "edge-masked" : "edge",
+        labelStyle: lifted ? "edge" : "edge-masked",
       });
     }
     // Per-end labels (class multiplicity) sit just inside each endpoint, offset along the first/last

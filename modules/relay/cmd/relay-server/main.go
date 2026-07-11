@@ -4,8 +4,10 @@
 //	PORT=1234 PERSIST_DIR=.collab-data go run ./cmd/relay-server
 //
 // Optional: AUTH0_DOMAIN + AUTH0_AUDIENCE (both required together) turn on Auth0 OIDC verification;
-// MEMBERSHIP_FILE points at a static room/member role source instead of relying on token claims. Absent
-// PERSIST_DIR, rooms are in-memory only (zero-config dev).
+// MEMBERSHIP_FILE points at a static room/member role source instead of relying on token claims;
+// ALLOWED_ORIGINS is a comma-separated list of additional browser Origins allowed to connect (same-host
+// and loopback origins are always allowed; every other cross-origin upgrade is rejected with a 403).
+// Absent PERSIST_DIR, rooms are in-memory only (zero-config dev).
 package main
 
 import (
@@ -77,14 +79,19 @@ func main() {
 		log.Fatalf("collab relay: listen: %v", err)
 	}
 	actualPort := listener.Addr().(*net.TCPAddr).Port
-	server := &http.Server{Handler: newHandler(core, logger)}
+	origins := newOriginPolicy(os.Getenv("ALLOWED_ORIGINS"))
+	registry := newSocketRegistry()
+	server := &http.Server{Handler: newHandler(core, logger, origins, registry)}
 
 	shutdown := make(chan struct{})
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 		s := <-sig
-		logger.Printf("collab relay: %v — flushing rooms and closing", s)
+		logger.Printf("collab relay: %v — closing connections, flushing rooms", s)
+		// Drain BEFORE the final flush: hijacked WebSocket conns outlive server.Shutdown, so an edit
+		// still inside the save-debounce window would otherwise arrive after FlushAll and be dropped.
+		registry.drain()
 		core.FlushAll()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -120,7 +127,7 @@ func envInt(name string, def int) int {
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return def
+		log.Fatalf("collab relay: %s=%q is not an integer: %v", name, v, err)
 	}
 	return n
 }

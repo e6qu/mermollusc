@@ -3,7 +3,9 @@ import type { Groups, LayoutOverrides } from "@m/contracts";
 import { describe, expect, it } from "vitest";
 import {
   decodeOverlay,
+  encodeEdgeStyleEntry,
   encodeGroupEntry,
+  encodeNodeStyleEntry,
   encodeOverrideEntry,
   serializeOverlay,
 } from "../../src/shell/overlay.js";
@@ -113,5 +115,37 @@ describe("overlay codec", () => {
     if (!isOk(decoded)) return;
     expect(decoded.value.overrides.get(snid("A"))).toEqual(o);
     expect(decoded.value.groups.get(gid("g1"))).toEqual(g);
+  });
+
+  it("per-entry STYLE encoders flatten brands and decode back unchanged (collab's Y.Map path)", () => {
+    const e = {
+      route: "curved" as const,
+      routeOption: 2,
+      labelT: 0.25,
+      waypoints: [point(1, 2), point(3, 4)],
+      accent: "danger" as const,
+    };
+    const s = { accent: "ops" as const };
+    expect(encodeEdgeStyleEntry(e)).toEqual({
+      route: "curved",
+      routeOption: 2,
+      labelT: 0.25,
+      waypoints: [
+        { x: 1, y: 2 },
+        { x: 3, y: 4 },
+      ],
+      accent: "danger",
+    });
+    expect(encodeNodeStyleEntry(s)).toEqual({ accent: "ops" });
+    const decoded = decodeOverlay({
+      overrides: [],
+      groups: [],
+      edgeStyles: [["e0", encodeEdgeStyleEntry(e)]],
+      nodeStyles: [["A", encodeNodeStyleEntry(s)]],
+    });
+    expect(isOk(decoded)).toBe(true);
+    if (!isOk(decoded)) return;
+    expect(decoded.value.edgeStyles.get(brand<string, "SceneEdgeId">("e0"))).toEqual(e);
+    expect(decoded.value.nodeStyles.get(snid("A"))).toEqual(s);
   });
 });

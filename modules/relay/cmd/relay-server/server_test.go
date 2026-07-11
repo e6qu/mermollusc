@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -57,7 +58,7 @@ func startTestServer(t *testing.T, opts relay.Options) string {
 	}
 	opts.Logger = testLogger{t}
 	core := relay.New(opts)
-	srv := httptest.NewServer(newHandler(core, testLogger{t}))
+	srv := httptest.NewServer(newHandler(core, testLogger{t}, newOriginPolicy(""), newSocketRegistry()))
 	t.Cleanup(srv.Close)
 	return "ws" + strings.TrimPrefix(srv.URL, "http")
 }
@@ -68,6 +69,7 @@ func openPath(t *testing.T, base, path string) (*websocket.Conn, error) {
 	defer cancel()
 	conn, _, err := websocket.Dial(ctx, base+path, nil)
 	if conn != nil {
+		conn.SetReadLimit(maxFrameBytes) // the CLIENT side defaults to 32KiB too — match the server's cap
 		t.Cleanup(func() { _ = conn.CloseNow() })
 	}
 	return conn, err
@@ -359,6 +361,147 @@ func TestSeedGrantNotSentForRoomWithContent(t *testing.T) {
 	b := open(t, base)
 	if n := countSeedGrants(readAdmission(t, b)); n != 0 {
 		t.Fatalf("a joiner of a room WITH content received %d seed grant(s), want 0", n)
+	}
+}
+
+// dialWithOrigin opens a WebSocket with an explicit browser Origin header, as a cross-site page would.
+func dialWithOrigin(t *testing.T, base, origin string) (*websocket.Conn, *http.Response, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, resp, err := websocket.Dial(ctx, base+"/board", &websocket.DialOptions{
+		HTTPHeader: http.Header{"Origin": []string{origin}},
+	})
+	if conn != nil {
+		t.Cleanup(func() { _ = conn.CloseNow() })
+	}
+	return conn, resp, err
+}
+
+func TestOriginPolicyRejectsCrossOriginUpgrade(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	conn, resp, err := dialWithOrigin(t, base, "https://evil.example")
+	if err == nil {
+		t.Fatal("a cross-origin upgrade was accepted; want a 403 rejection")
+	}
+	if conn != nil {
+		t.Fatal("got a live connection for a cross-origin upgrade")
+	}
+	if resp == nil || resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("cross-origin upgrade response = %v, want 403", resp)
+	}
+}
+
+func TestOriginPolicyAllowsLoopbackOrigin(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	// The app dev server and the relay run on different ports of the same loopback host — a different
+	// origin by the browser's definition, but the local-dev shape the default policy must keep working.
+	conn, _, err := dialWithOrigin(t, base, "http://localhost:5173")
+	if err != nil {
+		t.Fatalf("loopback origin was rejected: %v", err)
+	}
+	got := readUntil(t, conn, 2*time.Second, func(f []byte) bool { return len(f) > 0 && f[0] == tagControl })
+	if len(got) == 0 {
+		t.Fatal("no control frame after a loopback-origin upgrade")
+	}
+}
+
+func TestOriginPolicyAllowsSameHostOrigin(t *testing.T) {
+	base := startTestServer(t, relay.Options{})
+	// httptest binds 127.0.0.1:<port>; an origin on the same hostname but a different port must pass.
+	host := strings.TrimPrefix(base, "ws://")
+	hostname := host[:strings.LastIndex(host, ":")]
+	conn, _, err := dialWithOrigin(t, base, "http://"+hostname+":9999")
+	if err != nil {
+		t.Fatalf("same-host origin was rejected: %v", err)
+	}
+	readUntil(t, conn, 2*time.Second, func(f []byte) bool { return len(f) > 0 && f[0] == tagControl })
+}
+
+func TestOriginPolicyAllowsEnvAllowlistedOrigin(t *testing.T) {
+	core := relay.New(relay.Options{Store: store.NewMemory(), Logger: testLogger{t}})
+	srv := httptest.NewServer(newHandler(
+		core, testLogger{t}, newOriginPolicy("https://app.example.com, https://other.example.com"), newSocketRegistry(),
+	))
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	conn, _, err := dialWithOrigin(t, base, "https://app.example.com")
+	if err != nil {
+		t.Fatalf("allowlisted origin was rejected: %v", err)
+	}
+	readUntil(t, conn, 2*time.Second, func(f []byte) bool { return len(f) > 0 && f[0] == tagControl })
+
+	if _, resp, err := dialWithOrigin(t, base, "https://unlisted.example.com"); err == nil {
+		t.Fatal("an unlisted cross-origin upgrade was accepted")
+	} else if resp == nil || resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("unlisted origin response = %v, want 403", resp)
+	}
+}
+
+// TestLargeDocFrameSurvivesReadLimit reproduces the old failure: coder/websocket's 32KiB default read
+// limit killed any DOC frame bigger than that with a 1009 close. A frame under maxFrameBytes must relay.
+func TestLargeDocFrameSurvivesReadLimit(t *testing.T) {
+	base := startTestServer(t, relay.Options{
+		AuthorizeRoom: func(*relay.User, string) relay.Role { return relay.RoleEditor },
+	})
+	a, b := open(t, base), open(t, base)
+	readUntil(t, a, time.Second, func(f []byte) bool { return f[0] == tagDoc })
+	readUntil(t, b, time.Second, func(f []byte) bool { return f[0] == tagDoc })
+
+	big := strings.Repeat("mermollusc ", 10_000) // ~110KB of source — over 32KiB, under maxFrameBytes
+	send(t, a, frame(tagDoc, docUpdate(t, big)))
+	got := readUntil(t, b, 5*time.Second, func(f []byte) bool { return f[0] == tagDoc && len(f) > 32*1024 })
+	if len(got) <= 32*1024 {
+		t.Fatalf("large doc frame did not relay (got %d bytes)", len(got))
+	}
+}
+
+// TestSlowConsumerIsClosedWithoutStallingSenders proves the bounded per-peer send queue: a peer that
+// stops reading is torn down (loudly) once its outbound queue overflows, and the sender is never blocked
+// waiting on it — broadcast keeps working for healthy peers.
+func TestSlowConsumerIsClosedWithoutStallingSenders(t *testing.T) {
+	core := relay.New(relay.Options{
+		Store:  store.NewMemory(),
+		Logger: testLogger{t},
+		// A generous limit so the flood below trips the send queue, not the inbound rate limiter.
+		RateLimit:     relay.RateLimit{FramesPerSec: 1_000_000, BytesPerSec: 1 << 30},
+		AuthorizeRoom: func(*relay.User, string) relay.Role { return relay.RoleEditor },
+	})
+	srv := httptest.NewServer(newHandler(core, testLogger{t}, newOriginPolicy(""), newSocketRegistry()))
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	sender := open(t, base)
+	stuck := open(t, base)
+	healthy := open(t, base)
+	readUntil(t, sender, time.Second, func(f []byte) bool { return f[0] == tagDoc })
+	readUntil(t, stuck, time.Second, func(f []byte) bool { return f[0] == tagDoc })
+	readUntil(t, healthy, time.Second, func(f []byte) bool { return f[0] == tagDoc })
+	// `stuck` now simply never reads again — its OS buffers and then its server-side queue fill up.
+
+	start := time.Now()
+	payload := make([]byte, 256*1024)
+	deadline := time.Now().Add(20 * time.Second)
+	for i := 0; time.Now().Before(deadline); i++ {
+		send(t, sender, frame(tagAware, payload))
+		// The healthy peer keeps receiving — if broadcast were synchronous on the stuck peer, this
+		// read (and the sends above) would stall for the full write timeout per frame.
+		got := readUntil(t, healthy, 5*time.Second, func(f []byte) bool { return f[0] == tagAware })
+		if got == nil {
+			t.Fatal("healthy peer stopped receiving")
+		}
+		if i*len(payload) > 3*sendQueueBytes {
+			break // more than enough to overflow the stuck peer's queue
+		}
+	}
+	if elapsed := time.Since(start); elapsed > 15*time.Second {
+		t.Fatalf("broadcast stalled on the stuck peer (took %v)", elapsed)
+	}
+	// The stuck peer must have been closed by the relay (queue overflow), not left half-alive.
+	code := closeCode(t, stuck, 10*time.Second)
+	if code == 0 {
+		t.Fatalf("stuck peer was never closed")
 	}
 }
 

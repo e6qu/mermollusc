@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/lestrrat-go/httprc/v3"
+	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 
@@ -38,7 +39,11 @@ func NewVerifier(jwksURI, issuer, audience string) (relay.Authorizer, error) {
 		if err != nil {
 			return relay.AuthResult{}, fmt.Errorf("fetching JWKS: %w", err)
 		}
-		token, err := jwt.Parse([]byte(req.AuthToken), jwt.WithKeySet(keyset))
+		pinned, err := pinRS256(keyset)
+		if err != nil {
+			return relay.AuthResult{}, fmt.Errorf("pinning JWKS to RS256: %w", err)
+		}
+		token, err := jwt.Parse([]byte(req.AuthToken), jwt.WithKeySet(pinned))
 		if err != nil {
 			return relay.AuthResult{OK: false, Reason: err.Error()}, nil
 		}
@@ -47,6 +52,28 @@ func NewVerifier(jwksURI, issuer, audience string) (relay.Authorizer, error) {
 		}
 		return relay.AuthResult{OK: true, User: userFrom(token)}, nil
 	}, nil
+}
+
+// pinRS256 filters a JWKS down to the keys explicitly declared RS256. jwt.Parse with a key set accepts
+// whatever algorithm each key advertises (or, with inference, whatever fits the key type) — so a new
+// JWKS entry could silently widen the accepted-algorithm set. This relay accepts exactly one signing
+// algorithm; every other key is excluded before verification ever sees it.
+func pinRS256(keyset jwk.Set) (jwk.Set, error) {
+	pinned := jwk.NewSet()
+	for i := 0; i < keyset.Len(); i++ {
+		key, ok := keyset.Key(i)
+		if !ok {
+			return nil, fmt.Errorf("JWKS key %d is unreadable", i)
+		}
+		alg, ok := key.Algorithm()
+		if !ok || alg.String() != jwa.RS256().String() {
+			continue
+		}
+		if err := pinned.AddKey(key); err != nil {
+			return nil, fmt.Errorf("adding JWKS key %d to the pinned set: %w", i, err)
+		}
+	}
+	return pinned, nil
 }
 
 // NewAuth0Verifier derives the JWKS endpoint and issuer from an Auth0 tenant domain.

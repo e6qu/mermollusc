@@ -5,6 +5,8 @@ export {
   webSocketTransport,
   connectWebSocket,
   reconnectingWebSocketTransport,
+  decodeControlMessage,
+  isPolicyClose,
 } from "./transport.js";
 export {
   createIndexedDbRoomStore,
@@ -13,6 +15,9 @@ export {
 } from "./store.js";
 export type {
   CollabSocket,
+  SocketCloseEvent,
+  RelayRole,
+  RelayControlMessage,
   TransportHooks,
   ReconnectStatus,
   ReconnectDeps,

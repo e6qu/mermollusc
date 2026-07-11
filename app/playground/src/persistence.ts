@@ -20,13 +20,15 @@ export const saveOverlay = (serialized: string): void =>
 
 export const loadThemeChoice = (): string | null => localStorage.getItem(THEME_KEY);
 
-// The overview minimap's collapsed/expanded preference ("collapsed" | "open").
-export const loadMinimapCollapsed = (): boolean => {
+// The overview minimap's collapsed/expanded preference ("collapsed" | "open"); null when the user
+// has never chosen, so the caller can pick a viewport-appropriate default.
+export const loadMinimapCollapsed = (): boolean | null => {
   try {
-    return localStorage.getItem(MINIMAP_KEY) === "collapsed";
+    const stored = localStorage.getItem(MINIMAP_KEY);
+    return stored === null ? null : stored === "collapsed";
   } catch (e) {
     appLog("error", "minimap-pref-read-failed", messageOf(e));
-    return false;
+    return null;
   }
 };
 export const saveMinimapCollapsed = (collapsed: boolean): void => {
@@ -39,7 +41,11 @@ export const saveMinimapCollapsed = (collapsed: boolean): void => {
 export const saveThemeChoice = (mode: "dark" | "light"): void =>
   localStorage.setItem(THEME_KEY, mode);
 
-export const loadSourceCollapsed = (): boolean => localStorage.getItem(COLLAPSE_KEY) === "1";
+// null when the user has never chosen, so the caller can pick a viewport-appropriate default.
+export const loadSourceCollapsed = (): boolean | null => {
+  const stored = localStorage.getItem(COLLAPSE_KEY);
+  return stored === null ? null : stored === "1";
+};
 export const saveSourceCollapsed = (collapsed: boolean): void =>
   localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
 

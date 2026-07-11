@@ -1,10 +1,11 @@
 import { brand, point } from "@m/std";
-import type { LayoutOverrides, SceneNodeId } from "@m/contracts";
+import type { EdgeStyle, LayoutOverrides, SceneEdgeId, SceneNodeId } from "@m/contracts";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { createCollabSession, type CollabSession } from "../../src/index.js";
 
 const n = (s: string): SceneNodeId => brand<string, "SceneNodeId">(s);
+const e = (s: string): SceneEdgeId => brand<string, "SceneEdgeId">(s);
 
 const blank = (source = ""): CollabSession =>
   createCollabSession({
@@ -205,6 +206,108 @@ describe("collab convergence — overlay", () => {
       expect(s.overlay.groups().size).toBe(1);
       expect(s.overlay.overrides().get(n("C"))?.position).toEqual(point(3, 3));
     }
+    a.destroy();
+    b.destroy();
+  });
+});
+
+describe("collab convergence — visual overlay styles", () => {
+  const curved: EdgeStyle = {
+    route: "curved",
+    routeOption: null,
+    labelT: null,
+    waypoints: null,
+    accent: "network",
+  };
+
+  it("a restyle in one client is seen by the other (styles sync like positions do)", () => {
+    const a = blank();
+    const b = blank();
+    const cut = link(a, b);
+    a.overlay.setNodeStyle(n("A"), { accent: "compute" });
+    a.overlay.setEdgeStyle(e("e0"), curved);
+    expect(b.overlay.nodeStyles().get(n("A"))).toEqual({ accent: "compute" });
+    expect(b.overlay.edgeStyles().get(e("e0"))).toEqual(curved);
+    // and clearing propagates too
+    a.overlay.setNodeStyle(n("A"), null);
+    expect(b.overlay.nodeStyles().has(n("A"))).toBe(false);
+    cut();
+    a.destroy();
+    b.destroy();
+  });
+
+  it("a late joiner receives styles set before it connected", () => {
+    const a = blank();
+    a.overlay.setNodeStyle(n("A"), { accent: "danger" });
+    a.overlay.setEdgeStyle(e("e1"), curved);
+    const b = blank();
+    b.applyUpdate(a.state());
+    expect(b.overlay.nodeStyles().get(n("A"))).toEqual({ accent: "danger" });
+    expect(b.overlay.edgeStyles().get(e("e1"))).toEqual(curved);
+    a.destroy();
+    b.destroy();
+  });
+
+  it("concurrent restyles of different elements both survive", () => {
+    const a = blank();
+    const b = blank();
+    b.applyUpdate(a.state());
+    a.overlay.setNodeStyle(n("A"), { accent: "compute" });
+    b.overlay.setNodeStyle(n("B"), { accent: "data" });
+    exchange(a, b);
+    for (const s of [a, b]) {
+      expect(s.overlay.nodeStyles().get(n("A"))).toEqual({ accent: "compute" });
+      expect(s.overlay.nodeStyles().get(n("B"))).toEqual({ accent: "data" });
+    }
+    a.destroy();
+    b.destroy();
+  });
+
+  it("a peer's restyle fires onOverlayChange", () => {
+    const a = blank();
+    const b = blank();
+    const cut = link(a, b);
+    let fired = 0;
+    b.onOverlayChange(() => {
+      fired += 1;
+    });
+    a.overlay.setEdgeStyle(e("e0"), curved);
+    expect(fired).toBeGreaterThan(0);
+    cut();
+    a.destroy();
+    b.destroy();
+  });
+
+  it("undo reverts a local restyle and the revert syncs to the peer", () => {
+    const a = blank();
+    const b = blank();
+    const cut = link(a, b);
+    a.overlay.record();
+    a.overlay.setNodeStyle(n("A"), { accent: "compute" });
+    expect(b.overlay.nodeStyles().get(n("A"))).toEqual({ accent: "compute" });
+    expect(a.overlay.undo()).toBe(true);
+    expect(a.overlay.nodeStyles().has(n("A"))).toBe(false);
+    expect(b.overlay.nodeStyles().has(n("A"))).toBe(false);
+    cut();
+    a.destroy();
+    b.destroy();
+  });
+
+  it("replace() writes styles into the shared doc — a peer sees the swapped-in styles", () => {
+    const a = blank();
+    const b = blank();
+    const cut = link(a, b);
+    a.overlay.setNodeStyle(n("Z"), { accent: "muted" });
+    a.overlay.replace(
+      new Map(),
+      new Map(),
+      new Map([[e("e9"), curved]]),
+      new Map([[n("Q"), { accent: "security" as const }]]),
+    );
+    expect(b.overlay.nodeStyles().get(n("Q"))).toEqual({ accent: "security" });
+    expect(b.overlay.nodeStyles().has(n("Z"))).toBe(false); // replaced away
+    expect(b.overlay.edgeStyles().get(e("e9"))).toEqual(curved);
+    cut();
     a.destroy();
     b.destroy();
   });

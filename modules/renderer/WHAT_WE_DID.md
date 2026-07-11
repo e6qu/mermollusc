@@ -255,3 +255,15 @@
   `display.ts` now stays focused on lowering `Scene` nodes/decorations/edges into layered `DrawCmd`s,
   while `path.ts` owns `PathCmd`, bezier controls, rounded routed corners, crossing detection, and hop
   construction. Existing canvas/SVG parity tests and crossing-hop coverage stay green.
+- Review fixes (rendering correctness + legibility): (1) canvas donut slices no longer fill the hole —
+  the annular sector's inner arc now sweeps anticlockwise, `Canvas2D.arc` requires the direction
+  argument, and a paint test asserts both sweeps; (2) the `diamond` DrawCmd gained `accent`/`fill`/
+  `stroke` (same resolution as `box`) and diamond nodes now render their `icon` (glyph stacked above
+  the label, centred in the shape) in canvas and SVG — colour swatches, `style`/`classDef` directives,
+  and icons on flowchart decision diamonds had silently no-oped; (3) a lifted horizontal edge label
+  falls back to the in-channel `"edge-masked"` opaque plate whenever any edge line would cross its
+  text box — sequence message labels (which sat on their dashed lines and crossed lifelines) now
+  always render masked, while box families with a layout `labelPos` keep the plateless lift;
+  (4) dark-theme accent fills desaturated to muted counterparts of the light pastels (contrast tests
+  extended with an HSL-saturation guard); (5) STATUS/PLAN/BUGS rewritten off the stale boolean-`plate`
+  label model and the phantom "66% plate opacity" claim.

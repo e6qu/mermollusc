@@ -72,10 +72,17 @@ export const layoutBlock = (ast: BlockAst, measure: MeasureText): Result<Scene, 
     const natW = Math.max(inner.w, labelW) + 2 * GROUP_PAD;
     const fit = Math.max(1, Math.ceil((natW + GAP) / pitch));
     const span = Math.max(1, Math.min(Math.max(g.span, fit), columns));
+    // The box is column-aligned when the content fits the spanned columns; when the natural width needs
+    // more columns than the container has (`fit > columns`), the span clamp would otherwise shrink the
+    // box BELOW its content and the children would poke out over the group border — so the width is
+    // floored at `natW`. That case spans the full row (span = columns), so nothing sits to its right.
     return {
       id,
       span,
-      size: { w: span * cellWidth + (span - 1) * GAP, h: inner.h + GROUP_HEADER + GROUP_PAD },
+      size: {
+        w: Math.max(span * cellWidth + (span - 1) * GAP, natW),
+        h: inner.h + GROUP_HEADER + GROUP_PAD,
+      },
     };
   };
 

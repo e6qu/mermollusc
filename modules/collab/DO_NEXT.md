@@ -1,5 +1,15 @@
 # @m/collab — do next
 
+- **App wiring for the 2026-07-10 review fixes** (app/playground, not this module): switch
+  `onControl` handling to the typed `RelayControlMessage` union (`{kind:"role"}` → `applyRole(role)`,
+  `{kind:"seed"}` → seed grant), surface the new `rejected` `ReconnectStatus`, pass
+  `TransportHooks.logger`, and optionally seed `initialEdgeStyles`/`initialNodeStyles` from the persisted
+  overlay when constructing the collab session.
+- *(done)* **Visual overlay styles sync** — node accents + edge route styles moved from per-client
+  session memory into two synced `Y.Map`s (undo-scoped, in `replace()`/`persist()`, convergence-tested);
+  peers now see restyles. See `BUGS.md` (review sweep) for the rest of that sweep: typed CONTROL
+  decoding, policy-close no-retry with `SocketCloseEvent`, wasm-relay crash/close surfacing.
+
 - *(done)* Phase 1 document: `createCollabSession` (Yjs `Y.Doc` = source `Y.Text` + overlay `Y.Map`s),
   `OverlayDoc`-compatible `overlay`, undo/redo via `Y.UndoManager`, binary-sync seam, in-memory
   convergence tests.

@@ -137,3 +137,55 @@ describe("layoutBlock — spans, nesting, and the cycle guard", () => {
     expect(layoutBlock(ast, heuristicMeasure).ok).toBe(false);
   });
 });
+
+describe("composite sizing when content outgrows the parent's columns", () => {
+  it("keeps the group's children strictly inside its box", () => {
+    // Four root columns; the composite's own four columns of wide leaves need MORE width than four
+    // root columns provide. The old column-snapped width clipped the box below its content and the
+    // right-most children poked out over the group border.
+    const leaf = (id: string) => ({
+      id: nid(id),
+      label: id,
+      shape: "rect" as const,
+      icon: null,
+      span: positiveInt(1),
+    });
+    const wide: BlockAst = {
+      kind: "block",
+      columns: positiveInt(4),
+      blocks: [
+        { id: nid("lb"), label: "Load balancer", shape: "rect", icon: null, span: positiveInt(4) },
+        leaf("w1"),
+        leaf("w2"),
+        leaf("w3"),
+        leaf("w4"),
+      ],
+      groups: [
+        {
+          id: nid("app"),
+          label: "app",
+          columns: positiveInt(4),
+          children: [nid("w1"), nid("w2"), nid("w3"), nid("w4")],
+          span: positiveInt(4),
+        },
+      ],
+      roots: [nid("lb"), nid("app")],
+      edges: [{ id: eid("e0"), from: nid("lb"), to: nid("w1"), kind: "arrow", label: null }],
+      styles: [],
+    };
+    const r = layoutBlock(wide, heuristicMeasure);
+    if (!r.ok) throw new Error(r.error.message);
+    const app = r.value.nodes.find((n) => n.id === "app");
+    if (app === undefined) throw new Error("group missing");
+    const right = app.bounds.origin.x + app.bounds.size.width;
+    const bottom = app.bounds.origin.y + app.bounds.size.height;
+    for (const id of ["w1", "w2", "w3", "w4"]) {
+      const n = r.value.nodes.find((x) => x.id === id);
+      if (n === undefined) throw new Error(`${id} missing`);
+      expect(n.bounds.origin.x).toBeGreaterThan(app.bounds.origin.x);
+      expect(n.bounds.origin.y).toBeGreaterThan(app.bounds.origin.y);
+      expect(n.bounds.origin.x + n.bounds.size.width).toBeLessThan(right);
+      expect(n.bounds.origin.y + n.bounds.size.height).toBeLessThan(bottom);
+    }
+  });
+});
