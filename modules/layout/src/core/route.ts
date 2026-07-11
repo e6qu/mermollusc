@@ -1361,7 +1361,67 @@ const routeSpread = (scene: Scene, bus: boolean): Scene => {
   // where edges branch off it). The default instead minimises crossings then de-stacks the overlaps onto
   // separate lanes — the two complementary passes that give the clean parallel look.
   const routed = bus ? wired : separateOverlaps(minimizeCrossings(wired));
-  return snapSceneEdgesToMountPoints(routed);
+  return offsetParallelEdges(snapSceneEdgesToMountPoints(routed));
+};
+
+// Multiple edges between the SAME node pair route mount-to-mount identically and coincide (a straight
+// pair has no cross-leg for the lane stagger to separate). This is where the "incompatible backbone"
+// rule breaks worst — a directed and an undirected edge, or an A→B and a B→A, drawn on one line. Spread
+// each such group onto distinct parallel lanes by translating its whole route perpendicular to the
+// endpoint axis; the mounts slide along their node sides (still valid attach points). Run AFTER the
+// mount snap so the snap doesn't pull them back to the shared centre.
+const PARALLEL_GAP = 14;
+const offsetParallelEdges = (scene: Scene): Scene => {
+  const groups = new Map<string, number[]>();
+  scene.edges.forEach((e, i) => {
+    if (e.from === e.to) return;
+    const key = e.from < e.to ? `${e.from}|${e.to}` : `${e.to}|${e.from}`;
+    const g = groups.get(key);
+    if (g === undefined) groups.set(key, [i]);
+    else g.push(i);
+  });
+  const shift = new Map<number, { readonly dx: number; readonly dy: number }>();
+  const halfWidth = new Map<string, number>(
+    scene.nodes.map((n) => [n.id, n.bounds.size.width / 2]),
+  );
+  const halfHeight = new Map<string, number>(
+    scene.nodes.map((n) => [n.id, n.bounds.size.height / 2]),
+  );
+  for (const idxs of groups.values()) {
+    if (idxs.length < 2) continue;
+    idxs.sort((a, b) => a - b);
+    for (const [lane, idx] of idxs.entries()) {
+      const e = scene.edges[idx];
+      if (e === undefined) continue;
+      const w = e.waypoints;
+      const first = w[0];
+      const last = w[w.length - 1];
+      if (first === undefined || last === undefined) continue;
+      const vertical = Math.abs(last.y - first.y) >= Math.abs(last.x - first.x);
+      // Clamp the spread so the mount stays on its node side (a vertical pair slides along the top/bottom
+      // border, so the limit is the narrower endpoint's HALF-WIDTH, minus a small inset).
+      const limit = vertical
+        ? Math.min(halfWidth.get(e.from) ?? 30, halfWidth.get(e.to) ?? 30) - 4
+        : Math.min(halfHeight.get(e.from) ?? 20, halfHeight.get(e.to) ?? 20) - 4;
+      const raw = (lane - (idxs.length - 1) / 2) * PARALLEL_GAP;
+      const off = Math.max(-limit, Math.min(limit, raw));
+      shift.set(idx, vertical ? { dx: off, dy: 0 } : { dx: 0, dy: off });
+    }
+  }
+  if (shift.size === 0) return scene;
+  const edges = scene.edges.map((e, i): SceneEdge => {
+    const o = shift.get(i);
+    if (o === undefined || (o.dx === 0 && o.dy === 0)) return e;
+    const wp = e.waypoints.map((p) => point(p.x + o.dx, p.y + o.dy));
+    const [w0, w1, ...wr] = wp;
+    if (w0 === undefined || w1 === undefined) return e;
+    return {
+      ...e,
+      waypoints: twoOrMore(w0, w1, ...wr),
+      labelPos: e.labelPos === null ? null : point(e.labelPos.x + o.dx, e.labelPos.y + o.dy),
+    };
+  });
+  return { ...scene, edges };
 };
 
 // Initial layout: reserve channel room (moving bands apart by edge density) then route (default, no bus).

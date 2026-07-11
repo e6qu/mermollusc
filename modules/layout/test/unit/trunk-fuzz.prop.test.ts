@@ -10,13 +10,13 @@ import { respreadPorts, trunkRoutes } from "../../src/core/route.js";
 // COMPATIBLE edges — never a directed with an undirected one, never two directed edges flowing opposite
 // ways. Complex graphs are where the overlaps hide, so we push node/edge counts up.
 //
-// KNOWN BUG (2026-07-11): both routers still merge incompatible edges in some layouts — parallel
-// multi-edges of mixed directedness always coincide, and cross-node channels can align. #294 fixed the
-// per-node trunk fan, but eliminating ALL incompatible coincidence needs signature-aware routing in the
-// BASE router (a post-hoc segment shift proved insufficient — it can't keep orthogonality while pulling
-// long shared runs apart). Until that lands, the two property tests below are `it.fails` (they PASS
-// because the violation still exists, and will FLIP to failing the day the router is fixed — that's the
-// signal to drop `.fails` and promote them to real gates). See modules/layout/DO_NEXT.md.
+// PROGRESS (2026-07-11): `offsetParallelEdges` now spreads STRAIGHT multi-edges between one node pair
+// onto distinct lanes, so opposite pairs and mixed hubs no longer share a backbone (guarded by
+// `NOW_CLEAN`). STILL OPEN: bent multi-edges (an L-route can't be pulled apart by a single translate)
+// and cross-node channel alignment in complex graphs. Those need per-segment mount-spread / signature-
+// aware base routing. The two property tests below stay `it.fails` (they PASS while ANY violation
+// remains and FLIP to failing the day the router is fully fixed — the signal to drop `.fails` and
+// promote them to real gates). See modules/layout/DO_NEXT.md.
 
 const nodeAt = (id: string, x: number, y: number, w = 60, h = 40): SceneNode => ({
   id: brand<string, "SceneNodeId">(id),
@@ -142,13 +142,9 @@ const graph: fc.Arbitrary<GraphSpec> = fc.record({
   ),
 });
 
-// Minimal repros the fuzzer shrank to — the "key examples to check again". Each still violates today;
-// when the base-router fix lands they'll stop, flipping the `it.fails` below.
-const REPROS: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec }> = [
-  {
-    name: "parallel directed + undirected between the same pair",
-    spec: { nodeCount: 4, edges: [{ a: 0, b: 3, directed: false }, { a: 0, b: 3, directed: true }] },
-  },
+// Multi-edge offsetting (`offsetParallelEdges`) fixed these — they must STAY clean in both backbone
+// modes (a directed + undirected pair, an opposite pair, a mixed hub — all edges between one node pair).
+const NOW_CLEAN: ReadonlyArray<{ readonly name: string; readonly spec: GraphSpec }> = [
   {
     name: "opposite-direction pair between the same two nodes",
     spec: { nodeCount: 6, edges: [{ a: 4, b: 1, directed: true }, { a: 1, b: 4, directed: true }] },
@@ -182,14 +178,11 @@ describe("backbone routing fuzz — no incompatible edge sharing a trunk (trunk 
     );
   });
 
-  // Saved key examples: each currently reproduces the bug in at least one backbone mode. Asserting they
-  // STILL reproduce documents the known state — this test flips to failing when the router fix lands,
-  // the cue to invert it into a "these are now clean" gate.
-  it("saved repro fixtures still show an incompatible backbone (KNOWN BUG)", () => {
-    for (const r of REPROS) {
-      const t = incompatibleBackbone(trunkRoutes(buildFuzzScene(r.spec)));
-      const b = incompatibleBackbone(respreadPorts(buildFuzzScene(r.spec), true));
-      expect(t !== null || b !== null, `${r.name} no longer reproduces — invert this test`).toBe(true);
+  // Regression guard for the multi-edge cases the offset pass fixed — these must never re-break.
+  it("multi-edge cases stay clean of incompatible backbones (trunk + bus)", () => {
+    for (const r of NOW_CLEAN) {
+      expect(incompatibleBackbone(trunkRoutes(buildFuzzScene(r.spec))), `trunk: ${r.name}`).toBeNull();
+      expect(incompatibleBackbone(respreadPorts(buildFuzzScene(r.spec), true)), `bus: ${r.name}`).toBeNull();
     }
   });
 });
