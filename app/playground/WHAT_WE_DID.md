@@ -1,6 +1,29 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-11 — Pages demo e2e coverage
+
+Broadened the `e2e-pages/` suite (which runs against the BUILT `site-dist/` artifact, not the dev
+server) from one spec to three, so the deployed Pages site is thoroughly covered — guarding the things
+only the production build can break:
+
+- `demo-artifact.spec.ts` — the built playground as a product: the backend-free CSP (`wasm-unsafe-eval`
+  present, no `wss:`/`https:` connect target, `object-src 'none'`/`base-uri 'self'`), self-containedness
+  + base-path asset resolution (no off-origin requests, no 404s), no network WebSocket or relay-WASM
+  fetch in plain mode, and a smoke of the core journeys through the minified bundle (parse→render, every
+  Examples family, parse-error recovery, SVG export, `#src=`/`?example=` deep links, source + theme
+  persistence, help dialog, phone-width no-overflow).
+- `landing-page.spec.ts` — the presentation site (`site/index.html`): metadata, self-containedness, the
+  hero + nav CTAs reaching a booting demo, the GitHub link, Docs/Storybook shown as not-yet-available,
+  the preview mock drawing every node its own snippet declares (regression guard for the dropped `Edit`
+  node), structural a11y, and phone-width no-overflow.
+- `backend-free-collab.spec.ts` — unchanged (real WASM relay in-process, zero real sockets, IndexedDB
+  persistence).
+
+Each new guard was negative-controlled (a mutated artifact makes the matching test fail). Stories
+PAGES-01..03 added to `docs/user_stories.md`.
+
+
 ## 2026-07-11 — review-omnibus: user-journey + UX + security sweep (app side)
 
 A multi-agent review of every user journey, plus backend/security/fake-functionality audits. The app's

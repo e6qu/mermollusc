@@ -139,6 +139,17 @@ Coverage labels:
 | COL-09 | As collaborators, our visual styling stays in sync. | Node colour accents and per-edge route styles propagate through the shared Yjs overlay like positions and groups; a restyle in one tab appears in the other. | Covered: collab convergence tests (live restyle, late joiner, concurrent restyle, undo sync). |
 | COL-10 | As an operator, the relay only accepts connections it should. | The relay rejects cross-origin WebSocket upgrades outside the loopback/same-host/`ALLOWED_ORIGINS` set before upgrading, pins JWT verification to RS256, caps inbound frame size, and closes slow/stuck peers without stalling the room. | Covered: relay origin-policy/auth/socket tests. |
 
+## Deployed Pages Site
+
+These stories are verified against the BUILT `site-dist/` artifact (not the dev server), so they guard
+what only the production Pages build can break — the based, backend-free, minified bundle.
+
+| id | story | acceptance criteria | coverage |
+|----|-------|---------------------|----------|
+| PAGES-01 | As a Pages visitor, the built demo boots and runs the core journeys. | The minified `/demo/` bundle renders the sample without console/page errors and still parses→renders, loads every Examples family, recovers from a parse error, exports SVG, opens `#src=`/`?example=` deep links, persists source + theme across reload, opens the help dialog, and does not scroll sideways at phone width. | Covered: `e2e-pages/demo-artifact.spec.ts`. |
+| PAGES-02 | As a Pages visitor, the demo is genuinely backend-free and self-contained. | The built demo's CSP allows `wasm-unsafe-eval` but carries no `wss:`/`https:` connect target and keeps `object-src 'none'`/`base-uri 'self'`; every request is same-origin under the `/demo/` base with no 404s; and plain (non-`?collab`) mode opens no network WebSocket and fetches no relay WASM. | Covered: `e2e-pages/demo-artifact.spec.ts`, `backend-free-collab.spec.ts`. |
+| PAGES-03 | As a visitor, the landing page presents the project and links into a working demo. | `site/index.html` loads with correct metadata, is fully self-contained (no off-origin requests), routes both the hero and nav CTAs to a booting demo, links to the GitHub repo, shows Docs/Storybook as not-yet-available rather than dead links, draws every node its preview snippet declares, has one `h1` with named links, and does not scroll sideways at phone width. | Covered: `e2e-pages/landing-page.spec.ts`. |
+
 ## API And Module Contracts
 
 | id | story | acceptance criteria | coverage |

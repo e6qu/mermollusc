@@ -135,9 +135,19 @@ snap connector endpoints to those mounts after Relax and display rerenders.
   uses the real in-browser `@m/collab` Yjs document/source binding and skips only the network transport.
   Local collab rooms persist through `@m/collab`'s IndexedDB `RoomStore` as whole Yjs snapshots;
   explicit share links and `?example=` links bypass the stored room. `make -C app/playground
-  test-e2e-pages` and root `make e2e-pages` build and serve the Pages artifact, then verify
-  backend-free `?collab` opens no WebSocket and persists/reloads the local Yjs room from IndexedDB. The
-  root pre-push hook runs this Pages gate alongside the live-app UI suite.
+  test-e2e-pages` and root `make e2e-pages` build and serve the Pages artifact, then run the whole
+  `e2e-pages/` suite against it. That suite tests the **deployed artifact** (not the dev server), so it
+  guards what only the production build can break: `backend-free-collab.spec.ts` (the real WASM relay
+  in-process — RBAC role, zero real sockets, IndexedDB persistence across reload); `demo-artifact.spec.ts`
+  (the built playground as a product — the narrowed backend-free CSP with `wasm-unsafe-eval` but no
+  `wss:`/`https:`, self-containedness + base-path asset resolution with no off-origin requests or 404s,
+  no network WebSocket or relay-WASM fetch in plain mode, and a smoke of the core journeys —
+  parse→render, every Examples family, parse-error recovery, SVG export, `#src=`/`?example=` deep links,
+  local persistence, theme persistence, help dialog, phone-width no-overflow); and `landing-page.spec.ts`
+  (the presentation site — metadata, self-containedness, the hero/nav CTAs actually reaching a booting
+  demo, the GitHub link, the not-yet-available Docs/Storybook affordances, the preview mock drawing every
+  node its own snippet declares, structural a11y, and phone-width no-overflow). The root pre-push hook
+  runs this Pages gate alongside the live-app UI suite.
 - **Collaboration transport hardening:** browser relay tokens no longer ride in WebSocket URLs; the
   page passes them to `@m/collab` as the first auth frame before document or awareness state, and the
   app CSP names the allowed HTTPS, local, and secure WebSocket connection targets. When
