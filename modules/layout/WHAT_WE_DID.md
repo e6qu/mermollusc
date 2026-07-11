@@ -1,5 +1,18 @@
 # @m/layout — work log
 
+## 2026-07-11 — graph fuzzer for the backbone-routing rule (confirms a known bug)
+
+Built a random-graph fuzzer (`test/unit/trunk-fuzz.prop.test.ts`) for the "no incompatible edge shares a
+backbone" rule (no directed+undirected, no opposite flows on one line), across BOTH trunk and bus. It
+generates non-overlapping node grids with mixed `-->`/`---` edges, routes them, and detects coincident
+collinear segments carrying more than one compatibility signature. It immediately reproduces the
+violation — bus fails on trivial graphs (parallel mixed pair, opposite pair, mixed hub — saved as
+`REPROS`), trunk on more complex ones (#294 only fixed the per-node fan). The two rule properties are
+`it.fails` (pass while the bug exists, flip when fixed); a fixture test pins the minimal repros. A
+post-hoc segment-shift fix was attempted and reverted (couldn't keep orthogonality pulling long shared
+runs apart). The real fix — signature-aware lanes in the base router + multi-edge offsetting — is written
+up in DO_NEXT; the fuzzer is the tool to drive and guard it.
+
 ## 2026-07-11 — wider sequence message row spacing (paired-label overlap)
 
 A request message and its immediate reply between the same actors sat one row apart, and both labels
