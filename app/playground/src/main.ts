@@ -1003,6 +1003,7 @@ let shownCacheEdgeStyles: EdgeStyles | null = null;
 let shownCacheNodeStyles: NodeStyles | null = null;
 let shownCacheInteracting = false;
 let shownCacheStyle: string | null = null;
+let shownCacheFamily: DiagramAst["kind"] | null = null;
 let shownCacheResult: Scene | null = null;
 // Families whose connectors are right-angle paths, so a boundary-crossing edge that a manual move blended
 // into a diagonal should snap back to clean orthogonal routing. Excludes sequence (messages must keep
@@ -1057,7 +1058,10 @@ const shownScene = (base: Scene): Scene => {
     shownCacheEdgeStyles === es &&
     shownCacheNodeStyles === ns &&
     shownCacheInteracting === interacting &&
-    shownCacheStyle === activeStyle
+    shownCacheStyle === activeStyle &&
+    // `family` decides mount-snapping; two families can share a style string ("classic"), so keying on
+    // style alone once served a flowchart-computed (mount-snapped) result for a sequence scene.
+    shownCacheFamily === family
   ) {
     return shownCacheResult;
   }
@@ -1113,6 +1117,7 @@ const shownScene = (base: Scene): Scene => {
   shownCacheNodeStyles = ns;
   shownCacheInteracting = interacting;
   shownCacheStyle = activeStyle;
+  shownCacheFamily = family;
   shownCacheResult = shown;
   return shown;
 };
@@ -3394,10 +3399,13 @@ const renderFromText = async (text: string): Promise<void> => {
     return;
   }
   currentRenderValid = true;
-  // Publish the new scene BEFORE setStatus: setStatus toggles the stage empty-state off `scene`, and
-  // on the very first render `scene` is otherwise still null when setStatus runs, flashing the "no
-  // diagram" recovery box over the diagram that just rendered.
+  // Publish the new scene AND ast together, before anything paints. `shownScene` derives the family
+  // (hence whether to snap edges to node mounts) from `ast`; if `scene` is the new family's while `ast`
+  // still holds the previous one, the first paint snaps e.g. a sequence's messages to the actor-header
+  // mounts and CACHES that collapsed result. setStatus also needs `scene` set (it toggles the stage
+  // empty-state off it) — so both module vars move up here, kept in lockstep.
   scene = laid.value;
+  ast = diagram;
   applyKind(diagram.kind);
   const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
   // The chart-like families aren't node/edge graphs — "pie · 5 nodes · 0 edges" reads as a bug, so
@@ -3429,13 +3437,11 @@ const renderFromText = async (text: string): Promise<void> => {
       labels.length > 0 ? `. ${labelListName}: ${labels.join(", ")}${ellipsis ? ", …" : ""}` : ""
     }`,
   );
-  ast = diagram;
-  // No snap here: `layoutDiagram` already snaps edge endpoints to cardinal mounts for exactly the box
-  // families that want it (`usesCardinalMounts`) and runs label decollision after. The unconditional
-  // app-side re-snap this replaces corrupted every other family (sequence messages dragged onto the
-  // header boxes, mindmap/gitGraph elbows, detached timeline connectors) and clobbered decollided edge
-  // labels back onto the nodes they'd just been moved off. (`scene` was published above, before
-  // setStatus, so the empty-state toggle sees it.)
+  // `scene` and `ast` were published together above (before the first paint), so `shownScene` sees a
+  // consistent family. `layoutDiagram` already snaps edge endpoints to cardinal mounts for exactly the
+  // box families that want it (`usesCardinalMounts`) and runs label decollision after — there is no
+  // app-side re-snap here (it used to corrupt every other family: sequence messages onto the actor
+  // headers, mindmap/gitGraph elbows, detached timeline connectors).
   reconcileSelection(laid.value);
   // Rebuild the keyboard diagram navigator to mirror the new scene (resets the active item).
   navController.rebuild();
