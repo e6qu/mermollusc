@@ -29,6 +29,19 @@ test("loading a user icon pack re-renders without errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("the pack file input is reset after a load so the same file can be re-selected", async ({
+  page,
+}) => {
+  // Browsers only fire `change` when the chosen path differs, so the handler clears the input's value
+  // after each load — otherwise re-picking the same file (the iterate-on-your-pack loop) would no-op.
+  await page.goto("/");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(100);
+
+  const input = page.locator("#load-pack");
+  await input.setInputFiles(ARCH_PACK);
+  await expect.poll(() => input.evaluate((el) => (el as HTMLInputElement).value)).toBe("");
+});
+
 test("loading malformed pack JSON is reported, not crashed", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));

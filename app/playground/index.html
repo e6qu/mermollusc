@@ -1259,7 +1259,8 @@
             <span id="kind" class="kind-badge">flowchart</span>
             <span id="dialect-badge" class="dialect-badge" hidden></span>
             <button id="source-collapse" class="head-btn" type="button" aria-expanded="true"
-              aria-controls="editor" title="Collapse the source panel">‹</button>
+              aria-controls="editor" aria-label="Collapse the source panel"
+              title="Collapse the source panel">‹</button>
           </div>
           <div id="editor"></div>
           <div class="editor-tools">
@@ -1272,7 +1273,7 @@
             <button id="reset-positions" type="button" title="Clear all manual positions and return this diagram to its default layout (keeps groups; undoable)">Reset positions</button>
             <button id="group" type="button" title="Bundle the selected nodes into a group">Group</button>
             <button id="ungroup" type="button" title="Dissolve the selected node's group">Ungroup</button>
-            <button id="lock" type="button" title="Lock the group so it can't be dragged">Lock</button>
+            <button id="lock" type="button" aria-pressed="false" title="Lock the group so it can't be dragged">Lock</button>
             <span class="arrange">
               <button id="arrange" type="button" aria-expanded="false"
                 title="Align or distribute the selected nodes">Arrange ▾</button>
@@ -1356,7 +1357,7 @@
             <button id="ctx-pin" type="button" aria-pressed="false" title="Pin the selected nodes so Relax / Regenerate leave them in place">Pin</button>
             <button id="ctx-group" type="button">Group</button>
             <button id="ctx-ungroup" type="button">Ungroup</button>
-            <button id="ctx-lock" type="button">Lock</button>
+            <button id="ctx-lock" type="button" aria-pressed="false">Lock</button>
             <button id="ctx-arrange" type="button">Arrange</button>
             <button id="ctx-delete" type="button" class="danger">Delete</button>
           </div>
