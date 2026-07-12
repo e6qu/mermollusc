@@ -112,6 +112,37 @@ test("Rename is offered only for items that actually have an editable label", as
   expect(sawNode && sawSpoke, "navigated both a node and a spoke").toBe(true);
 });
 
+test("Reroute cycles a bounded set of alternatives and returns to the original route", async ({
+  page,
+}) => {
+  await ready(page);
+  const nav = page.locator("#diagram-nav");
+  await nav.focus();
+  for (let i = 0; i < 4; i++) await nav.press("ArrowDown"); // onto an edge
+  const btn = page.locator("#ctx-reroute");
+  await expect(btn).toBeVisible();
+
+  let sawAlternative = false;
+  let wrappedToOriginal = false;
+  let maxOption = 0;
+  for (let i = 0; i < 24 && !wrappedToOriginal; i++) {
+    await btn.click();
+    const label = (await btn.textContent())?.trim() ?? "";
+    const m = label.match(/^Reroute \((\d+)\)$/);
+    if (m?.[1] !== undefined) {
+      sawAlternative = true;
+      maxOption = Math.max(maxOption, Number(m[1]));
+    } else if (sawAlternative && label === "Reroute") {
+      wrappedToOriginal = true; // cycled past the last alternative back to the original route
+    }
+  }
+  expect(sawAlternative, "offered at least one alternative route").toBe(true);
+  expect(wrappedToOriginal, "returns to the original route within one cycle (not an unbounded counter)").toBe(
+    true,
+  );
+  expect(maxOption, "the alternative set is bounded").toBeLessThan(40);
+});
+
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({
   page,
 }) => {

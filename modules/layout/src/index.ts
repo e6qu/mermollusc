@@ -29,6 +29,7 @@ export {
   routeBoxOf,
   sideMounts,
   mazeAroundObstacles,
+  routeAlternativeCount,
   snapSceneEdgesToMountPoints,
   rerouteBoxEdges,
   separateEdgesFromBorders,

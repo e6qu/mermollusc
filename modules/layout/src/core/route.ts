@@ -1,5 +1,5 @@
 import { point, rect, twoOrMore, type Point, type TwoOrMore } from "@m/std";
-import type { EdgeEnd, Scene, SceneEdge, SceneNode, SceneNodeId } from "@m/contracts";
+import type { EdgeEnd, Scene, SceneEdge, SceneEdgeId, SceneNode, SceneNodeId } from "@m/contracts";
 import type { MeasureText } from "./graph.js";
 import { mazeRoute, segmentThroughBox, OBSTACLE_CLEARANCE } from "./maze.js";
 
@@ -439,6 +439,27 @@ export const mazeAroundObstacles = (
   }
   const idx = Math.max(0, routeOption) % candidates.length;
   return candidates[idx]?.path ?? null;
+};
+
+// How many distinct obstacle-avoiding routes the maze router offers for an edge — the count the app's
+// "Reroute" control cycles through (a `routeOption` of 0…N-1) before wrapping back to the original route.
+// Returns 0 when the edge can't be rerouted (self-loop or missing endpoints). Same inputs the builder
+// feeds `mazeAroundObstacles`, so the count matches what actually renders.
+export const routeAlternativeCount = (scene: Scene, edgeId: SceneEdgeId): number => {
+  const e = scene.edges.find((x) => x.id === edgeId);
+  if (e === undefined || e.from === e.to) return 0;
+  const start = e.waypoints[0];
+  const end = e.waypoints[e.waypoints.length - 1];
+  if (start === undefined || end === undefined) return 0;
+  const obstacles = obstaclesForEdges(scene).get(e.id) ?? [];
+  const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
+  return mazePathCandidates(
+    boxById.get(e.from) ?? null,
+    boxById.get(e.to) ?? null,
+    start,
+    end,
+    obstacles,
+  ).length;
 };
 
 export const mazeRerouteEdges = (scene: Scene): Scene => {

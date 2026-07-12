@@ -120,6 +120,7 @@ import {
   type LayoutStyle,
   respreadPorts,
   retidyRoutes,
+  routeAlternativeCount,
   trunkRoutes,
 } from "@m/layout";
 import {
@@ -2144,8 +2145,10 @@ const renderContextBar = (caps: CapabilityState): void => {
     [...selection.edges].map((id) => doc.edgeStyles().get(id)?.routeOption ?? 0),
   );
   const onlyOpt = [...options][0];
+  // `routeOption` 0/null is the original route; 1…N-1 are the alternatives the button cycles through, so
+  // only number the alternatives — "Reroute" (no count) means the connector is on its original route.
   ctxRerouteBtn.textContent =
-    options.size === 1 && onlyOpt !== undefined ? `Reroute (${onlyOpt})` : "Reroute";
+    options.size === 1 && onlyOpt !== undefined && onlyOpt > 0 ? `Reroute (${onlyOpt})` : "Reroute";
   const editable = true;
   const connectable = editable && ast !== null && familyAffordances(ast.kind).connect;
   const duplicatable = editable && ast !== null && familyAffordances(ast.kind).addNode;
@@ -5991,24 +5994,48 @@ const cycleEdgeRoute = (): void => {
 };
 
 const cycleEdgeOption = (): void => {
-  if (viewerMode || selection.edges.size === 0) return;
+  if (viewerMode || selection.edges.size === 0 || scene === null) return;
+  const shown = shownScene(scene);
   recordHistory();
+  let anyAlternatives = false;
+  let anyRerouted = false;
   for (const id of selection.edges) {
     const existing = doc.edgeStyles().get(id);
     const curOpt = existing?.routeOption ?? null;
-    const nextOpt = curOpt === null ? 1 : curOpt + 1;
-    doc.setEdgeStyle(id, {
-      route: existing?.route ?? "square",
-      routeOption: nextOpt,
-      labelT: existing?.labelT ?? null,
-      waypoints: existing?.waypoints ?? null,
-      accent: existing?.accent ?? null,
-    });
+    // Cycle null (original) → 1 → … → N-1 → null. Index 0 ≈ the original route, so it's skipped; once past
+    // the last alternative we return to the original instead of counting up forever.
+    const count = routeAlternativeCount(shown, id);
+    if (count > 1) anyAlternatives = true;
+    const nextOpt =
+      count <= 1 ? null : curOpt === null ? 1 : curOpt + 1 >= count ? null : curOpt + 1;
+    if (nextOpt !== null) anyRerouted = true;
+    const route = existing?.route ?? "square";
+    const labelT = existing?.labelT ?? null;
+    const waypoints = existing?.waypoints ?? null;
+    const accent = existing?.accent ?? null;
+    // Back on the original route with nothing else overridden → drop the style so the overlay stays clean.
+    if (
+      nextOpt === null &&
+      route === "square" &&
+      labelT === null &&
+      waypoints === null &&
+      accent === null
+    ) {
+      doc.setEdgeStyle(id, null);
+    } else {
+      doc.setEdgeStyle(id, { route, routeOption: nextOpt, labelT, waypoints, accent });
+    }
   }
   doc.persist();
   paintScene();
   updateGroupButtons();
-  flashStatus("rerouted connector");
+  flashStatus(
+    !anyAlternatives
+      ? "no alternative route for this connector"
+      : anyRerouted
+        ? "rerouted connector"
+        : "restored the original route",
+  );
 };
 
 // Cycle the selected node(s) through the accent palette (none → blue → grey → red). Visual-only, like
