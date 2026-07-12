@@ -10,7 +10,9 @@ compiled to WebAssembly, in-process, instead of skipping the relay. The supersed
   pending-frame replay bounded by both count and TOTAL BYTES, an auth-handshake reaper that drops a
   connection which never authenticates), frame handling
   (tag allow-list, rate limiting, crash-guarded `ApplyUpdate`, debounced save, broadcast), and room
-  registry (`FlushAll` for clean shutdown) — parameterized over `Socket`/`Store`/`Authorizer`/
+  registry (`FlushAll` for clean shutdown). Two locks: `Core.mu` for the registry + cheap
+  membership/metadata, a per-room `room.docMu` for the heavy CRDT contents (so one room's big update can't
+  stall the rest); order docMu → `Core.mu`. Parameterized over `Socket`/`Store`/`Authorizer`/
   `RoomAuthorizer`, with zero knowledge of native vs. WASM. `y-crdt` verified bidirectionally
   byte-compatible with the real `yjs` package (a Go update decodes correctly in JS `yjs`; a JS update
   decodes correctly in `y-crdt` — tested, not assumed).

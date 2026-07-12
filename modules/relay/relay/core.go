@@ -5,9 +5,11 @@
 // in-process WASM-side connection): that is the one implementation both production and the demo run.
 //
 // The JS original could rely on single-threaded execution to serialize all room/socket mutations for
-// free; Go connections run on real goroutines, so this port adds an explicit mutex (see Core.mu) around
-// every mutation of shared state. That is the one behavioral difference from the JS source, and it is a
-// correctness requirement of the language change, not a "mode".
+// free; Go connections run on real goroutines, so this port adds explicit locking around shared state —
+// a correctness requirement of the language change, not a "mode". Two locks: the global Core.mu guards
+// the room registry and each room's cheap membership/metadata (sockets, seeder, pending, saveTimer), while
+// a per-room room.docMu guards the CRDT document's contents (the heavy ApplyUpdate/EncodeStateAsUpdate) so
+// one room's large update can't stall every other room. When both are needed the order is docMu → Core.mu.
 package relay
 
 import (
@@ -91,6 +93,13 @@ type Core struct {
 }
 
 type room struct {
+	// docMu guards the CRDT document's CONTENTS (ApplyUpdate / EncodeStateAsUpdate / emptiness). It is a
+	// SEPARATE, per-room lock so a large update in one room does not stall every other room's admissions,
+	// broadcasts and saves the way holding the global Core.mu across the CRDT work did. The `doc` POINTER
+	// is set once at room creation and never reassigned, so reading it needs no lock; only its contents do.
+	// Lock ORDER when both are needed (the seed decision, dropSocket): docMu OUTER, then Core.mu INNER —
+	// never the reverse, so the two locks can't deadlock.
+	docMu     sync.Mutex
 	doc       *ycrdt.Doc
 	sockets   map[Socket]struct{}
 	saveTimer *time.Timer
@@ -112,7 +121,7 @@ type room struct {
 const seedGrantMessage = "seed"
 
 // docIsEmpty reports whether the room's doc has no content at all (an empty state vector — nothing was
-// ever inserted, by any client). Callers hold c.mu.
+// ever inserted, by any client). Callers hold the room's docMu (it reads the CRDT contents).
 func docIsEmpty(doc *ycrdt.Doc) bool {
 	return len(ycrdt.GetStateVector(doc.Store)) == 0
 }
@@ -253,9 +262,9 @@ func (c *Core) loadRoom(name string) (*room, error) {
 }
 
 func (c *Core) safeSave(name string, r *room) {
-	c.mu.Lock()
+	r.docMu.Lock()
 	snapshot := ycrdt.EncodeStateAsUpdate(r.doc, nil)
-	c.mu.Unlock()
+	r.docMu.Unlock()
 	if err := c.store.Save(name, snapshot); err != nil {
 		c.log.Printf("relay: store.Save(%q) failed — %v", name, err)
 	}
@@ -458,16 +467,21 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 		return
 	}
 
-	c.mu.Lock()
+	// Encode the initial state and decide the seed grant under docMu (so this room's heavy encode doesn't
+	// stall other rooms), taking c.mu INSIDE it only for the tiny seeder check. Holding docMu across the
+	// c.mu section freezes the doc's emptiness, and c.mu serialises the decision, so exactly one live
+	// connection per still-empty room wins the grant — concurrent admissions can never both seed.
+	r.docMu.Lock()
 	state := ycrdt.EncodeStateAsUpdate(r.doc, nil)
-	// Exactly one live connection per empty room may seed it (see room.seeder). Decided under c.mu, so
-	// concurrent admissions can never both win.
+	empty := docIsEmpty(r.doc)
 	grantSeed := false
-	if r.seeder == nil && docIsEmpty(r.doc) {
+	c.mu.Lock()
+	if r.seeder == nil && empty {
 		r.seeder = cn.socket
 		grantSeed = true
 	}
 	c.mu.Unlock()
+	r.docMu.Unlock()
 	cn.socket.Send(controlFrame(string(role)))
 	if grantSeed {
 		cn.socket.Send(controlFrame(seedGrantMessage))
@@ -496,6 +510,8 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 // must not leave the room permanently unseedable); the last socket out flushes and forgets the room.
 func (c *Core) dropSocket(name string, r *room, socket Socket) {
 	var regrant Socket
+	// docMu OUTER (the seed re-grant consults doc emptiness), c.mu INNER for the registry/membership fields.
+	r.docMu.Lock()
 	c.mu.Lock()
 	delete(r.sockets, socket)
 	if r.seeder == socket {
@@ -510,6 +526,7 @@ func (c *Core) dropSocket(name string, r *room, socket Socket) {
 	}
 	empty := len(r.sockets) == 0 && r.pending == 0
 	c.mu.Unlock()
+	r.docMu.Unlock()
 	if regrant != nil {
 		regrant.Send(controlFrame(seedGrantMessage))
 	}
@@ -573,9 +590,11 @@ func (cn *conn) handle(frame []byte) {
 			cn.throttledLog("relay: dropped doc edit from viewer in room %q", name)
 			return
 		}
-		c.mu.Lock()
+		// The CRDT apply — the heavy per-edit work — runs under the per-room docMu, NOT the global c.mu, so
+		// a big update in one room no longer serialises every other room.
+		r.docMu.Lock()
 		err := applyUpdateGuarded(r.doc, frame[1:])
-		c.mu.Unlock()
+		r.docMu.Unlock()
 		if err != nil {
 			// A peer can stream malformed DOC frames within its rate budget; throttle like the other
 			// per-connection drop logs so it can't flood the log (the frame is still dropped, fail-loud).

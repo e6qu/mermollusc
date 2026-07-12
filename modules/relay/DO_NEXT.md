@@ -25,14 +25,8 @@
   Worth unifying in a future pass; out of scope for this PR (the pre-seed logic also interacts with
   share-link/example-URL precedence rules that need care to touch).
 
-Security-scan follow-ups (2026-07-12; the pre-auth memory, handshake-timeout, save-`.tmp`-race and
-malformed-frame-log items from that scan are fixed — see WHAT_WE_DID / BUGS):
-- **Global `Core.mu` held across CRDT apply/encode → cross-room head-of-line blocking.** `applyUpdateGuarded`
-  / `EncodeStateAsUpdate` run under the process-wide `c.mu` on attacker-supplied payloads up to 4 MiB, so
-  one room's large update stalls admissions/broadcasts/saves for every other room. Move to per-room locking
-  so CRDT work doesn't serialize the whole server. (Deferred deliberately: the module comment calls the
-  single mutex a correctness requirement of the Go port, so splitting it needs care around the room registry
-  / seed-grant / dropSocket invariants — a focused change, not a drive-by.)
+Security-scan follow-ups (2026-07-12; the pre-auth memory, handshake-timeout, save-`.tmp`-race,
+malformed-frame-log and cross-room-lock items from that scan are all fixed — see WHAT_WE_DID / BUGS):
 - **Origin policy ignores scheme (and port) on the same host** (`server.go` same-host branch). Assessed and
   LEFT: the request scheme can't be determined reliably behind a TLS-terminating proxy (`r.TLS` is nil), so
   enforcing scheme would reject legitimate same-host `https` origins and break real deployments — the scan
