@@ -1,11 +1,11 @@
 # @m/relay — bugs
 
-No high-severity open bugs. Of the 2026-07-12 security scan's lower-severity items, the save-`.tmp` race and
-the malformed-frame log spam are now fixed (below); still open and written up in `DO_NEXT.md` are cross-room
-lock contention (a deliberate deferral — splitting the port's single mutex needs care) and the same-host
-origin scheme/port allowance (assessed and left — no reliable scheme signal behind a TLS proxy). The module
-shipped with real bugs before, too — the earlier "no known open bugs" claim was true only until a review
-actually went looking. Recorded below so the history stays honest.
+No high-severity open bugs. Of the 2026-07-12 security scan's lower-severity items, the save-`.tmp` race, the
+malformed-frame log spam, and the cross-room lock contention are now fixed (below); the one left open (written
+up in `DO_NEXT.md`) is the same-host origin scheme/port allowance — assessed and intentionally left, since
+there's no reliable request-scheme signal behind a TLS proxy and `ALLOWED_ORIGINS` is the real control. The
+module shipped with real bugs before, too — the earlier "no known open bugs" claim was true only until a
+review actually went looking. Recorded below so the history stays honest.
 
 Resolved (security scan, found + fixed 2026-07-12):
 
@@ -26,6 +26,12 @@ Resolved (security scan, found + fixed 2026-07-12):
 - ~~**Malformed DOC-update logging was unthrottled.**~~ A peer streaming corrupt DOC frames (within its rate
   budget) logged one line each. Fixed: routed through the per-connection `throttledLog` like the other
   drop-logs; the frame is still dropped (fail-loud), just not spammed.
+- ~~**The global `Core.mu` was held across the CRDT apply/encode → cross-room head-of-line blocking.**~~ One
+  room's large `ApplyUpdate`/`EncodeStateAsUpdate` (payloads up to 4 MiB) stalled admissions/broadcasts/saves
+  for EVERY room. Fixed: a per-room `room.docMu` guards the CRDT contents while `Core.mu` keeps only the cheap
+  registry/membership/metadata; the heavy CRDT work no longer serialises the whole server. Lock order docMu →
+  Core.mu (the seed decision and `dropSocket` need both); the churn/seed `-race` tests (40 goroutines editing
+  while joining/leaving) pass at `-count=30`, proving the split kept the no-fork / one-seeder invariants.
 
 Resolved (review sweep, found + fixed 2026-07-10):
 

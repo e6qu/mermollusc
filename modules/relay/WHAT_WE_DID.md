@@ -1,5 +1,17 @@
 # @m/relay — work log
 
+- 2026-07-12 split the global lock to kill cross-room head-of-line blocking. The heavy CRDT work
+  (`ApplyUpdate` on every edit, `EncodeStateAsUpdate` on save/broadcast/admission — payloads up to 4 MiB)
+  ran under the process-wide `Core.mu`, so one room's large update stalled admissions/broadcasts/saves for
+  every OTHER room. Added a per-room `room.docMu` that guards only the CRDT document contents; `Core.mu` now
+  guards only the cheap registry + membership/metadata (rooms map, sockets, seeder, pending, saveTimer). Lock
+  order is docMu → Core.mu, needed in exactly two spots (the seed-grant decision and `dropSocket`, which both
+  consult doc emptiness): docMu is held across the tiny `Core.mu` section so the doc's emptiness is frozen
+  while the one-seeder-per-empty-room decision is made — no path takes the locks in the reverse order, so
+  they can't deadlock. The existing churn/seed `-race` tests (40 goroutines editing while joining/leaving)
+  exercise both two-lock paths and the apply path; they pass at `-count=30`, proving the no-fork / one-seeder
+  invariants survived the split.
+
 - 2026-07-12 security-scan follow-ups (lower-severity, from the same scan). (1) `File.Save` shared a fixed
   `<room>.tmp` path, so a fired debounce racing a last-leave/shutdown flush for the SAME room both wrote it
   then renamed — a torn file or a rename ENOENT (a lost/degraded snapshot). Now a per-save unique temp via
