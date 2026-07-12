@@ -5078,7 +5078,6 @@ canvas.addEventListener("dblclick", (ev) => {
   }
 });
 
-// Add node: append a fresh rect node to the flowchart text (flowchart only for now).
 // Append a new node in the active family's own one-line declaration syntax (the node-creation analogue of
 // `appendEdge`). `id` is a fresh unique identifier; `label` its display text; `shape` only applies to
 // flowchart. Families gated off in `familyAffordances` (mindmap/gitGraph/timeline/pie/gantt — no
