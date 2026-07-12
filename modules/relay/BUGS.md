@@ -1,10 +1,11 @@
 # @m/relay — bugs
 
-No high-severity open bugs. A 2026-07-12 security scan did surface lower-severity hardening items that are
-NOT yet fixed (cross-room lock contention, a save `.tmp` race, an origin scheme/port allowance, malformed-
-frame log spam) — those are written up in `DO_NEXT.md`. The module shipped with real bugs before, too — the
-earlier "no known open bugs" claim was true only until a review actually went looking. Recorded below so the
-history stays honest.
+No high-severity open bugs. Of the 2026-07-12 security scan's lower-severity items, the save-`.tmp` race and
+the malformed-frame log spam are now fixed (below); still open and written up in `DO_NEXT.md` are cross-room
+lock contention (a deliberate deferral — splitting the port's single mutex needs care) and the same-host
+origin scheme/port allowance (assessed and left — no reliable scheme signal behind a TLS proxy). The module
+shipped with real bugs before, too — the earlier "no known open bugs" claim was true only until a review
+actually went looking. Recorded below so the history stays honest.
 
 Resolved (security scan, found + fixed 2026-07-12):
 
@@ -18,6 +19,13 @@ Resolved (security scan, found + fixed 2026-07-12):
   `Options.AuthHandshakeTimeout`) drops a still-pending connection; `admit` guards the open transition
   against it. Also set `http.Server.ReadHeaderTimeout`/`IdleTimeout` for the pre-upgrade HTTP phase. `-race`
   test.
+- ~~**`File.Save` shared a fixed `<room>.tmp` path across concurrent saves.**~~ A fired debounce racing a
+  last-leave/shutdown flush for the same room both wrote the same temp then renamed — a torn file or a
+  rename ENOENT (a lost/degraded snapshot). Fixed: a per-save unique temp via `os.CreateTemp` (0644 preserved,
+  cleaned up on failure), so the survivor is always one complete write. `-race` concurrency test.
+- ~~**Malformed DOC-update logging was unthrottled.**~~ A peer streaming corrupt DOC frames (within its rate
+  budget) logged one line each. Fixed: routed through the per-connection `throttledLog` like the other
+  drop-logs; the frame is still dropped (fail-loud), just not spammed.
 
 Resolved (review sweep, found + fixed 2026-07-10):
 

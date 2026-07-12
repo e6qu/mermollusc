@@ -47,9 +47,10 @@ func (s *Memory) Save(room string, snapshot []byte) error {
 }
 
 // File persists snapshots to disk — one file per room, named by its URL-encoded room id. Writes go to a
-// temp file then rename into place, so a crash mid-write leaves the old snapshot intact rather than a
-// truncated/corrupt one (rename is atomic on the same filesystem) — same durability shape as the JS
-// relay's file store.
+// PER-SAVE unique temp file then rename into place, so a crash mid-write leaves the old snapshot intact
+// rather than a truncated/corrupt one (rename is atomic on the same filesystem), and two concurrent saves
+// for the same room (a fired debounce racing a last-leave/shutdown flush) can't clobber each other's temp
+// — last complete rename wins instead of a torn file or a rename ENOENT.
 type File struct {
 	dir string
 }
@@ -79,9 +80,32 @@ func (s *File) Load(room string) ([]byte, error) {
 
 func (s *File) Save(room string, snapshot []byte) error {
 	file := s.fileFor(room)
-	tmp := file + ".tmp"
-	if err := os.WriteFile(tmp, snapshot, 0o644); err != nil {
+	// A per-save unique temp (not a fixed "<room>.tmp") so concurrent saves for one room don't share it.
+	tmp, err := os.CreateTemp(s.dir, encodeRoomFilename(room)+".*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, file)
+	tmpName := tmp.Name()
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.Remove(tmpName) // best-effort cleanup of the abandoned temp
+		}
+	}()
+	if _, err := tmp.Write(snapshot); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o644); err != nil { // CreateTemp makes it 0600; keep the old world-readable mode
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, file); err != nil {
+		return err
+	}
+	renamed = true
+	return nil
 }
