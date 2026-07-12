@@ -2075,7 +2075,7 @@ const syncToolPalette = (): void => {
   // so the palette never reads as inertly broken; an available tool shows its hotkey label.
   const label: Record<Tool, string> = {
     select: "Select (V)",
-    hand: "Hand / pan (H)",
+    hand: "Hand / pan (H, or hold Space)",
     connect: "Connect (C)",
     place: "Place node (P)",
   };
@@ -6704,7 +6704,8 @@ window.addEventListener("keydown", (ev) => {
     case "s":
     case "S":
       if (viewerMode || ast === null) return;
-      // A single selected edge cycles its arrow style (flowchart/block); a node cycles its shape.
+      // A single selected edge cycles its arrow/message style (flowchart/block/sequence); a node cycles
+      // its shape (flowchart).
       if (selection.edges.size === 1 && selectionOrder.length === 0) {
         ev.preventDefault();
         void cycleEdgeStyle();

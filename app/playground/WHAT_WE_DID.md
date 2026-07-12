@@ -1,6 +1,22 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — help-panel/tooltip accuracy pass
+
+Fixed user-facing copy that didn't match behaviour (from an infobox audit):
+- The `S` shortcut help said only "cycle node shape (flowchart)", but `S` on a single selected edge cycles
+  that edge's arrow/message style in flowchart/block/sequence (`cycleEdgeStyle`) — the whole edge-restyle
+  shortcut was undiscoverable. Both `S`/`s` entries now mention it (and the handler comment was corrected —
+  it said flowchart/block, omitting sequence).
+- "drag — move node(s) — snaps to alignment" → "a single node snaps to alignment": snapping is armed only
+  for a single-node drag (`origin.size === 1`), never a multi-node drag.
+- The Hand tool's tooltip advertised "hold Space" in HTML but `syncToolPalette` overwrote it with the
+  shorter "Hand / pan (H)" on first render; the runtime label now keeps the Space hint.
+- Help "Lock — pin a group in place" → "stop a group being dragged" (it collided with the distinct **Pin**
+  feature, which is survive-Relax/Regenerate, not lock-drag).
+- Help "Tab — focus the diagram list" → "the diagram list is in the tab order" (there's no dedicated Tab
+  binding; the navigator is just one stop in the natural tab order).
+
 ## 2026-07-12 — coverage headroom for the large-graph stress/fuzz guards
 
 `stress.test.ts` (3000-node network/block) and `dot-stability-fuzz.test.ts` (120 export→import→export runs)
