@@ -54,5 +54,7 @@ describe("DOT export → import → export stability fuzz", () => {
       ),
       { numRuns: 120 },
     );
-  }, 30000);
+    // 120 export→import→export runs; under v8 coverage instrumentation (`make cov`) this brushed the old
+    // 30s ceiling on a loaded machine. Generous headroom — a real hang would blow any bound.
+  }, 60000);
 });

@@ -10,7 +10,10 @@ import { describe, expect, it } from "vitest";
 // few thousand nodes finishes in well under vitest's timeout; an accidental O(n²) (a `.find` in a
 // per-node loop, say) would blow that timeout and a crash/throw would fail outright.
 const N = 3000;
-const STRESS_TIMEOUT_MS = 30_000;
+// Uninstrumented this pipeline is ~4.5s; under v8 coverage instrumentation (`make cov`) it is ~6-7× that,
+// which brushed the old 30s ceiling and flaked the coverage gate on a loaded machine. The generous ceiling
+// still catches the real target — an accidental super-linear blow-up would take minutes, not seconds.
+const STRESS_TIMEOUT_MS = 60_000;
 
 const networkSource = (n: number): string => {
   const lines = ["network"];

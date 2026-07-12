@@ -1,5 +1,14 @@
 # @m/layout — work log
 
+## 2026-07-12 — near-linear incompatible-backbone scan
+
+`separateIncompatibleBackbones` compared every segment pair (`conflictsIn` / `firstConflict` were
+O(segments²)), which is quadratic on a big graph. Replaced both with a shared `forIncompatiblePairs` that
+buckets segments by orientation + rounded track and only compares segments that could share a track (within
+±TOL), so the pass is near-linear. Correctness is unchanged — the fuzzer gate and `NOW_CLEAN` still pass;
+each pair is still visited once (from its lower-indexed member). (The 3000-node stress guard's wall-clock was
+dominated by grid layout, not this pass, but the quadratic scan was a real latent cost for dense graphs.)
+
 ## 2026-07-12 — expose routeAlternativeCount for the app's Reroute cycle
 
 Added `routeAlternativeCount(scene, edgeId)` — the number of distinct maze routes `mazePathCandidates`

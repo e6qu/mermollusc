@@ -1603,37 +1603,61 @@ const separateIncompatibleBackbones = (scene: Scene): Scene => {
   };
   const routes: Point[][] = scene.edges.map((e) => [...e.waypoints]);
 
-  const conflictsIn = (rs: readonly Point[][]): number => {
+  // Visit every INCOMPATIBLE coincident segment pair, stopping early if `visit` returns true. Segments are
+  // bucketed by orientation + rounded track, so only segments that could share a track (within ±TOL) are
+  // compared — the pass stays near-linear on a big diagram instead of O(segments²), which a 3000-node graph
+  // (the stress guard) would otherwise blow. Each pair is visited once (from its lower-indexed member).
+  const forIncompatiblePairs = (
+    rs: readonly Point[][],
+    visit: (a: BackboneSeg, b: BackboneSeg) => boolean,
+  ): void => {
     const segs = rs.flatMap((w, idx) => backboneSegments(idx, w));
-    let count = 0;
+    const hByTrack = new Map<number, number[]>();
+    const vByTrack = new Map<number, number[]>();
+    segs.forEach((s, i) => {
+      const byTrack = s.horizontal ? hByTrack : vByTrack;
+      const key = Math.round(s.track);
+      const arr = byTrack.get(key);
+      if (arr === undefined) byTrack.set(key, [i]);
+      else arr.push(i);
+    });
     for (let i = 0; i < segs.length; i++) {
-      for (let j = i + 1; j < segs.length; j++) {
-        const A = segs[i];
-        const B = segs[j];
-        if (A === undefined || B === undefined) continue;
-        if (A.edgeIdx === B.edgeIdx || A.horizontal !== B.horizontal) continue;
-        if (Math.abs(A.track - B.track) > BACKBONE_TRACK_TOL) continue;
-        if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= BACKBONE_OVERLAP_MIN) continue;
-        if (sigOf(A.edgeIdx, A.horizontal) !== sigOf(B.edgeIdx, B.horizontal)) count++;
+      const A = segs[i];
+      if (A === undefined) continue;
+      const byTrack = A.horizontal ? hByTrack : vByTrack;
+      const base = Math.round(A.track);
+      for (let d = -BACKBONE_TRACK_TOL - 1; d <= BACKBONE_TRACK_TOL + 1; d++) {
+        const arr = byTrack.get(base + d);
+        if (arr === undefined) continue;
+        for (const j of arr) {
+          if (j <= i) continue; // pair visited from its lower-indexed member only
+          const B = segs[j];
+          if (B === undefined || A.edgeIdx === B.edgeIdx) continue;
+          if (Math.abs(A.track - B.track) > BACKBONE_TRACK_TOL) continue;
+          if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= BACKBONE_OVERLAP_MIN) continue;
+          if (sigOf(A.edgeIdx, A.horizontal) !== sigOf(B.edgeIdx, B.horizontal) && visit(A, B))
+            return;
+        }
       }
     }
+  };
+
+  const conflictsIn = (rs: readonly Point[][]): number => {
+    let count = 0;
+    forIncompatiblePairs(rs, () => {
+      count++;
+      return false;
+    });
     return count;
   };
 
   const firstConflict = (): { readonly A: BackboneSeg; readonly B: BackboneSeg } | null => {
-    const segs = routes.flatMap((w, idx) => backboneSegments(idx, w));
-    for (let i = 0; i < segs.length; i++) {
-      for (let j = i + 1; j < segs.length; j++) {
-        const A = segs[i];
-        const B = segs[j];
-        if (A === undefined || B === undefined) continue;
-        if (A.edgeIdx === B.edgeIdx || A.horizontal !== B.horizontal) continue;
-        if (Math.abs(A.track - B.track) > BACKBONE_TRACK_TOL) continue;
-        if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= BACKBONE_OVERLAP_MIN) continue;
-        if (sigOf(A.edgeIdx, A.horizontal) !== sigOf(B.edgeIdx, B.horizontal)) return { A, B };
-      }
-    }
-    return null;
+    let found: { readonly A: BackboneSeg; readonly B: BackboneSeg } | null = null;
+    forIncompatiblePairs(routes, (a, b) => {
+      found = { A: a, B: b };
+      return true;
+    });
+    return found;
   };
 
   let bestConflicts = conflictsIn(routes);
