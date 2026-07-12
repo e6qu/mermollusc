@@ -140,7 +140,9 @@ test("Reroute cycles a bounded set of alternatives and returns to the original r
   expect(wrappedToOriginal, "returns to the original route within one cycle (not an unbounded counter)").toBe(
     true,
   );
-  expect(maxOption, "the alternative set is bounded").toBeLessThan(40);
+  // The router caps the offered alternatives to its best few (MAX_REROUTE_ALTERNATIVES = 6), so the option
+  // number never climbs past the last alternative before wrapping — a short cycle of only sensible routes.
+  expect(maxOption, "the alternative set is capped to the best few").toBeLessThan(6);
 });
 
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({

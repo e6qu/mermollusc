@@ -3,14 +3,6 @@
 Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known defects are in
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
-## Deferred from the 2026-07-12 UX/a11y review (real findings, not fixed in that pass)
-- **Reroute alternative set can be large (up to ~15 for an unobstructed edge).** The counter is now bounded
-  and wraps back to the original route (via `routeAlternativeCount`), but every distinct mount-pair maze
-  route is offered — many are odd "enter from the far side" paths. Optional polish: have the router expose
-  only the best tier of candidates (e.g. min-hit routes) so the cycle is shorter and every option is a
-  sensible route. Requires capping `mazePathCandidates` consistently (the builder mods `routeOption` by its
-  length, so the cap must live in the router, not just the app).
-
 ## Deferred from the 2026-07-02 UX audit (real findings, not fixed in that pass)
 - *(done)* **Structured logging (§8 contract).** All app boundary logging routes through
   `src/log.ts`'s `appLog` with the closed `AppEvent` union; `LogRecord` gained the `data` field §8 had

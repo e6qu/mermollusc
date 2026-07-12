@@ -1,5 +1,14 @@
 # @m/layout — work log
 
+## 2026-07-12 — cap Reroute alternatives to the best few
+
+`mazePathCandidates` returns up to 16 distinct mount-pair routes for an unobstructed edge (most are odd
+"enter from the far side" detours). The list is already sorted best-first (hits, then bends, then length),
+so `mazeAroundObstacles` and `routeAlternativeCount` now `.slice(0, MAX_REROUTE_ALTERNATIVES)` (6) — a short
+Reroute cycle of only sensible routes, count and selection sliced identically so the app's wrap matches what
+renders. `rerouteBoxEdges` keeps the FULL candidate pool (it re-ranks by on-screen badness for automatic
+box-edge routing), so no golden moved.
+
 ## 2026-07-12 — near-linear incompatible-backbone scan
 
 `separateIncompatibleBackbones` compared every segment pair (`conflictsIn` / `firstConflict` were
