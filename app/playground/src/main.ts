@@ -2170,6 +2170,7 @@ const renderContextBar = (caps: CapabilityState): void => {
   ctxUngroupBtn.hidden = !caps.hasGroup;
   ctxLockBtn.hidden = !caps.hasGroup;
   ctxLockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  ctxLockBtn.setAttribute("aria-pressed", String(caps.isLocked));
 
   ctxArrangeBtn.disabled = !caps.canArrange;
   ctxArrangeBtn.title = !caps.canArrange
@@ -2412,6 +2413,7 @@ const updateGroupButtons = (): void => {
   ungroupBtn.disabled = !caps.hasGroup;
   lockBtn.disabled = !caps.hasGroup;
   lockBtn.textContent = caps.isLocked ? "Unlock" : "Lock";
+  lockBtn.setAttribute("aria-pressed", String(caps.isLocked));
   arrangeBtn.disabled = !caps.canArrange;
   if (distHBtn !== null) distHBtn.disabled = !caps.canDistribute;
   if (distVBtn !== null) distVBtn.disabled = !caps.canDistribute;
@@ -2814,7 +2816,11 @@ const setSourceCollapsed = (collapsed: boolean, persist = true): void => {
   else workbench.removeAttribute("data-source-collapsed");
   sourceCollapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
   sourceCollapseBtn.textContent = collapsed ? "›" : "‹";
-  sourceCollapseBtn.title = collapsed ? "Show the source panel" : "Collapse the source panel";
+  const collapseLabel = collapsed ? "Show the source panel" : "Collapse the source panel";
+  // The visible glyph would otherwise be the button's accessible name; keep an explicit label so screen
+  // readers announce the action, not "‹".
+  sourceCollapseBtn.setAttribute("aria-label", collapseLabel);
+  sourceCollapseBtn.title = collapseLabel;
   if (persist) saveSourceCollapsed(collapsed);
   if (!collapsed) editor.refresh(); // CodeMirror renders zero-height until it re-measures
   // The stage column resized — repaint against the new geometry and re-anchor the context bar.
@@ -6873,6 +6879,10 @@ loadPackEl.addEventListener("change", () => {
   const file = loadPackEl.files?.[0];
   if (file === undefined || file === null) return;
   void loadPack(file);
+  // Clear the input so re-selecting the SAME file fires `change` again — the iterate-on-your-pack loop
+  // (load, fix a JSON error or edit a glyph on disk, reload) depends on it; browsers suppress `change`
+  // when the chosen path is unchanged.
+  loadPackEl.value = "";
 });
 
 // Icon picker: browse the active registry (pack → category → glyph) and insert an

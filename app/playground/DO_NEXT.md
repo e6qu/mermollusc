@@ -3,6 +3,18 @@
 Open, actionable items only. Completed work is logged in `WHAT_WE_DID.md`; known defects are in
 `BUGS.md`. Cross-module collab work lives in `modules/collab/DO_NEXT.md`.
 
+## Deferred from the 2026-07-12 UX/a11y review (real findings, not fixed in that pass)
+- **Rename advertised for un-renamable items.** `canRelabel` (context computation) is `editable &&
+  totalSelected === 1` and never checks whether the specific item actually has an editable label, so the
+  context-bar **Rename** button is shown/enabled for items with none (gitGraph merge edge, mindmap spoke);
+  clicking only flashes "this item has no editable label". Fix by extracting a pure predicate from
+  `beginRelabel` (the target-resolution part) and gating `canRelabel`/the task hint on it, so the affordance
+  matches behavior instead of being disabled after the click.
+- **Reroute counter grows unbounded.** `cycleEdgeOption` does `routeOption + 1` with no wrap and renders the
+  raw value (`Reroute (8)`…), with no way back to the original route and always flashing "rerouted
+  connector" even when the route doesn't change. Bound it to the actual number of obstacle-avoiding
+  alternatives (surface the count from the router) and wrap back to the default route.
+
 ## Deferred from the 2026-07-02 UX audit (real findings, not fixed in that pass)
 - *(done)* **Structured logging (§8 contract).** All app boundary logging routes through
   `src/log.ts`'s `appLog` with the closed `AppEvent` union; `LogRecord` gained the `data` field §8 had

@@ -1,6 +1,23 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — playground UX + a11y fixes (icon-pack reload, toggle semantics)
+
+From a UX/a11y review sweep of the app:
+- **Icon-pack reload no-op (broken functionality).** The `#load-pack` file input was never reset, so
+  re-selecting the SAME pack file did nothing (browsers suppress `change` on an unchanged path) — dead in
+  the iterate-on-your-pack loop (load, fix a JSON error / edit a glyph on disk, reload). Now cleared after
+  each load. New e2e guard in `load-pack.spec.ts`.
+- **Source-collapse toggle accessible name.** The button's name was the bare guillemet glyph (text content
+  beats `title` in the accessible-name computation), so screen readers announced "‹". Added an `aria-label`
+  that updates with the toggle.
+- **Lock toggle state (a11y).** `#lock` / `#ctx-lock` conveyed on/off only through swapped text; added
+  `aria-pressed` mirroring the Pin control, so assistive tech gets the toggle state.
+
+Deferred (documented in DO_NEXT): the context-bar **Rename** button is offered for single selections that
+have no editable label (advertises an action that only flashes a warning — needs a predicate extracted from
+`beginRelabel`), and the **Reroute** counter grows unbounded with no wrap back to the original route.
+
 ## 2026-07-11 — live GitHub Pages demo visual sweep + sequence-collapse fix
 
 Drove the DEPLOYED demo (`https://e6qu.github.io/mermollusc/demo/`) and screenshotted every family in
