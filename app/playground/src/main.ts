@@ -1836,20 +1836,21 @@ const updateTask = (caps: CapabilityState = computeCapabilities()): void => {
     return;
   }
   if (selection.edges.size > 0 && selection.nodes.size === 0) {
-    setTask("relabel this edge or delete it", "action");
+    // Only offer "relabel" when the edge actually has an editable label (not a gitGraph merge edge or a
+    // mindmap spoke); otherwise delete is the only real action.
+    setTask(caps.canRelabel ? "relabel this edge or delete it" : "delete this edge", "action");
     return;
   }
   if (selection.nodes.size === 1) {
     const resizable = ast !== null && familyAffordances(ast.kind).resizable;
-    setTask(
-      reasonedTask(
-        resizable
-          ? "drag, rename, resize with corner handles, or Alt+arrows resize"
-          : "drag or rename",
-        selectedActionReasons(caps),
-      ),
-      "action",
-    );
+    const hint = resizable
+      ? caps.canRelabel
+        ? "drag, rename, resize with corner handles, or Alt+arrows resize"
+        : "drag, resize with corner handles, or Alt+arrows resize"
+      : caps.canRelabel
+        ? "drag or rename"
+        : "drag it";
+    setTask(reasonedTask(hint, selectedActionReasons(caps)), "action");
     return;
   }
   setTask(
@@ -2280,7 +2281,7 @@ const computeCapabilities = (): CapabilityState => {
       : selectionOrder.length === 0
         ? "select at least one node to duplicate"
         : "Duplicate (⌘D)",
-    canRelabel: editable && totalSelected === 1,
+    canRelabel: editable && totalSelected === 1 && selectionCanRelabel(),
     canDelete: selectionOrder.length > 0 || selection.edges.size > 0,
     isEdgeOnly: selectionOrder.length === 0 && selection.edges.size > 0,
   };
@@ -4758,7 +4759,16 @@ const anchorFor = (
 // Open the inline relabel editor for a hit (a node/edge, or a group title) — shared by the canvas
 // double-click and the keyboard navigator's Enter. `ast`/source maps are read from module state.
 // Returns true when an editor was opened.
-const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | null): boolean => {
+// Resolve the label target for a hit and open the inline editor; returns false when the item has no
+// editable label. Building the target is side-effect-free (the commit closures only act when invoked), so
+// `dryRun` short-circuits before opening the editor — it answers "could this be relabelled?" for the
+// affordance gating (canRelabel), keeping one source of truth instead of a parallel predicate that drifts.
+const beginRelabel = (
+  shown: Scene,
+  hit: HitTarget | null,
+  groupHit: GroupId | null,
+  dryRun = false,
+): boolean => {
   if (ast === null) return false;
   // Most families edit a `TextSpan` via `patchSpan`; flowchart nodes relabel through the source map.
   // The character immediately before the label span is its opening delimiter — it tells us which
@@ -5012,8 +5022,25 @@ const beginRelabel = (shown: Scene, hit: HitTarget | null, groupHit: GroupId | n
   if (pending === null) return false;
   anchor = anchor ?? (hit === null ? null : anchorFor(shown, hit));
   if (anchor === null) return false;
+  if (dryRun) return true;
   openInlineEditor(anchor, pending.text, pending.commit, () => announce("relabel committed"));
   return true;
+};
+
+// Whether the current single node/edge selection has an editable label — the dry-run of `beginRelabel`.
+// Gates the context-bar Rename button and the edge task hint so they aren't offered for items (a gitGraph
+// merge edge, a mindmap spoke, an auto-id commit) where clicking would only flash "no editable label".
+const selectionCanRelabel = (): boolean => {
+  if (scene === null) return false;
+  const edgeId = [...selection.edges][0];
+  const nodeId = selectionOrder[0];
+  const hit: HitTarget | null =
+    selection.edges.size === 1 && selectionOrder.length === 0 && edgeId !== undefined
+      ? { kind: "edge", id: edgeId }
+      : selection.edges.size === 0 && selectionOrder.length === 1 && nodeId !== undefined
+        ? { kind: "node", id: nodeId }
+        : null;
+  return hit !== null && beginRelabel(shownScene(scene), hit, null, true);
 };
 
 canvas.addEventListener("dblclick", (ev) => {
