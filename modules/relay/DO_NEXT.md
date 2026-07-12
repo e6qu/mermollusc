@@ -24,3 +24,20 @@
   matching the real-relay branch, which never pre-seeds and relies solely on the connection's own sync.
   Worth unifying in a future pass; out of scope for this PR (the pre-seed logic also interacts with
   share-link/example-URL precedence rules that need care to touch).
+
+Security-scan follow-ups (2026-07-12; the pre-auth memory + handshake-timeout items from that scan are
+fixed — see WHAT_WE_DID / BUGS):
+- **Global `Core.mu` held across CRDT apply/encode → cross-room head-of-line blocking.** `applyUpdateGuarded`
+  / `EncodeStateAsUpdate` run under the process-wide `c.mu` on attacker-supplied payloads up to 4 MiB, so
+  one room's large update stalls admissions/broadcasts/saves for every other room. Move to per-room locking
+  so CRDT work doesn't serialize the whole server.
+- **`File.Save` uses a fixed shared `<room>.tmp` path with no per-room serialization.** A debounced save can
+  race a last-leave/shutdown flush for the same room; both write the same temp file then rename, so a
+  snapshot can be lost or a rename ENOENT. Use `os.CreateTemp` (unique temp) or a per-room save mutex.
+- **Origin policy ignores scheme (and port) on the same host.** `server.go`'s same-host branch matches only
+  the hostname, so `http://relay.example.com:9999` is accepted against an `https` relay — a co-hosted origin
+  can drive cross-site WebSocket connections. Tighten to at least require the scheme; revisit the port
+  allowance against the stated app-and-relay-share-a-host threat model.
+- **Malformed DOC-update handling logs unthrottled and never disconnects.** A peer can stream corrupt DOC
+  frames indefinitely; each is dropped + logged (unthrottled `c.log.Printf`). Throttle the log and/or close
+  the connection after repeated malformed updates (still fail-loud, just bounded).

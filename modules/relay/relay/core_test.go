@@ -100,6 +100,52 @@ func (s *fakeSocket) waitAdmitted(t *testing.T) {
 	t.Fatal("connection was never admitted (no DOC frame)")
 }
 
+// waitClosed blocks until the socket has been closed by the Core (open flips false), or fails.
+func (s *fakeSocket) waitClosed(t *testing.T, why string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if !s.IsOpen() {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal(why)
+}
+
+// TestPreAuthBufferBoundedByBytes proves an unauthenticated peer can't pin unbounded memory: the pre-auth
+// buffer is capped by TOTAL BYTES, not just frame count, so a few maximal frames get the connection dropped.
+func TestPreAuthBufferBoundedByBytes(t *testing.T) {
+	// AuthRequired keeps the connection in the pending phase; the reaper is disabled so only the byte cap
+	// can end this connection.
+	core := New(Options{AuthRequired: true, Logger: quietLogger{}, AuthHandshakeTimeout: -1})
+	s := newFakeSocket()
+	go core.Connect(s, &Request{URL: "/room"})
+
+	frame := make([]byte, 4<<20) // 4 MiB, first byte 0 (tagAware) so it's buffered, not treated as AUTH
+	s.deliver(frame)             // 4 MiB pending
+	s.deliver(frame)             // 8 MiB pending — at maxPendingBytes
+	if !s.IsOpen() {
+		t.Fatal("connection dropped before the pre-auth byte budget was exceeded")
+	}
+	s.deliver(frame) // would push past 8 MiB → dropped
+	if s.IsOpen() {
+		t.Fatal("connection stayed open after exceeding the pre-auth byte budget")
+	}
+	s.drop() // let the blocked Connect goroutine return
+}
+
+// TestUnauthenticatedConnectionIsReaped proves a peer that connects but never sends an AUTH frame is
+// dropped after the handshake timeout instead of holding its goroutines and socket slot forever.
+func TestUnauthenticatedConnectionIsReaped(t *testing.T) {
+	core := New(Options{AuthRequired: true, Logger: quietLogger{}, AuthHandshakeTimeout: 30 * time.Millisecond})
+	s := newFakeSocket()
+	go core.Connect(s, &Request{URL: "/room"})
+
+	s.waitClosed(t, "an unauthenticated connection was not reaped after the handshake timeout")
+	s.drop()
+}
+
 type quietLogger struct{}
 
 func (quietLogger) Printf(string, ...any) {}

@@ -81,7 +81,14 @@ func main() {
 	actualPort := listener.Addr().(*net.TCPAddr).Port
 	origins := newOriginPolicy(os.Getenv("ALLOWED_ORIGINS"))
 	registry := newSocketRegistry()
-	server := &http.Server{Handler: newHandler(core, logger, origins, registry)}
+	// ReadHeaderTimeout bounds a slowloris that dribbles the WebSocket-upgrade request headers; IdleTimeout
+	// reaps kept-alive HTTP connections that never upgrade. (An UPGRADED socket is hijacked past these — the
+	// relay Core's auth-handshake reaper covers a connection that opens but never authenticates.)
+	server := &http.Server{
+		Handler:           newHandler(core, logger, origins, registry),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	shutdown := make(chan struct{})
 	go func() {

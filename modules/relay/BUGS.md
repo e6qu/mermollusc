@@ -1,7 +1,23 @@
 # @m/relay — bugs
 
-No known open bugs. The module shipped with real ones, though — the earlier "no known open bugs" claim
-was true only until a review actually went looking. Recorded below so the history stays honest.
+No high-severity open bugs. A 2026-07-12 security scan did surface lower-severity hardening items that are
+NOT yet fixed (cross-room lock contention, a save `.tmp` race, an origin scheme/port allowance, malformed-
+frame log spam) — those are written up in `DO_NEXT.md`. The module shipped with real bugs before, too — the
+earlier "no known open bugs" claim was true only until a review actually went looking. Recorded below so the
+history stays honest.
+
+Resolved (security scan, found + fixed 2026-07-12):
+
+- ~~**An unauthenticated peer could pin ~256 MiB pre-auth.**~~ The pre-auth buffer was capped by frame
+  COUNT (`maxPendingFrames = 64`) while each frame is up to 4 MiB, so 64 maximal non-AUTH frames pinned
+  ~256 MiB before any token. Fixed: bound the buffer by TOTAL BYTES (`maxPendingBytes = 8 MiB`, tracked in
+  `conn.pendingBytes`); the flood check trips on bytes as well as count. `-race` test.
+- ~~**A connection that opened but never authenticated lived forever.**~~ With `AuthRequired`, a peer could
+  connect and simply never send an AUTH frame, holding its read/write goroutines and socket slot with no
+  timeout anywhere. Fixed: an auth-handshake reaper (`defaultAuthHandshakeTimeout` 10s, injectable via
+  `Options.AuthHandshakeTimeout`) drops a still-pending connection; `admit` guards the open transition
+  against it. Also set `http.Server.ReadHeaderTimeout`/`IdleTimeout` for the pre-upgrade HTTP phase. `-race`
+  test.
 
 Resolved (review sweep, found + fixed 2026-07-10):
 
