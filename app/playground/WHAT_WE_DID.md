@@ -1,6 +1,12 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — Reroute cycles only the best few routes
+
+The router now caps its offered alternatives (`MAX_REROUTE_ALTERNATIVES = 6`), so Reroute cycles ~5 sensible
+routes instead of up to 15 mount-pair variants (many of which were odd far-side detours). The `context-bar`
+e2e now asserts the tighter bound. Closes the last deferred item from the routing/UX review.
+
 ## 2026-07-12 — help-panel/tooltip accuracy pass
 
 Fixed user-facing copy that didn't match behaviour (from an infobox audit):

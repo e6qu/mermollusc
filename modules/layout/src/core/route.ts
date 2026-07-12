@@ -416,6 +416,13 @@ export const mazePathCandidates = (
   return candidates;
 };
 
+// How many of the ranked route alternatives the app's "Reroute" control offers. `mazePathCandidates` can
+// return up to 16 distinct mount-pair routes for an unobstructed edge, most of them odd "enter from the far
+// side" detours; the list is already sorted best-first (fewest hits, then bends, then length), so keeping
+// the top few gives a short cycle of only sensible routes. The count and the selection both slice to this,
+// so they stay consistent (the count feeds the app's wrap; the selection feeds what actually renders).
+const MAX_REROUTE_ALTERNATIVES = 6;
+
 // Route an obstacle-crossing edge with the maze router, trying every (from-side, to-side) mount-point
 // pair and keeping the path with the fewest obstacle hits, then the shortest. Returns null when the
 // edge already clears everything or no better orthogonal path is found.
@@ -432,7 +439,10 @@ export const mazeAroundObstacles = (
   force = false,
 ): readonly Point[] | null => {
   if (!force && routeOption === null && routeHits(current, obstacles) === 0) return null;
-  const candidates = mazePathCandidates(fromBox, toBox, start, end, obstacles);
+  const candidates = mazePathCandidates(fromBox, toBox, start, end, obstacles).slice(
+    0,
+    MAX_REROUTE_ALTERNATIVES,
+  );
   if (candidates.length === 0) return null;
   if (routeOption === null) {
     return candidates[0]?.path ?? null;
@@ -453,13 +463,15 @@ export const routeAlternativeCount = (scene: Scene, edgeId: SceneEdgeId): number
   if (start === undefined || end === undefined) return 0;
   const obstacles = obstaclesForEdges(scene).get(e.id) ?? [];
   const boxById = new Map<string, RouteBox>(scene.nodes.map((n) => [n.id, routeBoxOf(n)]));
-  return mazePathCandidates(
+  const candidates = mazePathCandidates(
     boxById.get(e.from) ?? null,
     boxById.get(e.to) ?? null,
     start,
     end,
     obstacles,
-  ).length;
+  );
+  // Mirror the cap in `mazeAroundObstacles` so the app's cycle length matches what the builder renders.
+  return Math.min(candidates.length, MAX_REROUTE_ALTERNATIVES);
 };
 
 export const mazeRerouteEdges = (scene: Scene): Scene => {
