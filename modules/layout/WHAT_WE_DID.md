@@ -1,5 +1,12 @@
 # @m/layout — work log
 
+## 2026-07-12 — expose routeAlternativeCount for the app's Reroute cycle
+
+Added `routeAlternativeCount(scene, edgeId)` — the number of distinct maze routes `mazePathCandidates`
+offers an edge (same inputs the builder feeds `mazeAroundObstacles`, so it matches what renders). The app's
+Reroute button uses it to cycle a BOUNDED set and wrap back to the original route instead of counting up
+forever. Pure, exported through both barrels; unit-tested in `route.test.ts`.
+
 ## 2026-07-12 — separate incompatible backbones (mount spread + relaxed cardinal invariant)
 
 Closed the cross-node half of the "no incompatible shared backbone" rule that `offsetParallelEdges`

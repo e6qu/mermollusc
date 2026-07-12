@@ -1,6 +1,17 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — Reroute cycles a bounded set and returns to the original route
+
+The **Reroute** connector button incremented `routeOption` forever (`Reroute (8)`, `(9)`…) with no way back
+to the original route, and the downstream `routeOption % candidates.length` silently re-cycled while the
+label kept climbing — so it also flashed "rerouted connector" for a route the user had already seen. Added
+`routeAlternativeCount(scene, edgeId)` to `@m/layout` (the count the builder mods by) and rewrote
+`cycleEdgeOption` to walk `original → 1 → … → N-1 → original`, dropping the edge style entirely on the
+return so the overlay stays clean. The flash is now honest ("rerouted connector" / "restored the original
+route" / "no alternative route"), and the label numbers only the alternatives. New e2e in
+`context-bar.spec.ts` asserts the cycle is bounded and returns to the original.
+
 ## 2026-07-12 — Rename affordance matches behaviour (no more dead Rename button)
 
 The context-bar **Rename** button and the edge/node task hints were offered for any single selection, but

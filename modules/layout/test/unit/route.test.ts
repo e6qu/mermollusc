@@ -8,6 +8,7 @@ import {
   respreadPorts,
   retidyRoutes,
   rerouteBoxEdges,
+  routeAlternativeCount,
   routeWaypoints,
   separateEdgesFromBorders,
   snapSceneEdgesToMountPoints,
@@ -116,6 +117,20 @@ describe("spreadPorts", () => {
     }
     return false;
   };
+
+  it("routeAlternativeCount reports the distinct reroute options; 0 for self-loop or unknown edge", () => {
+    const scene = {
+      nodes: [node("a", 0, 100), node("b", 300, 100)],
+      edges: [edge("e0", "a", "b"), edge("self", "a", "a")],
+      wedges: [],
+      decorations: [],
+      extent: rect(0, 0, 340, 200),
+    };
+    // Multiple (from-side, to-side) mount pairs give more than one distinct maze route to cycle through.
+    expect(routeAlternativeCount(scene, brand<string, "SceneEdgeId">("e0"))).toBeGreaterThan(1);
+    expect(routeAlternativeCount(scene, brand<string, "SceneEdgeId">("self"))).toBe(0);
+    expect(routeAlternativeCount(scene, brand<string, "SceneEdgeId">("missing"))).toBe(0);
+  });
 
   it("reroutes around a node sitting directly on the straight A→B line (obstacle avoidance)", () => {
     // A and B are horizontally aligned; M sits squarely between them, on the direct line.
