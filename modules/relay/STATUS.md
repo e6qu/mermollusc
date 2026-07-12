@@ -7,7 +7,8 @@ compiled to WebAssembly, in-process, instead of skipping the relay. The supersed
 
 - **Core (`relay/`):** `Core.Connect(socket, req)` — the full admission state machine (auth, room
   resolution, RBAC, snapshot load, CONTROL role + one-per-empty-room "seed" grant + initial DOC frame,
-  pending-frame replay), frame handling
+  pending-frame replay bounded by both count and TOTAL BYTES, an auth-handshake reaper that drops a
+  connection which never authenticates), frame handling
   (tag allow-list, rate limiting, crash-guarded `ApplyUpdate`, debounced save, broadcast), and room
   registry (`FlushAll` for clean shutdown) — parameterized over `Socket`/`Store`/`Authorizer`/
   `RoomAuthorizer`, with zero knowledge of native vs. WASM. `y-crdt` verified bidirectionally

@@ -35,8 +35,12 @@ const (
 const (
 	saveDebounce       = 400 * time.Millisecond
 	maxPendingFrames   = 64
+	maxPendingBytes    = 8 << 20 // total bytes buffered before auth — a frame count alone let a peer pin 64×maxFrame
 	maxRooms           = 10_000
 	viewerDropLogEvery = 5 * time.Second
+	// How long an AuthRequired connection may stay unauthenticated before it is dropped. Without it a peer
+	// that connects and never sends an AUTH frame holds its goroutines and socket slot forever.
+	defaultAuthHandshakeTimeout = 10 * time.Second
 )
 
 var segmentRE = regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
@@ -65,6 +69,9 @@ type Options struct {
 	RateLimit     RateLimit
 	Now           func() time.Time
 	Logger        Logger
+	// AuthHandshakeTimeout bounds how long an AuthRequired connection may stay unauthenticated. Zero uses
+	// defaultAuthHandshakeTimeout; a negative value disables the reaper (tests that never authenticate).
+	AuthHandshakeTimeout time.Duration
 }
 
 // Core is the room registry + connection admission logic. Safe for concurrent use by multiple goroutines
@@ -80,6 +87,7 @@ type Core struct {
 	rateLimit     RateLimit
 	now           func() time.Time
 	log           Logger
+	authHandshake time.Duration
 }
 
 type room struct {
@@ -130,6 +138,9 @@ func New(opts Options) *Core {
 	if opts.Logger == nil {
 		opts.Logger = log.Default()
 	}
+	if opts.AuthHandshakeTimeout == 0 {
+		opts.AuthHandshakeTimeout = defaultAuthHandshakeTimeout
+	}
 	return &Core{
 		rooms:         make(map[string]*room),
 		store:         opts.Store,
@@ -139,6 +150,7 @@ func New(opts Options) *Core {
 		rateLimit:     opts.RateLimit,
 		now:           opts.Now,
 		log:           opts.Logger,
+		authHandshake: opts.AuthHandshakeTimeout,
 	}
 }
 
@@ -295,6 +307,7 @@ type conn struct {
 	mu                sync.Mutex
 	phase             string // pending | open | closed
 	pending           [][]byte
+	pendingBytes      int
 	room              *room
 	name              string
 	role              Role
@@ -326,7 +339,7 @@ func (c *Core) Connect(socket Socket, req *Request) {
 			cn.mu.Unlock()
 			return
 		}
-		if len(cn.pending) >= maxPendingFrames {
+		if len(cn.pending) >= maxPendingFrames || cn.pendingBytes+len(data) > maxPendingBytes {
 			cn.mu.Unlock()
 			cn.reject(closePolicy, "flood before auth")
 			return
@@ -337,6 +350,7 @@ func (c *Core) Connect(socket Socket, req *Request) {
 			return
 		}
 		cn.pending = append(cn.pending, data)
+		cn.pendingBytes += len(data)
 		cn.mu.Unlock()
 	})
 
@@ -352,6 +366,20 @@ func (c *Core) Connect(socket Socket, req *Request) {
 		}
 		close(done)
 	})
+
+	// Reap a connection that authenticates too slowly (or never) so an unauthenticated peer can't hold its
+	// goroutines and socket slot indefinitely. Stopped once the session ends (admitted or closed).
+	if c.authRequired && c.authHandshake > 0 {
+		reaper := time.AfterFunc(c.authHandshake, func() {
+			cn.mu.Lock()
+			stillPending := cn.phase == "pending"
+			cn.mu.Unlock()
+			if stillPending {
+				cn.reject(closePolicy, "auth handshake timeout")
+			}
+		})
+		defer reaper.Stop()
+	}
 
 	if !c.authRequired {
 		cn.admit(context.Background(), req)
@@ -447,9 +475,16 @@ func (cn *conn) admit(ctx context.Context, req *Request) {
 	cn.socket.Send(docFrame(state))
 
 	cn.mu.Lock()
+	if cn.phase != "pending" {
+		// The handshake reaper (or a client close) finished this connection while we were admitting it;
+		// OnClose handles teardown, so don't flip it back to open or replay its buffered frames.
+		cn.mu.Unlock()
+		return
+	}
 	cn.phase = "open"
 	pending := cn.pending
 	cn.pending = nil
+	cn.pendingBytes = 0
 	cn.mu.Unlock()
 	for _, data := range pending {
 		cn.handle(data)
@@ -503,6 +538,7 @@ func (cn *conn) startAuthFromFrame(frame []byte, req *Request) {
 	if len(frame) == 0 || frame[0] != tagAuth {
 		cn.mu.Lock()
 		cn.pending = append(cn.pending, frame)
+		cn.pendingBytes += len(frame)
 		cn.mu.Unlock()
 		return
 	}

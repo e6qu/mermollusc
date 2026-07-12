@@ -1,5 +1,16 @@
 # @m/relay — work log
 
+- 2026-07-12 harden unauthenticated connections (DoS) — from a security scan. (1) The pre-auth buffer was
+  capped by frame COUNT (`maxPendingFrames = 64`) but each frame is up to `maxFrameBytes` (4 MiB), so one
+  unauthenticated peer could pin ~256 MiB before ever sending a token; it's now bounded by TOTAL BYTES
+  (`maxPendingBytes = 8 MiB`, tracked in `conn.pendingBytes`). (2) A connection that opened but never
+  authenticated lived forever (goroutines + socket slot); a `defaultAuthHandshakeTimeout` (10s, injectable
+  via `Options.AuthHandshakeTimeout`; negative disables it for tests) now reaps it, with `admit` guarding
+  against the reaper racing the open transition. (3) The `http.Server` gained `ReadHeaderTimeout` (10s,
+  slowloris on the upgrade request) and `IdleTimeout` (120s, un-upgraded keep-alives). Two `-race` tests in
+  `core_test.go`. Remaining scan findings (global-lock HOL blocking, save `.tmp` race, origin scheme/port,
+  malformed-frame log spam) are written up in `DO_NEXT.md`.
+
 - 2026-07-10 review sweep — ten found+fixed bugs (full details in `BUGS.md`): raised the inbound frame
   cap to 4MiB (`SetReadLimit`; the 32KiB default 1009-closed big DOC snapshots); `Store.Load` failures
   now fail the admission instead of seeding an empty room over a good snapshot; fixed the
