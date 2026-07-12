@@ -1,6 +1,14 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — coverage headroom for the large-graph stress/fuzz guards
+
+`stress.test.ts` (3000-node network/block) and `dot-stability-fuzz.test.ts` (120 export→import→export runs)
+set their own 30s per-test timeout. Uninstrumented they finish in ~4.5s, but under v8 coverage
+instrumentation (`make cov`) they run ~6-7× slower and brushed the 30s ceiling on a loaded machine, flaking
+the coverage gate. Raised both to 60s — still catches the real target (an accidental super-linear blow-up
+would take minutes). Not a perf regression: the wall-clock is unchanged uninstrumented.
+
 ## 2026-07-12 — Reroute cycles a bounded set and returns to the original route
 
 The **Reroute** connector button incremented `routeOption` forever (`Reroute (8)`, `(9)`…) with no way back
