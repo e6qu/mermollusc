@@ -87,6 +87,31 @@ test("a multi-selection offers Connect/Group/Arrange; an edge offers Rename/Styl
   ]);
 });
 
+test("Rename is offered only for items that actually have an editable label", async ({ page }) => {
+  await ready(page);
+  // Mindmap NODES relabel through their source span; the spokes (edges) have no label at all — so Rename
+  // must appear for the nodes and be absent for the spokes, instead of being offered and then failing.
+  await setSource(page, "mindmap\n  root((Root))\n    A[Alpha]\n    B[Beta]\n");
+  await expect.poll(() => canvasWidth(page)).toBeGreaterThan(0);
+
+  const nav = page.locator("#diagram-nav");
+  await nav.focus();
+  let sawNode = false;
+  let sawSpoke = false;
+  for (let i = 0; i < 8; i++) {
+    await nav.press("ArrowDown");
+    const btns = await visibleCtxButtons(page);
+    if (btns.includes("connect")) {
+      sawNode = true;
+      expect(btns, "a mindmap node has an editable label").toContain("relabel");
+    } else if (btns.includes("reroute")) {
+      sawSpoke = true;
+      expect(btns, "a mindmap spoke has no editable label").not.toContain("relabel");
+    }
+  }
+  expect(sawNode && sawSpoke, "navigated both a node and a spoke").toBe(true);
+});
+
 test("Connect is absent on a family that can't accept it (gantt) even with two selected", async ({
   page,
 }) => {

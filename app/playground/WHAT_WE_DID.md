@@ -1,6 +1,16 @@
 # @m/app (playground) — work log
 
 
+## 2026-07-12 — Rename affordance matches behaviour (no more dead Rename button)
+
+The context-bar **Rename** button and the edge/node task hints were offered for any single selection, but
+some items have no editable label (a gitGraph merge edge, a mindmap spoke, a gitGraph auto-id commit) —
+clicking only flashed "this item has no editable label". `beginRelabel` gained a side-effect-free `dryRun`
+flag (building the label target has no side effects; it just short-circuits before opening the editor), and
+a `selectionCanRelabel()` helper runs that dry-run so `canRelabel` is the single source of truth — no
+parallel predicate to drift. The button now hides, and the hints drop "rename"/"relabel", for items that
+can't be renamed. New e2e in `context-bar.spec.ts` (mindmap nodes offer Rename, spokes don't).
+
 ## 2026-07-12 — playground UX + a11y fixes (icon-pack reload, toggle semantics)
 
 From a UX/a11y review sweep of the app:
