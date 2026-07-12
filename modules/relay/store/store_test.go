@@ -3,8 +3,51 @@ package store
 
 import (
 	"bytes"
+	"sync"
 	"testing"
 )
+
+// TestFileConcurrentSavesDoNotCorrupt hammers concurrent saves of the SAME room — the exact debounce-vs-
+// flush race — each writing a distinct constant-byte snapshot of equal length. With a shared "<room>.tmp"
+// the writes interleave (a torn, mixed-byte file) or the second rename ENOENTs; with a per-save unique temp
+// every rename lands a complete snapshot, so the survivor is one whole write. Run with -race.
+func TestFileConcurrentSavesDoNotCorrupt(t *testing.T) {
+	dir := t.TempDir()
+	s, err := NewFile(dir)
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
+	}
+	const writers = 24
+	const size = 8192
+	var wg sync.WaitGroup
+	errs := make(chan error, writers)
+	for k := 0; k < writers; k++ {
+		wg.Add(1)
+		go func(b byte) {
+			defer wg.Done()
+			if err := s.Save("room", bytes.Repeat([]byte{b}, size)); err != nil {
+				errs <- err
+			}
+		}(byte(k + 1))
+	}
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Fatalf("concurrent Save failed: %v", e)
+	}
+	got, err := s.Load("room")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(got) != size {
+		t.Fatalf("Load length = %d, want %d — a torn write", len(got), size)
+	}
+	for i, b := range got {
+		if b != got[0] {
+			t.Fatalf("byte %d = %d but byte 0 = %d — the file is an interleaved mix of concurrent saves", i, b, got[0])
+		}
+	}
+}
 
 func TestMemoryReturnsNilForUnknownRoomThenSavedSnapshot(t *testing.T) {
 	s := NewMemory()

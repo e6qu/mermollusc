@@ -577,7 +577,9 @@ func (cn *conn) handle(frame []byte) {
 		err := applyUpdateGuarded(r.doc, frame[1:])
 		c.mu.Unlock()
 		if err != nil {
-			c.log.Printf("relay: malformed doc update in room %q — %v", name, err)
+			// A peer can stream malformed DOC frames within its rate budget; throttle like the other
+			// per-connection drop logs so it can't flood the log (the frame is still dropped, fail-loud).
+			cn.throttledLog("relay: malformed doc update in room %q — %v", name, err)
 			return
 		}
 		c.mu.Lock()

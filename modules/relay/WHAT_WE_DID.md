@@ -1,5 +1,15 @@
 # @m/relay — work log
 
+- 2026-07-12 security-scan follow-ups (lower-severity, from the same scan). (1) `File.Save` shared a fixed
+  `<room>.tmp` path, so a fired debounce racing a last-leave/shutdown flush for the SAME room both wrote it
+  then renamed — a torn file or a rename ENOENT (a lost/degraded snapshot). Now a per-save unique temp via
+  `os.CreateTemp` (0644 preserved, cleaned up on failure); a `-race` concurrency test (24 writers, equal-
+  length distinct snapshots) proves the survivor is one complete write. (2) Malformed DOC-update logging was
+  unthrottled; routed through the per-connection `throttledLog` like the sibling drop-logs (the frame is
+  still dropped — fail-loud — just not spammed). Assessed and LEFT: the origin scheme/port allowance (no
+  reliable request-scheme signal behind a TLS proxy; the `ALLOWED_ORIGINS` allowlist is the real control) —
+  see DO_NEXT. Still open: splitting the global `Core.mu` (a deliberate, careful-change deferral).
+
 - 2026-07-12 harden unauthenticated connections (DoS) — from a security scan. (1) The pre-auth buffer was
   capped by frame COUNT (`maxPendingFrames = 64`) but each frame is up to `maxFrameBytes` (4 MiB), so one
   unauthenticated peer could pin ~256 MiB before ever sending a token; it's now bounded by TOTAL BYTES
