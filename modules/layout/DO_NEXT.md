@@ -13,8 +13,15 @@ is the riskiest area — verify with the `edge-border-clearance` scorecard + bef
   "on the side" for exactly this). TRUNK is now a REAL gate in `trunk-fuzz.prop.test.ts`.
   - **BUS dense residual (~0.5%, KNOWN BUG, `it.fails`).** In dense graphs (8 nodes / ~14 edges) no local
     single-segment move converges — clearing one axis lengthens a neighbour leg into a conflict on the
-    other. The remaining fix is NODE-MOVING relayout (nudge a node so the fan/stack stops aligning), not a
-    post-hoc route edit. Drive it with the fuzzer; drop bus `.fails` when clean.
+    other. TRIED AND REJECTED (2026-07-12): a compat-ordered fan-spread (re-space each node side's stubs
+    grouped by compatibility class). It barely moved the bus rate AND slightly regressed trunk — re-spacing
+    a fan at one side just re-tangles the cross-legs elsewhere (the same whack-a-mole as the per-segment
+    nudge). Every LOCAL routing pass we've tried (per-segment nudge, maze-reroute, mount-spread, fan-spread)
+    plateaus here. The remaining paths are both large: NODE-MOVING relayout (nudge a node so the fan/stack
+    stops aligning — but bus/trunk are display-only re-routes that must not move the user's nodes, so this
+    belongs in the auto-layout phase and wouldn't help user-arranged diagrams), or a GLOBAL orthogonal
+    route optimiser. Disproportionate for a ~0.5% synthetic-dense case that never appears on real/auto-laid
+    diagrams (the deployed demo is clean). Keep the `it.fails` fuzzer guard; drop it only when actually clean.
   - **Latent: trunk multi-edge ports go off-side in dense fuzz.** `cardinalMountViolations` (relaxed) still
     flags some trunk+multi-edge scenes where `trunkMerge` places a shared port off the node side (not just
     off-centre). Catalog examples are clean; this is fuzz-only. Fix `trunkMerge` to keep ports on the side.
